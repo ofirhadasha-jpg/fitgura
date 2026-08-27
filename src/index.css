@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-royal-blue: #2E5BFF;
+  --color-coral: #FF6B6B;
+  --color-emerald: #2ED573;
+  --color-cream: #F8FAFC;
+  --color-navy: #1A3399;
+  --color-coral-light: #FFF0F0;
+  --color-emerald-light: #F0FFF6;
+  --color-blue-light: #EEF2FF;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Outfit', 'Noto Sans Hebrew', sans-serif;
+  background: #F8FAFC;
+  direction: rtl;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+}
