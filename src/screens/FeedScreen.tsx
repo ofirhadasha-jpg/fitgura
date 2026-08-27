@@ -1,0 +1,261 @@
+import React, { useRef, useState } from 'react'
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
+import { LinearGradient, BottomNav } from '../components'
+import { type Screen, type User, type Product, products } from '../types'
+
+export function FeedScreen({
+  wishlistItems,
+  onToggleWishlist,
+  onNav,
+  budget,
+  setBudget,
+  user,
+}: {
+  wishlistItems: number[]
+  onToggleWishlist: (i: number) => void
+  onNav: (s: Screen) => void
+  budget: [number, number]
+  setBudget: (b: [number, number]) => void
+  user: User | null
+}) {
+  const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
+  const [search, setSearch] = useState('')
+
+  const filtered = products.filter((p, _i) => {
+    const matchFilter = filter === 'all' || p.category === filter
+    const matchSearch = p.name.includes(search) || p.brand.toLowerCase().includes(search.toLowerCase())
+    const matchBudget = p.price >= budget[0] && p.price <= budget[1]
+    return matchFilter && matchSearch && matchBudget
+  })
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <View style={feedStyles.header}>
+        <View style={feedStyles.statusRow}>
+          <View style={feedStyles.statusLeft}>
+            <View style={feedStyles.statusDot} />
+            <Text style={feedStyles.statusText}>סריקה אחרונה: לפני 3 ימים</Text>
+            {user ? (
+              <View style={feedStyles.loggedInBadge}><Text style={feedStyles.loggedInBadgeText}>מחובר ✓</Text></View>
+            ) : (
+              <View style={feedStyles.guestBadge}><Text style={feedStyles.guestBadgeText}>אורח</Text></View>
+            )}
+          </View>
+          <TouchableOpacity onPress={() => onNav('profile')} activeOpacity={0.7} style={[feedStyles.avatarBtn, user ? feedStyles.avatarBtnUser : feedStyles.avatarBtnGuest]}>
+            <Text style={feedStyles.avatarText}>{user ? user.name[0] : '👤'}</Text>
+            {user && <View style={feedStyles.avatarDot} />}
+          </TouchableOpacity>
+        </View>
+
+        <Text style={feedStyles.feedTitle}>הפיד שלי</Text>
+
+        <BudgetSlider budget={budget} setBudget={setBudget} />
+
+        <View style={feedStyles.searchBox}>
+          <Text style={{ color: '#94A3B8' }}>🔍</Text>
+          <TextInput
+            placeholder="חפש בגדים, נעליים, אביזרים..."
+            value={search}
+            onChangeText={setSearch}
+            style={feedStyles.searchInput}
+          />
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={feedStyles.filterRow} contentContainerStyle={{ gap: 7, paddingBottom: 14 }}>
+          {[
+            { key: 'all', label: 'הכל' },
+            { key: 'clothing', label: '👕 בגדים' },
+            { key: 'shoes', label: '👟 נעליים' },
+            { key: 'accessories', label: '📱 אביזרים' },
+          ].map(({ key, label }) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setFilter(key as typeof filter)}
+              activeOpacity={0.7}
+              style={[feedStyles.filterBtn, filter === key && feedStyles.filterBtnActive]}
+            >
+              <Text style={[feedStyles.filterBtnText, filter === key && feedStyles.filterBtnTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 14 }}>
+        <LinearGradient colors={['#0B1437', '#1A2F7A']} style={feedStyles.aiMatchBar}>
+          <Text style={{ fontSize: 22 }}>🎯</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={feedStyles.aiMatchTitle}>Fitgura AI Match פעיל</Text>
+            <Text style={feedStyles.aiMatchSub}>כל הפריטים מסוננים לפי סריקת AI + תקציב</Text>
+          </View>
+          <View style={feedStyles.aiMatchCount}>
+            <Text style={feedStyles.aiMatchCountText}>{filtered.length} פריטים</Text>
+          </View>
+        </LinearGradient>
+
+        {filtered.length === 0 && (
+          <View style={feedStyles.emptyState}>
+            <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
+            <Text style={feedStyles.emptyText}>אין פריטים בטווח התקציב הנבחר</Text>
+          </View>
+        )}
+
+        <View style={feedStyles.productGrid}>
+          {filtered.map((product) => {
+            const globalIdx = products.indexOf(product)
+            return (
+              <ProductCard
+                key={globalIdx}
+                product={product}
+                inWishlist={wishlistItems.includes(globalIdx)}
+                onToggleWishlist={() => onToggleWishlist(globalIdx)}
+              />
+            )
+          })}
+        </View>
+
+        <View style={feedStyles.familyTeaser}>
+          <Text style={{ fontSize: 26 }}>👨‍👩‍👧</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={feedStyles.familyTitle}>רוצה לסנכרן גם את בני המשפחה?</Text>
+            <Text style={feedStyles.familySub}>סריקת AI לכל הבית — בקרוב</Text>
+          </View>
+          <View style={feedStyles.familyBadge}><Text style={feedStyles.familyBadgeText}>בקרוב</Text></View>
+        </View>
+      </ScrollView>
+
+      <BottomNav current="feed" onNav={onNav} />
+    </View>
+  )
+}
+
+function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudget: (b: [number, number]) => void }) {
+  const MIN = 50
+  const MAX = 1000
+  const railRef = useRef<View>(null)
+
+  function getPercent(val: number) { return ((val - MIN) / (MAX - MIN)) * 100 }
+
+  function handleTrackClick(e: any) {
+    if (!railRef.current) return
+    railRef.current.measure((_, __, width, ___) => {
+      const pct = e.nativeEvent.locationX / width
+      const val = Math.round((pct * (MAX - MIN) + MIN) / 10) * 10
+      const clamped = Math.max(MIN, Math.min(MAX, val))
+      const midpoint = (budget[0] + budget[1]) / 2
+      if (clamped < midpoint) setBudget([clamped, budget[1]])
+      else setBudget([budget[0], clamped])
+    })
+  }
+
+  return (
+    <View style={feedStyles.budgetCard}>
+      <View style={feedStyles.budgetHeader}>
+        <Text style={feedStyles.budgetTitle}>הגדר תקציב</Text>
+        <Text style={feedStyles.budgetValue}>₪{budget[0]} – ₪{budget[1]}</Text>
+      </View>
+      <View ref={railRef} style={feedStyles.budgetRail} onTouchStart={handleTrackClick}>
+        <View style={[feedStyles.budgetFill, { left: `${getPercent(budget[0])}%`, right: `${100 - getPercent(budget[1])}%` }]} />
+        {[0, 1].map((idx) => (
+          <View key={idx} style={[feedStyles.budgetThumb, { left: `${getPercent(budget[idx])}%` }]} />
+        ))}
+      </View>
+      <View style={feedStyles.budgetLabels}>
+        {['₪50', '₪300', '₪600', '₪1000'].map((l) => (
+          <Text key={l} style={feedStyles.budgetLabel}>{l}</Text>
+        ))}
+      </View>
+    </View>
+  )
+}
+
+function ProductCard({ product, inWishlist, onToggleWishlist }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void }) {
+  return (
+    <View style={feedStyles.productCard}>
+      <View style={feedStyles.productImageWrap}>
+        <Image
+          source={{ uri: `https://images.unsplash.com/${product.img}?w=300&h=345&fit=crop&auto=format` }}
+          style={feedStyles.productImage}
+        />
+        <TouchableOpacity
+          onPress={onToggleWishlist}
+          activeOpacity={0.7}
+          style={feedStyles.heartBtn}
+        >
+          <Text style={{ fontSize: 15 }}>{inWishlist ? '❤️' : '🤍'}</Text>
+        </TouchableOpacity>
+        <View style={feedStyles.aiBadge}>
+          <View style={feedStyles.aiBadgeDot} />
+          <Text style={feedStyles.aiBadgeText}>AI Match</Text>
+        </View>
+      </View>
+      <View style={feedStyles.productInfo}>
+        <View style={feedStyles.matchChip}>
+          <Text style={feedStyles.matchChipText}>✓ 100% מתאים למידה שנסרקה</Text>
+        </View>
+        <Text style={feedStyles.productName}>{product.name}</Text>
+        <Text style={feedStyles.productBrand}>{product.brand}</Text>
+        <Text style={feedStyles.productPrice}>₪{product.price}</Text>
+      </View>
+    </View>
+  )
+}
+
+const feedStyles = StyleSheet.create({
+  header: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingTop: 52, paddingHorizontal: 20 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  statusLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2ED573' },
+  statusText: { fontSize: 12, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  loggedInBadge: { backgroundColor: '#EEF2FF', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
+  loggedInBadgeText: { fontSize: 11, color: '#2E5BFF', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  guestBadge: { backgroundColor: '#FFF7ED', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
+  guestBadgeText: { fontSize: 11, color: '#EA580C', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  avatarBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  avatarBtnUser: { backgroundColor: '#2E5BFF' },
+  avatarBtnGuest: { backgroundColor: '#94A3B8' },
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  avatarDot: { position: 'absolute', bottom: -1, right: -1, width: 12, height: 12, borderRadius: 6, backgroundColor: '#2ED573', borderWidth: 2, borderColor: '#fff' },
+  feedTitle: { fontSize: 22, fontWeight: '700', color: '#1E293B', marginBottom: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  budgetCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: '#E2E8F0', marginBottom: 12 },
+  budgetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  budgetTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  budgetValue: { fontSize: 13, fontWeight: '700', color: '#2E5BFF' },
+  budgetRail: { height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, position: 'relative' },
+  budgetFill: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#2E5BFF', borderRadius: 3 },
+  budgetThumb: { position: 'absolute', top: '50%', width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', borderWidth: 3, borderColor: '#2E5BFF', marginLeft: -11, marginTop: -11 },
+  budgetLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  budgetLabel: { fontSize: 10, color: '#CBD5E1' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#E2E8F0', marginBottom: 12 },
+  searchInput: { flex: 1, fontSize: 13, color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  filterRow: { flexGrow: 0 },
+  filterBtn: { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#F1F5F9' },
+  filterBtnActive: { backgroundColor: '#2E5BFF' },
+  filterBtnText: { fontSize: 12, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  filterBtnTextActive: { color: '#fff' },
+  aiMatchBar: { borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  aiMatchTitle: { fontSize: 13, fontWeight: '700', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  aiMatchSub: { fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  aiMatchCount: { backgroundColor: 'rgba(46,213,115,0.2)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
+  aiMatchCountText: { fontSize: 12, fontWeight: '700', color: '#2ED573' },
+  emptyState: { alignItems: 'center', paddingTop: 40 },
+  emptyText: { color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden' },
+  productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F1F5F9' },
+  productImage: { width: '100%', height: '100%' },
+  heartBtn: { position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
+  aiBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(11,20,55,0.85)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#2ED573' },
+  aiBadgeText: { fontSize: 9, color: '#fff', fontWeight: '600' },
+  productInfo: { padding: 10 },
+  matchChip: { backgroundColor: '#F0FFF6', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 7, paddingVertical: 3, paddingHorizontal: 7, marginBottom: 6, alignSelf: 'flex-start' },
+  matchChipText: { fontSize: 9, fontWeight: '700', color: '#16A34A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  productName: { fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  productBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', marginTop: 4 },
+  familyTeaser: { backgroundColor: '#FFF5F0', borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,107,107,0.2)' },
+  familyTitle: { fontSize: 13, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  familySub: { fontSize: 11, color: '#FB923C', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  familyBadge: { backgroundColor: 'rgba(255,107,107,0.12)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
+  familyBadgeText: { fontSize: 11, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+})
