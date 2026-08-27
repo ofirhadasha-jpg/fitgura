@@ -61,6 +61,15 @@ export function formatDate(dateStr: string): string {
 
 export type MeasurementDelta = Record<string, string>
 
+export interface BodyMetrics {
+  estimated_height_cm: number | null
+  estimated_weight_kg: number | null
+  chest_circumference_cm: number | null
+  waist_circumference_cm: number | null
+  hips_circumference_cm: number | null
+  shoulder_width_cm: number | null
+}
+
 export interface SizingProfile {
   top: string
   bottom: string
@@ -70,6 +79,7 @@ export interface SizingProfile {
   baselineMatched: boolean
   isWeeklyUpdate: boolean
   measurementDelta: MeasurementDelta | null
+  bodyMetrics: BodyMetrics | null
 }
 
 export interface StyleProfile {
@@ -98,6 +108,116 @@ export interface ScannedSizes {
   top: string
   bottom: string
   fit: string
+}
+
+export interface AIBodyAnalysis {
+  device_profile: {
+    detected_brand: string
+    exact_model: string
+    screen_size_inches: number
+    camera_layout_type: string
+    confidence_score: number
+  }
+  sizing_profile: {
+    body_metrics: BodyMetrics
+    recommended_top_size: string | null
+    recommended_bottom_size: string | null
+    fit_preference: string
+    body_frame_estimate: string
+    confidence_score: number
+  }
+  style_profile: {
+    primary_style: string
+    secondary_style: string
+    dominant_colors: string[]
+    pattern_preference: string
+    aesthetic_tags: string[]
+  }
+}
+
+export interface VendorSizeChartEntry {
+  vendor_size_label: string
+  chest_range_cm?: [number, number]
+  waist_range_cm?: [number, number]
+  length_cm?: number
+  sku_id: string
+}
+
+export interface SkuMatchResult {
+  matched_vendor_size: string
+  target_sku_id: string
+  match_confidence: number
+  recommendation_note: string
+}
+
+export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAnalysis; preview: string }> {
+  const preview = URL.createObjectURL(file)
+
+  const formData = new FormData()
+  formData.append('image', file)
+  formData.append('userAgent', navigator.userAgent)
+
+  try {
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-body`
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Analysis failed (${response.status})`)
+    }
+
+    const analysis: AIBodyAnalysis = await response.json()
+    return { analysis, preview }
+  } catch (err) {
+    throw err
+  }
+}
+
+export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: string): ScannedSizes {
+  const sp = analysis.sizing_profile
+  const st = analysis.style_profile
+
+  const top = sp.recommended_top_size ?? 'M'
+  const bottom = sp.recommended_bottom_size ?? '32'
+  const fitMap: Record<string, string> = { 'Slim': 'Slim Fit', 'Regular': 'Regular', 'Loose': 'Relaxed', 'Oversized': 'Relaxed' }
+  const fit = fitMap[sp.fit_preference] ?? 'Regular'
+  const bodyFrame = sp.body_frame_estimate ?? 'Medium'
+  const confidence = Math.round((sp.confidence_score ?? 0.85) * 100)
+
+  const sizing: SizingProfile = {
+    top,
+    bottom,
+    fit,
+    bodyFrame,
+    confidence,
+    baselineMatched: false,
+    isWeeklyUpdate: false,
+    measurementDelta: null,
+    bodyMetrics: sp.body_metrics,
+  }
+
+  const style: StyleProfile = {
+    primaryStyle: st.primary_style ?? 'Casual',
+    secondaryStyle: st.secondary_style ?? 'Urban',
+    dominantColors: st.dominant_colors ?? [],
+    patternPreference: st.pattern_preference ?? 'Solid',
+    aestheticTags: st.aesthetic_tags ?? [],
+  }
+
+  return {
+    sizing,
+    style,
+    confidence,
+    preview,
+    top,
+    bottom,
+    fit,
+  }
 }
 
 export const TOP_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -200,6 +320,7 @@ export function deriveScannedSizes(file: File): ScannedSizes {
     baselineMatched: isTracking,
     isWeeklyUpdate: false,
     measurementDelta,
+    bodyMetrics: null,
   }
 
   const style: StyleProfile = {

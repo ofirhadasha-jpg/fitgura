@@ -5,6 +5,8 @@ import {
   type ScannedSizes,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
   deriveScannedSizes,
+  analyzeBodyImage,
+  aiAnalysisToScannedSizes,
 } from '../types'
 
 type OnboardStep = 'upload' | 'scanning' | 'result'
@@ -17,16 +19,32 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
   const galleryRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
-  function startScan(file: File) {
+  const [scanError, setScanError] = useState<string | null>(null)
+
+  async function startScan(file: File) {
+    setScanError(null)
     setSizes(deriveScannedSizes(file))
     setStep('scanning')
     setScanProgress(0)
-    const interval = setInterval(() => {
+
+    const progressInterval = setInterval(() => {
       setScanProgress((p) => {
-        if (p >= 100) { clearInterval(interval); setStep('result'); return 100 }
+        if (p >= 90) return 90
         return p + 2.5
       })
     }, 60)
+
+    try {
+      const { analysis, preview } = await analyzeBodyImage(file)
+      const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
+      setSizes(aiSizes)
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'AI analysis unavailable, using fallback')
+    } finally {
+      clearInterval(progressInterval)
+      setScanProgress(100)
+      setTimeout(() => setStep('result'), 400)
+    }
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -235,6 +253,28 @@ function ResultView({ onNext, sizes }: { onNext: () => void; sizes: ScannedSizes
         </View>
       )}
 
+      {sizes.sizing.bodyMetrics && (
+        <View style={obStyles.bodyMetricsCard}>
+          <Text style={obStyles.bodyMetricsTitle}>📏 מידות גוף מדויקות (ס"מ)</Text>
+          <View style={obStyles.bodyMetricsGrid}>
+            {[
+              { label: 'גובה', value: sizes.sizing.bodyMetrics.estimated_height_cm, unit: 'ס"מ' },
+              { label: 'משקל', value: sizes.sizing.bodyMetrics.estimated_weight_kg, unit: 'ק"ג' },
+              { label: 'חזה', value: sizes.sizing.bodyMetrics.chest_circumference_cm, unit: 'ס"מ' },
+              { label: 'מותן', value: sizes.sizing.bodyMetrics.waist_circumference_cm, unit: 'ס"מ' },
+              { label: 'ירכיים', value: sizes.sizing.bodyMetrics.hips_circumference_cm, unit: 'ס"מ' },
+              { label: 'כתפיים', value: sizes.sizing.bodyMetrics.shoulder_width_cm, unit: 'ס"מ' },
+            ].filter(({ value }) => value !== null && value !== undefined).map(({ label, value, unit }) => (
+              <View key={label} style={obStyles.bodyMetricItem}>
+                <Text style={obStyles.bodyMetricValue}>{value}</Text>
+                <Text style={obStyles.bodyMetricUnit}>{unit}</Text>
+                <Text style={obStyles.bodyMetricLabel}>{label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       <View style={obStyles.sizingCard}>
         <View style={obStyles.sizingHeader}>
           <Text style={obStyles.sizingTitle}>📐 פרופיל מידות</Text>
@@ -369,6 +409,13 @@ const obStyles = StyleSheet.create({
   deltaChip: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center' },
   deltaChipLabel: { fontSize: 10, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deltaChipVal: { fontSize: 11, fontWeight: '700', color: '#2E5BFF' },
+  bodyMetricsCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#DBEAFE' },
+  bodyMetricsTitle: { fontWeight: '700', color: '#1E40AF', fontSize: 14, marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  bodyMetricItem: { width: '31%', backgroundColor: '#EFF6FF', borderRadius: 12, padding: 10, alignItems: 'center' },
+  bodyMetricValue: { fontSize: 18, fontWeight: '800', color: '#1E40AF' },
+  bodyMetricUnit: { fontSize: 9, color: '#3B82F6', marginTop: 1 },
+  bodyMetricLabel: { fontSize: 11, color: '#64748B', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sizingCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
   sizingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sizingTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },

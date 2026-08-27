@@ -195,6 +195,22 @@ function ProductCard({ product, inWishlist, onToggleWishlist }: { product: Produ
         <Text style={feedStyles.productName}>{product.name}</Text>
         <Text style={feedStyles.productBrand}>{product.brand}</Text>
         <Text style={feedStyles.productPrice}>₪{product.price}</Text>
+        <View style={feedStyles.buyBtnRow}>
+          <TouchableOpacity
+            onPress={() => window.open(`https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
+            activeOpacity={0.8}
+            style={feedStyles.buyBtnAli}
+          >
+            <Text style={feedStyles.buyBtnText}>🛒 AliExpress</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => window.open(`https://www.amazon.com/s?k=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
+            activeOpacity={0.8}
+            style={feedStyles.buyBtnAmazon}
+          >
+            <Text style={feedStyles.buyBtnText}>📦 Amazon</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   )
@@ -253,6 +269,10 @@ const feedStyles = StyleSheet.create({
   productName: { fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
   productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', marginTop: 4 },
+  buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  buyBtnAli: { flex: 1, backgroundColor: '#FF4747', borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+  buyBtnAmazon: { flex: 1, backgroundColor: '#FF9900', borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+  buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familyTeaser: { backgroundColor: '#FFF5F0', borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,107,107,0.2)' },
   familyTitle: { fontSize: 13, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familySub: { fontSize: 11, color: '#FB923C', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
