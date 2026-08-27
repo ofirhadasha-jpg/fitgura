@@ -25,10 +25,14 @@ export default defineConfig(({ mode }) => {
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
     ],
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-        'react-native$': 'react-native-web',
-      },
+      alias: [
+        { find: '@', replacement: path.resolve(__dirname, './src') },
+        { find: /^react-native\/(.*)$/, replacement: 'react-native-web/$1' },
+        { find: 'react-native', replacement: 'react-native-web' },
+      ],
+    },
+    optimizeDeps: {
+      exclude: ['react-native'],
     },
     server: {
       host: '0.0.0.0',

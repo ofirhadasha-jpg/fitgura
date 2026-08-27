@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { LinearGradient } from './components'
+import { LinearGradient } from '../components'
 
 export function SplashScreen({ onNext }: { onNext: () => void }) {
   const [pulse, setPulse] = useState(false)

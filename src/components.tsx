@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Platform } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native'
 import type { Screen, User } from './types'
 
 /* ─── LINEAR GRADIENT HELPER (web fallback) ─────────────────────────────── */

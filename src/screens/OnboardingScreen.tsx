@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Image, Platform } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Image } from 'react-native'
 import { LinearGradient } from '../components'
 import {
   type ScannedSizes,

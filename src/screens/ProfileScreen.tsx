@@ -140,7 +140,7 @@ export function ProfileScreen({ onNav, user }: { onNav: (s: Screen) => void; use
               activeOpacity={0.7}
               style={[profStyles.editBtn, editingSizes && profStyles.editBtnActive]}
             >
-              <Text style={[profStyles.editBtnText, editingStyles && profStyles.editBtnTextActive]}>
+              <Text style={[profStyles.editBtnText, editingSizes && profStyles.editBtnTextActive]}>
                 {editingSizes ? 'שמור' : 'ערוך ידנית'}
               </Text>
             </TouchableOpacity>
@@ -482,8 +482,6 @@ export function ProfileScreen({ onNav, user }: { onNav: (s: Screen) => void; use
     </View>
   )
 }
-
-const editingStyles = { editing: true }
 
 const profStyles = StyleSheet.create({
   header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 24, position: 'relative', overflow: 'hidden' },
