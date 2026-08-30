@@ -30,9 +30,9 @@ export function LinearGradient({ colors, start, end, style, children }: {
 export function BottomNav({ current, onNav }: { current: Screen; onNav: (s: Screen) => void }) {
   const items: { screen: Screen; icon: string; label: string }[] = [
     { screen: 'feed', icon: '🏠', label: 'פיד' },
+    { screen: 'events', icon: '🗓️', label: 'אירועים' },
     { screen: 'wishlist', icon: '❤️', label: 'שמורים' },
     { screen: 'profile', icon: '🤖', label: 'פרופיל' },
-    { screen: 'events', icon: '🗓️', label: 'אירועים' },
   ]
 
   return (
