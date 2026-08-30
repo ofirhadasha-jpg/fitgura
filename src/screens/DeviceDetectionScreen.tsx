@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 
 import { LinearGradient } from '../components'
 import { deviceOptions, detectDevice, type DetectedDevice } from '../types'
 
-export function DeviceDetectionScreen({ onNext }: { onNext: () => void }) {
+export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => void; onDetected: (d: DetectedDevice) => void }) {
   const [phase, setPhase] = useState<'detecting' | 'confirmed'>('detecting')
   const [scanPct, setScanPct] = useState(0)
   const [changing, setChanging] = useState(false)
@@ -22,7 +22,9 @@ export function DeviceDetectionScreen({ onNext }: { onNext: () => void }) {
 
   useEffect(() => {
     if (phase !== 'detecting') return
-    setDetected(detectDevice())
+    const d = detectDevice()
+    setDetected(d)
+    onDetected(d)
     const t = setInterval(() => {
       setScanPct((p) => {
         if (p >= 100) { clearInterval(t); setTimeout(() => setPhase('confirmed'), 300); return 100 }

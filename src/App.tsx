@@ -1,6 +1,6 @@
 import { useState, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import type { Screen, User } from './types'
+import type { Screen, User, DetectedDevice, ScannedSizes } from './types'
 import { AuthModal } from './components'
 import { SplashScreen } from './screens/SplashScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
@@ -34,6 +34,8 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [authModal, setAuthModal] = useState<{ pendingIdx: number } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [detectedDevice, setDetectedDevice] = useState<DetectedDevice | null>(null)
+  const [scannedSizes, setScannedSizes] = useState<ScannedSizes | null>(null)
 
   function showToast(msg: string) {
     setToast(msg)
@@ -66,8 +68,8 @@ export default function App() {
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
         {screen === 'splash' && <SplashScreen onNext={() => setScreen('onboarding')} />}
-        {screen === 'onboarding' && <OnboardingScreen onNext={() => setScreen('device')} />}
-        {screen === 'device' && <DeviceDetectionScreen onNext={() => setScreen('feed')} />}
+        {screen === 'onboarding' && <OnboardingScreen onNext={() => setScreen('device')} onScanned={setScannedSizes} />}
+        {screen === 'device' && <DeviceDetectionScreen onNext={() => setScreen('feed')} onDetected={setDetectedDevice} />}
         {screen === 'feed' && (
           <FeedScreen
             wishlistItems={wishlistItems}
@@ -79,7 +81,7 @@ export default function App() {
           />
         )}
         {screen === 'events' && <EventsScreen onNav={setScreen} />}
-        {screen === 'profile' && <ProfileScreen onNav={setScreen} user={user} />}
+        {screen === 'profile' && <ProfileScreen onNav={setScreen} user={user} detectedDevice={detectedDevice} scannedSizes={scannedSizes} />}
         {screen === 'wishlist' && (
           <WishlistScreen onNav={setScreen} wishlistItems={wishlistItems} budget={budget} />
         )}

@@ -4,6 +4,7 @@ import { LinearGradient, BottomNav } from '../components'
 import {
   type Screen, type User, type UserDevice,
   type DeviceIdentificationResult,
+  type DetectedDevice, type ScannedSizes,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
   scanHistory, GALLERY_LAST_SCANNED, GALLERY_NEXT_SCAN,
   SCAN_NO_NEW_MESSAGE, type ScanEntry,
@@ -12,16 +13,37 @@ import {
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user }: { onNav: (s: Screen) => void; user: User | null }) {
+export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes }: {
+  onNav: (s: Screen) => void
+  user: User | null
+  detectedDevice: DetectedDevice | null
+  scannedSizes: ScannedSizes | null
+}) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
-  const [profTop, setProfTop] = useState('M')
-  const [profBottom, setProfBottom] = useState('32')
-  const [profFit, setProfFit] = useState('Slim Fit')
+  const [profTop, setProfTop] = useState(scannedSizes?.sizing.top ?? 'M')
+  const [profBottom, setProfBottom] = useState(scannedSizes?.sizing.bottom ?? '32')
+  const [profFit, setProfFit] = useState(scannedSizes?.sizing.fit ?? 'Slim Fit')
 
-  const [devices, setDevices] = useState<UserDevice[]>([
-    { id: 1, type: 'טלפון', brand: 'Apple', model: 'iPhone 15 Pro', extra: 'A17 Pro · 2023', emoji: '📱', primary: true },
-  ])
+  const [devices, setDevices] = useState<UserDevice[]>(() => {
+    if (detectedDevice) {
+      const extraParts = [
+        detectedDevice.chip,
+        detectedDevice.year,
+        detectedDevice.screen_size_inches ? `${detectedDevice.screen_size_inches}"` : null,
+      ].filter(Boolean)
+      return [{
+        id: 1,
+        type: 'טלפון',
+        brand: detectedDevice.brand,
+        model: detectedDevice.model,
+        extra: extraParts.join(' · '),
+        emoji: '📱',
+        primary: true,
+      }]
+    }
+    return []
+  })
   const [editingDeviceId, setEditingDeviceId] = useState<number | null>(null)
   const [showAddDevice, setShowAddDevice] = useState(false)
   const [addStep, setAddStep] = useState<'options' | 'scanning' | 'result' | 'form'>('options')

@@ -12,7 +12,7 @@ import {
 
 type OnboardStep = 'upload' | 'scanning' | 'result'
 
-export function OnboardingScreen({ onNext }: { onNext: () => void }) {
+export function OnboardingScreen({ onNext, onScanned }: { onNext: () => void; onScanned: (s: ScannedSizes) => void }) {
   const [step, setStep] = useState<OnboardStep>('upload')
   const [scanProgress, setScanProgress] = useState(0)
   const [dragOver, setDragOver] = useState(false)
@@ -66,6 +66,7 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
       previewUrlRef.current = preview
       const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
       setSizes(aiSizes)
+      onScanned(aiSizes)
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'AI analysis unavailable, using fallback')
     } finally {
