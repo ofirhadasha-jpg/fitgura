@@ -28,7 +28,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('splash')
+  const [screen, setScreen] = useState<Screen>(() => {
+    const saved = sessionStorage.getItem('fitgura_screen')
+    return (saved === 'onboarding' || saved === 'device') ? saved : 'splash'
+  })
   const [wishlistItems, setWishlistItems] = useState<number[]>([])
   const [budget, setBudget] = useState<[number, number]>([50, 500])
   const [user, setUser] = useState<User | null>(null)
@@ -38,6 +41,12 @@ export default function App() {
   const [scannedSizes, setScannedSizes] = useState<ScannedSizes | null>(null)
   const [scanGallery, setScanGallery] = useState<ScanEntry[]>([])
   const [galleryAccess, setGalleryAccess] = useState<GalleryAccessState>('pending')
+
+  function changeScreen(s: Screen) {
+    if (s === 'onboarding' || s === 'device') sessionStorage.setItem('fitgura_screen', s)
+    else sessionStorage.removeItem('fitgura_screen')
+    setScreen(s)
+  }
 
   function showToast(msg: string) {
     setToast(msg)
@@ -69,15 +78,15 @@ export default function App() {
     <ErrorBoundary>
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
-        {screen === 'splash' && <SplashScreen onNext={() => setScreen('onboarding')} />}
-        {screen === 'onboarding' && <OnboardingScreen onNext={() => setScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
-        {screen === 'device' && <DeviceDetectionScreen onNext={() => setScreen('feed')} onDetected={setDetectedDevice} />}
-        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={setScreen} budget={budget} setBudget={setBudget} user={user} />}
+        {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
+        {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
+        {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={setDetectedDevice} />}
+        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} />}
 
-        {screen === 'events' && <EventsScreen onNav={setScreen} />}
-        {screen === 'profile' && <ProfileScreen onNav={setScreen} user={user} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} />}
+        {screen === 'events' && <EventsScreen onNav={changeScreen} />}
+        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} />}
         {screen === 'wishlist' && (
-          <WishlistScreen onNav={setScreen} wishlistItems={wishlistItems} budget={budget} />
+          <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} />
         )}
 
         {authModal && (

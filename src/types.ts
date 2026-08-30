@@ -218,7 +218,7 @@ export interface SkuMatchResult {
   recommendation_note: string
 }
 
-async function fileToCompressedBase64(file: File, maxDim: number = 768, quality: number = 0.7): Promise<string> {
+export async function fileToCompressedBase64(file: File, maxDim: number = 768, quality: number = 0.7): Promise<string> {
   const dataUrl = URL.createObjectURL(file)
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {

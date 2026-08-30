@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react'
+import React, { useRef, useState, useCallback, useEffect } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Image } from 'react-native'
 import { LinearGradient } from '../components'
 import {
@@ -9,8 +9,11 @@ import {
   PRIMARY_STYLES, SEC_STYLES,
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
+  fileToCompressedBase64,
   formatTimestamp, nextScanId,
 } from '../types'
+
+const PENDING_SCAN_KEY = 'fitgura_pending_scan'
 
 type OnboardStep = 'upload' | 'scanning' | 'result' | 'gallery-access'
 
@@ -27,6 +30,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   const [faceMissing, setFaceMissing] = useState(false)
 
   const resetScan = useCallback(() => {
+    sessionStorage.removeItem(PENDING_SCAN_KEY)
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current)
       previewUrlRef.current = null
@@ -91,16 +95,36 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       setScanError(err instanceof Error ? err.message : 'AI analysis unavailable, using fallback')
     } finally {
       clearInterval(progressInterval)
+      sessionStorage.removeItem(PENDING_SCAN_KEY)
       setScanProgress(100)
       setTimeout(() => setStep('result'), 400)
     }
   }
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) startScan(file)
+    if (file) {
+      try {
+        const base64 = await fileToCompressedBase64(file)
+        sessionStorage.setItem(PENDING_SCAN_KEY, base64)
+      } catch { /* ignore compression errors */ }
+      startScan(file)
+    }
     e.target.value = ''
   }
+
+  useEffect(() => {
+    const pending = sessionStorage.getItem(PENDING_SCAN_KEY)
+    if (!pending) return
+    sessionStorage.removeItem(PENDING_SCAN_KEY)
+    const byteString = atob(pending.split(',')[1] ?? '')
+    const ab = new Uint8Array(byteString.length)
+    for (let i = 0; i < byteString.length; i++) ab[i] = byteString.charCodeAt(i)
+    const blob = new Blob([ab], { type: 'image/jpeg' })
+    const file = new File([blob], 'resumed-scan.jpg', { type: 'image/jpeg' })
+    startScan(file)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
