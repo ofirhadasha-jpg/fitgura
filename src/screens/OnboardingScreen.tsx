@@ -269,6 +269,8 @@ function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void
   const [styleEditing, setStyleEditing] = useState(false)
   const [primaryStyle, setPrimaryStyle] = useState(sizes.style?.primaryStyle ?? '')
   const [secondaryStyle, setSecondaryStyle] = useState(sizes.style?.secondaryStyle ?? '')
+  const [colors, setColors] = useState<string[]>(sizes.style?.domantColors ?? [])
+  const COLOR_PALETTE = ['#1E293B', '#475569', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#22C55E', '#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#FFFFFF', '#94A3B8']
   const [heightCm, setHeightCm] = useState(sizes.sizing.bodyMetrics?.estimated_height_cm?.toString() ?? '')
   const [weightKg, setWeightKg] = useState(sizes.sizing.bodyMetrics?.estimated_weight_kg?.toString() ?? '')
   const [chestCm, setChestCm] = useState(sizes.sizing.bodyMetrics?.chest_circumference_cm?.toString() ?? '')
@@ -439,6 +441,29 @@ function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void
                 ))}
               </View>
             </View>
+            <View>
+              <Text style={obStyles.stylePickerLabel}>צבעים דומיננטים</Text>
+              <View style={obStyles.colorDotsEditable}>
+                {colors.map((c) => (
+                  <TouchableOpacity key={c} onPress={() => setColors(colors.filter((x) => x !== c))} activeOpacity={0.7}>
+                    <View style={[obStyles.colorDot, { backgroundColor: c }]}>
+                      <Text style={obStyles.colorDotRemove}>×</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={obStyles.colorAddLabel}>הוסף צבע:</Text>
+              <View style={obStyles.colorPalette}>
+                {COLOR_PALETTE.map((c) => {
+                  const selected = colors.includes(c)
+                  return (
+                    <TouchableOpacity key={c} onPress={() => setColors(selected ? colors.filter((x) => x !== c) : [...colors, c])} activeOpacity={0.7}
+                      style={[obStyles.colorPaletteDot, { backgroundColor: c }, selected && obStyles.colorPaletteDotActive]}
+                    />
+                  )
+                })}
+              </View>
+            </View>
           </View>
         ) : (
           <>
@@ -455,7 +480,7 @@ function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void
             <View style={obStyles.colorRow}>
               <Text style={obStyles.colorLabel}>צבעים דומיננטים:</Text>
               <View style={obStyles.colorDots}>
-                {(s.dominantColors ?? []).map((c) => (
+                {(colors.length ? colors : (s.dominantColors ?? [])).map((c) => (
                   <View key={c} style={[obStyles.colorDot, { backgroundColor: c }]} />
                 ))}
               </View>
@@ -586,6 +611,12 @@ const obStyles = StyleSheet.create({
   colorLabel: { fontSize: 11, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   colorDots: { flexDirection: 'row', gap: 6 },
   colorDot: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
+  colorDotsEditable: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  colorDotRemove: { color: '#fff', fontSize: 14, fontWeight: '700', textAlign: 'center', lineHeight: 18 },
+  colorAddLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  colorPalette: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  colorPaletteDot: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
+  colorPaletteDotActive: { borderColor: '#2E5BFF', borderWidth: 3 },
   patternText: { fontSize: 11, color: '#94A3B8' },
   tagsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   tag: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
