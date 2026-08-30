@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
 import { type Screen, type User, type Product, products } from '../types'
@@ -131,20 +131,18 @@ export function FeedScreen({
 function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudget: (b: [number, number]) => void }) {
   const MIN = 50
   const MAX = 1000
-  const railRef = useRef<View>(null)
+  const STEP = 10
 
   function getPercent(val: number) { return ((val - MIN) / (MAX - MIN)) * 100 }
 
-  function handleTrackClick(e: any) {
-    if (!railRef.current) return
-    railRef.current.measure((_, __, width, ___) => {
-      const pct = e.nativeEvent.locationX / width
-      const val = Math.round((pct * (MAX - MIN) + MIN) / 10) * 10
-      const clamped = Math.max(MIN, Math.min(MAX, val))
-      const midpoint = (budget[0] + budget[1]) / 2
-      if (clamped < midpoint) setBudget([clamped, budget[1]])
-      else setBudget([budget[0], clamped])
-    })
+  function clamp(val: number) { return Math.max(MIN, Math.min(MAX, val)) }
+
+  function setLow(val: number) {
+    setBudget([Math.min(clamp(val), budget[1] - STEP), budget[1]])
+  }
+
+  function setHigh(val: number) {
+    setBudget([budget[0], Math.max(clamp(val), budget[0] + STEP)])
   }
 
   return (
@@ -153,11 +151,42 @@ function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudg
         <Text style={feedStyles.budgetTitle}>הגדר תקציב</Text>
         <Text style={feedStyles.budgetValue}>₪{budget[0]} – ₪{budget[1]}</Text>
       </View>
-      <View ref={railRef} style={feedStyles.budgetRail} onTouchStart={handleTrackClick}>
-        <View style={[feedStyles.budgetFill, { left: `${getPercent(budget[0])}%`, right: `${100 - getPercent(budget[1])}%` }]} />
-        {[0, 1].map((idx) => (
-          <View key={idx} style={[feedStyles.budgetThumb, { left: `${getPercent(budget[idx])}%` }]} />
-        ))}
+      <View style={feedStyles.budgetRailWrap}>
+        <View style={feedStyles.budgetRail} />
+        <View
+          style={[
+            feedStyles.budgetFill,
+            { left: `${getPercent(budget[0])}%`, right: `${100 - getPercent(budget[1])}%` },
+          ]}
+        />
+        <input
+          type="range"
+          className="budget-range-input"
+          min={MIN}
+          max={MAX}
+          step={STEP}
+          value={budget[0]}
+          onChange={(e) => setLow(Number(e.target.value))}
+          style={{
+            ...feedStyles.budgetRangeInput,
+            left: 0,
+            right: '50%',
+          }}
+        />
+        <input
+          type="range"
+          className="budget-range-input"
+          min={MIN}
+          max={MAX}
+          step={STEP}
+          value={budget[1]}
+          onChange={(e) => setHigh(Number(e.target.value))}
+          style={{
+            ...feedStyles.budgetRangeInput,
+            left: '50%',
+            right: 0,
+          }}
+        />
       </View>
       <View style={feedStyles.budgetLabels}>
         {['₪50', '₪300', '₪600', '₪1000'].map((l) => (
@@ -236,9 +265,20 @@ const feedStyles = StyleSheet.create({
   budgetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   budgetTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   budgetValue: { fontSize: 13, fontWeight: '700', color: '#2E5BFF' },
-  budgetRail: { height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, position: 'relative' },
-  budgetFill: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#2E5BFF', borderRadius: 3 },
-  budgetThumb: { position: 'absolute', top: '50%', width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', borderWidth: 3, borderColor: '#2E5BFF', marginLeft: -11, marginTop: -11 },
+  budgetRailWrap: { position: 'relative', height: 22, justifyContent: 'center' },
+  budgetRail: { height: 6, backgroundColor: '#E2E8F0', borderRadius: 3 },
+  budgetFill: { position: 'absolute', top: 8, height: 6, backgroundColor: '#2E5BFF', borderRadius: 3 },
+  budgetRangeInput: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 'auto',
+    height: 22,
+    margin: 0,
+    padding: 0,
+    background: 'transparent',
+    outline: 'none',
+  } as React.CSSProperties,
   budgetLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   budgetLabel: { fontSize: 10, color: '#CBD5E1' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#E2E8F0', marginBottom: 12 },
