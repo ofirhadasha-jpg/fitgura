@@ -4,15 +4,17 @@ import { LinearGradient } from '../components'
 import {
   type ScannedSizes,
   type PersonBounds,
+  type ScanEntry,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
   PRIMARY_STYLES, SEC_STYLES,
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
+  formatTimestamp, nextScanId,
 } from '../types'
 
 type OnboardStep = 'upload' | 'scanning' | 'result'
 
-export function OnboardingScreen({ onNext, onScanned }: { onNext: () => void; onScanned: (s: ScannedSizes) => void }) {
+export function OnboardingScreen({ onNext, onScanned, onGalleryAdd }: { onNext: () => void; onScanned: (s: ScannedSizes) => void; onGalleryAdd: (g: ScanEntry[]) => void }) {
   const [step, setStep] = useState<OnboardStep>('upload')
   const [scanProgress, setScanProgress] = useState(0)
   const [dragOver, setDragOver] = useState(false)
@@ -70,6 +72,21 @@ export function OnboardingScreen({ onNext, onScanned }: { onNext: () => void; on
       setSizes(aiSizes)
       onScanned(aiSizes)
       setFaceMissing(analysis.face_detected === false)
+      const ts = formatTimestamp(new Date())
+      const baselineEntry: ScanEntry = {
+        id: nextScanId(),
+        date: ts.date,
+        time: ts.time,
+        top: aiSizes.sizing.top,
+        bottom: aiSizes.sizing.bottom,
+        fit: aiSizes.sizing.fit,
+        confidence: aiSizes.sizing.confidence,
+        photoUrl: preview,
+        source: 'תמונת הרשמה',
+        isBaseline: true,
+        delta: null,
+      }
+      onGalleryAdd([baselineEntry])
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'AI analysis unavailable, using fallback')
     } finally {

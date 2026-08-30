@@ -4,20 +4,24 @@ import { LinearGradient, BottomNav } from '../components'
 import {
   type Screen, type User, type UserDevice,
   type DeviceIdentificationResult,
-  type DetectedDevice, type ScannedSizes,
+  type DetectedDevice, type ScannedSizes, type ScanEntry,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
-  scanHistory, GALLERY_LAST_SCANNED, GALLERY_NEXT_SCAN,
-  SCAN_NO_NEW_MESSAGE, type ScanEntry,
+  SCAN_NO_NEW_MESSAGE,
   nextDevId, identifyDevice,
+  analyzeBodyImage, aiAnalysisToScannedSizes,
+  formatTimestamp, nextScanId, computeDelta,
 } from '../types'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes }: {
+export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery }: {
   onNav: (s: Screen) => void
   user: User | null
   detectedDevice: DetectedDevice | null
   scannedSizes: ScannedSizes | null
+  setScannedSizes: (s: ScannedSizes) => void
+  scanGallery: ScanEntry[]
+  setScanGallery: (g: ScanEntry[] | ((prev: ScanEntry[]) => ScanEntry[])) => void
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -57,6 +61,58 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes }: {
   const devCameraInputRef = useRef<HTMLInputElement>(null)
   const devGalleryInputRef = useRef<HTMLInputElement>(null)
   const [showDevCameraChoice, setShowDevCameraChoice] = useState(false)
+
+  const galleryUploadRef = useRef<HTMLInputElement>(null)
+  const [galleryScanning, setGalleryScanning] = useState(false)
+  const [galleryScanProgress, setGalleryScanProgress] = useState(0)
+  const [galleryError, setGalleryError] = useState<string | null>(null)
+
+  async function handleGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setGalleryError(null)
+    setGalleryScanning(true)
+    setGalleryScanProgress(0)
+    const progressInterval = setInterval(() => {
+      setGalleryScanProgress((p) => (p >= 90 ? 90 : p + 3))
+    }, 60)
+
+    try {
+      const { analysis, preview } = await analyzeBodyImage(file)
+      const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
+      const prevSizing = scannedSizes?.sizing ?? null
+      const delta = prevSizing ? computeDelta(prevSizing, aiSizes.sizing) : null
+      aiSizes.sizing.baselineMatched = true
+      aiSizes.sizing.isWeeklyUpdate = true
+      aiSizes.sizing.measurementDelta = delta
+      setScannedSizes(aiSizes)
+      setProfTop(aiSizes.sizing.top)
+      setProfBottom(aiSizes.sizing.bottom)
+      setProfFit(aiSizes.sizing.fit)
+      const ts = formatTimestamp(new Date())
+      const entry: ScanEntry = {
+        id: nextScanId(),
+        date: ts.date,
+        time: ts.time,
+        top: aiSizes.sizing.top,
+        bottom: aiSizes.sizing.bottom,
+        fit: aiSizes.sizing.fit,
+        confidence: aiSizes.sizing.confidence,
+        photoUrl: preview,
+        source: 'הועלתה מהגלריה',
+        isBaseline: false,
+        delta,
+      }
+      setScanGallery((prev) => [entry, ...prev])
+    } catch (err) {
+      setGalleryError(err instanceof Error ? err.message : 'ניתוח נכשל')
+    } finally {
+      clearInterval(progressInterval)
+      setGalleryScanProgress(100)
+      setTimeout(() => { setGalleryScanning(false); setGalleryScanProgress(0) }, 500)
+    }
+  }
 
   function handleDevPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -254,101 +310,125 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes }: {
 
         {/* AI scan gallery */}
         <View style={profStyles.card}>
+          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleGalleryUpload} />
           <View style={profStyles.galleryHeader}>
             <View>
               <Text style={profStyles.galleryTitle}>🖼️ גלריית סריקות AI</Text>
-              <Text style={profStyles.gallerySub}>{scanHistory.length} תמונות למדידה משולבת</Text>
+              <Text style={profStyles.gallerySub}>{scanGallery.length} תמונות שלך למדידה משולבת</Text>
             </View>
-            <View>
-              <Text style={profStyles.galleryLastScan}>✅ {GALLERY_LAST_SCANNED}</Text>
-              <Text style={profStyles.galleryNextScan}>הבא: {GALLERY_NEXT_SCAN}</Text>
-            </View>
+            <TouchableOpacity
+              onPress={() => galleryUploadRef.current?.click()}
+              disabled={galleryScanning}
+              activeOpacity={0.8}
+              style={[profStyles.galleryUploadBtn, galleryScanning && { opacity: 0.6 }]}
+            >
+              <Text style={{ fontSize: 16 }}>➕</Text>
+              <Text style={profStyles.galleryUploadBtnText}>{galleryScanning ? 'סורק...' : 'העלה תמונה'}</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Three-image combined measurement strip */}
-          <View style={profStyles.combinedStrip}>
-            {scanHistory.map((scan, i) => (
-              <View key={i} style={profStyles.combinedThumbWrap}>
-                <Image source={{ uri: `https://images.unsplash.com/${scan.thumb}?w=120&h=160&fit=crop&auto=format` }} style={profStyles.combinedThumb} />
-                <View style={profStyles.combinedThumbLabel}>
-                  <Text style={profStyles.combinedThumbLabelTxt}>
-                    {i === 0 ? 'הרשמה' : i === 1 ? 'גלריה 1' : 'גלריה 2'}
+          {galleryScanning && (
+            <View style={profStyles.galleryScanProgressBox}>
+              <View style={profStyles.galleryScanBar}>
+                <View style={[profStyles.galleryScanBarFill, { width: `${galleryScanProgress}%` }]} />
+              </View>
+              <Text style={profStyles.galleryScanPct}>AI מנתח את התמונה... {Math.round(galleryScanProgress)}%</Text>
+            </View>
+          )}
+
+          {galleryError && (
+            <View style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 10, marginBottom: 10, borderWidth: 1.5, borderColor: '#FECACA' }}>
+              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+                ⚠️ {galleryError}
+              </Text>
+            </View>
+          )}
+
+          {scanGallery.length === 0 ? (
+            <View style={profStyles.galleryEmptyBox}>
+              <Text style={{ fontSize: 32 }}>📸</Text>
+              <Text style={profStyles.galleryEmptyTitle}>אין תמונות בגלריה עדיין</Text>
+              <Text style={profStyles.galleryEmptySub}>העלה תמונה חדשה שלך כדי שה-AI ימדוד ויעדכן את המידות שלך</Text>
+            </View>
+          ) : (
+            <>
+              {/* Combined measurement strip */}
+              <View style={profStyles.combinedStrip}>
+                {scanGallery.slice(0, 3).map((scan, i) => (
+                  <View key={scan.id} style={profStyles.combinedThumbWrap}>
+                    <Image source={{ uri: scan.photoUrl }} style={profStyles.combinedThumb} />
+                    <View style={profStyles.combinedThumbLabel}>
+                      <Text style={profStyles.combinedThumbLabelTxt}>
+                        {scan.isBaseline ? 'הרשמה' : `תמונה ${i}`}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <Text style={profStyles.combinedStripSub}>
+                מדידה משולבת מ-{Math.min(scanGallery.length, 3)} תמונות שלך — תמונת ההרשמה והתמונות האחרונות שהעלית
+              </Text>
+
+              <View style={profStyles.galleryStatusBar}>
+                <View style={profStyles.galleryStatusDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.galleryStatusTitle}>
+                    AI שילב {Math.min(scanGallery.length, 3)} תמונות למדידה מדויקת
+                  </Text>
+                  <Text style={profStyles.galleryStatusSub}>
+                    התמונות האחרונות שלך משמשות לעדכון המידות
                   </Text>
                 </View>
+                <Text style={{ fontSize: 18 }}>🔄</Text>
               </View>
-            ))}
-          </View>
-          <Text style={profStyles.combinedStripSub}>
-            מדידה משולבת מ-3 תמונות: תמונת ההרשמה + שתי התמונות האחרונות שזוהו מהגלריה שלך
-          </Text>
 
-          <View style={profStyles.galleryStatusBar}>
-            <View style={profStyles.galleryStatusDot} />
-            <View style={{ flex: 1 }}>
-              <Text style={profStyles.galleryStatusTitle}>
-                AI שילב 3 תמונות למדידה מדויקת
-              </Text>
-              <Text style={profStyles.galleryStatusSub}>
-                התמונות נבחרו לפי חותמת הזמן האחרונה מהגלריה שלך
-              </Text>
-            </View>
-            <Text style={{ fontSize: 18 }}>🔄</Text>
-          </View>
-
-          <View style={{ gap: 10 }}>
-            {scanHistory.map((scan, i) => (
-              <View key={i} style={[profStyles.scanRow, { backgroundColor: i === 0 ? '#F0FFF6' : '#F8FAFC', borderColor: i === 0 ? 'rgba(46,213,115,0.35)' : '#F1F5F9' }]}>
-                <View style={profStyles.scanThumbWrap}>
-                  <Image source={{ uri: `https://images.unsplash.com/${scan.thumb}?w=60&h=60&fit=crop&auto=format` }} style={profStyles.scanThumb} />
-                  {i === 0 && <View style={profStyles.scanThumbBadge}><Text style={{ fontSize: 9, color: '#fff' }}>✓</Text></View>}
-                  {scan.isWeekly && <View style={profStyles.scanWeeklyBadge}><Text style={{ fontSize: 9, color: '#fff' }}>🔄</Text></View>}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <View>
-                      <Text style={profStyles.scanDate}>{scan.date} · {scan.time}</Text>
-                      <View style={profStyles.scanSourceRow}>
-                        <View style={[profStyles.scanSourceBadge, { backgroundColor: scan.isWeekly ? '#EEF2FF' : '#F1F5F9' }]}>
-                          <Text style={[profStyles.scanSourceText, { color: scan.isWeekly ? '#2E5BFF' : '#94A3B8' }]}>{scan.source}</Text>
+              <View style={{ gap: 10 }}>
+                {scanGallery.map((scan, i) => (
+                  <View key={scan.id} style={[profStyles.scanRow, { backgroundColor: i === 0 ? '#F0FFF6' : '#F8FAFC', borderColor: i === 0 ? 'rgba(46,213,115,0.35)' : '#F1F5F9' }]}>
+                    <View style={profStyles.scanThumbWrap}>
+                      <Image source={{ uri: scan.photoUrl }} style={profStyles.scanThumb} />
+                      {i === 0 && <View style={profStyles.scanThumbBadge}><Text style={{ fontSize: 9, color: '#fff' }}>✓</Text></View>}
+                      {!scan.isBaseline && <View style={profStyles.scanWeeklyBadge}><Text style={{ fontSize: 9, color: '#fff' }}>🔄</Text></View>}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <View>
+                          <Text style={profStyles.scanDate}>{scan.date} · {scan.time}</Text>
+                          <View style={profStyles.scanSourceRow}>
+                            <View style={[profStyles.scanSourceBadge, { backgroundColor: scan.isBaseline ? '#F1F5F9' : '#EEF2FF' }]}>
+                              <Text style={[profStyles.scanSourceText, { color: scan.isBaseline ? '#94A3B8' : '#2E5BFF' }]}>{scan.source}</Text>
+                            </View>
+                          </View>
                         </View>
+                        <Text style={[profStyles.scanConf, { color: i === 0 ? '#16A34A' : '#94A3B8' }]}>{scan.confidence}%</Text>
+                      </View>
+                      <View style={profStyles.scanChips}>
+                        {[`חולצה: ${scan.top}`, `מכנסיים: ${scan.bottom}`, scan.fit].map((label) => (
+                          <View key={label} style={[profStyles.scanChip, { backgroundColor: i === 0 ? 'rgba(46,213,115,0.12)' : '#F1F5F9' }]}>
+                            <Text style={[profStyles.scanChipText, { color: i === 0 ? '#15803D' : '#64748B' }]}>{label}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      {scan.delta && (
+                        <View style={profStyles.scanDeltaRow}>
+                          {Object.entries(scan.delta).filter(([k]) => k !== 'summary').map(([k, d]) => (
+                            <View key={k} style={profStyles.scanDeltaBadge}>
+                              <Text style={profStyles.scanDeltaText}>↔ {d}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                      <View style={profStyles.scanConfBar}>
+                        <View style={[profStyles.scanConfBarFill, { width: `${scan.confidence}%`, backgroundColor: i === 0 ? '#2ED573' : '#94A3B8' }]} />
                       </View>
                     </View>
-                    <Text style={[profStyles.scanConf, { color: i === 0 ? '#16A34A' : '#94A3B8' }]}>{scan.confidence}%</Text>
                   </View>
-                  <View style={profStyles.scanChips}>
-                    {[`חולצה: ${scan.top}`, `מכנסיים: ${scan.bottom}`, scan.fit].map((label) => (
-                      <View key={label} style={[profStyles.scanChip, { backgroundColor: i === 0 ? 'rgba(46,213,115,0.12)' : '#F1F5F9' }]}>
-                        <Text style={[profStyles.scanChipText, { color: i === 0 ? '#15803D' : '#64748B' }]}>{label}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  {scan.delta && (
-                    <View style={profStyles.scanDeltaRow}>
-                      {Object.values(scan.delta).map((d) => (
-                        <View key={d} style={profStyles.scanDeltaBadge}>
-                          <Text style={profStyles.scanDeltaText}>↔ {d}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                  <View style={profStyles.scanConfBar}>
-                    <View style={[profStyles.scanConfBarFill, { width: `${scan.confidence}%`, backgroundColor: i === 0 ? '#2ED573' : '#94A3B8' }]} />
-                  </View>
-                </View>
+                ))}
               </View>
-            ))}
-          </View>
+            </>
+          )}
 
-          {/* No new photos notice */}
-          <View style={profStyles.noNewBox}>
-            <Text style={{ fontSize: 18 }}>ℹ️</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={profStyles.noNewText}>{SCAN_NO_NEW_MESSAGE}</Text>
-              <Text style={profStyles.noNewSub}>עדכון אחרון: {GALLERY_LAST_SCANNED}</Text>
-            </View>
-          </View>
-
-          <Text style={profStyles.galleryNote}>הגלריה נסרקת אוטומטית כל שבוע · ניתן לשנות בהגדרות</Text>
+          <Text style={profStyles.galleryNote}>העלה תמונות חדשות שלך כדי שה-AI יעדכן את המידות · ככל שתעלה יותר — הדיוק ישתפר</Text>
         </View>
 
         {/* Family CTA */}
@@ -596,6 +676,15 @@ const profStyles = StyleSheet.create({
   gallerySub: { fontSize: 11, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryLastScan: { fontSize: 10, color: '#16A34A', fontWeight: '700' },
   galleryNextScan: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2E5BFF', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 14 },
+  galleryUploadBtnText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryScanProgressBox: { backgroundColor: '#EEF2FF', borderRadius: 14, padding: 14, marginBottom: 12, alignItems: 'center', gap: 8 },
+  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#DBEAFE', borderRadius: 4, overflow: 'hidden' },
+  galleryScanBarFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
+  galleryScanPct: { fontSize: 12, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryEmptyBox: { alignItems: 'center', gap: 10, paddingVertical: 28, paddingHorizontal: 16 },
+  galleryEmptyTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryEmptySub: { fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryStatusBar: { backgroundColor: '#F0FFF6', borderRadius: 14, padding: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: 'rgba(46,213,115,0.25)' },
   galleryStatusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2ED573' },
   galleryStatusTitle: { fontSize: 12, fontWeight: '700', color: '#15803D', fontFamily: "'Noto Sans Hebrew', sans-serif" },

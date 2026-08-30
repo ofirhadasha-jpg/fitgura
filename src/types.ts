@@ -664,41 +664,52 @@ export interface UserDevice {
 export let _devId = 10
 export function nextDevId() { return _devId++ }
 
-export const GALLERY_LAST_SCANNED = 'היום בשעה 08:14'
-export const GALLERY_NEXT_SCAN    = 'בעוד 6 ימים (יום ב׳)'
-
 export interface ScanEntry {
+  id: number
   date: string
   time: string
   top: string
   bottom: string
   fit: string
   confidence: number
-  thumb: string
+  photoUrl: string
   source: string
-  isWeekly: boolean
+  isBaseline: boolean
   delta: Record<string, string> | null
 }
 
-export const scanHistory: ScanEntry[] = [
-  {
-    date: 'היום', time: '08:14', top: 'M', bottom: '32', fit: 'Slim Fit', confidence: 97,
-    thumb: 'photo-1507003211169-0a1dd7228f2d',
-    source: 'תמונת הרשמה',
-    isWeekly: false, delta: null,
-  },
-  {
-    date: 'אתמול', time: '22:31', top: 'M', bottom: '32', fit: 'Slim Fit', confidence: 95,
-    thumb: 'photo-1500648767791-00dcc994a43e',
-    source: 'זוהה מהגלריה · האחרונה',
-    isWeekly: true, delta: null,
-  },
-  {
-    date: 'אתמול', time: '14:07', top: 'M', bottom: '32', fit: 'Regular', confidence: 92,
-    thumb: 'photo-1506794778202-cad84cf45f1d',
-    source: 'זוהה מהגלריה · שלפני האחרונה',
-    isWeekly: true, delta: null,
-  },
-]
+let _scanId = 0
+export function nextScanId() { return _scanId++ }
+
+export function formatTimestamp(d: Date): { date: string; time: string } {
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
+  let dateLabel: string
+  if (diffDays === 0) dateLabel = 'היום'
+  else if (diffDays === 1) dateLabel = 'אתמול'
+  else dateLabel = d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })
+  const timeLabel = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+  return { date: dateLabel, time: timeLabel }
+}
+
+export function computeDelta(prev: SizingProfile, curr: SizingProfile): Record<string, string> | null {
+  const topChange = prev.top !== curr.top ? `${prev.top} → ${curr.top}` : null
+  const bottomChange = prev.bottom !== curr.bottom ? `${prev.bottom} → ${curr.bottom}` : null
+  const fitChange = prev.fit !== curr.fit ? `${prev.fit} → ${curr.fit}` : null
+  const frameChange = prev.bodyFrame !== curr.bodyFrame ? `${prev.bodyFrame} → ${curr.bodyFrame}` : null
+  const delta: Record<string, string> = {}
+  if (topChange) delta.top = topChange
+  if (bottomChange) delta.bottom = bottomChange
+  if (fitChange) delta.fit = fitChange
+  if (frameChange) delta.frame = frameChange
+  const changes: string[] = []
+  if (topChange) changes.push(`חולצה: ${topChange}`)
+  if (bottomChange) changes.push(`מכנסיים: ${bottomChange}`)
+  if (fitChange) changes.push(`גזרה: ${fitChange}`)
+  if (frameChange) changes.push(`מסגרת: ${frameChange}`)
+  if (changes.length > 0) delta.summary = `זוהו שינויים: ${changes.join(' | ')}`
+  else return null
+  return delta
+}
 
 export const SCAN_NO_NEW_MESSAGE = 'לא נסרקו תמונות חדשות; אין שינוי במידות'
