@@ -264,6 +264,13 @@ function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void
   const [topSize, setTopSize] = useState(sizes.sizing.top)
   const [bottomSize, setBottomSize] = useState(sizes.sizing.bottom)
   const [fitType, setFitType] = useState(sizes.sizing.fit)
+  const [metricsEditing, setMetricsEditing] = useState(false)
+  const [heightCm, setHeightCm] = useState(sizes.sizing.bodyMetrics?.estimated_height_cm?.toString() ?? '')
+  const [weightKg, setWeightKg] = useState(sizes.sizing.bodyMetrics?.estimated_weight_kg?.toString() ?? '')
+  const [chestCm, setChestCm] = useState(sizes.sizing.bodyMetrics?.chest_circumference_cm?.toString() ?? '')
+  const [waistCm, setWaistCm] = useState(sizes.sizing.bodyMetrics?.waist_circumference_cm?.toString() ?? '')
+  const [hipsCm, setHipsCm] = useState(sizes.sizing.bodyMetrics?.hips_circumference_cm?.toString() ?? '')
+  const [shoulderCm, setShoulderCm] = useState(sizes.sizing.bodyMetrics?.shoulder_width_cm?.toString() ?? '')
   const s = sizes.style ?? { primaryStyle: '', secondaryStyle: '', dominantColors: [] as string[], patternPreference: '', aestheticTags: [] as string[] }
 
   return (
@@ -304,18 +311,36 @@ function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void
 
       {sizes.sizing.bodyMetrics && (
         <View style={obStyles.bodyMetricsCard}>
-          <Text style={obStyles.bodyMetricsTitle}>📏 מידות גוף מדויקות (ס"מ)</Text>
+          <View style={obStyles.bodyMetricsHeader}>
+            <Text style={obStyles.bodyMetricsTitle}>📏 מידות גוף מדויקות (ס"מ)</Text>
+            <TouchableOpacity
+              onPress={() => setMetricsEditing(!metricsEditing)}
+              style={[obStyles.editBtn, metricsEditing && obStyles.editBtnActive]}
+              activeOpacity={0.7}
+            >
+              <Text style={[obStyles.editBtnText, metricsEditing && obStyles.editBtnTextActive]}>{metricsEditing ? 'שמור' : 'ערוך מידות'}</Text>
+            </TouchableOpacity>
+          </View>
           <View style={obStyles.bodyMetricsGrid}>
             {[
-              { label: 'גובה', value: sizes.sizing.bodyMetrics.estimated_height_cm, unit: 'ס"מ' },
-              { label: 'משקל', value: sizes.sizing.bodyMetrics.estimated_weight_kg, unit: 'ק"ג' },
-              { label: 'חזה', value: sizes.sizing.bodyMetrics.chest_circumference_cm, unit: 'ס"מ' },
-              { label: 'מותן', value: sizes.sizing.bodyMetrics.waist_circumference_cm, unit: 'ס"מ' },
-              { label: 'ירכיים', value: sizes.sizing.bodyMetrics.hips_circumference_cm, unit: 'ס"מ' },
-              { label: 'כתפיים', value: sizes.sizing.bodyMetrics.shoulder_width_cm, unit: 'ס"מ' },
-            ].filter(({ value }) => value !== null && value !== undefined).map(({ label, value, unit }) => (
-              <View key={label} style={obStyles.bodyMetricItem}>
-                <Text style={obStyles.bodyMetricValue}>{value}</Text>
+              { label: 'גובה', value: heightCm, unit: 'ס"מ', set: setHeightCm },
+              { label: 'משקל', value: weightKg, unit: 'ק"ג', set: setWeightKg },
+              { label: 'חזה', value: chestCm, unit: 'ס"מ', set: setChestCm },
+              { label: 'מותן', value: waistCm, unit: 'ס"מ', set: setWaistCm },
+              { label: 'ירכיים', value: hipsCm, unit: 'ס"מ', set: setHipsCm },
+              { label: 'כתפיים', value: shoulderCm, unit: 'ס"מ', set: setShoulderCm },
+            ].map(({ label, value, unit, set }) => (
+              <View key={label} style={[obStyles.bodyMetricItem, metricsEditing && obStyles.bodyMetricItemEditing]}>
+                {metricsEditing ? (
+                  <TextInput
+                    value={value}
+                    onChangeText={set}
+                    keyboardType="numeric"
+                    style={obStyles.bodyMetricInput}
+                  />
+                ) : (
+                  <Text style={obStyles.bodyMetricValue}>{value || '—'}</Text>
+                )}
                 <Text style={obStyles.bodyMetricUnit}>{unit}</Text>
                 <Text style={obStyles.bodyMetricLabel}>{label}</Text>
               </View>
@@ -475,12 +500,15 @@ const obStyles = StyleSheet.create({
   deltaChipLabel: { fontSize: 10, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deltaChipVal: { fontSize: 11, fontWeight: '700', color: '#2E5BFF' },
   bodyMetricsCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#DBEAFE' },
-  bodyMetricsTitle: { fontWeight: '700', color: '#1E40AF', fontSize: 14, marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  bodyMetricsTitle: { fontWeight: '700', color: '#1E40AF', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   bodyMetricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   bodyMetricItem: { width: '31%', backgroundColor: '#EFF6FF', borderRadius: 12, padding: 10, alignItems: 'center' },
   bodyMetricValue: { fontSize: 18, fontWeight: '800', color: '#1E40AF' },
   bodyMetricUnit: { fontSize: 9, color: '#3B82F6', marginTop: 1 },
   bodyMetricLabel: { fontSize: 11, color: '#64748B', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricItemEditing: { borderColor: '#2E5BFF', borderWidth: 2, backgroundColor: '#EFF6FF' },
+  bodyMetricInput: { fontSize: 18, fontWeight: '800', color: '#1E40AF', textAlign: 'center', paddingVertical: 2, paddingHorizontal: 4, minWidth: 50 },
   sizingCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
   sizingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sizingTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
