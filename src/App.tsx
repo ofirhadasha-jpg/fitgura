@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Screen, User } from './types'
 import { AuthModal } from './components'
@@ -9,6 +9,23 @@ import { FeedScreen } from './screens/FeedScreen'
 import { EventsScreen } from './screens/EventsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { WishlistScreen } from './screens/WishlistScreen'
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(err: unknown) { console.error('App crash caught:', err) }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B' }}>משהו השתבש</Text>
+          <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center' }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
+        </View>
+      )
+    }
+    return this.props.children
+  }
+}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('splash')
@@ -45,6 +62,7 @@ export default function App() {
   }
 
   return (
+    <ErrorBoundary>
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
         {screen === 'splash' && <SplashScreen onNext={() => setScreen('onboarding')} />}
@@ -81,6 +99,7 @@ export default function App() {
         )}
       </View>
     </View>
+    </ErrorBoundary>
   )
 }
 

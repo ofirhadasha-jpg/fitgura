@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useCallback } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Image } from 'react-native'
 import { LinearGradient } from '../components'
 import {
@@ -18,10 +18,27 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
   const [sizes, setSizes] = useState<ScannedSizes | null>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
+  const previewUrlRef = useRef<string | null>(null)
 
   const [scanError, setScanError] = useState<string | null>(null)
 
+  const resetScan = useCallback(() => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = null
+    }
+    setSizes(null)
+    setScanError(null)
+    setScanProgress(0)
+    setStep('upload')
+  }, [])
+
   async function startScan(file: File) {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = null
+    }
+
     setScanError(null)
     setSizes(deriveScannedSizes(file))
     setStep('scanning')
@@ -36,6 +53,7 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
 
     try {
       const { analysis, preview } = await analyzeBodyImage(file)
+      previewUrlRef.current = preview
       const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
       setSizes(aiSizes)
     } catch (err) {
@@ -149,7 +167,16 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
         )}
 
         {step === 'scanning' && <ScanningView progress={scanProgress} sizes={sizes} />}
-        {step === 'result' && <ResultView onNext={onNext} sizes={sizes!} scanError={scanError} />}
+        {step === 'result' && sizes && <ResultView onNext={onNext} sizes={sizes} scanError={scanError} onRetake={resetScan} />}
+        {step === 'result' && !sizes && (
+          <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
+            <Text style={{ fontSize: 13, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
+            <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}>
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>נסה שוב</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   )
@@ -210,7 +237,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
   )
 }
 
-function ResultView({ onNext, sizes, scanError }: { onNext: () => void; sizes: ScannedSizes; scanError: string | null }) {
+function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void; sizes: ScannedSizes; scanError: string | null; onRetake: () => void }) {
   const [editing, setEditing] = useState(false)
   const [topSize, setTopSize] = useState(sizes.sizing.top)
   const [bottomSize, setBottomSize] = useState(sizes.sizing.bottom)
@@ -354,9 +381,14 @@ function ResultView({ onNext, sizes, scanError }: { onNext: () => void; sizes: S
         </View>
       </View>
 
-      <TouchableOpacity onPress={onNext} activeOpacity={0.8} style={obStyles.confirmBtn}>
-        <Text style={obStyles.confirmBtnText}>אשר פרופיל ועבור לפיד</Text>
-      </TouchableOpacity>
+      <View style={{ gap: 10 }}>
+        <TouchableOpacity onPress={onNext} activeOpacity={0.8} style={obStyles.confirmBtn}>
+          <Text style={obStyles.confirmBtnText}>אשר פרופיל ועבור לפיד</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onRetake} activeOpacity={0.7}>
+          <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>סרוק תמונה חדשה</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   )
 }
