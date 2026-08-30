@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,6 +49,25 @@ EXPECTED JSON STRUCTURE:
   }
 }`;
 
+async function getApiKey(): Promise<string | null> {
+  const envKey = Deno.env.get("DEEPSEEK_API_KEY");
+  if (envKey) return envKey;
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceKey) return null;
+
+  const supabase = createClient(supabaseUrl, serviceKey);
+  const { data, error } = await supabase
+    .from("ai_config")
+    .select("value")
+    .eq("key", "DEEPSEEK_API_KEY")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data.value;
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -65,7 +85,7 @@ serve(async (req: Request) => {
 
     const clientInfo = userAgent || "Unknown Web Client";
 
-    const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
+    const apiKey = await getApiKey();
     if (!apiKey) {
       return new Response(
         JSON.stringify({ error: "DeepSeek API key not configured" }),
