@@ -541,7 +541,7 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
       </View>
 
       <View style={{ gap: 10 }}>
-        <TouchableOpacity onPress={() => setStep('gallery-access')} activeOpacity={0.8} style={obStyles.confirmBtn}>
+        <TouchableOpacity onPress={onNext} activeOpacity={0.8} style={obStyles.confirmBtn}>
           <Text style={obStyles.confirmBtnText}>אשר פרופיל והמשך</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onRetake} activeOpacity={0.7}>
