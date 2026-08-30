@@ -276,7 +276,7 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
             <View style={profStyles.userStatusRow}>
               <View style={profStyles.userStatusDot} />
               <Text style={profStyles.userStatusText}>
-                {user ? `מחובר • ${user.email}` : 'גלישה כאורח — לחץ לב כדי להתחבר'}
+                {user ? `מחובר • ${user.email}` : 'גלישה כאורח — הוסף מוצר לשמורים שלך כדי להתחבר'}
               </Text>
             </View>
           </View>
