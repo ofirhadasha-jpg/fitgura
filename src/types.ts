@@ -150,32 +150,67 @@ export interface SkuMatchResult {
   recommendation_note: string
 }
 
+async function fileToCompressedBase64(file: File, maxDim: number = 768, quality: number = 0.7): Promise<string> {
+  const dataUrl = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.onerror = reject
+      i.src = dataUrl
+    })
+
+    let { width, height } = img
+    if (width > maxDim || height > maxDim) {
+      const scale = maxDim / Math.max(width, height)
+      width = Math.round(width * scale)
+      height = Math.round(height * scale)
+    }
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0, width, height)
+
+    const compressed = canvas.toDataURL('image/jpeg', quality)
+    return compressed
+  } finally {
+    URL.revokeObjectURL(dataUrl)
+  }
+}
+
 export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAnalysis; preview: string }> {
   const preview = URL.createObjectURL(file)
 
-  const formData = new FormData()
-  formData.append('image', file)
-  formData.append('userAgent', navigator.userAgent)
+  const base64Image = await fileToCompressedBase64(file)
 
-  try {
-    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-body`
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-      body: formData,
-    })
+  const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-body`
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({
+      image: base64Image,
+      userAgent: navigator.userAgent,
+    }),
+  })
 
-    if (!response.ok) {
-      throw new Error(`Analysis failed (${response.status})`)
-    }
-
-    const analysis: AIBodyAnalysis = await response.json()
-    return { analysis, preview }
-  } catch (err) {
-    throw err
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => '')
+    throw new Error(`Analysis failed (${response.status}): ${errBody.slice(0, 200)}`)
   }
+
+  const result = await response.json()
+
+  if (result.error) {
+    throw new Error(result.error)
+  }
+
+  const analysis: AIBodyAnalysis = result
+  return { analysis, preview }
 }
 
 export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: string): ScannedSizes {

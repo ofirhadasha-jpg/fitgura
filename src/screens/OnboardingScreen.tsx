@@ -149,7 +149,7 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
         )}
 
         {step === 'scanning' && <ScanningView progress={scanProgress} sizes={sizes} />}
-        {step === 'result' && <ResultView onNext={onNext} sizes={sizes!} />}
+        {step === 'result' && <ResultView onNext={onNext} sizes={sizes!} scanError={scanError} />}
       </View>
     </View>
   )
@@ -210,7 +210,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
   )
 }
 
-function ResultView({ onNext, sizes }: { onNext: () => void; sizes: ScannedSizes }) {
+function ResultView({ onNext, sizes, scanError }: { onNext: () => void; sizes: ScannedSizes; scanError: string | null }) {
   const [editing, setEditing] = useState(false)
   const [topSize, setTopSize] = useState(sizes.sizing.top)
   const [bottomSize, setBottomSize] = useState(sizes.sizing.bottom)
@@ -272,6 +272,17 @@ function ResultView({ onNext, sizes }: { onNext: () => void; sizes: ScannedSizes
               </View>
             ))}
           </View>
+        </View>
+      )}
+
+      {scanError && (
+        <View style={{ backgroundColor: '#FEF2F2', borderRadius: 14, padding: 12, borderWidth: 1.5, borderColor: '#FECACA' }}>
+          <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+            ⚠️ AI: {scanError}
+          </Text>
+          <Text style={{ fontSize: 11, color: '#991B1B', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+            מציג תוצאות מהמערכת המקומית כגיבוי
+          </Text>
         </View>
       )}
 
