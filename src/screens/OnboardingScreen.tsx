@@ -131,7 +131,7 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
 
             <View style={[obStyles.dropZone, dragOver && obStyles.dropZoneActive]}>
               <View style={obStyles.dropIcon}><Text style={{ fontSize: 32 }}>📸</Text></View>
-              <Text style={obStyles.dropTitle}>העלה תמונת גוף מלאה</Text>
+              <Text style={obStyles.dropTitle}>העלאת תמונה שלך הכוללת פנים וגוף</Text>
               <Text style={obStyles.dropSub}>גרור לכאן, או בחר אחת מהכפתורים למטה</Text>
               <View style={obStyles.tipBox}>
                 <Text style={{ fontSize: 16 }}>💡</Text>
