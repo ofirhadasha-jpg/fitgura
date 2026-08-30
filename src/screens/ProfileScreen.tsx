@@ -3,9 +3,10 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image 
 import { LinearGradient, BottomNav } from '../components'
 import {
   type Screen, type User, type UserDevice,
+  type DeviceIdentificationResult,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
   scanHistory, GALLERY_LAST_SCANNED, GALLERY_NEXT_SCAN,
-  nextDevId,
+  nextDevId, identifyDevice,
 } from '../types'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
@@ -37,35 +38,49 @@ export function ProfileScreen({ onNav, user }: { onNav: (s: Screen) => void; use
   function handleDevPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    if (devPhotoUrl) URL.revokeObjectURL(devPhotoUrl)
     setDevPhotoUrl(URL.createObjectURL(file))
+    devPhotoFileRef.current = file
     setShowDevCameraChoice(false)
     startDeviceScan()
+    runDeviceAI(file)
     e.target.value = ''
   }
+
+  const devScanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const devPhotoFileRef = useRef<File | null>(null)
 
   function startDeviceScan() {
     setAddStep('scanning')
     setAddScanProgress(0)
     let p = 0
-    const t = setInterval(() => {
-      p += Math.random() * 18 + 5
-      setAddScanProgress(Math.min(p, 100))
-      if (p >= 100) {
-        clearInterval(t)
-        setNewDevBrand('Lenovo')
-        setNewDevModel('Tab P12 Pro')
-        setNewDevExtra('21" · MediaTek · 2024')
-        setNewDevType('טאבלט')
-        setScannedAccessories([
-          'כיסוי סיליקון 21" Lenovo Tab P12 Pro',
-          'מגן מסך זכוכית 9H',
-          'עט Lenovo Precision Pen 3',
-          'כיסוי מקלדת Bluetooth',
-          'כבל USB-C 3.2 Gen2',
-        ])
-        setAddStep('result')
-      }
+    devScanTimerRef.current = setInterval(() => {
+      p += Math.random() * 8 + 3
+      setAddScanProgress(Math.min(p, 90))
     }, 180)
+  }
+
+  async function runDeviceAI(file: File) {
+    try {
+      const result = await identifyDevice(file)
+      setNewDevBrand(result.brand)
+      setNewDevModel(result.model)
+      setNewDevExtra(result.extra)
+      setNewDevType(result.device_type)
+      setScannedAccessories(result.compatible_accessories)
+    } catch {
+      setNewDevBrand('')
+      setNewDevModel('')
+      setNewDevExtra('')
+      setScannedAccessories([])
+    } finally {
+      if (devScanTimerRef.current) {
+        clearInterval(devScanTimerRef.current)
+        devScanTimerRef.current = null
+      }
+      setAddScanProgress(100)
+      setTimeout(() => setAddStep('result'), 300)
+    }
   }
 
   function addDevice() {
@@ -80,7 +95,8 @@ export function ProfileScreen({ onNav, user }: { onNav: (s: Screen) => void; use
     }])
     setShowAddDevice(false)
     setAddStep('options')
-    setDevPhotoUrl(null)
+    if (devPhotoUrl) { URL.revokeObjectURL(devPhotoUrl); setDevPhotoUrl(null) }
+    devPhotoFileRef.current = null
     setNewDevBrand(''); setNewDevModel(''); setNewDevExtra(''); setNewDevType('טלפון')
   }
 

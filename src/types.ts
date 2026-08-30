@@ -100,6 +100,64 @@ export interface ScannedProductProfile {
   confidenceScore: number
 }
 
+export interface DeviceIdentificationResult {
+  device_type: string
+  brand: string
+  model: string
+  screen_size_inches: number | null
+  chip: string | null
+  year: string | null
+  extra: string
+  compatible_accessories: string[]
+  confidence_score: number
+}
+
+export async function identifyDevice(file: File): Promise<DeviceIdentificationResult> {
+  const base64Image = await fileToCompressedBase64(file)
+
+  const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/identify-device`
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({ image: base64Image }),
+  })
+
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => '')
+    throw new Error(`Device scan failed (${response.status}): ${errBody.slice(0, 200)}`)
+  }
+
+  const result = await response.json()
+
+  if (result.error) {
+    throw new Error(result.error)
+  }
+
+  const typeMap: Record<string, string> = {
+    'phone': 'טלפון',
+    'tablet': 'טאבלט',
+    'laptop': 'לפטופ',
+    'headphones': 'אוזניות',
+    'smartwatch': 'שעון',
+    'other': 'אחר',
+  }
+
+  return {
+    device_type: typeMap[result.device_type?.toLowerCase()] ?? 'אחר',
+    brand: result.brand ?? 'Unknown',
+    model: result.model ?? 'Unknown Device',
+    screen_size_inches: result.screen_size_inches ?? null,
+    chip: result.chip ?? null,
+    year: result.year ?? null,
+    extra: result.extra ?? '',
+    compatible_accessories: result.compatible_accessories ?? [],
+    confidence_score: result.confidence_score ?? 0.5,
+  }
+}
+
 export interface ScannedSizes {
   sizing: SizingProfile
   style: StyleProfile

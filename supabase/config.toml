@@ -1,2 +1,5 @@
 [functions.analyze-body]
 verify_jwt = false
+
+[functions.identify-device]
+verify_jwt = false
