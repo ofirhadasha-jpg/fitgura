@@ -5,7 +5,6 @@ import {
   type ScannedSizes,
   type PersonBounds,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
-  deriveScannedSizes,
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
 } from '../types'
@@ -41,7 +40,16 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
     }
 
     setScanError(null)
-    setSizes(deriveScannedSizes(file))
+    setSizes({
+      sizing: { top: '', bottom: '', fit: '', bodyFrame: '', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: null },
+      style: { primaryStyle: '', secondaryStyle: '', dominantColors: [], patternPreference: '', aestheticTags: [] },
+      confidence: 0,
+      preview: URL.createObjectURL(file),
+      top: '',
+      bottom: '',
+      fit: '',
+      personBounds: { top: 2, left: 10, width: 80, height: 96 },
+    })
     setStep('scanning')
     setScanProgress(0)
 
@@ -235,10 +243,10 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
 
       <View style={obStyles.metricsGrid}>
         {[
-          { label: 'sizing_profile', sub: 'מידות גוף', value: progress > 25 ? `${sizes?.sizing?.top ?? 'M'} / ${sizes?.sizing?.bottom ?? '32'}` : '...', done: progress > 25 },
-          { label: 'body_frame', sub: 'מסגרת גוף', value: progress > 50 ? (sizes?.sizing?.bodyFrame ?? 'Medium') : '...', done: progress > 50 },
-          { label: 'style_profile', sub: 'סגנון', value: progress > 70 ? (sizes?.style?.primaryStyle ?? 'Casual') : '...', done: progress > 70 },
-          { label: 'fit_preference', sub: 'גזרה', value: progress > 88 ? (sizes?.sizing?.fit?.split(' ')[0] ?? 'Regular') : '...', done: progress > 88 },
+          { label: 'sizing_profile', sub: 'מידות גוף', value: '...', done: progress > 25 },
+          { label: 'body_frame', sub: 'מסגרת גוף', value: '...', done: progress > 50 },
+          { label: 'style_profile', sub: 'סגנון', value: '...', done: progress > 70 },
+          { label: 'fit_preference', sub: 'גזרה', value: '...', done: progress > 88 },
         ].map(({ label, sub, value, done }) => (
           <View key={label} style={[obStyles.metricCard, { borderColor: done ? 'rgba(46,213,115,0.4)' : '#E2E8F0', backgroundColor: done ? '#F0FFF6' : '#F8FAFC' }]}>
             <Text style={[obStyles.metricValue, { color: done ? '#16A34A' : '#94A3B8' }]}>{value}</Text>
