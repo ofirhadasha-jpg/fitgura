@@ -111,7 +111,7 @@ export function OnboardingScreen({ onNext }: { onNext: () => void }) {
               <View style={obStyles.explainHeader}>
                 <View style={obStyles.explainIcon}><Text style={{ fontSize: 20 }}>🤳</Text></View>
                 <View>
-                  <Text style={obStyles.explainTitle}>העלה תמונה של הגוף שלך</Text>
+                  <Text style={obStyles.explainTitle}>העלאת תמונה שלך הכוללת פנים וגוף</Text>
                   <Text style={obStyles.explainSub}>כדי שנוכל להתאים מוצרים בדיוק למידות שלך</Text>
                 </View>
               </View>
