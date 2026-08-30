@@ -65,22 +65,22 @@ serve(async (req: Request) => {
 
     const clientInfo = userAgent || "Unknown Web Client";
 
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiKey) {
+    const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured" }),
+        JSON.stringify({ error: "DeepSeek API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "deepseek-v4-flash-vision-exp",
         temperature: 0.1,
         response_format: { type: "json_object" },
         messages: [
@@ -106,7 +106,7 @@ serve(async (req: Request) => {
     if (!response.ok) {
       const errText = await response.text();
       return new Response(
-        JSON.stringify({ error: `OpenAI API Error: ${response.status} - ${errText}` }),
+        JSON.stringify({ error: `DeepSeek API Error: ${response.status} - ${errText}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
