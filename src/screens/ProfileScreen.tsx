@@ -66,6 +66,7 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
   const [showDevCameraChoice, setShowDevCameraChoice] = useState(false)
 
   const galleryUploadRef = useRef<HTMLInputElement>(null)
+  const galleryMultiUploadRef = useRef<HTMLInputElement>(null)
   const [autoScanning, setAutoScanning] = useState(false)
   const [autoScanProgress, setAutoScanProgress] = useState(0)
   const [autoScanPhase, setAutoScanPhase] = useState('')
@@ -73,8 +74,16 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
   const [lastAutoScan, setLastAutoScan] = useState<string | null>(null)
   const [nextScanDate, setNextScanDate] = useState<string>(formatNextScanDate())
 
-  async function handleAutoScan() {
+  function handleAutoScan() {
     if (autoScanning) return
+    galleryMultiUploadRef.current?.click()
+  }
+
+  async function handleGalleryMultiUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (files.length === 0) return
+
     setGalleryError(null)
     setAutoScanning(true)
     setAutoScanProgress(0)
@@ -92,15 +101,7 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
     }, 80)
 
     try {
-      const baseline = scanGallery.find((s) => s.isBaseline)
-      const baselinePhoto = baseline?.photoUrl ?? null
-      const mockPhotos = await simulateGalleryScan()
-      if (mockPhotos.length === 0) {
-        setAutoScanPhase('לא נמצאו תמונות חדשות שלך')
-        return
-      }
-
-      for (const photo of mockPhotos) {
+      for (const photo of files) {
         const { analysis, preview } = await analyzeBodyImage(photo)
         const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
         const prevSizing = scannedSizes?.sizing ?? null
@@ -137,11 +138,6 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
       setAutoScanProgress(100)
       setTimeout(() => { setAutoScanning(false); setAutoScanProgress(0); setAutoScanPhase('') }, 800)
     }
-  }
-
-  async function simulateGalleryScan(): Promise<File[]> {
-    await new Promise((r) => setTimeout(r, 200))
-    return []
   }
 
   async function handleManualUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -391,6 +387,7 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
         {/* AI scan gallery */}
         <View style={profStyles.card}>
           <input ref={galleryUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleManualUpload} />
+          <input ref={galleryMultiUploadRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleGalleryMultiUpload} />
           <View style={profStyles.galleryHeader}>
             <View>
               <Text style={profStyles.galleryTitle}>🖼️ גלריית סריקות AI</Text>
