@@ -5,6 +5,7 @@ import {
   type ScannedSizes,
   type PersonBounds,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
+  PRIMARY_STYLES, SEC_STYLES,
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
 } from '../types'
@@ -265,6 +266,9 @@ function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void
   const [bottomSize, setBottomSize] = useState(sizes.sizing.bottom)
   const [fitType, setFitType] = useState(sizes.sizing.fit)
   const [metricsEditing, setMetricsEditing] = useState(false)
+  const [styleEditing, setStyleEditing] = useState(false)
+  const [primaryStyle, setPrimaryStyle] = useState(sizes.style?.primaryStyle ?? '')
+  const [secondaryStyle, setSecondaryStyle] = useState(sizes.style?.secondaryStyle ?? '')
   const [heightCm, setHeightCm] = useState(sizes.sizing.bodyMetrics?.estimated_height_cm?.toString() ?? '')
   const [weightKg, setWeightKg] = useState(sizes.sizing.bodyMetrics?.estimated_weight_kg?.toString() ?? '')
   const [chestCm, setChestCm] = useState(sizes.sizing.bodyMetrics?.chest_circumference_cm?.toString() ?? '')
@@ -399,33 +403,73 @@ function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void
       </View>
 
       <View style={obStyles.styleCard}>
-        <Text style={obStyles.styleTitle}>🎨 פרופיל סגנון</Text>
-        <View style={obStyles.styleRow}>
-          <View style={obStyles.stylePrimary}>
-            <Text style={obStyles.stylePrimaryText}>{s.primaryStyle}</Text>
-            <Text style={obStyles.stylePrimaryLabel}>סגנון ראשי</Text>
-          </View>
-          <View style={obStyles.styleSecondary}>
-            <Text style={obStyles.styleSecondaryText}>{s.secondaryStyle}</Text>
-            <Text style={obStyles.styleSecondaryLabel}>סגנון משני</Text>
-          </View>
+        <View style={obStyles.styleHeader}>
+          <Text style={obStyles.styleTitle}>🎨 פרופיל סגנון</Text>
+          <TouchableOpacity
+            onPress={() => setStyleEditing(!styleEditing)}
+            style={[obStyles.editBtn, styleEditing && obStyles.editBtnActive]}
+            activeOpacity={0.7}
+          >
+            <Text style={[obStyles.editBtnText, styleEditing && obStyles.editBtnTextActive]}>{styleEditing ? 'שמור' : 'ערוך סגנון'}</Text>
+          </TouchableOpacity>
         </View>
-        <View style={obStyles.colorRow}>
-          <Text style={obStyles.colorLabel}>צבעים דומיננטים:</Text>
-          <View style={obStyles.colorDots}>
-            {(s.dominantColors ?? []).map((c) => (
-              <View key={c} style={[obStyles.colorDot, { backgroundColor: c }]} />
-            ))}
-          </View>
-          <Text style={obStyles.patternText}>{s.patternPreference}</Text>
-        </View>
-        <View style={obStyles.tagsRow}>
-          {(s.aestheticTags ?? []).map((tag) => (
-            <View key={tag} style={obStyles.tag}>
-              <Text style={obStyles.tagText}>#{tag}</Text>
+        {styleEditing ? (
+          <View style={{ gap: 12 }}>
+            <View>
+              <Text style={obStyles.stylePickerLabel}>סגנון ראשי</Text>
+              <View style={obStyles.stylePickerGrid}>
+                {PRIMARY_STYLES.map((st) => (
+                  <TouchableOpacity key={st} onPress={() => setPrimaryStyle(st)} activeOpacity={0.7}
+                    style={[obStyles.styleChip, primaryStyle === st && obStyles.styleChipActive]}
+                  >
+                    <Text style={[obStyles.styleChipText, primaryStyle === st && obStyles.styleChipTextActive]}>{st}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          ))}
-        </View>
+            <View>
+              <Text style={obStyles.stylePickerLabel}>סגנון משני</Text>
+              <View style={obStyles.stylePickerGrid}>
+                {SEC_STYLES.map((st) => (
+                  <TouchableOpacity key={st} onPress={() => setSecondaryStyle(st)} activeOpacity={0.7}
+                    style={[obStyles.styleChip, secondaryStyle === st && obStyles.styleChipActive]}
+                  >
+                    <Text style={[obStyles.styleChipText, secondaryStyle === st && obStyles.styleChipTextActive]}>{st}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        ) : (
+          <>
+            <View style={obStyles.styleRow}>
+              <View style={obStyles.stylePrimary}>
+                <Text style={obStyles.stylePrimaryText}>{primaryStyle || s.primaryStyle}</Text>
+                <Text style={obStyles.stylePrimaryLabel}>סגנון ראשי</Text>
+              </View>
+              <View style={obStyles.styleSecondary}>
+                <Text style={obStyles.styleSecondaryText}>{secondaryStyle || s.secondaryStyle}</Text>
+                <Text style={obStyles.styleSecondaryLabel}>סגנון משני</Text>
+              </View>
+            </View>
+            <View style={obStyles.colorRow}>
+              <Text style={obStyles.colorLabel}>צבעים דומיננטים:</Text>
+              <View style={obStyles.colorDots}>
+                {(s.dominantColors ?? []).map((c) => (
+                  <View key={c} style={[obStyles.colorDot, { backgroundColor: c }]} />
+                ))}
+              </View>
+              <Text style={obStyles.patternText}>{s.patternPreference}</Text>
+            </View>
+            <View style={obStyles.tagsRow}>
+              {(s.aestheticTags ?? []).map((tag) => (
+                <View key={tag} style={obStyles.tag}>
+                  <Text style={obStyles.tagText}>#{tag}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
       </View>
 
       <View style={{ gap: 10 }}>
@@ -523,7 +567,14 @@ const obStyles = StyleSheet.create({
   sizeOption: { fontSize: 14, fontWeight: '700', color: '#475569', paddingVertical: 2 },
   sizeOptionActive: { color: '#2E5BFF' },
   styleCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
-  styleTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  styleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  styleTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  stylePickerLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  stylePickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  styleChip: { backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1.5, borderColor: 'transparent' },
+  styleChipActive: { backgroundColor: '#EEF2FF', borderColor: '#2E5BFF' },
+  styleChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  styleChipTextActive: { color: '#2E5BFF' },
   styleRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   stylePrimary: { flex: 1, backgroundColor: '#EEF2FF', borderRadius: 12, padding: 10, alignItems: 'center' },
   stylePrimaryText: { fontSize: 13, fontWeight: '700', color: '#2E5BFF' },
