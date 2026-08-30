@@ -177,6 +177,7 @@ export interface PersonBounds {
 }
 
 export interface AIBodyAnalysis {
+  face_detected?: boolean
   device_profile: {
     detected_brand: string
     exact_model: string

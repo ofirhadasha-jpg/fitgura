@@ -22,6 +22,7 @@ export function OnboardingScreen({ onNext, onScanned }: { onNext: () => void; on
   const previewUrlRef = useRef<string | null>(null)
 
   const [scanError, setScanError] = useState<string | null>(null)
+  const [faceMissing, setFaceMissing] = useState(false)
 
   const resetScan = useCallback(() => {
     if (previewUrlRef.current) {
@@ -30,6 +31,7 @@ export function OnboardingScreen({ onNext, onScanned }: { onNext: () => void; on
     }
     setSizes(null)
     setScanError(null)
+    setFaceMissing(false)
     setScanProgress(0)
     setStep('upload')
   }, [])
@@ -67,6 +69,7 @@ export function OnboardingScreen({ onNext, onScanned }: { onNext: () => void; on
       const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
       setSizes(aiSizes)
       onScanned(aiSizes)
+      setFaceMissing(analysis.face_detected === false)
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'AI analysis unavailable, using fallback')
     } finally {
@@ -178,7 +181,7 @@ export function OnboardingScreen({ onNext, onScanned }: { onNext: () => void; on
         )}
 
         {step === 'scanning' && <ScanningView progress={scanProgress} sizes={sizes} />}
-        {step === 'result' && sizes && <ResultView onNext={onNext} sizes={sizes} scanError={scanError} onRetake={resetScan} />}
+        {step === 'result' && sizes && <ResultView onNext={onNext} sizes={sizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
@@ -261,7 +264,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
   )
 }
 
-function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void; sizes: ScannedSizes; scanError: string | null; onRetake: () => void }) {
+function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNext: () => void; sizes: ScannedSizes; scanError: string | null; faceMissing: boolean; onRetake: () => void }) {
   const [editing, setEditing] = useState(false)
   const [topSize, setTopSize] = useState(sizes.sizing.top)
   const [bottomSize, setBottomSize] = useState(sizes.sizing.bottom)
@@ -282,6 +285,21 @@ function ResultView({ onNext, sizes, scanError, onRetake }: { onNext: () => void
 
   return (
     <View style={{ gap: 14 }}>
+      {faceMissing && (
+        <View style={obStyles.faceMissingCard}>
+          <View style={obStyles.faceMissingHeader}>
+            <Text style={{ fontSize: 22 }}>⚠️</Text>
+            <Text style={obStyles.faceMissingTitle}>לא זוהו פנים בתמונה</Text>
+          </View>
+          <Text style={obStyles.faceMissingText}>
+            אנא העלה תמונה אחרת שמציגה את הפנים והגוף שלך, כדי שנוכל לעדכן את המידות שלך אוטומטית בעתיד.
+          </Text>
+          <TouchableOpacity onPress={onRetake} activeOpacity={0.8} style={obStyles.faceMissingBtn}>
+            <Text style={obStyles.faceMissingBtnText}>העלה תמונה חדשה</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={[obStyles.resultBanner, { backgroundColor: sizes.sizing.baselineMatched ? '#EEF2FF' : '#F0FFF6', borderColor: sizes.sizing.baselineMatched ? 'rgba(46,91,255,0.3)' : 'rgba(46,213,115,0.4)' }]}>
         {sizes.preview && (
           <Image source={{ uri: sizes.preview }} style={obStyles.resultPhoto} />
@@ -624,4 +642,10 @@ const obStyles = StyleSheet.create({
   tagText: { fontSize: 11, fontWeight: '600', color: '#475569' },
   confirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#2E5BFF', alignItems: 'center' },
   confirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  faceMissingCard: { backgroundColor: '#FEF2F2', borderRadius: 18, padding: 18, borderWidth: 2, borderColor: '#FECACA', gap: 10 },
+  faceMissingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  faceMissingTitle: { fontSize: 15, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  faceMissingText: { fontSize: 13, color: '#991B1B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  faceMissingBtn: { backgroundColor: '#DC2626', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', marginTop: 4 },
+  faceMissingBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

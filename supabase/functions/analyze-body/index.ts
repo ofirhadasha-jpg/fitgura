@@ -19,6 +19,11 @@ CRITICAL INSTRUCTIONS:
 - Shoulder width: estimate from visible shoulder span (typically 40-50cm for medium frame).
 - Confidence scores: use 0.6-0.9 for body metrics (you are estimating, not measuring), 0.4-0.7 for device detection.
 
+FACE DETECTION:
+- Check whether a human face is clearly visible in the photo.
+- Set "face_detected" to true if a face is visible, false if the face is missing, obscured, cropped out, or not recognizable.
+- This field is critical for the app to decide whether to ask the user for a better photo.
+
 OUTPUT REQUIREMENTS:
 - Respond ONLY with a valid clean JSON object.
 - ALL fields in body_metrics MUST have numeric values (never null).
@@ -38,6 +43,7 @@ PERSON BOUNDS:
 
 EXPECTED JSON STRUCTURE:
 {
+  "face_detected": true,
   "device_profile": {
     "detected_brand": "Apple | Samsung | Xiaomi | Google | OnePlus | Other",
     "exact_model": "String or null",
