@@ -666,23 +666,38 @@ export function nextDevId() { return _devId++ }
 export const GALLERY_LAST_SCANNED = 'היום בשעה 08:14'
 export const GALLERY_NEXT_SCAN    = 'בעוד 6 ימים (יום ב׳)'
 
-export const scanHistory = [
+export interface ScanEntry {
+  date: string
+  time: string
+  top: string
+  bottom: string
+  fit: string
+  confidence: number
+  thumb: string
+  source: string
+  isWeekly: boolean
+  delta: Record<string, string> | null
+}
+
+export const scanHistory: ScanEntry[] = [
   {
     date: 'היום', time: '08:14', top: 'M', bottom: '32', fit: 'Slim Fit', confidence: 97,
     thumb: 'photo-1507003211169-0a1dd7228f2d',
-    source: 'סריקת גלריה שבועית',
-    isWeekly: true, delta: null as Record<string, string> | null,
+    source: 'תמונת הרשמה',
+    isWeekly: false, delta: null,
   },
   {
-    date: 'לפני 7 ימים', time: '09:15', top: 'M', bottom: '32', fit: 'Regular', confidence: 94,
+    date: 'אתמול', time: '22:31', top: 'M', bottom: '32', fit: 'Slim Fit', confidence: 95,
     thumb: 'photo-1500648767791-00dcc994a43e',
-    source: 'סריקת גלריה שבועית',
-    isWeekly: true, delta: null as Record<string, string> | null,
+    source: 'זוהה מהגלריה · האחרונה',
+    isWeekly: true, delta: null,
   },
   {
-    date: 'לפני חודש', time: '18:44', top: 'L', bottom: '34', fit: 'Slim Fit', confidence: 89,
+    date: 'אתמול', time: '14:07', top: 'M', bottom: '32', fit: 'Regular', confidence: 92,
     thumb: 'photo-1506794778202-cad84cf45f1d',
-    source: 'העלאה ידנית',
-    isWeekly: false, delta: { top: 'L → M', bottom: '34 → 32' } as Record<string, string>,
+    source: 'זוהה מהגלריה · שלפני האחרונה',
+    isWeekly: true, delta: null,
   },
 ]
+
+export const SCAN_NO_NEW_MESSAGE = 'לא נסרקו תמונות חדשות; אין שינוי במידות'

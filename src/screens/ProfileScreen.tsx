@@ -6,6 +6,7 @@ import {
   type DeviceIdentificationResult,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
   scanHistory, GALLERY_LAST_SCANNED, GALLERY_NEXT_SCAN,
+  SCAN_NO_NEW_MESSAGE, type ScanEntry,
   nextDevId, identifyDevice,
 } from '../types'
 
@@ -234,7 +235,7 @@ export function ProfileScreen({ onNav, user }: { onNav: (s: Screen) => void; use
           <View style={profStyles.galleryHeader}>
             <View>
               <Text style={profStyles.galleryTitle}>🖼️ גלריית סריקות AI</Text>
-              <Text style={profStyles.gallerySub}>{scanHistory.length} סריקות שמורות</Text>
+              <Text style={profStyles.gallerySub}>{scanHistory.length} תמונות למדידה משולבת</Text>
             </View>
             <View>
               <Text style={profStyles.galleryLastScan}>✅ {GALLERY_LAST_SCANNED}</Text>
@@ -242,14 +243,31 @@ export function ProfileScreen({ onNav, user }: { onNav: (s: Screen) => void; use
             </View>
           </View>
 
+          {/* Three-image combined measurement strip */}
+          <View style={profStyles.combinedStrip}>
+            {scanHistory.map((scan, i) => (
+              <View key={i} style={profStyles.combinedThumbWrap}>
+                <Image source={{ uri: `https://images.unsplash.com/${scan.thumb}?w=120&h=160&fit=crop&auto=format` }} style={profStyles.combinedThumb} />
+                <View style={profStyles.combinedThumbLabel}>
+                  <Text style={profStyles.combinedThumbLabelTxt}>
+                    {i === 0 ? 'הרשמה' : i === 1 ? 'גלריה 1' : 'גלריה 2'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          <Text style={profStyles.combinedStripSub}>
+            מדידה משולבת מ-3 תמונות: תמונת ההרשמה + שתי התמונות האחרונות שזוהו מהגלריה שלך
+          </Text>
+
           <View style={profStyles.galleryStatusBar}>
             <View style={profStyles.galleryStatusDot} />
             <View style={{ flex: 1 }}>
               <Text style={profStyles.galleryStatusTitle}>
-                AI סרק {scanHistory.filter(s => s.isWeekly).length} תמונות חדשות מהגלריה שלך
+                AI שילב 3 תמונות למדידה מדויקת
               </Text>
               <Text style={profStyles.galleryStatusSub}>
-                המידות עודכנו אוטומטית על בסיס התמונות האחרונות שלך
+                התמונות נבחרו לפי חותמת הזמן האחרונה מהגלריה שלך
               </Text>
             </View>
             <Text style={{ fontSize: 18 }}>🔄</Text>
@@ -298,6 +316,16 @@ export function ProfileScreen({ onNav, user }: { onNav: (s: Screen) => void; use
               </View>
             ))}
           </View>
+
+          {/* No new photos notice */}
+          <View style={profStyles.noNewBox}>
+            <Text style={{ fontSize: 18 }}>ℹ️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={profStyles.noNewText}>{SCAN_NO_NEW_MESSAGE}</Text>
+              <Text style={profStyles.noNewSub}>עדכון אחרון: {GALLERY_LAST_SCANNED}</Text>
+            </View>
+          </View>
+
           <Text style={profStyles.galleryNote}>הגלריה נסרקת אוטומטית כל שבוע · ניתן לשנות בהגדרות</Text>
         </View>
 
@@ -569,6 +597,15 @@ const profStyles = StyleSheet.create({
   scanConfBar: { marginTop: 7, height: 3, backgroundColor: '#E2E8F0', borderRadius: 2, overflow: 'hidden' },
   scanConfBarFill: { height: '100%', borderRadius: 2 },
   galleryNote: { fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  combinedStrip: { flexDirection: 'row', gap: 8, marginBottom: 6 },
+  combinedThumbWrap: { flex: 1, borderRadius: 14, overflow: 'hidden', position: 'relative' },
+  combinedThumb: { width: '100%', height: 120, borderRadius: 14 },
+  combinedThumbLabel: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(11,20,55,0.65)', paddingVertical: 3, alignItems: 'center' },
+  combinedThumbLabelTxt: { fontSize: 10, fontWeight: '700', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  combinedStripSub: { fontSize: 11, color: '#64748B', marginBottom: 12, lineHeight: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  noNewBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 12, marginTop: 12, borderWidth: 1.5, borderColor: '#E2E8F0' },
+  noNewText: { fontSize: 12, fontWeight: '700', color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  noNewSub: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familyCTA: { borderWidth: 2, borderStyle: 'dashed', borderColor: '#FECACA', backgroundColor: '#FFF5F5', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
   familyCTATitle: { fontSize: 14, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familyCTASub: { fontSize: 12, color: '#FB923C', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
