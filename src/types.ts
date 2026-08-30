@@ -638,6 +638,11 @@ export interface Product {
   price: number
   img: string
   category: string
+  aliexpressUrl?: string
+  amazonUrl?: string
+  aliexpressSku?: string
+  amazonAsin?: string
+  matchScore?: number
 }
 
 export const products: Product[] = [

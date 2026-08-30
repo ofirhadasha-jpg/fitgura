@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
-import { type Screen, type User, type Product, products } from '../types'
+import { type Screen, type User, type Product, type ScannedSizes, products } from '../types'
 
 export function FeedScreen({
   wishlistItems,
@@ -10,6 +10,7 @@ export function FeedScreen({
   budget,
   setBudget,
   user,
+  scannedSizes,
 }: {
   wishlistItems: number[]
   onToggleWishlist: (i: number) => void
@@ -17,6 +18,7 @@ export function FeedScreen({
   budget: [number, number]
   setBudget: (b: [number, number]) => void
   user: User | null
+  scannedSizes: ScannedSizes | null
 }) {
   const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
   const [search, setSearch] = useState('')
@@ -34,7 +36,9 @@ export function FeedScreen({
         <View style={feedStyles.statusRow}>
           <View style={feedStyles.statusLeft}>
             <View style={feedStyles.statusDot} />
-            <Text style={feedStyles.statusText}>סריקה אחרונה: לפני 3 ימים</Text>
+            <Text style={feedStyles.statusText}>
+              {scannedSizes ? `מידות: ${scannedSizes.sizing.top} · ${scannedSizes.sizing.bottom} · ${scannedSizes.sizing.fit}` : 'טרם נסרקת'}
+            </Text>
             {user ? (
               <View style={feedStyles.loggedInBadge}><Text style={feedStyles.loggedInBadgeText}>מחובר ✓</Text></View>
             ) : (
@@ -108,6 +112,7 @@ export function FeedScreen({
                 product={product}
                 inWishlist={wishlistItems.includes(globalIdx)}
                 onToggleWishlist={() => onToggleWishlist(globalIdx)}
+                scannedSizes={scannedSizes}
               />
             )
           })}
@@ -197,7 +202,7 @@ function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudg
   )
 }
 
-function ProductCard({ product, inWishlist, onToggleWishlist }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void }) {
+function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null }) {
   return (
     <View style={feedStyles.productCard}>
       <View style={feedStyles.productImageWrap}>
@@ -219,21 +224,23 @@ function ProductCard({ product, inWishlist, onToggleWishlist }: { product: Produ
       </View>
       <View style={feedStyles.productInfo}>
         <View style={feedStyles.matchChip}>
-          <Text style={feedStyles.matchChipText}>✓ 100% מתאים למידה שנסרקה</Text>
+          <Text style={feedStyles.matchChipText}>
+            {scannedSizes ? `✓ מתאים למידה: ${scannedSizes.sizing.top} / ${scannedSizes.sizing.bottom}` : '✓ מתאים למידה שנסרקה'}
+          </Text>
         </View>
         <Text style={feedStyles.productName}>{product.name}</Text>
         <Text style={feedStyles.productBrand}>{product.brand}</Text>
         <Text style={feedStyles.productPrice}>₪{product.price}</Text>
         <View style={feedStyles.buyBtnRow}>
           <TouchableOpacity
-            onPress={() => window.open(`https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
+            onPress={() => window.open(product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
             activeOpacity={0.8}
             style={feedStyles.buyBtnAli}
           >
             <Text style={feedStyles.buyBtnText}>🛒 AliExpress</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => window.open(`https://www.amazon.com/s?k=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
+            onPress={() => window.open(product.amazonUrl ?? `https://www.amazon.com/s?k=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
             activeOpacity={0.8}
             style={feedStyles.buyBtnAmazon}
           >
