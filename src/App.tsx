@@ -1,6 +1,6 @@
 import { useState, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry } from './types'
+import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState } from './types'
 import { AuthModal } from './components'
 import { SplashScreen } from './screens/SplashScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
@@ -37,6 +37,7 @@ export default function App() {
   const [detectedDevice, setDetectedDevice] = useState<DetectedDevice | null>(null)
   const [scannedSizes, setScannedSizes] = useState<ScannedSizes | null>(null)
   const [scanGallery, setScanGallery] = useState<ScanEntry[]>([])
+  const [galleryAccess, setGalleryAccess] = useState<GalleryAccessState>('pending')
 
   function showToast(msg: string) {
     setToast(msg)
@@ -69,20 +70,12 @@ export default function App() {
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
         {screen === 'splash' && <SplashScreen onNext={() => setScreen('onboarding')} />}
-        {screen === 'onboarding' && <OnboardingScreen onNext={() => setScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} />}
+        {screen === 'onboarding' && <OnboardingScreen onNext={() => setScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => setScreen('feed')} onDetected={setDetectedDevice} />}
-        {screen === 'feed' && (
-          <FeedScreen
-            wishlistItems={wishlistItems}
-            onToggleWishlist={handleWishlistToggle}
-            onNav={setScreen}
-            budget={budget}
-            setBudget={setBudget}
-            user={user}
-          />
-        )}
+        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={setScreen} budget={budget} setBudget={setBudget} user={user} />}
+
         {screen === 'events' && <EventsScreen onNav={setScreen} />}
-        {screen === 'profile' && <ProfileScreen onNav={setScreen} user={user} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} />}
+        {screen === 'profile' && <ProfileScreen onNav={setScreen} user={user} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} />}
         {screen === 'wishlist' && (
           <WishlistScreen onNav={setScreen} wishlistItems={wishlistItems} budget={budget} />
         )}

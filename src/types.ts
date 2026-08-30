@@ -678,8 +678,28 @@ export interface ScanEntry {
   delta: Record<string, string> | null
 }
 
+export type GalleryAccessState = 'pending' | 'granted' | 'denied'
+
+export interface AutoScanStatus {
+  lastScanDate: string
+  nextScanDate: string
+  photosFound: number
+  photosAnalyzed: number
+  changesDetected: boolean
+}
+
 let _scanId = 0
 export function nextScanId() { return _scanId++ }
+
+export function formatNextScanDate(): string {
+  const next = new Date()
+  next.setDate(next.getDate() + 7)
+  return next.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'short' })
+}
+
+export function formatLastScanDate(): string {
+  return new Date().toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
 
 export function formatTimestamp(d: Date): { date: string; time: string } {
   const now = new Date()

@@ -12,9 +12,9 @@ import {
   formatTimestamp, nextScanId,
 } from '../types'
 
-type OnboardStep = 'upload' | 'scanning' | 'result'
+type OnboardStep = 'upload' | 'scanning' | 'result' | 'gallery-access'
 
-export function OnboardingScreen({ onNext, onScanned, onGalleryAdd }: { onNext: () => void; onScanned: (s: ScannedSizes) => void; onGalleryAdd: (g: ScanEntry[]) => void }) {
+export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAccess }: { onNext: () => void; onScanned: (s: ScannedSizes) => void; onGalleryAdd: (g: ScanEntry[]) => void; onGalleryAccess: (granted: boolean) => void }) {
   const [step, setStep] = useState<OnboardStep>('upload')
   const [scanProgress, setScanProgress] = useState(0)
   const [dragOver, setDragOver] = useState(false)
@@ -107,17 +107,18 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd }: { onNext: 
       {/* Header */}
       <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.header}>
         <View style={obStyles.progressRow}>
-          {(['upload', 'scanning', 'result'] as OnboardStep[]).map((_s, i) => (
-            <View key={i} style={[obStyles.progressBar, {
-              backgroundColor: step === 'upload' ? (i === 0 ? '#2E5BFF' : 'rgba(255,255,255,0.2)') : step === 'scanning' ? (i <= 1 ? '#2E5BFF' : 'rgba(255,255,255,0.2)') : '#2ED573',
-            }]} />
-          ))}
+          {(['upload', 'scanning', 'result', 'gallery-access'] as OnboardStep[]).map((_s, i) => {
+            const stepOrder = ['upload', 'scanning', 'result', 'gallery-access']
+            const currentIdx = stepOrder.indexOf(step)
+            const barColor = i <= currentIdx ? (step === 'gallery-access' && i === currentIdx ? '#2E5BFF' : i < currentIdx ? '#2ED573' : '#2E5BFF') : 'rgba(255,255,255,0.2)'
+            return <View key={i} style={[obStyles.progressBar, { backgroundColor: barColor }]} />
+          })}
         </View>
         <Text style={obStyles.headerTitle}>
-          {step === 'upload' ? 'סריקת AI אישית' : step === 'scanning' ? 'סורק מידות...' : 'סריקה הושלמה ✓'}
+          {step === 'upload' ? 'סריקת AI אישית' : step === 'scanning' ? 'סורק מידות...' : step === 'result' ? 'סריקה הושלמה ✓' : 'גישה לגלריה'}
         </Text>
         <Text style={obStyles.headerSub}>
-          {step === 'upload' ? 'העלה תמונה וה-AI ימצא את המידה המדויקת שלך' : step === 'scanning' ? 'בינה מלאכותית מנתחת את מבנה הגוף שלך' : 'אישור מידות ופרופיל מוכן'}
+          {step === 'upload' ? 'העלה תמונה וה-AI ימצא את המידה המדויקת שלך' : step === 'scanning' ? 'בינה מלאכותית מנתחת את מבנה הגוף שלך' : step === 'result' ? 'אישור מידות ופרופיל מוכן' : 'אישור גישה לגלריה לעדכון אוטומטי של מידות'}
         </Text>
       </LinearGradient>
 
@@ -198,7 +199,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd }: { onNext: 
         )}
 
         {step === 'scanning' && <ScanningView progress={scanProgress} sizes={sizes} />}
-        {step === 'result' && sizes && <ResultView onNext={onNext} sizes={sizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
+        {step === 'result' && sizes && <ResultView onNext={() => setStep('gallery-access')} sizes={sizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
@@ -207,6 +208,12 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd }: { onNext: 
               <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>נסה שוב</Text>
             </TouchableOpacity>
           </View>
+        )}
+        {step === 'gallery-access' && (
+          <GalleryAccessView
+            onGranted={() => { onGalleryAccess(true); onNext() }}
+            onSkip={() => { onGalleryAccess(false); onNext() }}
+          />
         )}
       </View>
     </View>
@@ -534,13 +541,86 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
       </View>
 
       <View style={{ gap: 10 }}>
-        <TouchableOpacity onPress={onNext} activeOpacity={0.8} style={obStyles.confirmBtn}>
-          <Text style={obStyles.confirmBtnText}>אשר פרופיל ועבור לפיד</Text>
+        <TouchableOpacity onPress={() => setStep('gallery-access')} activeOpacity={0.8} style={obStyles.confirmBtn}>
+          <Text style={obStyles.confirmBtnText}>אשר פרופיל והמשך</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onRetake} activeOpacity={0.7}>
           <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>סרוק תמונה חדשה</Text>
         </TouchableOpacity>
       </View>
+    </View>
+  )
+}
+
+function GalleryAccessView({ onGranted, onSkip }: { onGranted: () => void; onSkip: () => void }) {
+  const [scanning, setScanning] = useState(false)
+  const [progress, setProgress] = useState(0)
+
+  function handleGrant() {
+    setScanning(true)
+    setProgress(0)
+    const interval = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 100) {
+          clearInterval(interval)
+          setTimeout(onGranted, 400)
+          return 100
+        }
+        return p + 5
+      })
+    }, 50)
+  }
+
+  return (
+    <View style={{ gap: 20, paddingVertical: 10 }}>
+      <View style={obStyles.galleryAccessCard}>
+        <View style={obStyles.galleryAccessIcon}>
+          <Text style={{ fontSize: 36 }}>🖼️</Text>
+        </View>
+        <Text style={obStyles.galleryAccessTitle}>גישה לגלריית התמונות</Text>
+        <Text style={obStyles.galleryAccessDesc}>
+          כדי שה-AI יוכל לעדכן את המידות שלך אוטומטית, אנחנו צריכים גישה לגלריה שלך. המערכת תסרוק כל שבוע את התמונות האחרונות שצילמת, תזהה את הפנים שלך, ותמדוד שינויים במידות הגוף — ללא כל פעולה מצידך.
+        </Text>
+        <View style={obStyles.galleryAccessFeatures}>
+          <View style={obStyles.galleryAccessFeatureRow}>
+            <Text style={{ fontSize: 16 }}>🔍</Text>
+            <Text style={obStyles.galleryAccessFeatureText}>זיהוי פנים — ה-AI מוצא תמונות שלך בלבד</Text>
+          </View>
+          <View style={obStyles.galleryAccessFeatureRow}>
+            <Text style={{ fontSize: 16 }}>🔄</Text>
+            <Text style={obStyles.galleryAccessFeatureText}>סריקה אוטומטית שבועית של התמונות האחרונות</Text>
+          </View>
+          <View style={obStyles.galleryAccessFeatureRow}>
+            <Text style={{ fontSize: 16 }}>📐</Text>
+            <Text style={obStyles.galleryAccessFeatureText}>עדכון מידות אוטומטי — גובה, משקל, מסגרת גוף</Text>
+          </View>
+          <View style={obStyles.galleryAccessFeatureRow}>
+            <Text style={{ fontSize: 16 }}>🔒</Text>
+            <Text style={obStyles.galleryAccessFeatureText}>התמונות שלך נשארות פרטיות — ניתוח מקומי בלבד</Text>
+          </View>
+        </View>
+      </View>
+
+      {scanning ? (
+        <View style={obStyles.galleryScanBox}>
+          <Text style={{ fontSize: 28 }}>🔍</Text>
+          <Text style={obStyles.galleryScanTitle}>מאשר גישה לגלריה...</Text>
+          <View style={obStyles.galleryScanBar}>
+            <View style={[obStyles.galleryScanBarFill, { width: `${progress}%` }]} />
+          </View>
+          <Text style={obStyles.galleryScanPct}>{progress}%</Text>
+        </View>
+      ) : (
+        <View style={{ gap: 10 }}>
+          <TouchableOpacity onPress={handleGrant} activeOpacity={0.8} style={obStyles.galleryGrantBtn}>
+            <Text style={{ fontSize: 18 }}>✓</Text>
+            <Text style={obStyles.galleryGrantBtnText}>אשר גישה לגלריה</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onSkip} activeOpacity={0.7}>
+            <Text style={obStyles.gallerySkipText}>דלג כעת — ניתן לאשר מאוחר יותר בהגדרות</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   )
 }
@@ -665,4 +745,19 @@ const obStyles = StyleSheet.create({
   faceMissingText: { fontSize: 13, color: '#991B1B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   faceMissingBtn: { backgroundColor: '#DC2626', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', marginTop: 4 },
   faceMissingBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessCard: { backgroundColor: '#fff', borderRadius: 24, padding: 24, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#DBEAFE' },
+  galleryAccessIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+  galleryAccessTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessDesc: { fontSize: 13, color: '#64748B', lineHeight: 20, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessFeatures: { gap: 10, width: '100%', marginTop: 6 },
+  galleryAccessFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
+  galleryAccessFeatureText: { fontSize: 12, color: '#475569', flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryGrantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2E5BFF', borderRadius: 18, paddingVertical: 16 },
+  galleryGrantBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gallerySkipText: { color: '#94A3B8', fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryScanBox: { alignItems: 'center', gap: 14, paddingVertical: 20 },
+  galleryScanTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
+  galleryScanBarFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
+  galleryScanPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

@@ -4,17 +4,18 @@ import { LinearGradient, BottomNav } from '../components'
 import {
   type Screen, type User, type UserDevice,
   type DeviceIdentificationResult,
-  type DetectedDevice, type ScannedSizes, type ScanEntry,
+  type DetectedDevice, type ScannedSizes, type ScanEntry, type GalleryAccessState,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
   SCAN_NO_NEW_MESSAGE,
   nextDevId, identifyDevice,
   analyzeBodyImage, aiAnalysisToScannedSizes,
   formatTimestamp, nextScanId, computeDelta,
+  formatNextScanDate, formatLastScanDate,
 } from '../types'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery }: {
+export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess }: {
   onNav: (s: Screen) => void
   user: User | null
   detectedDevice: DetectedDevice | null
@@ -22,6 +23,8 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
   setScannedSizes: (s: ScannedSizes) => void
   scanGallery: ScanEntry[]
   setScanGallery: (g: ScanEntry[] | ((prev: ScanEntry[]) => ScanEntry[])) => void
+  galleryAccess: GalleryAccessState
+  setGalleryAccess: (s: GalleryAccessState) => void
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -63,19 +66,94 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
   const [showDevCameraChoice, setShowDevCameraChoice] = useState(false)
 
   const galleryUploadRef = useRef<HTMLInputElement>(null)
-  const [galleryScanning, setGalleryScanning] = useState(false)
-  const [galleryScanProgress, setGalleryScanProgress] = useState(0)
+  const [autoScanning, setAutoScanning] = useState(false)
+  const [autoScanProgress, setAutoScanProgress] = useState(0)
+  const [autoScanPhase, setAutoScanPhase] = useState('')
   const [galleryError, setGalleryError] = useState<string | null>(null)
+  const [lastAutoScan, setLastAutoScan] = useState<string | null>(null)
+  const [nextScanDate, setNextScanDate] = useState<string>(formatNextScanDate())
 
-  async function handleGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAutoScan() {
+    if (autoScanning) return
+    setGalleryError(null)
+    setAutoScanning(true)
+    setAutoScanProgress(0)
+    setAutoScanPhase('סורק את הגלריה שלך...')
+
+    const phaseInterval = setInterval(() => {
+      setAutoScanProgress((p) => {
+        if (p < 30) { setAutoScanPhase('סורק את הגלריה שלך...'); return p + 3 }
+        if (p < 55) { setAutoScanPhase('מחפש תמונות שלך מהזמן האחרון...'); return p + 3 }
+        if (p < 80) { setAutoScanPhase('מזהה פנים ומנתח מידות...'); return p + 3 }
+        if (p < 95) { setAutoScanPhase('משווה עם המידות הקיימות...'); return p + 3 }
+        clearInterval(phaseInterval)
+        return p
+      })
+    }, 80)
+
+    try {
+      const baseline = scanGallery.find((s) => s.isBaseline)
+      const baselinePhoto = baseline?.photoUrl ?? null
+      const mockPhotos = await simulateGalleryScan()
+      if (mockPhotos.length === 0) {
+        setAutoScanPhase('לא נמצאו תמונות חדשות שלך')
+        return
+      }
+
+      for (const photo of mockPhotos) {
+        const { analysis, preview } = await analyzeBodyImage(photo)
+        const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
+        const prevSizing = scannedSizes?.sizing ?? null
+        const delta = prevSizing ? computeDelta(prevSizing, aiSizes.sizing) : null
+        aiSizes.sizing.baselineMatched = true
+        aiSizes.sizing.isWeeklyUpdate = true
+        aiSizes.sizing.measurementDelta = delta
+        setScannedSizes(aiSizes)
+        setProfTop(aiSizes.sizing.top)
+        setProfBottom(aiSizes.sizing.bottom)
+        setProfFit(aiSizes.sizing.fit)
+        const ts = formatTimestamp(new Date())
+        const entry: ScanEntry = {
+          id: nextScanId(),
+          date: ts.date,
+          time: ts.time,
+          top: aiSizes.sizing.top,
+          bottom: aiSizes.sizing.bottom,
+          fit: aiSizes.sizing.fit,
+          confidence: aiSizes.sizing.confidence,
+          photoUrl: preview,
+          source: 'זוהה אוטומטית מהגלריה',
+          isBaseline: false,
+          delta,
+        }
+        setScanGallery((prev) => [entry, ...prev])
+      }
+      setLastAutoScan(formatLastScanDate())
+      setNextScanDate(formatNextScanDate())
+    } catch (err) {
+      setGalleryError(err instanceof Error ? err.message : 'הסריקה נכשלה')
+    } finally {
+      clearInterval(phaseInterval)
+      setAutoScanProgress(100)
+      setTimeout(() => { setAutoScanning(false); setAutoScanProgress(0); setAutoScanPhase('') }, 800)
+    }
+  }
+
+  async function simulateGalleryScan(): Promise<File[]> {
+    await new Promise((r) => setTimeout(r, 200))
+    return []
+  }
+
+  async function handleManualUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
     setGalleryError(null)
-    setGalleryScanning(true)
-    setGalleryScanProgress(0)
+    setAutoScanning(true)
+    setAutoScanProgress(0)
+    setAutoScanPhase('מנתח את התמונה...')
     const progressInterval = setInterval(() => {
-      setGalleryScanProgress((p) => (p >= 90 ? 90 : p + 3))
+      setAutoScanProgress((p) => (p >= 90 ? 90 : p + 3))
     }, 60)
 
     try {
@@ -100,17 +178,19 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
         fit: aiSizes.sizing.fit,
         confidence: aiSizes.sizing.confidence,
         photoUrl: preview,
-        source: 'הועלתה מהגלריה',
+        source: 'הועלתה ידנית',
         isBaseline: false,
         delta,
       }
       setScanGallery((prev) => [entry, ...prev])
+      setLastAutoScan(formatLastScanDate())
+      setNextScanDate(formatNextScanDate())
     } catch (err) {
       setGalleryError(err instanceof Error ? err.message : 'ניתוח נכשל')
     } finally {
       clearInterval(progressInterval)
-      setGalleryScanProgress(100)
-      setTimeout(() => { setGalleryScanning(false); setGalleryScanProgress(0) }, 500)
+      setAutoScanProgress(100)
+      setTimeout(() => { setAutoScanning(false); setAutoScanProgress(0); setAutoScanPhase('') }, 500)
     }
   }
 
@@ -310,29 +390,63 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
 
         {/* AI scan gallery */}
         <View style={profStyles.card}>
-          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleGalleryUpload} />
+          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleManualUpload} />
           <View style={profStyles.galleryHeader}>
             <View>
               <Text style={profStyles.galleryTitle}>🖼️ גלריית סריקות AI</Text>
               <Text style={profStyles.gallerySub}>{scanGallery.length} תמונות שלך למדידה משולבת</Text>
             </View>
-            <TouchableOpacity
-              onPress={() => galleryUploadRef.current?.click()}
-              disabled={galleryScanning}
-              activeOpacity={0.8}
-              style={[profStyles.galleryUploadBtn, galleryScanning && { opacity: 0.6 }]}
-            >
-              <Text style={{ fontSize: 16 }}>➕</Text>
-              <Text style={profStyles.galleryUploadBtnText}>{galleryScanning ? 'סורק...' : 'העלה תמונה'}</Text>
-            </TouchableOpacity>
+            <View style={{ alignItems: 'flex-end' }}>
+              {galleryAccess === 'granted' ? (
+                <View style={profStyles.galleryAccessBadge}>
+                  <View style={profStyles.galleryAccessDot} />
+                  <Text style={profStyles.galleryAccessText}>גישה אושרה</Text>
+                </View>
+              ) : galleryAccess === 'denied' ? (
+                <TouchableOpacity onPress={() => setGalleryAccess('granted')} activeOpacity={0.7}>
+                  <View style={[profStyles.galleryAccessBadge, { backgroundColor: '#FEF2F2' }]}>
+                    <Text style={{ fontSize: 12 }}>⚠️</Text>
+                    <Text style={[profStyles.galleryAccessText, { color: '#DC2626' }]}>אשר גישה</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : null}
+              <Text style={profStyles.galleryNextScan}>סריקה הבאה: {nextScanDate}</Text>
+            </View>
           </View>
 
-          {galleryScanning && (
-            <View style={profStyles.galleryScanProgressBox}>
-              <View style={profStyles.galleryScanBar}>
-                <View style={[profStyles.galleryScanBarFill, { width: `${galleryScanProgress}%` }]} />
+          {/* Gallery access status / explanation */}
+          {galleryAccess !== 'granted' && (
+            <View style={profStyles.galleryAccessPrompt}>
+              <Text style={{ fontSize: 28 }}>🖼️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={profStyles.galleryAccessPromptTitle}>
+                  {galleryAccess === 'denied' ? 'גישה לגלריה נדרשת לעדכון אוטומטי' : 'אשר גישה לגלריה לעדכון אוטומטי'}
+                </Text>
+                <Text style={profStyles.galleryAccessPromptSub}>
+                  ה-AI יסרוק את התמונות האחרונות שלך פעם בשבוע, יזהה את הפנים שלך, ויעדכן את המידות אוטומטית — ללא כל פעולה מצידך
+                </Text>
               </View>
-              <Text style={profStyles.galleryScanPct}>AI מנתח את התמונה... {Math.round(galleryScanProgress)}%</Text>
+              <TouchableOpacity
+                onPress={() => setGalleryAccess('granted')}
+                activeOpacity={0.8}
+                style={profStyles.galleryAccessGrantBtn}
+              >
+                <Text style={profStyles.galleryAccessGrantBtnText}>אשר</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Auto-scan progress */}
+          {autoScanning && (
+            <View style={profStyles.autoScanBox}>
+              <View style={profStyles.autoScanHeader}>
+                <Text style={{ fontSize: 24 }}>🔍</Text>
+                <Text style={profStyles.autoScanTitle}>{autoScanPhase || 'סורק...'}</Text>
+              </View>
+              <View style={profStyles.autoScanBar}>
+                <View style={[profStyles.autoScanBarFill, { width: `${autoScanProgress}%` }]} />
+              </View>
+              <Text style={profStyles.autoScanPct}>{Math.round(autoScanProgress)}%</Text>
             </View>
           )}
 
@@ -344,29 +458,64 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
             </View>
           )}
 
+          {/* Scan now button */}
+          {galleryAccess === 'granted' && !autoScanning && (
+            <TouchableOpacity
+              onPress={handleAutoScan}
+              activeOpacity={0.8}
+              style={profStyles.scanNowBtn}
+            >
+              <Text style={{ fontSize: 18 }}>🔄</Text>
+              <Text style={profStyles.scanNowBtnText}>סרוק גלריה עכשיו</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Last scan info */}
+          {lastAutoScan && !autoScanning && (
+            <View style={profStyles.lastScanInfo}>
+              <Text style={{ fontSize: 14 }}>✅</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={profStyles.lastScanText}>סריקה אחרונה: {lastAutoScan}</Text>
+                <Text style={profStyles.lastScanSub}>הסריקה הבאה תתבצע אוטומטית ב-{nextScanDate}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Gallery photos */}
           {scanGallery.length === 0 ? (
             <View style={profStyles.galleryEmptyBox}>
               <Text style={{ fontSize: 32 }}>📸</Text>
               <Text style={profStyles.galleryEmptyTitle}>אין תמונות בגלריה עדיין</Text>
-              <Text style={profStyles.galleryEmptySub}>העלה תמונה חדשה שלך כדי שה-AI ימדוד ויעדכן את המידות שלך</Text>
+              <Text style={profStyles.galleryEmptySub}>
+                {galleryAccess === 'granted'
+                  ? 'ה-AI יסרוק אוטומטית את הגלריה שלך כל שבוע וימצא תמונות חדשות שלך. ניתן גם ללחוץ "סרוק גלריה עכשיו" או להעלות תמונה ידנית.'
+                  : 'אשר גישה לגלריה כדי שה-AI יוכל לסרוק אוטומטית ולמצוא תמונות שלך.'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => galleryUploadRef.current?.click()}
+                activeOpacity={0.8}
+                style={profStyles.manualUploadLink}
+              >
+                <Text style={profStyles.manualUploadLinkText}>או העלה תמונה ידנית</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <>
               {/* Combined measurement strip */}
               <View style={profStyles.combinedStrip}>
-                {scanGallery.slice(0, 3).map((scan, i) => (
+                {scanGallery.slice(0, 3).map((scan) => (
                   <View key={scan.id} style={profStyles.combinedThumbWrap}>
                     <Image source={{ uri: scan.photoUrl }} style={profStyles.combinedThumb} />
                     <View style={profStyles.combinedThumbLabel}>
                       <Text style={profStyles.combinedThumbLabelTxt}>
-                        {scan.isBaseline ? 'הרשמה' : `תמונה ${i}`}
+                        {scan.isBaseline ? 'הרשמה' : scan.source.includes('אוטומטית') ? 'גלריה' : 'ידנית'}
                       </Text>
                     </View>
                   </View>
                 ))}
               </View>
               <Text style={profStyles.combinedStripSub}>
-                מדידה משולבת מ-{Math.min(scanGallery.length, 3)} תמונות שלך — תמונת ההרשמה והתמונות האחרונות שהעלית
+                מדידה משולבת מ-{Math.min(scanGallery.length, 3)} תמונות שלך — תמונת ההרשמה והתמונות האחרונות שזוהו מהגלריה
               </Text>
 
               <View style={profStyles.galleryStatusBar}>
@@ -376,7 +525,7 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
                     AI שילב {Math.min(scanGallery.length, 3)} תמונות למדידה מדויקת
                   </Text>
                   <Text style={profStyles.galleryStatusSub}>
-                    התמונות האחרונות שלך משמשות לעדכון המידות
+                    התמונות נבחרו לפי חותמת הזמן האחרונה מהגלריה שלך — רק תמונות שלך
                   </Text>
                 </View>
                 <Text style={{ fontSize: 18 }}>🔄</Text>
@@ -428,7 +577,9 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
             </>
           )}
 
-          <Text style={profStyles.galleryNote}>העלה תמונות חדשות שלך כדי שה-AI יעדכן את המידות · ככל שתעלה יותר — הדיוק ישתפר</Text>
+          <Text style={profStyles.galleryNote}>
+            הגלריה נסרקת אוטומטית כל שבוע · ה-AI מזהה את הפנים שלך ומעדכן מידות · ניתן גם להעלות תמונה ידנית
+          </Text>
         </View>
 
         {/* Family CTA */}
@@ -676,12 +827,27 @@ const profStyles = StyleSheet.create({
   gallerySub: { fontSize: 11, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryLastScan: { fontSize: 10, color: '#16A34A', fontWeight: '700' },
   galleryNextScan: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2E5BFF', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 14 },
-  galleryUploadBtnText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryScanProgressBox: { backgroundColor: '#EEF2FF', borderRadius: 14, padding: 14, marginBottom: 12, alignItems: 'center', gap: 8 },
-  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#DBEAFE', borderRadius: 4, overflow: 'hidden' },
-  galleryScanBarFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
-  galleryScanPct: { fontSize: 12, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FFF6', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, borderWidth: 1, borderColor: 'rgba(46,213,115,0.3)' },
+  galleryAccessDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#2ED573' },
+  galleryAccessText: { fontSize: 10, fontWeight: '700', color: '#16A34A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessPrompt: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFBEB', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1.5, borderColor: 'rgba(245,158,11,0.3)' },
+  galleryAccessPromptTitle: { fontSize: 13, fontWeight: '700', color: '#92400E', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessPromptSub: { fontSize: 11, color: '#B45309', marginTop: 3, lineHeight: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessGrantBtn: { backgroundColor: '#F59E0B', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
+  galleryAccessGrantBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  autoScanBox: { backgroundColor: '#EEF2FF', borderRadius: 16, padding: 16, marginBottom: 12, alignItems: 'center', gap: 10 },
+  autoScanHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  autoScanTitle: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  autoScanBar: { width: '100%', height: 8, backgroundColor: '#DBEAFE', borderRadius: 4, overflow: 'hidden' },
+  autoScanBarFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
+  autoScanPct: { fontSize: 13, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  scanNowBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 13, marginBottom: 12 },
+  scanNowBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  lastScanInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F0FFF6', borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(46,213,115,0.25)' },
+  lastScanText: { fontSize: 12, fontWeight: '700', color: '#15803D', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  lastScanSub: { fontSize: 11, color: '#16A34A', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  manualUploadLink: { marginTop: 6, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#F1F5F9', borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0' },
+  manualUploadLinkText: { fontSize: 13, fontWeight: '600', color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryEmptyBox: { alignItems: 'center', gap: 10, paddingVertical: 28, paddingHorizontal: 16 },
   galleryEmptyTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryEmptySub: { fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18, fontFamily: "'Noto Sans Hebrew', sans-serif" },
