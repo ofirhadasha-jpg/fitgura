@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
 import { LinearGradient } from '../components'
-import { deviceOptions } from '../types'
+import { deviceOptions, detectDevice, type DetectedDevice } from '../types'
 
 export function DeviceDetectionScreen({ onNext }: { onNext: () => void }) {
   const [phase, setPhase] = useState<'detecting' | 'confirmed'>('detecting')
@@ -13,7 +13,7 @@ export function DeviceDetectionScreen({ onNext }: { onNext: () => void }) {
   const [customBrand, setCustomBrand] = useState('')
   const [customModel, setCustomModel] = useState('')
   const [customYear, setCustomYear] = useState('')
-  const detected = deviceOptions[0]
+  const [detected, setDetected] = useState<DetectedDevice | null>(null)
 
   const filteredDevices = deviceOptions.filter((d) => {
     const q = deviceSearch.toLowerCase()
@@ -22,6 +22,7 @@ export function DeviceDetectionScreen({ onNext }: { onNext: () => void }) {
 
   useEffect(() => {
     if (phase !== 'detecting') return
+    setDetected(detectDevice())
     const t = setInterval(() => {
       setScanPct((p) => {
         if (p >= 100) { clearInterval(t); setTimeout(() => setPhase('confirmed'), 300); return 100 }
@@ -72,9 +73,9 @@ export function DeviceDetectionScreen({ onNext }: { onNext: () => void }) {
 
             <View style={{ width: '100%', gap: 8 }}>
               {[
-                { label: 'חיישן סביבה', done: scanPct > 20 },
-                { label: 'זיהוי רשת ואות', done: scanPct > 50 },
-                { label: 'התאמת דגם', done: scanPct > 80 },
+                { label: 'קריאת נתוני מכשיר', done: scanPct > 20 },
+                { label: 'זיהוי יצרן ודגם', done: scanPct > 50 },
+                { label: 'התאמת אביזרים', done: scanPct > 80 },
               ].map(({ label, done }) => (
                 <View key={label} style={[devStyles.signalRow, { borderColor: done ? 'rgba(46,213,115,0.4)' : '#F1F5F9' }]}>
                   <View style={[devStyles.signalDot, { backgroundColor: done ? '#2ED573' : '#E2E8F0' }]}>
@@ -87,25 +88,30 @@ export function DeviceDetectionScreen({ onNext }: { onNext: () => void }) {
           </View>
         )}
 
-        {phase === 'confirmed' && !changing && (
+        {phase === 'confirmed' && !changing && detected && (
           <View style={{ gap: 20 }}>
             <LinearGradient colors={['#0B1437', '#1E3A8A']} style={devStyles.deviceCard}>
               <View style={devStyles.deviceCardOrb1} />
               <View style={devStyles.deviceCardOrb2} />
               <View style={devStyles.deviceCardContent}>
                 <View style={devStyles.phoneIconBox}>
-                  <Text style={devStyles.phoneIconText}>Pro</Text>
+                  <Text style={devStyles.phoneIconText}>{detected.brand.slice(0, 4)}</Text>
                   <View style={devStyles.phoneCheck}><Text style={{ fontSize: 14, color: '#fff' }}>✓</Text></View>
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={devStyles.detectedBadge}>
-                    <Text style={devStyles.detectedBadgeText}>✓ זוהה אוטומטית</Text>
+                    <Text style={devStyles.detectedBadgeText}>✓ זוהה אוטומטית · {Math.round(detected.confidence * 100)}% דיוק</Text>
                   </View>
-                  <Text style={devStyles.deviceName}>{detected.name}</Text>
-                  <Text style={devStyles.deviceChip}>{detected.chip} · {detected.year}</Text>
+                  <Text style={devStyles.deviceName}>{detected.model}</Text>
+                  <Text style={devStyles.deviceChip}>{detected.brand} · {detected.chip} · {detected.year}</Text>
                   <View style={devStyles.deviceTags}>
-                    {['כיסויים', 'מגיני מסך', 'טעינה אלחוטית'].map((tag) => (
-                      <View key={tag} style={devStyles.deviceTag}><Text style={devStyles.deviceTagText}>{tag}</Text></View>
+                    {[
+                      detected.screen_size_inches ? `${detected.screen_size_inches}" מסך` : null,
+                      detected.camera_layout,
+                      'כיסויים',
+                      'מגיני מסך',
+                    ].filter(Boolean).map((tag) => (
+                      <View key={tag!} style={devStyles.deviceTag}><Text style={devStyles.deviceTagText}>{tag}</Text></View>
                     ))}
                   </View>
                 </View>
