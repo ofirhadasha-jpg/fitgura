@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, Image } from 'reac
 import { LinearGradient } from '../components'
 import {
   type ScannedSizes,
+  type PersonBounds,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
   deriveScannedSizes,
   analyzeBodyImage,
@@ -189,6 +190,8 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
     return () => clearInterval(t)
   }, [])
 
+  const bounds: PersonBounds = sizes?.personBounds ?? { top: 2, left: 10, width: 80, height: 96 }
+
   return (
     <View style={{ alignItems: 'center', gap: 24 }}>
       <View style={obStyles.scanFrame}>
@@ -198,15 +201,26 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
         <View style={obStyles.scanGrid} />
         {/* scan beam */}
         <View style={[obStyles.scanBeam, { top: `${beamY}%` }]} />
-        {/* corner brackets */}
+        {/* corner brackets aligned to person bounds */}
         {[
-          { top: 12, right: 12, borderTopWidth: 2, borderRightWidth: 2 },
-          { top: 12, left: 12, borderTopWidth: 2, borderLeftWidth: 2 },
-          { bottom: 12, right: 12, borderBottomWidth: 2, borderRightWidth: 2 },
-          { bottom: 12, left: 12, borderBottomWidth: 2, borderLeftWidth: 2 },
-        ].map((c, i) => (
-          <View key={i} style={[obStyles.cornerBracket, c, { borderColor: '#2ED573' }]} />
-        ))}
+          { top: `${bounds.top}%`, left: `${bounds.left}%`, borderTopWidth: 3, borderLeftWidth: 3 },
+          { top: `${bounds.top}%`, left: `${bounds.left + bounds.width}%`, borderTopWidth: 3, borderRightWidth: 3 },
+          { top: `${bounds.top + bounds.height}%`, left: `${bounds.left}%`, borderBottomWidth: 3, borderLeftWidth: 3 },
+          { top: `${bounds.top + bounds.height}%`, left: `${bounds.left + bounds.width}%`, borderBottomWidth: 3, borderRightWidth: 3 },
+        ].map((c, i) => {
+          const isLeft = i % 2 === 0
+          const isTop = i < 2
+          return (
+            <View
+              key={i}
+              style={[
+                obStyles.cornerBracket,
+                c,
+                { borderColor: '#2ED573', width: 26, height: 26, marginLeft: isLeft ? -13 : -13, marginTop: isTop ? -13 : -13 },
+              ]}
+            />
+          )
+        })}
       </View>
 
       <View style={{ width: '100%' }}>

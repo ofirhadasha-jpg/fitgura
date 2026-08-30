@@ -26,6 +26,16 @@ OUTPUT REQUIREMENTS:
 - For sizing: XS=86cm chest, S=96, M=104, L=112, XL=120, XXL=128 (approximate).
 - Bottom size: 28=71cm waist, 30=76, 32=81, 34=86, 36=91, 38=97.
 
+PERSON BOUNDS:
+- Identify the bounding box of the person in the photo.
+- Return coordinates as PERCENTAGES of the image dimensions (0 to 100).
+- "top" = distance from top edge of image to top of person's head (as % of image height)
+- "left" = distance from left edge of image to leftmost edge of person (as % of image width)
+- "width" = width of person as % of image width
+- "height" = height of person as % of image height
+- If the person fills most of the frame, use small margins (e.g. top: 2, left: 10, width: 80, height: 96).
+- These bounds are used to draw alignment brackets around the person.
+
 EXPECTED JSON STRUCTURE:
 {
   "device_profile": {
@@ -34,6 +44,12 @@ EXPECTED JSON STRUCTURE:
     "screen_size_inches": 0.0,
     "camera_layout_type": "String or null",
     "confidence_score": 0.00
+  },
+  "person_bounds": {
+    "top": 2.0,
+    "left": 10.0,
+    "width": 80.0,
+    "height": 96.0
   },
   "sizing_profile": {
     "body_metrics": {

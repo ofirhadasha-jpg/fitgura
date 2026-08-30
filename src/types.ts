@@ -166,6 +166,14 @@ export interface ScannedSizes {
   top: string
   bottom: string
   fit: string
+  personBounds: PersonBounds
+}
+
+export interface PersonBounds {
+  top: number
+  left: number
+  width: number
+  height: number
 }
 
 export interface AIBodyAnalysis {
@@ -176,6 +184,7 @@ export interface AIBodyAnalysis {
     camera_layout_type: string
     confidence_score: number
   }
+  person_bounds?: PersonBounds
   sizing_profile: {
     body_metrics: BodyMetrics
     recommended_top_size: string | null
@@ -302,6 +311,8 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
     aestheticTags: st.aesthetic_tags ?? [],
   }
 
+  const personBounds: PersonBounds = analysis.person_bounds ?? { top: 2, left: 10, width: 80, height: 96 }
+
   return {
     sizing,
     style,
@@ -310,6 +321,7 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
     top,
     bottom,
     fit,
+    personBounds,
   }
 }
 
@@ -432,6 +444,7 @@ export function deriveScannedSizes(file: File): ScannedSizes {
     top: sizing.top,
     bottom: sizing.bottom,
     fit: sizing.fit,
+    personBounds: { top: 2, left: 10, width: 80, height: 96 },
   }
 
   if (!isTracking) _sessionBaseline = result
