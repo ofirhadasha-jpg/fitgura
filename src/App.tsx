@@ -1,7 +1,8 @@
-import { useState, Component, type ReactNode } from 'react'
+import { useState, useEffect, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState } from './types'
 import { AuthModal } from './components'
+import { supabase } from './lib/supabase'
 import { SplashScreen } from './screens/SplashScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
 import { DeviceDetectionScreen } from './screens/DeviceDetectionScreen'
@@ -41,6 +42,29 @@ export default function App() {
   const [scannedSizes, setScannedSizes] = useState<ScannedSizes | null>(null)
   const [scanGallery, setScanGallery] = useState<ScanEntry[]>([])
   const [galleryAccess, setGalleryAccess] = useState<GalleryAccessState>('pending')
+
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((_event, session) => {
+      (async () => {
+        if (session?.user) {
+          const u = session.user
+          setUser({
+            name: u.user_metadata?.full_name ?? u.email?.split('@')[0] ?? 'משתמש',
+            email: u.email ?? '',
+            avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
+          })
+        } else {
+          setUser(null)
+        }
+      })()
+    })
+  }, [])
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    setUser(null)
+    showToast('התנתקת בהצלחה')
+  }
 
   function changeScreen(s: Screen) {
     if (s === 'onboarding' || s === 'device') sessionStorage.setItem('fitgura_screen', s)
@@ -84,7 +108,7 @@ export default function App() {
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} />}
-        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} />}
+        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} />}
         {screen === 'wishlist' && (
           <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} />
         )}

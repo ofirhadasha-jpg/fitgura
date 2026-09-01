@@ -15,9 +15,10 @@ import {
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess }: {
+export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess }: {
   onNav: (s: Screen) => void
   user: User | null
+  onSignOut: () => void
   detectedDevice: DetectedDevice | null
   scannedSizes: ScannedSizes | null
   setScannedSizes: (s: ScannedSizes) => void
@@ -274,6 +275,11 @@ export function ProfileScreen({ onNav, user, detectedDevice, scannedSizes, setSc
               <Text style={profStyles.userStatusText}>
                 {user ? `מחובר • ${user.email}` : 'גלישה כאורח — הוסף מוצר לשמורים שלך כדי להתחבר'}
               </Text>
+              {user && (
+                <TouchableOpacity onPress={onSignOut} activeOpacity={0.7} style={profStyles.signOutBtn}>
+                  <Text style={profStyles.signOutBtnText}>התנתק</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -787,6 +793,8 @@ const profStyles = StyleSheet.create({
   userStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   userStatusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#2ED573' },
   userStatusText: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  signOutBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, marginLeft: 6 },
+  signOutBtnText: { fontSize: 11, fontWeight: '700', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   card: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: 'transparent' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },

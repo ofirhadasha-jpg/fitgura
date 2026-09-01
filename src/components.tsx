@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native'
 import type { Screen, User } from './types'
+import { supabase } from './lib/supabase'
 
 /* ─── LINEAR GRADIENT HELPER (web fallback) ─────────────────────────────── */
 
@@ -102,18 +103,52 @@ const styles = StyleSheet.create({
 export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; onDismiss: () => void }) {
   const [emailStep, setEmailStep] = useState(false)
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
-  function mockLogin(via: 'google' | 'email') {
+  async function handleGoogleLogin() {
     setLoading(true)
-    setTimeout(() => {
-      onAuth({
-        name: via === 'google' ? 'עופר כהן' : (email.split('@')[0] || 'משתמש'),
-        email: via === 'google' ? 'ofer@gmail.com' : email,
-        avatar: via === 'google' ? 'G' : '✉',
+    setAuthError(null)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
       })
+      if (error) {
+        setAuthError(error.message)
+        setLoading(false)
+      }
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Google login failed')
       setLoading(false)
-    }, 1100)
+    }
+  }
+
+  async function handleEmailAuth() {
+    if (!email || !password) return
+    setLoading(true)
+    setAuthError(null)
+    try {
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({ email, password })
+        if (error) { setAuthError(error.message); setLoading(false); return }
+        if (data.user) {
+          onAuth({ name: email.split('@')[0] || 'משתמש', email, avatar: '✉' })
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) { setAuthError(error.message); setLoading(false); return }
+        if (data.user) {
+          onAuth({ name: data.user.email?.split('@')[0] || 'משתמש', email: data.user.email ?? email, avatar: '✉' })
+        }
+      }
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Authentication failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -145,10 +180,18 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
             התחבר בלחיצה אחת כדי לשמור את תוצאות סריקת ה-AI וה-Wishlist שלך מכל מכשיר.
           </Text>
 
+          {authError && (
+            <View style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#FECACA' }}>
+              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+                ⚠️ {authError}
+              </Text>
+            </View>
+          )}
+
           {!emailStep ? (
             <View style={{ gap: 12 }}>
               <TouchableOpacity
-                onPress={() => mockLogin('google')}
+                onPress={handleGoogleLogin}
                 disabled={loading}
                 activeOpacity={0.8}
                 style={authStyles.googleBtn}
@@ -183,15 +226,25 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
+              <TextInput
+                placeholder="סיסמה"
+                value={password}
+                onChangeText={setPassword}
+                style={authStyles.emailInput}
+                secureTextEntry
+              />
               <TouchableOpacity
-                onPress={() => email && mockLogin('email')}
-                disabled={loading || !email}
+                onPress={handleEmailAuth}
+                disabled={loading || !email || !password}
                 activeOpacity={0.8}
-                style={[authStyles.emailSubmit, (!email || loading) && authStyles.emailSubmitDisabled]}
+                style={[authStyles.emailSubmit, (!email || !password || loading) && authStyles.emailSubmitDisabled]}
               >
                 {loading
                   ? <View style={authStyles.spinnerWhite} />
-                  : <Text style={authStyles.emailSubmitText}>כניסה</Text>}
+                  : <Text style={authStyles.emailSubmitText}>{isSignUp ? 'הרשמה' : 'כניסה'}</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} activeOpacity={0.7}>
+                <Text style={authStyles.backText}>{isSignUp ? 'כבר יש לך חשבון? כניסה' : 'אין חשבון? הרשמה'}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setEmailStep(false)} activeOpacity={0.7}>
                 <Text style={authStyles.backText}>← חזור</Text>
