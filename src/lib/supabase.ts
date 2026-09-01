@@ -7,15 +7,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-  detectSessionInUrl: true,
-  flowType: 'pkce',
-  provider: {
-    google: {
-      window: {
-        width: 500,
-        height: 600,
-      },
-    },
-  },
+    detectSessionInUrl: true,
+    flowType: 'pkce',
   },
 })
