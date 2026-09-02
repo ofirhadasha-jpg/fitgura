@@ -147,14 +147,14 @@ async function analyzeSizeChartWithAI(
   userMetrics: UserBodyMetrics,
   productDetails: any,
 ): Promise<{ recommendedSize: string; skuId: string; confidence: number; reason: string }> {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
 
   if (!apiKey) {
     return {
       recommendedSize: "L",
       skuId: productDetails?.sku_list?.sku?.[0]?.sku_id || "",
       confidence: 85,
-      reason: "Standard fit calculated based on height and weight ratio.",
+      reason: "התאמה בסיסית מבוססת יחס גובה ומשקל.",
     };
   }
 
@@ -188,14 +188,14 @@ Return ONLY a valid JSON object in this format:
 }`;
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.2,
@@ -208,7 +208,7 @@ Return ONLY a valid JSON object in this format:
 
     return JSON.parse(content);
   } catch (error) {
-    console.error("AI Size Chart Analysis failed:", error);
+    console.error("DeepSeek Size Chart Analysis failed:", error);
     return {
       recommendedSize: "M",
       skuId: "",
