@@ -46,7 +46,10 @@ async function callAliExpressApi(method: string, systemParams: RequestParams = {
     throw new Error(`AliExpress credentials not configured. Missing: ${[!appKey && "ALIEXPRESS_APP_KEY", !appSecret && "ALIEXPRESS_APP_SECRET"].filter(Boolean).join(", ")}`);
   }
 
-  const timeStamp = new Date().toISOString().replace("T", " ").substring(0, 19);
+  const timeStamp = new Date(Date.now() + 8 * 60 * 60 * 1000)
+    .toISOString()
+    .replace("T", " ")
+    .substring(0, 19);
 
   const fullParams: RequestParams = {
     app_key: appKey,
@@ -61,16 +64,16 @@ async function callAliExpressApi(method: string, systemParams: RequestParams = {
 
   fullParams.sign = generateSignature(fullParams, appSecret);
 
-  const bodyParts: string[] = [];
+  const formBody = new URLSearchParams();
   for (const [key, value] of Object.entries(fullParams)) {
     const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
-    bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(strValue)}`);
+    formBody.append(key, strValue);
   }
 
   const response = await fetch(ALIEXPRESS_GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-    body: bodyParts.join("&"),
+    body: formBody.toString(),
   });
 
   if (!response.ok) {
