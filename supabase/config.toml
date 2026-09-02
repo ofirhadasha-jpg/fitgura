@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.identify-device]
 verify_jwt = false
+
+[functions.aliexpress-search]
+verify_jwt = false

@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
-import { type Screen, type User, type Product, type ScannedSizes, products } from '../types'
+import { type Screen, type User, type Product, type ScannedSizes, products as fallbackProducts } from '../types'
+import { fetchAliExpressProducts } from '../lib/aliexpress'
 
 export function FeedScreen({
   wishlistItems,
@@ -22,8 +23,29 @@ export function FeedScreen({
 }) {
   const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
   const [search, setSearch] = useState('')
+  const [catalog, setCatalog] = useState<Product[]>(fallbackProducts)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true)
+  const [productsError, setProductsError] = useState<string | null>(null)
 
-  const filtered = products.filter((p, _i) => {
+  useEffect(() => {
+    let active = true
+    fetchAliExpressProducts('fashion clothing shoes accessories')
+      .then((remoteProducts) => {
+        if (!active) return
+        setCatalog(remoteProducts.length > 0 ? remoteProducts : fallbackProducts)
+        if (remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חדשים, מוצגים פריטים מומלצים')
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חדשים')
+      })
+      .finally(() => {
+        if (active) setIsLoadingProducts(false)
+      })
+    return () => { active = false }
+  }, [])
+
+  const filtered = catalog.filter((p) => {
     const matchFilter = filter === 'all' || p.category === filter
     const matchSearch = p.name.includes(search) || p.brand.toLowerCase().includes(search.toLowerCase())
     const matchBudget = p.price >= budget[0] && p.price <= budget[1]
@@ -96,6 +118,19 @@ export function FeedScreen({
           </View>
         </LinearGradient>
 
+        {isLoadingProducts && (
+          <View style={feedStyles.loadingState}>
+            <Text style={{ fontSize: 20 }}>⟳</Text>
+            <Text style={feedStyles.loadingText}>טוען מוצרים חדשים מ-AliExpress...</Text>
+          </View>
+        )}
+
+        {productsError && !isLoadingProducts && (
+          <View style={feedStyles.productsNotice}>
+            <Text style={feedStyles.productsNoticeText}>{productsError}</Text>
+          </View>
+        )}
+
         {filtered.length === 0 && (
           <View style={feedStyles.emptyState}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
@@ -105,7 +140,7 @@ export function FeedScreen({
 
         <View style={feedStyles.productGrid}>
           {filtered.map((product) => {
-            const globalIdx = products.indexOf(product)
+            const globalIdx = catalog.indexOf(product)
             return (
               <ProductCard
                 key={globalIdx}
@@ -207,7 +242,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes }: { 
     <View style={feedStyles.productCard}>
       <View style={feedStyles.productImageWrap}>
         <Image
-          source={{ uri: `https://images.unsplash.com/${product.img}?w=300&h=345&fit=crop&auto=format` }}
+          source={{ uri: product.img.startsWith('http') ? product.img : `https://images.unsplash.com/${product.img}?w=300&h=345&fit=crop&auto=format` }}
           style={feedStyles.productImage}
         />
         <TouchableOpacity
@@ -300,6 +335,10 @@ const feedStyles = StyleSheet.create({
   aiMatchSub: { fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   aiMatchCount: { backgroundColor: 'rgba(46,213,115,0.2)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
   aiMatchCountText: { fontSize: 12, fontWeight: '700', color: '#2ED573' },
+  loadingState: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#EEF2FF', borderRadius: 12 },
+  loadingText: { color: '#2E5BFF', fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  productsNotice: { padding: 10, backgroundColor: '#FFF7ED', borderRadius: 10, borderWidth: 1, borderColor: '#FED7AA' },
+  productsNoticeText: { color: '#C2410C', fontSize: 11, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   emptyState: { alignItems: 'center', paddingTop: 40 },
   emptyText: { color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
