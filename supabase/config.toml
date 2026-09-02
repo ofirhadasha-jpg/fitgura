@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.aliexpress-search]
 verify_jwt = false
+
+[functions.smart-recommend]
+verify_jwt = false

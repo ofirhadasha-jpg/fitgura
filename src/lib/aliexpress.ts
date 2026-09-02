@@ -64,6 +64,3 @@ export async function generateAffiliateLink(sourceUrl: string): Promise<string |
 
   return null
 }
-
-
-export { fetchAliExpressProducts }
