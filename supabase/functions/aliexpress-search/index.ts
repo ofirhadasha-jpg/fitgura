@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 
+// Fitgura AliExpress Affiliate API proxy — flat params + tracking_id excluded from signature
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const ALIEXPRESS_GATEWAY = "https://api-sg.aliexpress.com/sync";
+const ALIEXPRESS_GATEWAY = "https://api-sg.aliexpress.com/rest";
 
 interface RequestParams {
   [key: string]: unknown;
