@@ -7,11 +7,11 @@ const HEADERS = {
   Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
 } as const
 
-export async function fetchAliExpressProducts(keywords: string): Promise<Product[]> {
+export async function fetchAliExpressProducts(keywords: string, pageNo = 1, pageSize = 20): Promise<Product[]> {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: HEADERS,
-    body: JSON.stringify({ action: 'search', keywords }),
+    body: JSON.stringify({ action: 'search', keywords, pageNo, pageSize }),
   })
 
   const result: unknown = await response.json().catch(() => null)
@@ -64,3 +64,6 @@ export async function generateAffiliateLink(sourceUrl: string): Promise<string |
 
   return null
 }
+
+
+export { fetchAliExpressProducts }
