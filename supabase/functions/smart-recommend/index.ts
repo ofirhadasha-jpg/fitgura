@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-// Fitgura smart recommendation pipeline — flat params + tracking_id excluded from signature
+// Fitgura smart recommendation pipeline — /rest gateway, flat params, tracking_id excluded from sign
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -83,15 +83,16 @@ async function callAliExpressApi(method: string, systemParams: RequestParams = {
 
   fullParams.sign = generateSignature(fullParams, appSecret);
 
-  const searchParams = new URLSearchParams();
+  const bodyParts: string[] = [];
   for (const [key, value] of Object.entries(fullParams)) {
-    searchParams.append(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+    const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+    bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(strValue)}`);
   }
 
   const response = await fetch(ALIEXPRESS_GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-    body: searchParams.toString(),
+    body: bodyParts.join("&"),
   });
 
   if (!response.ok) {
