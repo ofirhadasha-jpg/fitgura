@@ -14,7 +14,7 @@ interface RequestParams {
 
 function generateSignature(params: RequestParams, appSecret: string): string {
   const sortedKeys = Object.keys(params)
-    .filter((key) => key !== "sign" && params[key] !== undefined && params[key] !== null)
+    .filter((key) => key !== "sign" && key !== "tracking_id" && params[key] !== undefined && params[key] !== null)
     .sort();
 
   let stringToSign = appSecret;
@@ -27,13 +27,21 @@ function generateSignature(params: RequestParams, appSecret: string): string {
   return createHash("md5").update(stringToSign, "utf8").digest("hex").toUpperCase();
 }
 
+function getEnvVar(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) {
+    console.error(`[ENV AUDIT] Missing required environment variable: ${name}`);
+  }
+  return value ?? "";
+}
+
 async function callAliExpressApi(method: string, systemParams: RequestParams = {}): Promise<Record<string, unknown>> {
-  const appKey = Deno.env.get("ALIEXPRESS_APP_KEY");
-  const appSecret = Deno.env.get("ALIEXPRESS_APP_SECRET");
-  const trackingId = Deno.env.get("ALIEXPRESS_TRACKING_ID") || "fitgura";
+  const appKey = getEnvVar("ALIEXPRESS_APP_KEY");
+  const appSecret = getEnvVar("ALIEXPRESS_APP_SECRET");
+  const trackingId = getEnvVar("ALIEXPRESS_TRACKING_ID") || "fitgura";
 
   if (!appKey || !appSecret) {
-    throw new Error("AliExpress App Key or App Secret is missing.");
+    throw new Error(`AliExpress credentials not configured. Missing: ${[!appKey && "ALIEXPRESS_APP_KEY", !appSecret && "ALIEXPRESS_APP_SECRET"].filter(Boolean).join(", ")}`);
   }
 
   const timeStamp = new Date().toISOString().replace("T", " ").substring(0, 19);
@@ -102,13 +110,11 @@ Deno.serve(async (req: Request) => {
       const pageSize = body.pageSize ?? 20;
 
       const result = await callAliExpressApi("aliexpress.affiliate.product.query", {
-        param_ae_op_ha_promo_commerce_item_query_req: {
-          keywords,
-          page_no: pageNo,
-          page_size: pageSize,
-          target_currency: "USD",
-          target_language: "EN",
-        },
+        keywords,
+        page_no: pageNo,
+        page_size: pageSize,
+        target_currency: "USD",
+        target_language: "EN",
       });
 
       const products: AliExpressProduct[] =
@@ -174,6 +180,63 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ links }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    if (action === "test") {
+      const appKey = getEnvVar("ALIEXPRESS_APP_KEY");
+      const appSecret = getEnvVar("ALIEXPRESS_APP_SECRET");
+      const trackingId = getEnvVar("ALIEXPRESS_TRACKING_ID");
+      const deepseekKey = getEnvVar("DEEPSEEK_API_KEY");
+
+      const envAudit = {
+        ALIEXPRESS_APP_KEY: !!appKey,
+        ALIEXPRESS_APP_SECRET: !!appSecret,
+        ALIEXPRESS_TRACKING_ID: !!trackingId,
+        DEEPSEEK_API_KEY: !!deepseekKey,
+      };
+
+      const missing = Object.entries(envAudit).filter(([, v]) => !v).map(([k]) => k);
+
+      try {
+        const testKeywords = body.keywords ?? "men jacket";
+        const result = await callAliExpressApi("aliexpress.affiliate.product.query", {
+          keywords: testKeywords,
+          page_no: 1,
+          page_size: 5,
+          target_currency: "USD",
+          target_language: "EN",
+        });
+
+        const products: AliExpressProduct[] =
+          (result as any)?.aliexpress_affiliate_product_query_response?.resp_result?.result?.products?.product ?? [];
+
+        return new Response(
+          JSON.stringify({
+            envAudit,
+            missingVars: missing,
+            connectivity: "ok",
+            productCount: products.length,
+            rawResponseKeys: Object.keys(result),
+            rawResponsePreview: JSON.stringify(result).slice(0, 1000),
+            sampleProducts: products.slice(0, 3).map((p) => ({
+              product_id: p.product_id,
+              product_title: p.product_title,
+              app_sale_price: p.app_sale_price,
+            })),
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      } catch (testErr) {
+        return new Response(
+          JSON.stringify({
+            envAudit,
+            missingVars: missing,
+            connectivity: "failed",
+            error: testErr instanceof Error ? testErr.message : "Unknown error",
+          }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     return new Response(

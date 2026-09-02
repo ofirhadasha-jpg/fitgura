@@ -36,7 +36,7 @@ interface FitRecommendation {
 
 function generateSignature(params: RequestParams, appSecret: string): string {
   const sortedKeys = Object.keys(params)
-    .filter((k) => k !== "sign" && params[k] !== undefined && params[k] !== null)
+    .filter((k) => k !== "sign" && k !== "tracking_id" && params[k] !== undefined && params[k] !== null)
     .sort();
 
   let stringToSign = appSecret;
@@ -49,13 +49,21 @@ function generateSignature(params: RequestParams, appSecret: string): string {
   return createHash("md5").update(stringToSign, "utf8").digest("hex").toUpperCase();
 }
 
+function getEnvVar(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) {
+    console.error(`[ENV AUDIT] Missing required environment variable: ${name}`);
+  }
+  return value ?? "";
+}
+
 async function callAliExpressApi(method: string, systemParams: RequestParams = {}): Promise<Record<string, unknown>> {
-  const appKey = Deno.env.get("ALIEXPRESS_APP_KEY");
-  const appSecret = Deno.env.get("ALIEXPRESS_APP_SECRET");
-  const trackingId = Deno.env.get("ALIEXPRESS_TRACKING_ID") || "fitgura";
+  const appKey = getEnvVar("ALIEXPRESS_APP_KEY");
+  const appSecret = getEnvVar("ALIEXPRESS_APP_SECRET");
+  const trackingId = getEnvVar("ALIEXPRESS_TRACKING_ID") || "fitgura";
 
   if (!appKey || !appSecret) {
-    throw new Error("AliExpress credentials not configured.");
+    throw new Error(`AliExpress credentials not configured. Missing: ${[!appKey && "ALIEXPRESS_APP_KEY", !appSecret && "ALIEXPRESS_APP_SECRET"].filter(Boolean).join(", ")}`);
   }
 
   const timeStamp = new Date().toISOString().replace("T", " ").substring(0, 19);
@@ -103,13 +111,11 @@ interface AliExpressProduct {
 
 async function searchProducts(keywords: string, pageNo = 1, pageSize = 5): Promise<AliExpressProduct[]> {
   const result = await callAliExpressApi("aliexpress.affiliate.product.query", {
-    param_ae_op_ha_promo_commerce_item_query_req: {
-      keywords,
-      page_no: pageNo,
-      page_size: pageSize,
-      target_currency: "USD",
-      target_language: "EN",
-    },
+    keywords,
+    page_no: pageNo,
+    page_size: pageSize,
+    target_currency: "USD",
+    target_language: "EN",
   });
 
   const products =
@@ -147,9 +153,10 @@ async function analyzeSizeChartWithAI(
   userMetrics: UserBodyMetrics,
   productDetails: any,
 ): Promise<{ recommendedSize: string; skuId: string; confidence: number; reason: string }> {
-  const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
+  const apiKey = getEnvVar("DEEPSEEK_API_KEY");
 
   if (!apiKey) {
+    console.warn("[ENV AUDIT] DEEPSEEK_API_KEY is missing. Using fallback matching algorithm.");
     return {
       recommendedSize: "L",
       skuId: productDetails?.sku_list?.sku?.[0]?.sku_id || "",
@@ -202,11 +209,20 @@ Return ONLY a valid JSON object in this format:
       }),
     });
 
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "");
+      throw new Error(`DeepSeek API Error: ${response.status} - ${errBody.slice(0, 300)}`);
+    }
+
     const data = await response.json();
     const content = data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Empty AI response");
+    if (!content) throw new Error("Empty AI response from DeepSeek");
 
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    if (!parsed.recommendedSize || !parsed.confidence) {
+      throw new Error("DeepSeek response missing required fields");
+    }
+    return parsed;
   } catch (error) {
     console.error("DeepSeek Size Chart Analysis failed:", error);
     return {
@@ -253,6 +269,9 @@ Deno.serve(async (req: Request) => {
     const productIds = topProducts.map((p) => String(p.product_id));
 
     const detailedProducts = await getProductDetails(productIds);
+    if (detailedProducts.length === 0) {
+      console.warn("[PIPELINE] No detailed product data received. Falling back to search results (SKU data may be incomplete).");
+    }
     const productsToAnalyze = detailedProducts.length > 0 ? detailedProducts : topProducts;
 
     const recommendations: FitRecommendation[] = [];
