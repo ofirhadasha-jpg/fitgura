@@ -38,10 +38,22 @@ function getEnvVar(name: string): string {
 }
 
 async function getAliExpressTimestamp(): Promise<string> {
-  const probe = await fetch(ALIEXPRESS_GATEWAY, { method: "HEAD" });
-  const serverDate = probe.headers.get("date");
-  const date = serverDate ? new Date(serverDate) : new Date();
-  return date.toISOString().replace("T", " ").replace("Z", "").replace(/\\.\\d+$/, "");
+  let date = new Date();
+  try {
+    const probe = await fetch(ALIEXPRESS_GATEWAY, { method: "HEAD" });
+    const serverDate = probe.headers.get("date");
+    if (serverDate) date = new Date(serverDate);
+  } catch {
+    // fall back to local clock
+  }
+  const pad = (num: number) => String(num).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = pad(date.getUTCMonth() + 1);
+  const day = pad(date.getUTCDate());
+  const hours = pad(date.getUTCHours());
+  const minutes = pad(date.getUTCMinutes());
+  const seconds = pad(date.getUTCSeconds());
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
 async function callAliExpressApi(method: string, systemParams: RequestParams = {}): Promise<Record<string, unknown>> {
@@ -68,16 +80,17 @@ async function callAliExpressApi(method: string, systemParams: RequestParams = {
 
   fullParams.sign = generateSignature(fullParams, appSecret);
 
-  const formBody = new URLSearchParams();
-  for (const [key, value] of Object.entries(fullParams)) {
-    const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
-    formBody.append(key, strValue);
-  }
+  const formBody = Object.entries(fullParams)
+    .map(([key, value]) => {
+      const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+      return `${encodeURIComponent(key)}=${encodeURIComponent(strValue)}`;
+    })
+    .join("&");
 
   const response = await fetch(ALIEXPRESS_GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-    body: formBody.toString(),
+    body: formBody,
   });
 
   if (!response.ok) {
@@ -188,6 +201,52 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({ links }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (action === "debug-timestamp") {
+      const appKey = getEnvVar("ALIEXPRESS_APP_KEY");
+      const appSecret = getEnvVar("ALIEXPRESS_APP_SECRET");
+      const trackingId = getEnvVar("ALIEXPRESS_TRACKING_ID") || "fitgura";
+      const timeStamp = await getAliExpressTimestamp();
+
+      const debugParams: RequestParams = {
+        app_key: appKey,
+        method: "aliexpress.affiliate.product.query",
+        timestamp: timeStamp,
+        format: "json",
+        v: "2.0",
+        sign_method: "md5",
+        tracking_id: trackingId,
+        keywords: "men jacket",
+        page_no: 1,
+        page_size: 5,
+        target_currency: "USD",
+        target_language: "EN",
+      };
+
+      const sign = generateSignature(debugParams, appSecret);
+      const sortedKeys = Object.keys(debugParams)
+        .filter((key) => key !== "sign" && key !== "tracking_id" && debugParams[key] !== undefined && debugParams[key] !== null)
+        .sort();
+
+      let stringToSign = appSecret;
+      for (const key of sortedKeys) {
+        const value = typeof debugParams[key] === "object" ? JSON.stringify(debugParams[key]) : String(debugParams[key]);
+        stringToSign += `${key}${value}`;
+      }
+      stringToSign += appSecret;
+
+      return new Response(
+        JSON.stringify({
+          timestamp: timeStamp,
+          sign,
+          stringToSignPreview: stringToSign.slice(0, 200),
+          sortedKeys,
+          fullParams: debugParams,
+          serverClock: new Date().toISOString(),
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
