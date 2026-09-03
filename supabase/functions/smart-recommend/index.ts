@@ -62,9 +62,11 @@ function getEnvVar(name: string): string {
 async function getAliExpressTimestamp(): Promise<string> {
   let date = new Date();
   try {
-    const probe = await fetch(ALIEXPRESS_GATEWAY, { method: "HEAD" });
-    const serverDate = probe.headers.get("date");
-    if (serverDate) date = new Date(serverDate);
+    const resp = await fetch("http://worldtimeapi.org/api/timezone/Asia/Shanghai");
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data?.datetime) date = new Date(data.datetime);
+    }
   } catch {
     // fall back to local clock
   }
