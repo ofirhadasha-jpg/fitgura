@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
-import { type Screen, type User, type Product, type ScannedSizes, products as fallbackProducts } from '../types'
+import { type Screen, type User, type Product, type ScannedSizes } from '../types'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
 
 export function FeedScreen({
@@ -23,26 +23,27 @@ export function FeedScreen({
 }) {
   const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
   const [search, setSearch] = useState('')
-  const [catalog, setCatalog] = useState<Product[]>(fallbackProducts)
+  const [catalog, setCatalog] = useState<Product[]>([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [productsError, setProductsError] = useState<string | null>(null)
 
+  async function loadProducts(): Promise<void> {
+    setIsLoadingProducts(true)
+    setProductsError(null)
+    try {
+      const remoteProducts = await fetchAliExpressProducts('fashion clothing shoes accessories')
+      setCatalog(remoteProducts)
+      if (remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
+    } catch (error: unknown) {
+      setCatalog([])
+      setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חיים')
+    } finally {
+      setIsLoadingProducts(false)
+    }
+  }
+
   useEffect(() => {
-    let active = true
-    fetchAliExpressProducts('fashion clothing shoes accessories')
-      .then((remoteProducts) => {
-        if (!active) return
-        setCatalog(remoteProducts.length > 0 ? remoteProducts : fallbackProducts)
-        if (remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חדשים, מוצגים פריטים מומלצים')
-      })
-      .catch((error: unknown) => {
-        if (!active) return
-        setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חדשים')
-      })
-      .finally(() => {
-        if (active) setIsLoadingProducts(false)
-      })
-    return () => { active = false }
+    void loadProducts()
   }, [])
 
   const filtered = catalog.filter((p) => {
@@ -128,6 +129,9 @@ export function FeedScreen({
         {productsError && !isLoadingProducts && (
           <View style={feedStyles.productsNotice}>
             <Text style={feedStyles.productsNoticeText}>{productsError}</Text>
+            <TouchableOpacity onPress={() => void loadProducts()} style={feedStyles.retryBtn} activeOpacity={0.8}>
+              <Text style={feedStyles.retryBtnText}>נסה שוב</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -339,6 +343,8 @@ const feedStyles = StyleSheet.create({
   loadingText: { color: '#2E5BFF', fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productsNotice: { padding: 10, backgroundColor: '#FFF7ED', borderRadius: 10, borderWidth: 1, borderColor: '#FED7AA' },
   productsNoticeText: { color: '#C2410C', fontSize: 11, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  retryBtn: { alignSelf: 'center', marginTop: 8, backgroundColor: '#C2410C', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
+  retryBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   emptyState: { alignItems: 'center', paddingTop: 40 },
   emptyText: { color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },

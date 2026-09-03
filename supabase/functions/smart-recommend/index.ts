@@ -59,6 +59,13 @@ function getEnvVar(name: string): string {
   return value ?? "";
 }
 
+async function getAliExpressTimestamp(): Promise<string> {
+  const probe = await fetch(ALIEXPRESS_GATEWAY, { method: "HEAD" });
+  const serverDate = probe.headers.get("date");
+  const date = serverDate ? new Date(serverDate) : new Date();
+  return date.toISOString().replace("T", " ").replace("Z", "").replace(/\\.\\d+$/, "");
+}
+
 async function callAliExpressApi(method: string, systemParams: RequestParams = {}): Promise<Record<string, unknown>> {
   const appKey = getEnvVar("ALIEXPRESS_APP_KEY");
   const appSecret = getEnvVar("ALIEXPRESS_APP_SECRET");
@@ -68,10 +75,7 @@ async function callAliExpressApi(method: string, systemParams: RequestParams = {
     throw new Error(`AliExpress credentials not configured. Missing: ${[!appKey && "ALIEXPRESS_APP_KEY", !appSecret && "ALIEXPRESS_APP_SECRET"].filter(Boolean).join(", ")}`);
   }
 
-  const timeStamp = new Date(Date.now() + 8 * 60 * 60 * 1000)
-    .toISOString()
-    .replace("T", " ")
-    .substring(0, 19);
+  const timeStamp = await getAliExpressTimestamp();
 
   const fullParams: RequestParams = {
     app_key: appKey,
