@@ -57,6 +57,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       top: '',
       bottom: '',
       fit: '',
+      gender: 'unisex',
       personBounds: { top: 2, left: 10, width: 80, height: 96 },
     })
     setStep('scanning')
@@ -323,6 +324,7 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
   const [secondaryStyle, setSecondaryStyle] = useState(sizes.style?.secondaryStyle ?? '')
   const [colors, setColors] = useState<string[]>(sizes.style?.domantColors ?? [])
   const COLOR_PALETTE = ['#1E293B', '#475569', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#22C55E', '#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#FFFFFF', '#94A3B8']
+  const [gender, setGender] = useState<'male' | 'female' | 'unisex'>(sizes.gender ?? 'unisex')
   const [heightCm, setHeightCm] = useState(sizes.sizing.bodyMetrics?.estimated_height_cm?.toString() ?? '')
   const [weightKg, setWeightKg] = useState(sizes.sizing.bodyMetrics?.estimated_weight_kg?.toString() ?? '')
   const [chestCm, setChestCm] = useState(sizes.sizing.bodyMetrics?.chest_circumference_cm?.toString() ?? '')
@@ -394,6 +396,38 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
               <Text style={[obStyles.editBtnText, metricsEditing && obStyles.editBtnTextActive]}>{metricsEditing ? 'שמור' : 'ערוך מידות'}</Text>
             </TouchableOpacity>
           </View>
+
+          {metricsEditing && (
+            <View style={obStyles.genderRow}>
+              <Text style={obStyles.genderLabel}>מגדר</Text>
+              <View style={obStyles.genderSelector}>
+                {([
+                  { key: 'male', label: 'זכר' },
+                  { key: 'female', label: 'נקבה' },
+                  { key: 'unisex', label: 'אוניסקס' },
+                ] as const).map(({ key, label }) => (
+                  <TouchableOpacity
+                    key={key}
+                    onPress={() => setGender(key)}
+                    activeOpacity={0.7}
+                    style={[obStyles.genderOption, gender === key && obStyles.genderOptionActive]}
+                  >
+                    <Text style={[obStyles.genderOptionText, gender === key && obStyles.genderOptionTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {!metricsEditing && (
+            <View style={obStyles.genderDisplayRow}>
+              <Text style={obStyles.genderDisplayLabel}>מגדר: </Text>
+              <Text style={obStyles.genderDisplayValue}>
+                {gender === 'male' ? 'זכר' : gender === 'female' ? 'נקבה' : 'אוניסקס'}
+              </Text>
+            </View>
+          )}
+
           <View style={obStyles.bodyMetricsGrid}>
             {[
               { label: 'גובה', value: heightCm, unit: 'ס"מ', set: setHeightCm },
@@ -419,6 +453,16 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
               </View>
             ))}
           </View>
+
+          {metricsEditing && (
+            <TouchableOpacity
+              onPress={() => setMetricsEditing(false)}
+              activeOpacity={0.8}
+              style={obStyles.updateResultsBtn}
+            >
+              <Text style={obStyles.updateResultsBtnText}>עדכן תוצאות</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -784,4 +828,16 @@ const obStyles = StyleSheet.create({
   galleryScanBar: { width: '100%', height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
   galleryScanBarFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
   galleryScanPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderRow: { marginBottom: 12 },
+  genderLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderSelector: { flexDirection: 'row', gap: 8 },
+  genderOption: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
+  genderOptionActive: { backgroundColor: '#EEF2FF', borderColor: '#2E5BFF' },
+  genderOptionText: { fontSize: 13, fontWeight: '600', color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderOptionTextActive: { color: '#2E5BFF' },
+  genderDisplayRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
+  genderDisplayLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderDisplayValue: { fontSize: 13, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  updateResultsBtn: { marginTop: 12, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
+  updateResultsBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

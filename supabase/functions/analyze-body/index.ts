@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `You are the core Computer Vision & Analysis Engine for Fitgura, a fashion-tech app.
-You analyze full-body photos of people to extract body measurements, sizing, and style.
+You analyze full-body photos of people to extract gender, body measurements, sizing, and style.
 
 CRITICAL INSTRUCTIONS:
 - You MUST provide your best estimates for ALL body metrics. NEVER return null for body measurements.
@@ -18,6 +18,11 @@ CRITICAL INSTRUCTIONS:
 - Chest/waist/hips: estimate from visible body width and build. Athletic build = larger chest, narrower waist.
 - Shoulder width: estimate from visible shoulder span (typically 40-50cm for medium frame).
 - Confidence scores: use 0.6-0.9 for body metrics (you are estimating, not measuring), 0.4-0.7 for device detection.
+
+GENDER DETECTION:
+- Analyze visual cues (body frame, proportions, hair, clothing style, facial features if visible) to determine gender.
+- Set "gender" to "male", "female", or "unisex" (use "unisex" if gender is ambiguous or cannot be determined).
+- This field is used to filter product search results by gender category.
 
 FACE DETECTION:
 - Check whether a human face is clearly visible in the photo.
@@ -44,6 +49,7 @@ PERSON BOUNDS:
 EXPECTED JSON STRUCTURE:
 {
   "face_detected": true,
+  "gender": "male",
   "device_profile": {
     "detected_brand": "Apple | Samsung | Xiaomi | Google | OnePlus | Other",
     "exact_model": "String or null",

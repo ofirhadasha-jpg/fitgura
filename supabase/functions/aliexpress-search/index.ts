@@ -91,6 +91,8 @@ interface AliExpressProduct {
   product_id: string;
   product_title: string;
   app_sale_price: string;
+  target_sale_price?: string;
+  target_original_price?: string;
   product_main_image_url: string;
   product_detail_url: string;
   evaluate_rate?: string;
@@ -118,8 +120,12 @@ Deno.serve(async (req: Request) => {
       const pageNo = body.pageNo ?? 1;
       const pageSize = body.pageSize ?? 20;
 
+      const gender = body.gender as string | undefined;
+      const genderPrefix = gender === "male" ? "men " : gender === "female" ? "women " : "";
+      const searchKeywords = genderPrefix + keywords;
+
       const result = await callAliExpressApi("aliexpress.affiliate.product.query", {
-        keywords,
+        keywords: searchKeywords,
         page_no: pageNo,
         page_size: pageSize,
         target_currency: "USD",
@@ -129,16 +135,22 @@ Deno.serve(async (req: Request) => {
       const products: AliExpressProduct[] =
         (result as any)?.aliexpress_affiliate_product_query_response?.resp_result?.result?.products?.product ?? [];
 
-      const mapped = products.map((p) => ({
-        name: p.product_title ?? "Unknown Product",
-        brand: "AliExpress",
-        price: Math.round(parseFloat(p.app_sale_price || "0") * 3.7),
-        img: p.product_main_image_url ?? "",
-        category: "clothing",
-        aliexpressUrl: p.product_detail_url ?? "",
-        aliexpressSku: p.product_id ?? "",
-        matchScore: Math.round((parseFloat(p.evaluate_rate || "0.9")) * 100),
-      }));
+      const mapped = products.map((p) => {
+        const salePrice = parseFloat(p.target_sale_price || p.app_sale_price || "0");
+        const originalPrice = parseFloat(p.target_original_price || "0");
+        return {
+          name: p.product_title ?? "Unknown Product",
+          brand: "AliExpress",
+          price: Math.round(salePrice * 3.7),
+          originalPrice: originalPrice > 0 ? Math.round(originalPrice * 3.7) : null,
+          currency: "₪",
+          img: p.product_main_image_url ?? "",
+          category: "clothing",
+          aliexpressUrl: p.product_detail_url ?? "",
+          aliexpressSku: p.product_id ?? "",
+          matchScore: Math.round((parseFloat(p.evaluate_rate || "0.9")) * 100),
+        };
+      });
 
       return new Response(
         JSON.stringify({ products: mapped }),

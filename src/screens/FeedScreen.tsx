@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
 import { type Screen, type User, type Product, type ScannedSizes } from '../types'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
+
+const PAGE_SIZE = 20
 
 export function FeedScreen({
   wishlistItems,
@@ -25,26 +27,56 @@ export function FeedScreen({
   const [search, setSearch] = useState('')
   const [catalog, setCatalog] = useState<Product[]>([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [productsError, setProductsError] = useState<string | null>(null)
+  const [pageNo, setPageNo] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
-  async function loadProducts(): Promise<void> {
-    setIsLoadingProducts(true)
+  const loadProducts = useCallback(async (page: number, append: boolean) => {
+    if (append) setIsLoadingMore(true)
+    else setIsLoadingProducts(true)
     setProductsError(null)
     try {
-      const remoteProducts = await fetchAliExpressProducts('fashion clothing shoes accessories')
-      setCatalog(remoteProducts)
-      if (remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
+      const gender = scannedSizes?.gender ?? 'unisex'
+      const remoteProducts = await fetchAliExpressProducts('fashion clothing shoes accessories', page, PAGE_SIZE, gender)
+      if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
+      setCatalog((prev) => append ? [...prev, ...remoteProducts] : remoteProducts)
+      if (!append && remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
     } catch (error: unknown) {
-      setCatalog([])
+      if (!append) setCatalog([])
       setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חיים')
     } finally {
       setIsLoadingProducts(false)
+      setIsLoadingMore(false)
     }
-  }
+  }, [scannedSizes?.gender])
 
   useEffect(() => {
-    void loadProducts()
-  }, [])
+    setPageNo(1)
+    setHasMore(true)
+    void loadProducts(1, false)
+  }, [loadProducts])
+
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return
+    const nextPage = pageNo + 1
+    setPageNo(nextPage)
+    void loadProducts(nextPage, true)
+  }, [isLoadingMore, hasMore, pageNo, loadProducts])
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore()
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore])
 
   const filtered = catalog.filter((p) => {
     const matchFilter = filter === 'all' || p.category === filter
@@ -129,13 +161,13 @@ export function FeedScreen({
         {productsError && !isLoadingProducts && (
           <View style={feedStyles.productsNotice}>
             <Text style={feedStyles.productsNoticeText}>{productsError}</Text>
-            <TouchableOpacity onPress={() => void loadProducts()} style={feedStyles.retryBtn} activeOpacity={0.8}>
+            <TouchableOpacity onPress={() => void loadProducts(1, false)} style={feedStyles.retryBtn} activeOpacity={0.8}>
               <Text style={feedStyles.retryBtnText}>נסה שוב</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {filtered.length === 0 && (
+        {filtered.length === 0 && !isLoadingProducts && (
           <View style={feedStyles.emptyState}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
             <Text style={feedStyles.emptyText}>אין פריטים בטווח התקציב הנבחר</Text>
@@ -156,6 +188,15 @@ export function FeedScreen({
             )
           })}
         </View>
+
+        {isLoadingMore && (
+          <View style={feedStyles.loadingState}>
+            <Text style={{ fontSize: 20 }}>⟳</Text>
+            <Text style={feedStyles.loadingText}>טוען עוד מוצרים...</Text>
+          </View>
+        )}
+
+        <View ref={sentinelRef} style={{ height: 1 }} />
 
         <View style={feedStyles.familyTeaser}>
           <Text style={{ fontSize: 26 }}>👨‍👩‍👧</Text>
@@ -241,6 +282,11 @@ function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudg
   )
 }
 
+function formatPrice(price: number, currency?: string): string {
+  const symbol = currency ?? '₪'
+  return `${symbol}${price.toLocaleString()}`
+}
+
 function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null }) {
   return (
     <View style={feedStyles.productCard}>
@@ -269,7 +315,12 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes }: { 
         </View>
         <Text style={feedStyles.productName}>{product.name}</Text>
         <Text style={feedStyles.productBrand}>{product.brand}</Text>
-        <Text style={feedStyles.productPrice}>₪{product.price}</Text>
+        <View style={feedStyles.priceRow}>
+          <Text style={feedStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <Text style={feedStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
+          )}
+        </View>
         <View style={feedStyles.buyBtnRow}>
           <TouchableOpacity
             onPress={() => window.open(product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
@@ -277,13 +328,6 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes }: { 
             style={feedStyles.buyBtnAli}
           >
             <Text style={feedStyles.buyBtnText}>🛒 AliExpress</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => window.open(product.amazonUrl ?? `https://www.amazon.com/s?k=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
-            activeOpacity={0.8}
-            style={feedStyles.buyBtnAmazon}
-          >
-            <Text style={feedStyles.buyBtnText}>📦 Amazon</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -360,10 +404,11 @@ const feedStyles = StyleSheet.create({
   matchChipText: { fontSize: 9, fontWeight: '700', color: '#16A34A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productName: { fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', marginTop: 4 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
+  productOriginalPrice: { fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through' },
   buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
   buyBtnAli: { flex: 1, backgroundColor: '#FF4747', borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
-  buyBtnAmazon: { flex: 1, backgroundColor: '#FF9900', borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
   buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familyTeaser: { backgroundColor: '#FFF5F0', borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,107,107,0.2)' },
   familyTitle: { fontSize: 13, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },

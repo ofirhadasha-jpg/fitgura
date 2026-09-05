@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState } from './types'
+import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product } from './types'
 import { AuthModal } from './components'
 import { supabase } from './lib/supabase'
 import { SplashScreen } from './screens/SplashScreen'
@@ -10,6 +10,87 @@ import { FeedScreen } from './screens/FeedScreen'
 import { EventsScreen } from './screens/EventsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { WishlistScreen } from './screens/WishlistScreen'
+
+const GUEST_PROFILE_KEY = 'fitgura_guest_profile'
+const GUEST_FAVORITES_KEY = 'fitgura_guest_favorites'
+
+interface GuestProfile {
+  gender: 'male' | 'female' | 'unisex'
+  chest: number | null
+  waist: number | null
+  hips: number | null
+  shoulder: number | null
+  height: number | null
+  weight: number | null
+}
+
+function saveGuestProfile(sizes: ScannedSizes | null) {
+  if (!sizes) return
+  const profile: GuestProfile = {
+    gender: sizes.gender ?? 'unisex',
+    chest: sizes.sizing.bodyMetrics?.chest_circumference_cm ?? null,
+    waist: sizes.sizing.bodyMetrics?.waist_circumference_cm ?? null,
+    hips: sizes.sizing.bodyMetrics?.hips_circumference_cm ?? null,
+    shoulder: sizes.sizing.bodyMetrics?.shoulder_width_cm ?? null,
+    height: sizes.sizing.bodyMetrics?.estimated_height_cm ?? null,
+    weight: sizes.sizing.bodyMetrics?.estimated_weight_kg ?? null,
+  }
+  localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile))
+}
+
+function saveGuestFavorites(items: number[], catalog: Product[]) {
+  const favorites = items.map((idx) => ({
+    productId: String(idx),
+    productName: catalog[idx]?.name ?? '',
+  }))
+  localStorage.setItem(GUEST_FAVORITES_KEY, JSON.stringify(favorites))
+}
+
+function loadGuestProfile(): GuestProfile | null {
+  const raw = localStorage.getItem(GUEST_PROFILE_KEY)
+  if (!raw) return null
+  try { return JSON.parse(raw) as GuestProfile } catch { return null }
+}
+
+function loadGuestFavorites(): { productId: string; productName: string }[] {
+  const raw = localStorage.getItem(GUEST_FAVORITES_KEY)
+  if (!raw) return []
+  try { return JSON.parse(raw) as { productId: string; productName: string }[] } catch { return [] }
+}
+
+function clearGuestData() {
+  localStorage.removeItem(GUEST_PROFILE_KEY)
+  localStorage.removeItem(GUEST_FAVORITES_KEY)
+}
+
+async function migrateGuestData(userId: string) {
+  const guestProfile = loadGuestProfile()
+  const guestFavorites = loadGuestFavorites()
+
+  if (guestProfile) {
+    await supabase.from('profiles').upsert({
+      user_id: userId,
+      gender: guestProfile.gender,
+      chest_cm: guestProfile.chest,
+      waist_cm: guestProfile.waist,
+      hips_cm: guestProfile.hips,
+      shoulder_cm: guestProfile.shoulder,
+      height_cm: guestProfile.height,
+      weight_kg: guestProfile.weight,
+    })
+  }
+
+  if (guestFavorites.length > 0) {
+    const rows = guestFavorites.map((f) => ({
+      user_id: userId,
+      product_id: f.productId,
+      product_name: f.productName,
+    }))
+    await supabase.from('favorites').insert(rows)
+  }
+
+  clearGuestData()
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false }
@@ -44,8 +125,11 @@ export default function App() {
   const [galleryAccess, setGalleryAccess] = useState<GalleryAccessState>('pending')
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          await migrateGuestData(session.user.id)
+        }
         if (session?.user) {
           const u = session.user
           setUser({
@@ -89,6 +173,10 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    if (!user) saveGuestFavorites(wishlistItems, [])
+  }, [wishlistItems, user])
+
   function handleAuth(loggedInUser: User) {
     setUser(loggedInUser)
     if (authModal) {
@@ -97,6 +185,10 @@ export default function App() {
     }
     setAuthModal(null)
   }
+
+  useEffect(() => {
+    if (!user) saveGuestProfile(scannedSizes)
+  }, [scannedSizes, user])
 
   return (
     <ErrorBoundary>

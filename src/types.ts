@@ -166,6 +166,7 @@ export interface ScannedSizes {
   top: string
   bottom: string
   fit: string
+  gender: 'male' | 'female' | 'unisex'
   personBounds: PersonBounds
 }
 
@@ -178,6 +179,7 @@ export interface PersonBounds {
 
 export interface AIBodyAnalysis {
   face_detected?: boolean
+  gender?: 'male' | 'female' | 'unisex'
   device_profile: {
     detected_brand: string
     exact_model: string
@@ -291,6 +293,7 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
   const fit = fitMap[sp.fit_preference] ?? 'Regular'
   const bodyFrame = sp.body_frame_estimate ?? 'Medium'
   const confidence = Math.round((sp.confidence_score ?? 0.85) * 100)
+  const gender = analysis.gender ?? 'unisex'
 
   const sizing: SizingProfile = {
     top,
@@ -322,6 +325,7 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
     top,
     bottom,
     fit,
+    gender,
     personBounds,
   }
 }
@@ -636,12 +640,12 @@ export interface Product {
   name: string
   brand: string
   price: number
+  originalPrice?: number | null
+  currency?: string
   img: string
   category: string
   aliexpressUrl?: string
-  amazonUrl?: string
   aliexpressSku?: string
-  amazonAsin?: string
   matchScore?: number
 }
 
