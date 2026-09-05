@@ -145,10 +145,12 @@ Deno.serve(async (req: Request) => {
     const action = body.action ?? "search";
 
     if (action === "search") {
-      const keywords = body.keywords as string;
-      if (!keywords) {
+      const keywords = body.keywords as string | undefined;
+      const categoryIds = body.categoryIds as string | undefined;
+
+      if (!keywords && !categoryIds) {
         return new Response(
-          JSON.stringify({ error: "Missing keywords" }),
+          JSON.stringify({ error: "Missing keywords or categoryIds" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
@@ -158,15 +160,25 @@ Deno.serve(async (req: Request) => {
 
       const gender = body.gender as string | undefined;
       const genderPrefix = gender === "male" ? "men " : gender === "female" ? "women " : "";
-      const searchKeywords = genderPrefix + keywords;
+      const searchKeywords = keywords ? genderPrefix + keywords : "";
 
-      const result = await callAliExpressApi("aliexpress.affiliate.product.query", {
-        keywords: searchKeywords,
+      const apiParams: RequestParams = {
         page_no: pageNo,
         page_size: pageSize,
         target_currency: "ILS",
         target_language: "EN",
-      });
+      };
+
+      if (searchKeywords) {
+        apiParams.keywords = searchKeywords;
+      }
+      if (categoryIds) {
+        apiParams.category_ids = categoryIds;
+      }
+
+      console.log("[ALIEXPRESS] Search params:", { keywords: searchKeywords, categoryIds, pageNo, pageSize });
+
+      const result = await callAliExpressApi("aliexpress.affiliate.product.query", apiParams);
 
       const products: AliExpressProduct[] =
         (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
@@ -176,6 +188,13 @@ Deno.serve(async (req: Request) => {
         // With target_currency=ILS, target_sale_price is already in shekels
         const salePrice = parseFloat(p.target_sale_price || p.app_sale_price || "0");
         const originalPrice = parseFloat(p.target_original_price || "0");
+        // Infer category from categoryIds if available
+        let category = "clothing";
+        if (categoryIds) {
+          if (/200000832|200000831/.test(categoryIds)) category = "shoes";
+          else if (/200000788|200000785|200001661/.test(categoryIds)) category = "accessories";
+          else category = "clothing";
+        }
         return {
           name: p.product_title ?? "Unknown Product",
           brand: "AliExpress",
@@ -183,7 +202,7 @@ Deno.serve(async (req: Request) => {
           originalPrice: originalPrice > 0 ? Math.round(originalPrice) : null,
           currency: "₪",
           img: p.product_main_image_url ?? "",
-          category: "clothing",
+          category,
           aliexpressUrl: p.product_detail_url ?? "",
           aliexpressSku: p.product_id ?? "",
           matchScore: Math.round((parseFloat(p.evaluate_rate || "0.9")) * 100),

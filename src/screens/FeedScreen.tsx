@@ -13,6 +13,13 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
   accessories: 'fashion accessories bags jewelry hats sunglasses belts',
 }
 
+const CATEGORY_IDS: Record<string, string> = {
+  all: '',
+  clothing: '200001032',
+  shoes: '200000832',
+  accessories: '200001661',
+}
+
 export function FeedScreen({
   wishlistItems,
   onToggleWishlist,
@@ -49,7 +56,8 @@ export function FeedScreen({
     try {
       const gender = scannedSizes?.gender ?? 'unisex'
       const keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
-      const remoteProducts = await fetchAliExpressProducts(keywords, page, PAGE_SIZE, gender)
+      const categoryIds = CATEGORY_IDS[category] || undefined
+      const remoteProducts = await fetchAliExpressProducts(keywords, page, PAGE_SIZE, gender, categoryIds)
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
       setCatalog((prev) => {
@@ -200,7 +208,7 @@ export function FeedScreen({
           <View style={feedStyles.productsNotice}>
             <Text style={feedStyles.productsNoticeTitle}>לא ניתן לטעון מוצרים מ-AliExpress</Text>
             <Text style={feedStyles.productsNoticeText}>{productsError}</Text>
-            <TouchableOpacity onPress={() => void loadProducts(1, false)} style={feedStyles.retryBtn} activeOpacity={0.8}>
+            <TouchableOpacity onPress={() => void loadProducts(1, false, filter)} style={feedStyles.retryBtn} activeOpacity={0.8}>
               <Text style={feedStyles.retryBtnText}>נסה שוב</Text>
             </TouchableOpacity>
           </View>
@@ -211,7 +219,7 @@ export function FeedScreen({
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
             <Text style={feedStyles.emptyText}>אין פריטים בטווח התקציב הנבחר</Text>
             <TouchableOpacity
-              onPress={() => { setFilter('all'); setSearch(''); setBudget([0, 5000]); }}
+              onPress={() => { handleFilterChange('all'); setSearch(''); setBudget([0, 5000]); }}
               activeOpacity={0.8}
               style={{ marginTop: 12, backgroundColor: '#2E5BFF', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 }}
             >

@@ -1,10 +1,10 @@
 import type { Product } from '../types'
 import { supabase } from './supabase'
 
-export async function fetchAliExpressProducts(keywords: string, pageNo = 1, pageSize = 20, gender?: 'male' | 'female' | 'unisex'): Promise<Product[]> {
-  console.log('[aliexpress] Fetching products:', { keywords, pageNo, pageSize, gender })
+export async function fetchAliExpressProducts(keywords: string, pageNo = 1, pageSize = 20, gender?: 'male' | 'female' | 'unisex', categoryIds?: string): Promise<Product[]> {
+  console.log('[aliexpress] Fetching products:', { keywords, pageNo, pageSize, gender, categoryIds })
   const { data, error } = await supabase.functions.invoke('aliexpress-search', {
-    body: { action: 'search', keywords, pageNo, pageSize, gender },
+    body: { action: 'search', keywords, pageNo, pageSize, gender, categoryIds },
   })
 
   if (error) {
