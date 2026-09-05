@@ -156,8 +156,8 @@ Deno.serve(async (req: Request) => {
       }
 
       const pageNo = body.pageNo ?? 1;
-      const pageSize = body.pageSize ?? 20;
-      const targetLanguage = (body.targetLanguage as string) || "EN";
+      const pageSize = body.pageSize ?? 50;
+      const targetLanguage = "HE";
 
       const gender = body.gender as string | undefined;
       const genderPrefix = gender === "male" ? "men " : gender === "female" ? "women " : "";
@@ -261,7 +261,7 @@ Deno.serve(async (req: Request) => {
       const result = await callAliExpressApi("aliexpress.affiliate.productdetail.get", {
         product_ids: productIds.join(","),
         target_currency: "ILS",
-        target_language: (body.targetLanguage as string) || "EN",
+        target_language: "HE",
       });
 
       const details = (result as Record<string, unknown>)?.aliexpress_affiliate_productdetail_get_response
@@ -318,7 +318,7 @@ Deno.serve(async (req: Request) => {
           page_no: 1,
           page_size: 5,
           target_currency: "ILS",
-          target_language: "EN",
+          target_language: "HE",
         });
 
         const products: AliExpressProduct[] =

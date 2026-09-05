@@ -1,19 +1,16 @@
 import type { Product } from '../types'
 import { supabase } from './supabase'
 
-function getTargetLanguage(): string {
-  const userLang = navigator.language || 'en'
-  if (userLang.startsWith('he')) return 'HE'
-  if (userLang.startsWith('ru')) return 'RU'
-  if (userLang.startsWith('es')) return 'ES'
-  return 'EN'
-}
-
-export async function fetchAliExpressProducts(keywords: string, pageNo = 1, pageSize = 20, gender?: 'male' | 'female' | 'unisex', categoryIds?: string): Promise<Product[]> {
-  const targetLanguage = getTargetLanguage()
-  console.log('[aliexpress] Fetching products:', { keywords, pageNo, pageSize, gender, categoryIds, targetLanguage })
+export async function fetchAliExpressProducts(
+  keywords: string,
+  pageNo = 1,
+  pageSize = 50,
+  gender?: 'male' | 'female' | 'unisex',
+  categoryIds?: string,
+): Promise<Product[]> {
+  console.log('[aliexpress] Fetching products:', { keywords, pageNo, pageSize, gender, categoryIds })
   const { data, error } = await supabase.functions.invoke('aliexpress-search', {
-    body: { action: 'search', keywords, pageNo, pageSize, gender, categoryIds, targetLanguage },
+    body: { action: 'search', keywords, pageNo, pageSize, gender, categoryIds },
   })
 
   if (error) {
