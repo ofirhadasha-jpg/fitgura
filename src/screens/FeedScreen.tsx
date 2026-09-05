@@ -6,6 +6,13 @@ import { fetchAliExpressProducts } from '../lib/aliexpress'
 
 const PAGE_SIZE = 50
 
+const CATEGORY_KEYWORDS: Record<string, string> = {
+  all: 'fashion clothing shoes accessories',
+  clothing: 'women men clothing apparel dresses tops pants jacket',
+  shoes: 'shoes sneakers boots footwear sandals',
+  accessories: 'fashion accessories bags jewelry hats sunglasses belts',
+}
+
 export function FeedScreen({
   wishlistItems,
   onToggleWishlist,
@@ -35,14 +42,15 @@ export function FeedScreen({
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
-  const loadProducts = useCallback(async (page: number, append: boolean) => {
+  const loadProducts = useCallback(async (page: number, append: boolean, category: string) => {
     if (append) setIsLoadingMore(true)
     else setIsLoadingProducts(true)
     setProductsError(null)
     try {
       const gender = scannedSizes?.gender ?? 'unisex'
-      const remoteProducts = await fetchAliExpressProducts('fashion clothing shoes accessories', page, PAGE_SIZE, gender)
-      console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append)
+      const keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
+      const remoteProducts = await fetchAliExpressProducts(keywords, page, PAGE_SIZE, gender)
+      console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
       setCatalog((prev) => {
         const existingSkus = new Set(prev.map((p) => p.aliexpressSku).filter(Boolean))
@@ -61,10 +69,19 @@ export function FeedScreen({
     }
   }, [scannedSizes?.gender])
 
+  const handleFilterChange = useCallback((newFilter: typeof filter) => {
+    console.log(`[Feed] Category changed to: ${newFilter}`)
+    setFilter(newFilter)
+    setPageNo(1)
+    setHasMore(true)
+    setCatalog([])
+    void loadProducts(1, false, newFilter)
+  }, [loadProducts])
+
   useEffect(() => {
     setPageNo(1)
     setHasMore(true)
-    void loadProducts(1, false)
+    void loadProducts(1, false, 'all')
   }, [loadProducts])
 
   useEffect(() => {
@@ -72,11 +89,12 @@ export function FeedScreen({
   }, [catalog, onCatalogChange])
 
   const loadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore) return
+    if (isLoadingMore || !hasMore || isLoadingProducts) return
     const nextPage = pageNo + 1
+    console.log(`[Feed] Loading next page: ${nextPage}`)
     setPageNo(nextPage)
-    void loadProducts(nextPage, true)
-  }, [isLoadingMore, hasMore, pageNo, loadProducts])
+    void loadProducts(nextPage, true, filter)
+  }, [isLoadingMore, hasMore, isLoadingProducts, pageNo, filter, loadProducts])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -92,15 +110,10 @@ export function FeedScreen({
   }, [loadMore])
 
   const filtered = catalog.filter((p) => {
-    const matchFilter = filter === 'all' ||
-      p.category === filter ||
-      (filter === 'shoes' && /shoe|sneaker|boot|sandal/i.test(p.name)) ||
-      (filter === 'accessories' && /bag|watch|belt|hat|cap|sunglass|jewel|ring|necklace|earring|bracelet/i.test(p.name)) ||
-      (filter === 'clothing' && /shirt|jacket|coat|pant|jean|dress|skirt|hoodie|sweater|top|short/i.test(p.name))
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
     const price = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0
     const matchBudget = price >= budget[0] && price <= budget[1]
-    return matchFilter && matchSearch && matchBudget
+    return matchSearch && matchBudget
   })
 
   if (catalog.length > 0) {
@@ -154,7 +167,7 @@ export function FeedScreen({
           ].map(({ key, label }) => (
             <TouchableOpacity
               key={key}
-              onPress={() => setFilter(key as typeof filter)}
+              onPress={() => handleFilterChange(key as typeof filter)}
               activeOpacity={0.7}
               style={[feedStyles.filterBtn, filter === key && feedStyles.filterBtnActive]}
             >
@@ -222,14 +235,14 @@ export function FeedScreen({
           })}
         </View>
 
+        <View ref={sentinelRef} style={{ height: 1, width: '100%' }} />
+
         {isLoadingMore && (
           <View style={feedStyles.loadingState}>
             <Text style={{ fontSize: 20 }}>⟳</Text>
             <Text style={feedStyles.loadingText}>טוען עוד מוצרים...</Text>
           </View>
         )}
-
-        <View ref={sentinelRef} style={{ height: 1 }} />
 
         <View style={feedStyles.familyTeaser}>
           <Text style={{ fontSize: 26 }}>👨‍👩‍👧</Text>
