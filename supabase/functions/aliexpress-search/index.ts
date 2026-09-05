@@ -177,6 +177,14 @@ Deno.serve(async (req: Request) => {
         apiParams.category_ids = categoryIds;
       }
 
+      // Hard exclusion: when searching accessories, exclude apparel category IDs
+      const isAccessoriesSearch = categoryIds === "5090301,509" || categoryIds === "509";
+      if (isAccessoriesSearch) {
+        // These are the apparel category IDs we want to keep out of accessories results
+        // We can't pass exclude params directly to the API, but we'll filter client-side below
+        console.log("[ALIEXPRESS] Accessories search — apparel will be filtered out");
+      }
+
       console.log("[ALIEXPRESS] Search params:", { keywords: searchKeywords, categoryIds, pageNo, pageSize, targetLanguage });
 
       let result = await callAliExpressApi("aliexpress.affiliate.product.query", apiParams);
@@ -226,7 +234,7 @@ Deno.serve(async (req: Request) => {
         let category = "clothing";
         if (categoryIds) {
           if (/200000832|200000831/.test(categoryIds)) category = "shoes";
-          else if (/200000788|200000785|200001661/.test(categoryIds)) category = "accessories";
+          else if (/200000788|200000785|200001661|5090301|509/.test(categoryIds)) category = "accessories";
           else category = "clothing";
         }
         return {
@@ -243,8 +251,14 @@ Deno.serve(async (req: Request) => {
         };
       });
 
+      // Server-side apparel filtering for accessories searches
+      const APPAREL_KEYWORDS = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear)\b/i;
+      const filteredProducts = isAccessoriesSearch
+        ? mapped.filter((p) => !APPAREL_KEYWORDS.test(p.name))
+        : mapped;
+
       return new Response(
-        JSON.stringify({ products: mapped, count: mapped.length, page: pageNo }),
+        JSON.stringify({ products: filteredProducts, count: filteredProducts.length, page: pageNo }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

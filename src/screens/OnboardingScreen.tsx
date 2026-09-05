@@ -11,6 +11,7 @@ import {
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
   computeBodyMetricsFromSizes,
+  computeBodyMetricsFromHeightWeight,
   fileToCompressedBase64,
   formatTimestamp, nextScanId,
 } from '../types'
@@ -355,6 +356,34 @@ function ResultView({ onNext, sizes, setSizes, scanError, faceMissing, onRetake 
     syncBodyMetricsFromSizes(topSize, val)
   }
 
+  function handleHeightChange(val: string) {
+    setHeightCm(val)
+    const h = Number(val)
+    const w = Number(weightKg)
+    if (h > 0 && w > 0) {
+      const baseline = sizes.sizing.bodyMetrics
+      const metrics = computeBodyMetricsFromHeightWeight(h, w, baseline)
+      setChestCm(String(metrics.chest_circumference_cm))
+      setWaistCm(String(metrics.waist_circumference_cm))
+      setHipsCm(String(metrics.hips_circumference_cm))
+      setShoulderCm(String(metrics.shoulder_width_cm))
+    }
+  }
+
+  function handleWeightChange(val: string) {
+    setWeightKg(val)
+    const h = Number(heightCm)
+    const w = Number(val)
+    if (h > 0 && w > 0) {
+      const baseline = sizes.sizing.bodyMetrics
+      const metrics = computeBodyMetricsFromHeightWeight(h, w, baseline)
+      setChestCm(String(metrics.chest_circumference_cm))
+      setWaistCm(String(metrics.waist_circumference_cm))
+      setHipsCm(String(metrics.hips_circumference_cm))
+      setShoulderCm(String(metrics.shoulder_width_cm))
+    }
+  }
+
   function handleConfirm() {
     const updated: ScannedSizes = {
       ...sizes,
@@ -485,8 +514,8 @@ function ResultView({ onNext, sizes, setSizes, scanError, faceMissing, onRetake 
 
           <View style={obStyles.bodyMetricsGrid}>
             {[
-              { label: 'גובה', value: heightCm, unit: 'ס"מ', set: setHeightCm },
-              { label: 'משקל', value: weightKg, unit: 'ק"ג', set: setWeightKg },
+              { label: 'גובה', value: heightCm, unit: 'ס"מ', set: handleHeightChange },
+              { label: 'משקל', value: weightKg, unit: 'ק"ג', set: handleWeightChange },
               { label: 'חזה', value: chestCm, unit: 'ס"מ', set: setChestCm },
               { label: 'מותן', value: waistCm, unit: 'ס"מ', set: setWaistCm },
               { label: 'ירכיים', value: hipsCm, unit: 'ס"מ', set: setHipsCm },
@@ -546,7 +575,7 @@ function ResultView({ onNext, sizes, setSizes, scanError, faceMissing, onRetake 
         <View style={obStyles.sizingGrid}>
           {[
             { label: 'חולצה', value: topSize, options: TOP_SIZES, set: handleTopSizeChange },
-            { label: 'מכנסיים', value: bottomSize, options: BOTTOM_SIZES, set: handleBottomSizeChange },
+            { label: 'מכנסיים (EU)', value: bottomSize, options: BOTTOM_SIZES, set: handleBottomSizeChange },
             { label: 'גזרה', value: fitType, options: FIT_TYPES, set: setFitType },
             { label: 'נעליים', value: shoeSize, options: SHOE_SIZES_EU, set: setShoeSize },
           ].map(({ label, value, options, set }) => (

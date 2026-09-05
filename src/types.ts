@@ -335,7 +335,18 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
 }
 
 export const TOP_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-export const BOTTOM_SIZES = ['28', '30', '32', '34', '36', '38']
+// EU pants sizes (44, 46, 48, 50, 52, 54) — NOT US waist inches
+export const BOTTOM_SIZES_EU = ['44', '46', '48', '50', '52', '54']
+// Kept for backward compatibility — now maps to EU sizes
+export const BOTTOM_SIZES = BOTTOM_SIZES_EU
+
+// Convert between EU pants size and US waist inches. EU = US + 10 (approx)
+export function convertPantsSize(value: string, target: 'EU' | 'US'): string {
+  const num = parseInt(value, 10)
+  if (isNaN(num)) return value
+  if (target === 'EU') return String(num + 10)
+  return String(num - 10)
+}
 export const FIT_TYPES = ['Slim Fit', 'Regular', 'Relaxed', 'Athletic']
 export const SHOE_SIZES_EU = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48']
 
@@ -747,7 +758,7 @@ const TOP_SIZE_METRICS: Record<string, { chest: number; waist: number; hips: num
 }
 
 const BOTTOM_SIZE_WAIST: Record<string, number> = {
-  '28': 71, '30': 76, '32': 81, '34': 86, '36': 91, '38': 97,
+  '44': 71, '46': 76, '48': 81, '50': 86, '52': 91, '54': 97,
 }
 
 export function computeBodyMetricsFromSizes(top: string, bottom: string, existing: BodyMetrics | null): BodyMetrics {
@@ -760,5 +771,32 @@ export function computeBodyMetricsFromSizes(top: string, bottom: string, existin
     waist_circumference_cm: bottomWaist,
     hips_circumference_cm: topMetrics.hips,
     shoulder_width_cm: topMetrics.shoulder,
+  }
+}
+
+// Proportional adjustment of body circumferences when weight or height changes.
+// +1 kg ≈ +0.8 cm to waist/hips/chest; +1 cm height ≈ +0.3 cm to chest/shoulder
+export function computeBodyMetricsFromHeightWeight(
+  heightCm: number,
+  weightKg: number,
+  baseline: BodyMetrics | null,
+): BodyMetrics {
+  const baseH = baseline?.estimated_height_cm ?? 175
+  const baseW = baseline?.estimated_weight_kg ?? 75
+  const baseChest = baseline?.chest_circumference_cm ?? 104
+  const baseWaist = baseline?.waist_circumference_cm ?? 81
+  const baseHips = baseline?.hips_circumference_cm ?? 98
+  const baseShoulder = baseline?.shoulder_width_cm ?? 46
+
+  const dWeight = weightKg - baseW
+  const dHeight = heightCm - baseH
+
+  return {
+    estimated_height_cm: heightCm,
+    estimated_weight_kg: weightKg,
+    chest_circumference_cm: Math.round((baseChest + dWeight * 0.8 + dHeight * 0.3) * 10) / 10,
+    waist_circumference_cm: Math.round((baseWaist + dWeight * 0.8 + dHeight * 0.1) * 10) / 10,
+    hips_circumference_cm: Math.round((baseHips + dWeight * 0.8 + dHeight * 0.2) * 10) / 10,
+    shoulder_width_cm: Math.round((baseShoulder + dWeight * 0.3 + dHeight * 0.4) * 10) / 10,
   }
 }

@@ -232,7 +232,27 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!user) saveGuestProfile(scannedSizes)
+    if (!user) {
+      saveGuestProfile(scannedSizes)
+      return
+    }
+    // Logged-in user: persist to Supabase profiles table
+    if (scannedSizes) {
+      const bm = scannedSizes.sizing.bodyMetrics
+      supabase.from('profiles').upsert({
+        user_id: user.email,
+        gender: scannedSizes.gender ?? 'unisex',
+        chest_cm: bm?.chest_circumference_cm ?? null,
+        waist_cm: bm?.waist_circumference_cm ?? null,
+        hips_cm: bm?.hips_circumference_cm ?? null,
+        shoulder_cm: bm?.shoulder_width_cm ?? null,
+        height_cm: bm?.estimated_height_cm ?? null,
+        weight_kg: bm?.estimated_weight_kg ?? null,
+        shoe_size: scannedSizes.shoeSize ?? null,
+      }).then(({ error }) => {
+        if (error) console.error('[App] Failed to persist profile to Supabase:', error.message)
+      })
+    }
   }, [scannedSizes, user])
 
   // Persist detected device for guests

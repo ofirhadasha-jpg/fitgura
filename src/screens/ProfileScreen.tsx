@@ -7,6 +7,7 @@ import {
   type DetectedDevice, type ScannedSizes, type ScanEntry, type GalleryAccessState,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES, SHOE_SIZES_EU,
   computeBodyMetricsFromSizes,
+  computeBodyMetricsFromHeightWeight,
   SCAN_NO_NEW_MESSAGE,
   nextDevId, identifyDevice,
   analyzeBodyImage, aiAnalysisToScannedSizes,
@@ -31,7 +32,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
   const [profTop, setProfTop] = useState(scannedSizes?.sizing.top ?? 'M')
-  const [profBottom, setProfBottom] = useState(scannedSizes?.sizing.bottom ?? '32')
+  const [profBottom, setProfBottom] = useState(scannedSizes?.sizing.bottom ?? '48')
   const [profFit, setProfFit] = useState(scannedSizes?.sizing.fit ?? 'Slim Fit')
   const [profShoe, setProfShoe] = useState(scannedSizes?.shoeSize ?? '42')
 
@@ -243,6 +244,32 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }
 
+  function handleProfHeightChange(val: string) {
+    if (!scannedSizes) return
+    const h = Number(val)
+    const w = Number(scannedSizes.sizing.bodyMetrics?.estimated_weight_kg ?? 75)
+    if (h > 0 && w > 0) {
+      const metrics = computeBodyMetricsFromHeightWeight(h, w, scannedSizes.sizing.bodyMetrics)
+      setScannedSizes({
+        ...scannedSizes,
+        sizing: { ...scannedSizes.sizing, bodyMetrics: metrics },
+      })
+    }
+  }
+
+  function handleProfWeightChange(val: string) {
+    if (!scannedSizes) return
+    const h = Number(scannedSizes.sizing.bodyMetrics?.estimated_height_cm ?? 175)
+    const w = Number(val)
+    if (h > 0 && w > 0) {
+      const metrics = computeBodyMetricsFromHeightWeight(h, w, scannedSizes.sizing.bodyMetrics)
+      setScannedSizes({
+        ...scannedSizes,
+        sizing: { ...scannedSizes.sizing, bodyMetrics: metrics },
+      })
+    }
+  }
+
   function handleDevPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -377,7 +404,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.sizesGrid}>
             {[
               { label: 'חולצה', value: profTop, options: TOP_SIZES, set: handleProfTopChange },
-              { label: 'מכנסיים', value: profBottom, options: BOTTOM_SIZES, set: handleProfBottomChange },
+              { label: 'מכנסיים (EU)', value: profBottom, options: BOTTOM_SIZES, set: handleProfBottomChange },
               { label: 'גזרה', value: profFit, options: FIT_TYPES, set: handleProfFitChange },
               { label: 'נעליים', value: profShoe, options: SHOE_SIZES_EU, set: handleProfShoeChange },
             ].map(({ label, value, options, set }) => (
@@ -401,6 +428,39 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             ))}
           </View>
         </View>
+
+        {/* Body metrics editing — height/weight with proportional recalculation */}
+        {scannedSizes?.sizing.bodyMetrics && (
+          <View style={profStyles.card}>
+            <View style={profStyles.sizesHeader}>
+              <Text style={profStyles.sizesTitle}>📏 מידות גוף מדויקות</Text>
+              <Text style={{ fontSize: 11, color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+                שינוי גובה/משקל מעדכן אוטומטית חזה, מותן, ירכיים וכתפיים
+              </Text>
+            </View>
+            <View style={profStyles.bodyMetricsGrid}>
+              {[
+                { label: 'גובה', value: scannedSizes.sizing.bodyMetrics.estimated_height_cm, unit: 'ס"מ', onChange: handleProfHeightChange },
+                { label: 'משקל', value: scannedSizes.sizing.bodyMetrics.estimated_weight_kg, unit: 'ק"ג', onChange: handleProfWeightChange },
+                { label: 'חזה', value: scannedSizes.sizing.bodyMetrics.chest_circumference_cm, unit: 'ס"מ' },
+                { label: 'מותן', value: scannedSizes.sizing.bodyMetrics.waist_circumference_cm, unit: 'ס"מ' },
+                { label: 'ירכיים', value: scannedSizes.sizing.bodyMetrics.hips_circumference_cm, unit: 'ס"מ' },
+                { label: 'כתפיים', value: scannedSizes.sizing.bodyMetrics.shoulder_width_cm, unit: 'ס"מ' },
+              ].map(({ label, value, unit, onChange }) => (
+                <View key={label} style={profStyles.bodyMetricItem}>
+                  <TextInput
+                    value={value != null ? String(value) : ''}
+                    onChangeText={onChange ?? undefined}
+                    keyboardType="numeric"
+                    style={profStyles.bodyMetricInput}
+                  />
+                  <Text style={profStyles.bodyMetricUnit}>{unit}</Text>
+                  <Text style={profStyles.bodyMetricLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* My Devices */}
         <View style={profStyles.card}>
@@ -1028,4 +1088,9 @@ const profStyles = StyleSheet.create({
   precisionSub: { fontSize: 12, color: '#475569', lineHeight: 18, marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   precisionUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexShrink: 0 },
   precisionUploadBtnText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  bodyMetricItem: { width: '31%', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  bodyMetricInput: { fontSize: 16, fontWeight: '700', color: '#1E293B', textAlign: 'center', paddingVertical: 4, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricUnit: { fontSize: 10, color: '#94A3B8', marginTop: 2 },
+  bodyMetricLabel: { fontSize: 11, color: '#64748B', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

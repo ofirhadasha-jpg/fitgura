@@ -13,6 +13,12 @@ const CATEGORY_IDS: Record<string, string> = {
   accessories: '5090301,509',
 }
 
+// Apparel category IDs to EXCLUDE when searching accessories (hard exclusion)
+const APPAREL_EXCLUDE_IDS = ['200000783', '200000782', '200000835']
+
+// Clothing keywords to client-side filter out of accessories results
+const CLOTHING_KEYWORDS_REGEX = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|חולצה|מכנסיים|שמלה|ז'?קט|מעיל|בגד|גופייה)\b/i
+
 const CATEGORY_KEYWORDS: Record<string, string> = {
   all: 'fashion clothing',
   clothing: 'clothing apparel',
@@ -66,9 +72,9 @@ export function FeedScreen({
       if (category === 'accessories') {
         // Accessories: strictly device-compatible — no apparel category IDs
         if (deviceName) {
-          keywords = `${deviceName} case cover screen protector charger stand holder accessories`
+          keywords = `${deviceName} case cover screen protector charger stand holder`
         } else {
-          keywords = `phone case cover screen protector charger stand holder accessories`
+          keywords = `phone case cover screen protector charger stand holder`
         }
       } else if (category === 'clothing') {
         // Clothing: filtered by gender and size attributes
@@ -101,15 +107,20 @@ export function FeedScreen({
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'keywords:', keywords)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
 
+      // Client-side filter: remove any clothing items that leaked into accessories
+      const cleanedProducts = category === 'accessories'
+        ? remoteProducts.filter((p) => !CLOTHING_KEYWORDS_REGEX.test(p.name))
+        : remoteProducts
+
       // Direct state hydration — append unique items only
       setCatalog((prev) => {
         const existingIds = new Set(prev.map((p) => p.aliexpressSku).filter(Boolean))
-        const deduped = remoteProducts.filter((p) => !p.aliexpressSku || !existingIds.has(p.aliexpressSku))
+        const deduped = cleanedProducts.filter((p) => !p.aliexpressSku || !existingIds.has(p.aliexpressSku))
         const next = append ? [...prev, ...deduped] : deduped
-        console.log('[FeedScreen] Catalog after update:', next.length, 'deduped:', remoteProducts.length - deduped.length)
+        console.log('[FeedScreen] Catalog after update:', next.length, 'deduped:', cleanedProducts.length - deduped.length)
         return next
       })
-      if (!append && remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
+      if (!append && cleanedProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
     } catch (error: unknown) {
       if (!append) setCatalog([])
       setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חיים')
@@ -117,7 +128,7 @@ export function FeedScreen({
       setIsLoadingProducts(false)
       setIsLoadingMore(false)
     }
-  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, detectedDevice])
+  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes?.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice])
 
   const handleFilterChange = useCallback((newFilter: typeof filter) => {
     console.log(`[Feed] Category changed to: ${newFilter}`)
@@ -160,7 +171,7 @@ export function FeedScreen({
     return () => observer.disconnect()
   }, [loadMore])
 
-  const CLOTHING_KEYWORDS = /\b(shirt|pants|dress|jacket|hoodie|underwear|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|חולצה|מכנסיים|שמלה|ז'?קט|מעיל|חולצת|בגד|גופייה)\b/i
+  const CLOTHING_KEYWORDS = CLOTHING_KEYWORDS_REGEX
 
   const filtered = catalog.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
@@ -180,7 +191,7 @@ export function FeedScreen({
           <View style={feedStyles.statusLeft}>
             <View style={feedStyles.statusDot} />
             <Text style={feedStyles.statusText}>
-              {scannedSizes ? `מידות: ${scannedSizes.sizing.top} · ${scannedSizes.sizing.bottom} · ${scannedSizes.sizing.fit}` : 'טרם נסרקת'}
+              {scannedSizes ? `מידות: ${scannedSizes.sizing.top} · ${scannedSizes.sizing.bottom} EU · ${scannedSizes.sizing.fit}` : 'טרם נסרקת'}
             </Text>
             {user ? (
               <View style={feedStyles.loggedInBadge}><Text style={feedStyles.loggedInBadgeText}>מחובר ✓</Text></View>
