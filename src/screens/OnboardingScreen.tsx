@@ -5,10 +5,12 @@ import {
   type ScannedSizes,
   type PersonBounds,
   type ScanEntry,
+  type BodyMetrics,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES, SHOE_SIZES_EU,
   PRIMARY_STYLES, SEC_STYLES,
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
+  computeBodyMetricsFromSizes,
   fileToCompressedBase64,
   formatTimestamp, nextScanId,
 } from '../types'
@@ -224,7 +226,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         )}
 
         {step === 'scanning' && <ScanningView progress={scanProgress} sizes={sizes} />}
-        {step === 'result' && sizes && <ResultView onNext={() => setStep('gallery-access')} sizes={sizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
+        {step === 'result' && sizes && <ResultView onNext={() => { if (sizes) onScanned(sizes); setStep('gallery-access') }} sizes={sizes} setSizes={setSizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
@@ -313,7 +315,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
   )
 }
 
-function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNext: () => void; sizes: ScannedSizes; scanError: string | null; faceMissing: boolean; onRetake: () => void }) {
+function ResultView({ onNext, sizes, setSizes, scanError, faceMissing, onRetake }: { onNext: () => void; sizes: ScannedSizes; setSizes: React.Dispatch<React.SetStateAction<ScannedSizes | null>>; scanError: string | null; faceMissing: boolean; onRetake: () => void }) {
   const [editing, setEditing] = useState(false)
   const [topSize, setTopSize] = useState(sizes.sizing.top)
   const [bottomSize, setBottomSize] = useState(sizes.sizing.bottom)
@@ -333,6 +335,58 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
   const [hipsCm, setHipsCm] = useState(sizes.sizing.bodyMetrics?.hips_circumference_cm?.toString() ?? '')
   const [shoulderCm, setShoulderCm] = useState(sizes.sizing.bodyMetrics?.shoulder_width_cm?.toString() ?? '')
   const s = sizes.style ?? { primaryStyle: '', secondaryStyle: '', dominantColors: [] as string[], patternPreference: '', aestheticTags: [] as string[] }
+
+  function syncBodyMetricsFromSizes(top: string, bottom: string) {
+    const existing = sizes.sizing.bodyMetrics
+    const metrics = computeBodyMetricsFromSizes(top, bottom, existing)
+    setChestCm(String(metrics.chest_circumference_cm))
+    setWaistCm(String(metrics.waist_circumference_cm))
+    setHipsCm(String(metrics.hips_circumference_cm))
+    setShoulderCm(String(metrics.shoulder_width_cm))
+  }
+
+  function handleTopSizeChange(val: string) {
+    setTopSize(val)
+    syncBodyMetricsFromSizes(val, bottomSize)
+  }
+
+  function handleBottomSizeChange(val: string) {
+    setBottomSize(val)
+    syncBodyMetricsFromSizes(topSize, val)
+  }
+
+  function handleConfirm() {
+    const updated: ScannedSizes = {
+      ...sizes,
+      top: topSize,
+      bottom: bottomSize,
+      fit: fitType,
+      shoeSize,
+      gender,
+      sizing: {
+        ...sizes.sizing,
+        top: topSize,
+        bottom: bottomSize,
+        fit: fitType,
+        bodyMetrics: {
+          estimated_height_cm: heightCm ? Number(heightCm) : null,
+          estimated_weight_kg: weightKg ? Number(weightKg) : null,
+          chest_circumference_cm: chestCm ? Number(chestCm) : null,
+          waist_circumference_cm: waistCm ? Number(waistCm) : null,
+          hips_circumference_cm: hipsCm ? Number(hipsCm) : null,
+          shoulder_width_cm: shoulderCm ? Number(shoulderCm) : null,
+        },
+      },
+      style: {
+        ...sizes.style,
+        primaryStyle: primaryStyle || sizes.style?.primaryStyle || '',
+        secondaryStyle: secondaryStyle || sizes.style?.secondaryStyle || '',
+        dominantColors: colors.length ? colors : (sizes.style?.dominantColors ?? []),
+      },
+    }
+    setSizes(updated)
+    onNext()
+  }
 
   return (
     <View style={{ gap: 14 }}>
@@ -491,8 +545,8 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
         </View>
         <View style={obStyles.sizingGrid}>
           {[
-            { label: 'חולצה', value: topSize, options: TOP_SIZES, set: setTopSize },
-            { label: 'מכנסיים', value: bottomSize, options: BOTTOM_SIZES, set: setBottomSize },
+            { label: 'חולצה', value: topSize, options: TOP_SIZES, set: handleTopSizeChange },
+            { label: 'מכנסיים', value: bottomSize, options: BOTTOM_SIZES, set: handleBottomSizeChange },
             { label: 'גזרה', value: fitType, options: FIT_TYPES, set: setFitType },
             { label: 'נעליים', value: shoeSize, options: SHOE_SIZES_EU, set: setShoeSize },
           ].map(({ label, value, options, set }) => (
@@ -611,7 +665,7 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
       </View>
 
       <View style={{ gap: 10 }}>
-        <TouchableOpacity onPress={onNext} activeOpacity={0.8} style={obStyles.confirmBtn}>
+        <TouchableOpacity onPress={handleConfirm} activeOpacity={0.8} style={obStyles.confirmBtn}>
           <Text style={obStyles.confirmBtnText}>אשר פרופיל והמשך</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onRetake} activeOpacity={0.7}>

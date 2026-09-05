@@ -736,3 +736,29 @@ export function computeDelta(prev: SizingProfile, curr: SizingProfile): Record<s
 }
 
 export const SCAN_NO_NEW_MESSAGE = 'לא נסרקו תמונות חדשות; אין שינוי במידות'
+
+const TOP_SIZE_METRICS: Record<string, { chest: number; waist: number; hips: number; shoulder: number }> = {
+  'XS': { chest: 86, waist: 71, hips: 90, shoulder: 38 },
+  'S':  { chest: 96, waist: 76, hips: 94, shoulder: 42 },
+  'M':  { chest: 104, waist: 81, hips: 98, shoulder: 46 },
+  'L':  { chest: 112, waist: 86, hips: 102, shoulder: 48 },
+  'XL': { chest: 120, waist: 91, hips: 106, shoulder: 50 },
+  'XXL': { chest: 128, waist: 97, hips: 110, shoulder: 52 },
+}
+
+const BOTTOM_SIZE_WAIST: Record<string, number> = {
+  '28': 71, '30': 76, '32': 81, '34': 86, '36': 91, '38': 97,
+}
+
+export function computeBodyMetricsFromSizes(top: string, bottom: string, existing: BodyMetrics | null): BodyMetrics {
+  const topMetrics = TOP_SIZE_METRICS[top] ?? TOP_SIZE_METRICS['M']
+  const bottomWaist = BOTTOM_SIZE_WAIST[bottom] ?? topMetrics.waist
+  return {
+    estimated_height_cm: existing?.estimated_height_cm ?? 175,
+    estimated_weight_kg: existing?.estimated_weight_kg ?? 75,
+    chest_circumference_cm: topMetrics.chest,
+    waist_circumference_cm: bottomWaist,
+    hips_circumference_cm: topMetrics.hips,
+    shoulder_width_cm: topMetrics.shoulder,
+  }
+}

@@ -6,6 +6,7 @@ import {
   type DeviceIdentificationResult,
   type DetectedDevice, type ScannedSizes, type ScanEntry, type GalleryAccessState,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES, SHOE_SIZES_EU,
+  computeBodyMetricsFromSizes,
   SCAN_NO_NEW_MESSAGE,
   nextDevId, identifyDevice,
   analyzeBodyImage, aiAnalysisToScannedSizes,
@@ -192,6 +193,56 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }
 
+  function handleProfTopChange(val: string) {
+    setProfTop(val)
+    if (scannedSizes) {
+      const metrics = computeBodyMetricsFromSizes(val, profBottom, scannedSizes.sizing.bodyMetrics)
+      setScannedSizes({
+        ...scannedSizes,
+        top: val,
+        sizing: {
+          ...scannedSizes.sizing,
+          top: val,
+          bodyMetrics: metrics,
+        },
+      })
+    }
+  }
+
+  function handleProfBottomChange(val: string) {
+    setProfBottom(val)
+    if (scannedSizes) {
+      const metrics = computeBodyMetricsFromSizes(profTop, val, scannedSizes.sizing.bodyMetrics)
+      setScannedSizes({
+        ...scannedSizes,
+        bottom: val,
+        sizing: {
+          ...scannedSizes.sizing,
+          bottom: val,
+          bodyMetrics: metrics,
+        },
+      })
+    }
+  }
+
+  function handleProfFitChange(val: string) {
+    setProfFit(val)
+    if (scannedSizes) {
+      setScannedSizes({
+        ...scannedSizes,
+        fit: val,
+        sizing: { ...scannedSizes.sizing, fit: val },
+      })
+    }
+  }
+
+  function handleProfShoeChange(val: string) {
+    setProfShoe(val)
+    if (scannedSizes) {
+      setScannedSizes({ ...scannedSizes, shoeSize: val })
+    }
+  }
+
   function handleDevPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -325,10 +376,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           </View>
           <View style={profStyles.sizesGrid}>
             {[
-              { label: 'חולצה', value: profTop, options: TOP_SIZES, set: setProfTop },
-              { label: 'מכנסיים', value: profBottom, options: BOTTOM_SIZES, set: setProfBottom },
-              { label: 'גזרה', value: profFit, options: FIT_TYPES, set: setProfFit },
-              { label: 'נעליים', value: profShoe, options: SHOE_SIZES_EU, set: setProfShoe },
+              { label: 'חולצה', value: profTop, options: TOP_SIZES, set: handleProfTopChange },
+              { label: 'מכנסיים', value: profBottom, options: BOTTOM_SIZES, set: handleProfBottomChange },
+              { label: 'גזרה', value: profFit, options: FIT_TYPES, set: handleProfFitChange },
+              { label: 'נעליים', value: profShoe, options: SHOE_SIZES_EU, set: handleProfShoeChange },
             ].map(({ label, value, options, set }) => (
               <View key={label} style={[profStyles.sizeBox, { borderColor: editingSizes ? '#2E5BFF' : '#E2E8F0', borderWidth: editingSizes ? 2 : 1.5 }]}>
                 {editingSizes ? (
@@ -390,6 +441,27 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             ))}
           </View>
           <Text style={profStyles.devicesNote}>Fitgura ישאב התאמות לכל מכשיר ברשימה</Text>
+        </View>
+
+        {/* Multi-photo precision recommendation card */}
+        <View style={profStyles.precisionCard}>
+          <View style={profStyles.precisionIconWrap}>
+            <Text style={{ fontSize: 28 }}>📸</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={profStyles.precisionTitle}>לדיוק מירבי במידות</Text>
+            <Text style={profStyles.precisionSub}>
+              מומלץ להעלות תמונות נוספות מזוויות שונות (פרופיל, גב) להצלבת מידע והגעה להתאמה מוחלטת
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => galleryUploadRef.current?.click()}
+            activeOpacity={0.8}
+            style={profStyles.precisionUploadBtn}
+          >
+            <Text style={{ fontSize: 16 }}>📷</Text>
+            <Text style={profStyles.precisionUploadBtnText}>העלאת תמונה נוספת</Text>
+          </TouchableOpacity>
         </View>
 
         {/* AI scan gallery */}
@@ -950,4 +1022,10 @@ const profStyles = StyleSheet.create({
   formSubmitBtn: { padding: 16, borderRadius: 18, backgroundColor: '#2E5BFF', alignItems: 'center' },
   formSubmitBtnDisabled: { backgroundColor: '#E2E8F0' },
   formSubmitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  precisionCard: { backgroundColor: '#EEF2FF', borderRadius: 20, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: 'rgba(46,91,255,0.2)' },
+  precisionIconWrap: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' },
+  precisionTitle: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  precisionSub: { fontSize: 12, color: '#475569', lineHeight: 18, marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  precisionUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexShrink: 0 },
+  precisionUploadBtnText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
