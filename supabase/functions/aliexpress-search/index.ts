@@ -179,11 +179,44 @@ Deno.serve(async (req: Request) => {
 
       console.log("[ALIEXPRESS] Search params:", { keywords: searchKeywords, categoryIds, pageNo, pageSize, targetLanguage });
 
-      const result = await callAliExpressApi("aliexpress.affiliate.product.query", apiParams);
+      let result = await callAliExpressApi("aliexpress.affiliate.product.query", apiParams);
 
-      const products: AliExpressProduct[] =
+      let products: AliExpressProduct[] =
         (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
           ?.resp_result?.result?.products?.product ?? [];
+
+      // Fallback: if category_ids returned no results, retry with keywords only
+      if (products.length === 0 && categoryIds && searchKeywords) {
+        console.log("[ALIEXPRESS] No results with category_ids, retrying with keywords only:", searchKeywords);
+        const fallbackParams: RequestParams = {
+          page_no: pageNo,
+          page_size: pageSize,
+          target_currency: "ILS",
+          target_language: targetLanguage,
+          keywords: searchKeywords,
+        };
+        result = await callAliExpressApi("aliexpress.affiliate.product.query", fallbackParams);
+        products =
+          (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
+            ?.resp_result?.result?.products?.product ?? [];
+      }
+
+      // Fallback: if still no results and keywords were used, try a simpler keyword
+      if (products.length === 0 && searchKeywords) {
+        const simpleKeyword = "fashion clothing";
+        console.log("[ALIEXPRESS] Still no results, retrying with simple keyword:", simpleKeyword);
+        const fallbackParams: RequestParams = {
+          page_no: pageNo,
+          page_size: pageSize,
+          target_currency: "ILS",
+          target_language: targetLanguage,
+          keywords: genderPrefix + simpleKeyword,
+        };
+        result = await callAliExpressApi("aliexpress.affiliate.product.query", fallbackParams);
+        products =
+          (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
+            ?.resp_result?.result?.products?.product ?? [];
+      }
 
       const mapped = products.map((p) => {
         // With target_currency=ILS, target_sale_price is already in shekels
