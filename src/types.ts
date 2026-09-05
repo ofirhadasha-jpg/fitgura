@@ -335,10 +335,20 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
 }
 
 export const TOP_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-// EU pants sizes (44, 46, 48, 50, 52, 54) — NOT US waist inches
+// EU pants sizes — gender-aware ranges
+// Men's EU pants sizes typically start at EU 40; Women's start at EU 32
+export const BOTTOM_SIZES_EU_MEN = ['40', '42', '44', '46', '48', '50', '52', '54', '56', '58', '60']
+export const BOTTOM_SIZES_EU_WOMEN = ['32', '34', '36', '38', '40', '42', '44', '46', '48', '50', '52']
 export const BOTTOM_SIZES_EU = ['44', '46', '48', '50', '52', '54']
 // Kept for backward compatibility — now maps to EU sizes
 export const BOTTOM_SIZES = BOTTOM_SIZES_EU
+
+// Returns the correct EU pants size list based on gender
+export function getBottomSizesForGender(gender: 'male' | 'female' | 'unisex' | undefined): string[] {
+  if (gender === 'male') return BOTTOM_SIZES_EU_MEN
+  if (gender === 'female') return BOTTOM_SIZES_EU_WOMEN
+  return BOTTOM_SIZES_EU
+}
 
 // Convert between EU pants size and US waist inches. EU = US + 10 (approx)
 export function convertPantsSize(value: string, target: 'EU' | 'US'): string {

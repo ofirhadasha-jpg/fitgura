@@ -153,12 +153,43 @@ export function FeedScreen({
     void loadProducts(1, false, newFilter)
   }, [loadProducts])
 
+  // Measurements signature — changes when any size field the feed depends on changes
+  const measurementsSignature = [
+    scannedSizes?.gender,
+    scannedSizes?.sizing.top,
+    scannedSizes?.sizing.bottom,
+    scannedSizes?.sizing.fit,
+    scannedSizes?.shoeSize,
+    scannedSizes?.style?.primaryStyle,
+    scannedSizes?.style?.aestheticTags?.join(','),
+    detectedDevice?.brand,
+    detectedDevice?.model,
+  ].join('|')
+
+  // Initial load
   useEffect(() => {
     setPageNo(1)
     setHasMore(true)
     setCatalog([])
     void loadProducts(1, false, 'all')
   }, [loadProducts])
+
+  // Re-fetch when measurements change (but not on initial mount — the effect above handles that)
+  const prevSignatureRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (prevSignatureRef.current === null) {
+      prevSignatureRef.current = measurementsSignature
+      return
+    }
+    if (prevSignatureRef.current !== measurementsSignature) {
+      prevSignatureRef.current = measurementsSignature
+      console.log('[Feed] Re-fetching feed with updated profile measurements:', scannedSizes)
+      setPageNo(1)
+      setHasMore(true)
+      setCatalog([])
+      void loadProducts(1, false, filter)
+    }
+  }, [measurementsSignature, loadProducts, filter, scannedSizes])
 
   useEffect(() => {
     onCatalogChange(catalog)

@@ -6,6 +6,7 @@ import {
   type DeviceIdentificationResult,
   type DetectedDevice, type ScannedSizes, type ScanEntry, type GalleryAccessState,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES, SHOE_SIZES_EU,
+  getBottomSizesForGender,
   computeBodyMetricsFromSizes,
   computeBodyMetricsFromHeightWeight,
   SCAN_NO_NEW_MESSAGE,
@@ -198,15 +199,13 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     setProfTop(val)
     if (scannedSizes) {
       const metrics = computeBodyMetricsFromSizes(val, profBottom, scannedSizes.sizing.bodyMetrics)
-      setScannedSizes({
+      const updated = {
         ...scannedSizes,
         top: val,
-        sizing: {
-          ...scannedSizes.sizing,
-          top: val,
-          bodyMetrics: metrics,
-        },
-      })
+        sizing: { ...scannedSizes.sizing, top: val, bodyMetrics: metrics },
+      }
+      setScannedSizes(updated)
+      console.log('[ProfileScreen] Saved edited measurements:', { top: val, bottom: profBottom, fit: profFit, shoe: profShoe })
     }
   }
 
@@ -214,33 +213,45 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     setProfBottom(val)
     if (scannedSizes) {
       const metrics = computeBodyMetricsFromSizes(profTop, val, scannedSizes.sizing.bodyMetrics)
-      setScannedSizes({
+      const updated = {
         ...scannedSizes,
         bottom: val,
-        sizing: {
-          ...scannedSizes.sizing,
-          bottom: val,
-          bodyMetrics: metrics,
-        },
-      })
+        sizing: { ...scannedSizes.sizing, bottom: val, bodyMetrics: metrics },
+      }
+      setScannedSizes(updated)
+      console.log('[ProfileScreen] Saved edited measurements:', { top: profTop, bottom: val, fit: profFit, shoe: profShoe })
     }
   }
 
   function handleProfFitChange(val: string) {
     setProfFit(val)
     if (scannedSizes) {
-      setScannedSizes({
-        ...scannedSizes,
-        fit: val,
-        sizing: { ...scannedSizes.sizing, fit: val },
-      })
+      const updated = { ...scannedSizes, fit: val, sizing: { ...scannedSizes.sizing, fit: val } }
+      setScannedSizes(updated)
+      console.log('[ProfileScreen] Saved edited measurements:', { top: profTop, bottom: profBottom, fit: val, shoe: profShoe })
     }
   }
 
   function handleProfShoeChange(val: string) {
     setProfShoe(val)
     if (scannedSizes) {
-      setScannedSizes({ ...scannedSizes, shoeSize: val })
+      const updated = { ...scannedSizes, shoeSize: val }
+      setScannedSizes(updated)
+      console.log('[ProfileScreen] Saved edited measurements:', { top: profTop, bottom: profBottom, fit: profFit, shoe: val })
+    }
+  }
+
+  function handleSaveSizes() {
+    setEditingSizes(false)
+    if (scannedSizes) {
+      console.log('[ProfileScreen] Successfully saved edited measurements:', {
+        top: profTop,
+        bottom: profBottom,
+        fit: profFit,
+        shoe: profShoe,
+        gender: scannedSizes.gender,
+        bodyMetrics: scannedSizes.sizing.bodyMetrics,
+      })
     }
   }
 
@@ -392,19 +403,19 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.sizesHeader}>
             <Text style={profStyles.sizesTitle}>📐 המידות הנוכחיות</Text>
             <TouchableOpacity
-              onPress={() => setEditingSizes(!editingSizes)}
+              onPress={() => editingSizes ? handleSaveSizes() : setEditingSizes(true)}
               activeOpacity={0.7}
               style={[profStyles.editBtn, editingSizes && profStyles.editBtnActive]}
             >
               <Text style={[profStyles.editBtnText, editingSizes && profStyles.editBtnTextActive]}>
-                {editingSizes ? 'שמור' : 'ערוך ידנית'}
+                {editingSizes ? 'אישור ושמירה' : 'ערוך ידנית'}
               </Text>
             </TouchableOpacity>
           </View>
           <View style={profStyles.sizesGrid}>
             {[
               { label: 'חולצה', value: profTop, options: TOP_SIZES, set: handleProfTopChange },
-              { label: 'מכנסיים (EU)', value: profBottom, options: BOTTOM_SIZES, set: handleProfBottomChange },
+              { label: 'מכנסיים (EU)', value: profBottom, options: getBottomSizesForGender(scannedSizes?.gender), set: handleProfBottomChange },
               { label: 'גזרה', value: profFit, options: FIT_TYPES, set: handleProfFitChange },
               { label: 'נעליים', value: profShoe, options: SHOE_SIZES_EU, set: handleProfShoeChange },
             ].map(({ label, value, options, set }) => (
