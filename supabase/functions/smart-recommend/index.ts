@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-// Fitgura smart recommendation pipeline — /sync gateway, flat params, tracking_id included in sign
+// Fitgura smart recommendation pipeline — /sync gateway, trimmed credentials (v3)
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,7 +56,7 @@ function getEnvVar(name: string): string {
   if (!value) {
     console.error(`[ENV AUDIT] Missing required environment variable: ${name}`);
   }
-  return value ?? "";
+  return value?.trim() ?? "";
 }
 
 async function getAliExpressTimestamp(): Promise<string> {

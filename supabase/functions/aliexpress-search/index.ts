@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-// Fitgura AliExpress Affiliate API proxy — /sync gateway, flat params, tracking_id included in sign
+// Fitgura AliExpress Affiliate API proxy — /sync gateway, trimmed credentials (v3)
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,7 +34,7 @@ function getEnvVar(name: string): string {
   if (!value) {
     console.error(`[ENV AUDIT] Missing required environment variable: ${name}`);
   }
-  return value ?? "";
+  return value?.trim() ?? "";
 }
 
 async function getAliExpressTimestamp(): Promise<string> {
@@ -187,6 +187,61 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({ links }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (action === "debug-sign") {
+      const appKey = getEnvVar("ALIEXPRESS_APP_KEY");
+      const appSecret = getEnvVar("ALIEXPRESS_APP_SECRET");
+      const trackingId = getEnvVar("ALIEXPRESS_TRACKING_ID") || "fitgura";
+      const timeStamp = await getAliExpressTimestamp();
+
+      const debugParams: RequestParams = {
+        app_key: appKey,
+        method: "aliexpress.affiliate.product.query",
+        timestamp: timeStamp,
+        format: "json",
+        v: "2.0",
+        sign_method: "md5",
+        tracking_id: trackingId,
+        keywords: "men jacket",
+        page_no: 1,
+        page_size: 5,
+        target_currency: "USD",
+        target_language: "EN",
+      };
+
+      const sign = generateSignature(debugParams, appSecret);
+      const normalizedSecretLength = appSecret.length;
+
+      const sortedKeys = Object.keys(debugParams)
+        .filter((key) => key !== "sign" && debugParams[key] !== undefined && debugParams[key] !== null)
+        .sort();
+
+      let stringToSign = appSecret;
+      for (const key of sortedKeys) {
+        const value = typeof debugParams[key] === "object" ? JSON.stringify(debugParams[key]) : String(debugParams[key]);
+        stringToSign += `${key}${value}`;
+      }
+      stringToSign += appSecret;
+
+      const formBody = new URLSearchParams();
+      for (const [key, value] of Object.entries({ ...debugParams, sign })) {
+        const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+        formBody.append(key, strValue);
+      }
+
+      return new Response(
+        JSON.stringify({
+          timestamp: timeStamp,
+          sign,
+          fullStringToSign: stringToSign,
+          sortedKeys,
+          formBody: formBody.toString(),
+          appKeyPrefix: appKey.slice(0, 3),
+          appSecretLength: appSecret.length,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
