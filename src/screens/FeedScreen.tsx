@@ -14,11 +14,13 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
 }
 
 const CATEGORY_IDS: Record<string, string> = {
-  all: '',
-  clothing: '200001032',
-  shoes: '200000832',
-  accessories: '200001661',
+  all: '200000783,200000782,200000835,200000832,200000831',
+  clothing: '200000783,200000782,200000835',
+  shoes: '200000832,200000831',
+  accessories: '200000788,200000785,200001661',
 }
+
+const IRRELEVANT_PATTERNS = /\b(hat|cap|underwear|socks|scarf|glove|mittens|hair\s*band|keychain|phone\s*case|sticker|poster|patch|pin\s*badge)\b/i
 
 export function FeedScreen({
   wishlistItems,
@@ -121,14 +123,19 @@ export function FeedScreen({
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
     const price = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0
     const matchBudget = price >= budget[0] && price <= budget[1]
-    return matchSearch && matchBudget
+    const isRelevant = !IRRELEVANT_PATTERNS.test(p.name)
+    return matchSearch && matchBudget && isRelevant
   })
 
   if (catalog.length > 0) {
     const prices = catalog.map((p) => p.price).filter((v) => typeof v === 'number' && !isNaN(v))
     const minP = prices.length ? Math.min(...prices) : 0
     const maxP = prices.length ? Math.max(...prices) : 0
-    console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget, 'price range:', minP, '-', maxP)
+    const irrelevant = catalog.filter((p) => IRRELEVANT_PATTERNS.test(p.name))
+    console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget, 'price range:', minP, '-', maxP, 'filtered out irrelevant:', irrelevant.length)
+    if (irrelevant.length > 0) {
+      console.log('[Feed UI] Irrelevant items removed:', irrelevant.map((p) => p.name).slice(0, 5))
+    }
   }
 
   return (

@@ -157,6 +157,7 @@ Deno.serve(async (req: Request) => {
 
       const pageNo = body.pageNo ?? 1;
       const pageSize = body.pageSize ?? 20;
+      const targetLanguage = (body.targetLanguage as string) || "EN";
 
       const gender = body.gender as string | undefined;
       const genderPrefix = gender === "male" ? "men " : gender === "female" ? "women " : "";
@@ -166,7 +167,7 @@ Deno.serve(async (req: Request) => {
         page_no: pageNo,
         page_size: pageSize,
         target_currency: "ILS",
-        target_language: "EN",
+        target_language: targetLanguage,
       };
 
       if (searchKeywords) {
@@ -176,7 +177,7 @@ Deno.serve(async (req: Request) => {
         apiParams.category_ids = categoryIds;
       }
 
-      console.log("[ALIEXPRESS] Search params:", { keywords: searchKeywords, categoryIds, pageNo, pageSize });
+      console.log("[ALIEXPRESS] Search params:", { keywords: searchKeywords, categoryIds, pageNo, pageSize, targetLanguage });
 
       const result = await callAliExpressApi("aliexpress.affiliate.product.query", apiParams);
 
@@ -227,7 +228,7 @@ Deno.serve(async (req: Request) => {
       const result = await callAliExpressApi("aliexpress.affiliate.productdetail.get", {
         product_ids: productIds.join(","),
         target_currency: "ILS",
-        target_language: "EN",
+        target_language: (body.targetLanguage as string) || "EN",
       });
 
       const details = (result as Record<string, unknown>)?.aliexpress_affiliate_productdetail_get_response
