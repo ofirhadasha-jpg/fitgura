@@ -43,11 +43,7 @@ export function FeedScreen({
       const gender = scannedSizes?.gender ?? 'unisex'
       const remoteProducts = await fetchAliExpressProducts('fashion clothing shoes accessories', page, PAGE_SIZE, gender)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
-      setCatalog((prev) => {
-        const next = append ? [...prev, ...remoteProducts] : remoteProducts
-        onCatalogChange(next)
-        return next
-      })
+      setCatalog((prev) => append ? [...prev, ...remoteProducts] : remoteProducts)
       if (!append && remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
     } catch (error: unknown) {
       if (!append) setCatalog([])
@@ -63,6 +59,10 @@ export function FeedScreen({
     setHasMore(true)
     void loadProducts(1, false)
   }, [loadProducts])
+
+  useEffect(() => {
+    onCatalogChange(catalog)
+  }, [catalog, onCatalogChange])
 
   const loadMore = useCallback(() => {
     if (isLoadingMore || !hasMore) return
