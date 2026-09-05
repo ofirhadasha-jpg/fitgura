@@ -92,11 +92,17 @@ export function FeedScreen({
   }, [loadMore])
 
   const filtered = catalog.filter((p) => {
-    const matchFilter = filter === 'all' || p.category === filter
-    const matchSearch = p.name.includes(search) || p.brand.toLowerCase().includes(search.toLowerCase())
+    const matchFilter = filter === 'all' ||
+      p.category === filter ||
+      (filter === 'shoes' && /shoe|sneaker|boot|sandal/i.test(p.name)) ||
+      (filter === 'accessories' && /bag|watch|belt|hat|cap|sunglass|jewel|ring|necklace|earring|bracelet/i.test(p.name)) ||
+      (filter === 'clothing' && /shirt|jacket|coat|pant|jean|dress|skirt|hoodie|sweater|top|short/i.test(p.name))
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
     const matchBudget = p.price >= budget[0] && p.price <= budget[1]
     return matchFilter && matchSearch && matchBudget
   })
+
+  console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget)
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -186,7 +192,7 @@ export function FeedScreen({
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
             <Text style={feedStyles.emptyText}>אין פריטים בטווח התקציב הנבחר</Text>
             <TouchableOpacity
-              onPress={() => { setFilter('all'); setSearch(''); setBudget([50, 1000]); }}
+              onPress={() => { setFilter('all'); setSearch(''); setBudget([0, 1000]); }}
               activeOpacity={0.8}
               style={{ marginTop: 12, backgroundColor: '#2E5BFF', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 }}
             >
@@ -235,7 +241,7 @@ export function FeedScreen({
 }
 
 function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudget: (b: [number, number]) => void }) {
-  const MIN = 50
+  const MIN = 0
   const MAX = 1000
   const STEP = 10
 
@@ -295,7 +301,7 @@ function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudg
         />
       </View>
       <View style={feedStyles.budgetLabels}>
-        {['₪50', '₪300', '₪600', '₪1000'].map((l) => (
+        {['₪0', '₪300', '₪600', '₪1000'].map((l) => (
           <Text key={l} style={feedStyles.budgetLabel}>{l}</Text>
         ))}
       </View>

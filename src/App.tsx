@@ -115,7 +115,7 @@ export default function App() {
     return (saved === 'onboarding' || saved === 'device') ? saved : 'splash'
   })
   const [wishlistItems, setWishlistItems] = useState<number[]>([])
-  const [budget, setBudget] = useState<[number, number]>([50, 500])
+  const [budget, setBudget] = useState<[number, number]>([0, 1000])
   const [user, setUser] = useState<User | null>(null)
   const [authModal, setAuthModal] = useState<{ pendingIdx: number } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
