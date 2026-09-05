@@ -73,12 +73,11 @@ export function FeedScreen({
       let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
 
       if (category === 'accessories') {
-        // Accessories: strictly device-specific tech accessories — no apparel/footwear
-        const accessoryTerms = 'case cover screen protector charger camera lens protector stand wireless charger holder'
+        // Accessories: device-specific tech accessory search — short keywords work best with AliExpress API
         if (deviceName) {
-          keywords = `${deviceName} ${accessoryTerms}`
+          keywords = `${deviceName} case cover protector charger`
         } else {
-          keywords = `phone ${accessoryTerms}`
+          keywords = `phone case cover protector charger`
         }
       } else if (category === 'clothing') {
         // Clothing: filtered by gender and size attributes
@@ -111,20 +110,11 @@ export function FeedScreen({
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'keywords:', keywords)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
 
-      // Dual-layer client-side filtering for accessories:
-      //  1. Exclusion: discard any product whose title contains apparel/footwear keywords
-      //  2. Inclusion: keep only products that mention the device model OR a tech-accessory keyword
+      // Client-side filtering for accessories:
+      //  Exclusion: discard any product whose title contains apparel/footwear keywords
+      //  (Inclusion is handled by the search keywords + category_ids — no extra device-name gate)
       const cleanedProducts = category === 'accessories'
-        ? remoteProducts.filter((p) => {
-            const title = p.name
-            if (CLOTHING_KEYWORDS_REGEX.test(title)) return false
-            const deviceMatch = deviceName
-              ? title.toLowerCase().includes(detectedDevice!.brand.toLowerCase()) ||
-                title.toLowerCase().includes(detectedDevice!.model.toLowerCase())
-              : false
-            const techMatch = TECH_ACCESSORY_KEYWORDS_REGEX.test(title)
-            return deviceMatch || techMatch
-          })
+        ? remoteProducts.filter((p) => !CLOTHING_KEYWORDS_REGEX.test(p.name))
         : remoteProducts
 
       // Direct state hydration — append unique items only
@@ -190,17 +180,8 @@ export function FeedScreen({
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
     const price = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0
     const matchBudget = price >= budget[0] && price <= budget[1]
-    // Accessories tab: dual-layer safeguard — exclude clothing, require device/tech match
-    if (filter === 'accessories') {
-      if (CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
-      const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim().toLowerCase() : ''
-      const deviceMatch = deviceName
-        ? p.name.toLowerCase().includes(detectedDevice!.brand.toLowerCase()) ||
-          p.name.toLowerCase().includes(detectedDevice!.model.toLowerCase())
-        : false
-      const techMatch = TECH_ACCESSORY_KEYWORDS_REGEX.test(p.name)
-      if (!deviceMatch && !techMatch) return false
-    }
+    // Accessories tab: only exclude clothing items that leaked through
+    if (filter === 'accessories' && CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
     return matchSearch && matchBudget
   })
 
