@@ -1,0 +1,27 @@
+Please update `aliexpressClient.ts` and `Feed.tsx` to automatically set the target language based on the user's browser locale:
+
+1. Dynamic Language & Currency Detection:
+   - Create a helper function in `aliexpressClient.ts` to get the target language code for AliExpress API:
+     ```typescript
+     function getTargetLanguage(): string {
+       const userLang = navigator.language || 'en';
+       if (userLang.startsWith('he')) {
+         return 'HE'; // Hebrew
+       }
+       if (userLang.startsWith('ru')) {
+         return 'RU'; // Russian
+       }
+       if (userLang.startsWith('es')) {
+         return 'ES'; // Spanish
+       }
+       return 'EN'; // Default to English
+     }
+     ```
+
+2. Update API Parameters:
+   - In `aliexpress.affiliate.product.query` (and any other AliExpress API methods), set:
+     - `target_language`: getTargetLanguage()
+     - `target_currency`: "ILS"
+
+3. Fallback Title Formatting:
+   - Ensure the UI components (`ProductCard.tsx` / `Feed.tsx`) extract `product_title` or localized title fields returned by the API so that Hebrew titles display seamlessly when `target_language` is `"HE"`.
