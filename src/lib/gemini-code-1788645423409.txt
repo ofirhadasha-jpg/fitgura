@@ -1,0 +1,17 @@
+Please update the Scan Results Modal (`ScanModal.tsx`), User Profile (`Profile.tsx`), and Profile/Measurement State Logic (`AuthContext.tsx` / `useUserProfile.ts`) to handle user manual edits, measurement scaling, and multi-photo precision:
+
+1. Override Scanned Data with Manual Edits (Highest Priority):
+   - When the user edits any value in the Scan Results Modal (e.g. changes shirt size from L to XL or shoe size from 41 to 42) and clicks "Save" / "אישור ושמירה":
+     - The saved manual values MUST overwrite the raw AI scan results.
+     - All feed recommendation queries, product sizing badges, and filter logic must immediately adopt these newly saved edited values.
+   - Ground Truth Hierarchy: Any subsequent change made directly in the Profile page becomes the absolute master ground truth for all future recommendations.
+
+2. Dynamic Proportional Adjustment of Body Measurements:
+   - When the user modifies a general size in the Scan Edit Modal (e.g. changes top size from L to XL):
+     - Automatically recalculate estimated body circumference measurements (chest, waist, hips, shoulders) based on standard scaling deltas (e.g. ~4-5 cm increase per size step for chest/waist/hips when scaling up, or decrease when scaling down).
+     - Update the input sliders/fields in real-time so the user sees the estimated numeric measurements adjust in sync with their selected clothing size.
+
+3. Profile Page - Multi-Photo Precision Recommendation Card:
+   - In `Profile.tsx`, add a prominent recommendation banner/card:
+     "📸 לדיוק מירבי במידות: מומלץ להעלות תמונות נוספות מזוויות שונות (פרופיל, גב) להצלבת מידע והגעה להתאמה מוחלטת."
+   - Include an "העלאת תמונה נוספת" (Upload Additional Photo) button that allows the user to append secondary scan photos to refine their measurement profile.
