@@ -1,0 +1,19 @@
+Please refactor `aliexpressClient.ts` and `Feed.tsx` to utilize strict AliExpress Category IDs (`category_ids` parameter) instead of broad keywords to ensure product relevance in the feed, effectively filtering out irrelevant accessories like hats and underwear unless specifically requested.
+
+1.  **Map UI Categories to AliExpress Category IDs in `aliexpressClient.ts`**:
+    Replace keyword-based mapping with precise Category ID comma-separated strings for the `aliexpress.affiliate.product.query` API.
+    *   **"Clothing" (בגדים)**: Use IDs for Women's Apparel (e.g., 200000783), Men's Apparel (e.g., 200000782), Children's Apparel (e.g., 200000835). Combined string: `"200000783,200000782,200000835"`
+    *   **"Shoes" (נעליים)**: Use IDs for Women's Shoes (e.g., 200000832), Men's Shoes (e.g., 200000831). Combined string: `"200000832,200000831"`
+    *   **"Accessories" (אביזרים)**: Use IDs for Luggage & Bags (e.g., 200000788), Jewelry & Accessories (e.g., 200000785), Watches (e.g., 200001661). Combined string: `"200000788,200000785,200001661"`
+    *   **"All" (הכל)**: Use a combined string of all the main Apparel and Footwear categories above: `"200000783,200000782,200000835,200000832,200000831"` (Note: Exclude Accessories IDs here to prioritize clothing/shoes).
+
+2.  **Modify API Request Payload**:
+    Update the parameters sent to the AliExpress API to include `category_ids` instead of `keywords` when fetching product lists, ensuring target currency is `ILS` and target language is `EN`.
+
+3.  **Refine Search and Feed Initialization in `Feed.tsx`**:
+    *   Set the initial state of the feed to default to the "All" category using the defined category ID string.
+    *   When the user switches category tabs, pass the corresponding `category_ids` string to the `fetchProducts` function, reset `page_no` to 1, and clear the current product list before loading new results.
+    *   Implement client-side filtering as a secondary measure to further exclude any remaining unwanted items based on simple product title pattern matching if needed.
+
+4.  **Verify Relevance**:
+    Add logging in the Feed component to verify that the returned product titles contain core apparel terms like "Dress," "Shirt," "Pants," "Jacket," "Shoes," etc., and are free from items categorized as just "Hat," "Cap," "Underwear," or small accessories in general clothing feeds.
