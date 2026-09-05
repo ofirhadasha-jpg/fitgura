@@ -10,7 +10,7 @@ const CATEGORY_IDS: Record<string, string> = {
   all: '200000783,200000782,200000835,200000832,200000831',
   clothing: '200000783,200000782,200000835',
   shoes: '200000832,200000831',
-  accessories: '200000788,200000785,200001661',
+  accessories: '5090301,509',
 }
 
 const CATEGORY_KEYWORDS: Record<string, string> = {
@@ -63,9 +63,13 @@ export function FeedScreen({
       // Build keywords dynamically based on category, device, and measurements
       let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
 
-      if (category === 'accessories' && deviceName) {
-        // Accessories: append exact device name for compatible cases, holders, watch bands
-        keywords = `${deviceName} case holder watch bands bags`
+      if (category === 'accessories') {
+        // Accessories: strictly device-compatible — no apparel category IDs
+        if (deviceName) {
+          keywords = `${deviceName} case cover screen protector charger stand holder accessories`
+        } else {
+          keywords = `phone case cover screen protector charger stand holder accessories`
+        }
       } else if (category === 'clothing') {
         // Clothing: filtered by gender and size attributes
         if (scannedSizes?.style?.aestheticTags?.length) {
@@ -152,11 +156,15 @@ export function FeedScreen({
     return () => observer.disconnect()
   }, [loadMore])
 
+  const CLOTHING_KEYWORDS = /\b(shirt|pants|dress|jacket|hoodie|underwear|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|חולצה|מכנסיים|שמלה|ז'?קט|מעיל|חולצת|בגד|גופייה)\b/i
+
   const filtered = catalog.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
     const price = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0
     const matchBudget = price >= budget[0] && price <= budget[1]
-    return matchSearch && matchBudget
+    // When on accessories tab, filter out any clothing items that leaked through
+    const isClothing = filter === 'accessories' && CLOTHING_KEYWORDS.test(p.name)
+    return matchSearch && matchBudget && !isClothing
   })
 
   console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget)
@@ -215,7 +223,7 @@ export function FeedScreen({
         </ScrollView>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 14 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 100 }}>
         <LinearGradient colors={['#0B1437', '#1A2F7A']} style={feedStyles.aiMatchBar}>
           <Text style={{ fontSize: 22 }}>🎯</Text>
           <View style={{ flex: 1 }}>
@@ -290,6 +298,8 @@ export function FeedScreen({
           </View>
           <View style={feedStyles.familyBadge}><Text style={feedStyles.familyBadgeText}>בקרוב</Text></View>
         </View>
+
+        <View style={{ height: 80 }} />
       </ScrollView>
 
       <BottomNav current="feed" onNav={onNav} />
