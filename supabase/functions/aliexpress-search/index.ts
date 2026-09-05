@@ -251,8 +251,8 @@ Deno.serve(async (req: Request) => {
         };
       });
 
-      // Server-side apparel filtering for accessories searches
-      const APPAREL_KEYWORDS = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear)\b/i;
+      // Server-side apparel + footwear filtering for accessories searches
+      const APPAREL_KEYWORDS = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|shoes|socks|sneakers|boots|sandals|חולצה|מכנסיים|שמלה|נעליים|גרביים|מעיל|בגד|גופייה)\b/i;
       const filteredProducts = isAccessoriesSearch
         ? mapped.filter((p) => !APPAREL_KEYWORDS.test(p.name))
         : mapped;

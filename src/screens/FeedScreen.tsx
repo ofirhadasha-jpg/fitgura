@@ -13,11 +13,14 @@ const CATEGORY_IDS: Record<string, string> = {
   accessories: '5090301,509',
 }
 
-// Apparel category IDs to EXCLUDE when searching accessories (hard exclusion)
-const APPAREL_EXCLUDE_IDS = ['200000783', '200000782', '200000835']
+// Apparel + footwear category IDs to hard-exclude from accessories searches
+const APPAREL_EXCLUDE_IDS = ['200000783', '200000782', '200000835', '200000832', '200000831']
 
-// Clothing keywords to client-side filter out of accessories results
-const CLOTHING_KEYWORDS_REGEX = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|חולצה|מכנסיים|שמלה|ז'?קט|מעיל|בגד|גופייה)\b/i
+// Clothing/footwear keywords to client-side filter out of accessories results
+const CLOTHING_KEYWORDS_REGEX = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|shoes|socks|sneakers|boots|sandals|חולצה|מכנסיים|שמלה|נעליים|גרביים|ז'?קט|מעיל|בגד|גופייה)\b/i
+
+// Tech accessory keywords — products must match at least one to be included in accessories
+const TECH_ACCESSORY_KEYWORDS_REGEX = /\b(case|cover|protector|charger|holder|cable|adapter|stand|mount|screen\s*protector|wireless\s*charger|camera\s*lens|tempered\s*glass|dock|hub|power\s*bank|car\s*charger)\b/i
 
 const CATEGORY_KEYWORDS: Record<string, string> = {
   all: 'fashion clothing',
@@ -70,11 +73,12 @@ export function FeedScreen({
       let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
 
       if (category === 'accessories') {
-        // Accessories: strictly device-compatible — no apparel category IDs
+        // Accessories: strictly device-specific tech accessories — no apparel/footwear
+        const accessoryTerms = 'case cover screen protector charger camera lens protector stand wireless charger holder'
         if (deviceName) {
-          keywords = `${deviceName} case cover screen protector charger stand holder`
+          keywords = `${deviceName} ${accessoryTerms}`
         } else {
-          keywords = `phone case cover screen protector charger stand holder`
+          keywords = `phone ${accessoryTerms}`
         }
       } else if (category === 'clothing') {
         // Clothing: filtered by gender and size attributes
@@ -107,9 +111,20 @@ export function FeedScreen({
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'keywords:', keywords)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
 
-      // Client-side filter: remove any clothing items that leaked into accessories
+      // Dual-layer client-side filtering for accessories:
+      //  1. Exclusion: discard any product whose title contains apparel/footwear keywords
+      //  2. Inclusion: keep only products that mention the device model OR a tech-accessory keyword
       const cleanedProducts = category === 'accessories'
-        ? remoteProducts.filter((p) => !CLOTHING_KEYWORDS_REGEX.test(p.name))
+        ? remoteProducts.filter((p) => {
+            const title = p.name
+            if (CLOTHING_KEYWORDS_REGEX.test(title)) return false
+            const deviceMatch = deviceName
+              ? title.toLowerCase().includes(detectedDevice!.brand.toLowerCase()) ||
+                title.toLowerCase().includes(detectedDevice!.model.toLowerCase())
+              : false
+            const techMatch = TECH_ACCESSORY_KEYWORDS_REGEX.test(title)
+            return deviceMatch || techMatch
+          })
         : remoteProducts
 
       // Direct state hydration — append unique items only
@@ -171,15 +186,22 @@ export function FeedScreen({
     return () => observer.disconnect()
   }, [loadMore])
 
-  const CLOTHING_KEYWORDS = CLOTHING_KEYWORDS_REGEX
-
   const filtered = catalog.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
     const price = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0
     const matchBudget = price >= budget[0] && price <= budget[1]
-    // When on accessories tab, filter out any clothing items that leaked through
-    const isClothing = filter === 'accessories' && CLOTHING_KEYWORDS.test(p.name)
-    return matchSearch && matchBudget && !isClothing
+    // Accessories tab: dual-layer safeguard — exclude clothing, require device/tech match
+    if (filter === 'accessories') {
+      if (CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
+      const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim().toLowerCase() : ''
+      const deviceMatch = deviceName
+        ? p.name.toLowerCase().includes(detectedDevice!.brand.toLowerCase()) ||
+          p.name.toLowerCase().includes(detectedDevice!.model.toLowerCase())
+        : false
+      const techMatch = TECH_ACCESSORY_KEYWORDS_REGEX.test(p.name)
+      if (!deviceMatch && !techMatch) return false
+    }
+    return matchSearch && matchBudget
   })
 
   console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget)
