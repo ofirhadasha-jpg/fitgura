@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-// Fitgura smart recommendation pipeline — /rest gateway, flat params, tracking_id excluded from sign
+// Fitgura smart recommendation pipeline — /sync gateway, flat params, tracking_id included in sign
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const ALIEXPRESS_GATEWAY = "https://api-sg.aliexpress.com/rest";
+const ALIEXPRESS_GATEWAY = "https://api-sg.aliexpress.com/sync";
 
 interface RequestParams {
   [key: string]: unknown;
@@ -38,7 +38,7 @@ interface FitRecommendation {
 
 function generateSignature(params: RequestParams, appSecret: string): string {
   const sortedKeys = Object.keys(params)
-    .filter((k) => k !== "sign" && k !== "tracking_id" && params[k] !== undefined && params[k] !== null)
+    .filter((k) => k !== "sign" && params[k] !== undefined && params[k] !== null)
     .sort();
 
   let stringToSign = appSecret;
@@ -89,12 +89,11 @@ async function callAliExpressApi(method: string, systemParams: RequestParams = {
 
   fullParams.sign = generateSignature(fullParams, appSecret);
 
-  const formBody = Object.entries(fullParams)
-    .map(([key, value]) => {
-      const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
-      return `${encodeURIComponent(key)}=${encodeURIComponent(strValue)}`;
-    })
-    .join("&");
+  const formBody = new URLSearchParams();
+  for (const [key, value] of Object.entries(fullParams)) {
+    const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+    formBody.append(key, strValue);
+  }
 
   const response = await fetch(ALIEXPRESS_GATEWAY, {
     method: "POST",
