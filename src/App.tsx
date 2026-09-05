@@ -123,6 +123,7 @@ export default function App() {
   const [scannedSizes, setScannedSizes] = useState<ScannedSizes | null>(null)
   const [scanGallery, setScanGallery] = useState<ScanEntry[]>([])
   const [galleryAccess, setGalleryAccess] = useState<GalleryAccessState>('pending')
+  const [feedCatalog, setFeedCatalog] = useState<Product[]>([])
 
   useEffect(() => {
     supabase.auth.onAuthStateChange((event, session) => {
@@ -174,8 +175,8 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!user) saveGuestFavorites(wishlistItems, [])
-  }, [wishlistItems, user])
+    if (!user) saveGuestFavorites(wishlistItems, feedCatalog)
+  }, [wishlistItems, user, feedCatalog])
 
   function handleAuth(loggedInUser: User) {
     setUser(loggedInUser)
@@ -197,12 +198,12 @@ export default function App() {
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={setDetectedDevice} />}
-        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} />}
+        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} onCatalogChange={setFeedCatalog} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} />}
         {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} />}
         {screen === 'wishlist' && (
-          <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} />
+          <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} catalog={feedCatalog} />
         )}
 
         {authModal && (

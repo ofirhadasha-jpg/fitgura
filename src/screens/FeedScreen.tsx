@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
-import { type Screen, type User, type Product, type ScannedSizes, products as fallbackProducts } from '../types'
+import { type Screen, type User, type Product, type ScannedSizes } from '../types'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
 
 const PAGE_SIZE = 20
@@ -14,6 +14,7 @@ export function FeedScreen({
   setBudget,
   user,
   scannedSizes,
+  onCatalogChange,
 }: {
   wishlistItems: number[]
   onToggleWishlist: (i: number) => void
@@ -22,6 +23,7 @@ export function FeedScreen({
   setBudget: (b: [number, number]) => void
   user: User | null
   scannedSizes: ScannedSizes | null
+  onCatalogChange: (catalog: Product[]) => void
 }) {
   const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
   const [search, setSearch] = useState('')
@@ -41,13 +43,15 @@ export function FeedScreen({
       const gender = scannedSizes?.gender ?? 'unisex'
       const remoteProducts = await fetchAliExpressProducts('fashion clothing shoes accessories', page, PAGE_SIZE, gender)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
-      setCatalog((prev) => append ? [...prev, ...remoteProducts] : remoteProducts)
+      setCatalog((prev) => {
+        const next = append ? [...prev, ...remoteProducts] : remoteProducts
+        onCatalogChange(next)
+        return next
+      })
       if (!append && remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
-    } catch {
-      const start = (page - 1) * PAGE_SIZE
-      const pageItems = fallbackProducts.slice(start, start + PAGE_SIZE)
-      if (pageItems.length < PAGE_SIZE) setHasMore(false)
-      setCatalog((prev) => append ? [...prev, ...pageItems] : pageItems)
+    } catch (error: unknown) {
+      if (!append) setCatalog([])
+      setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חיים')
     } finally {
       setIsLoadingProducts(false)
       setIsLoadingMore(false)
@@ -162,14 +166,14 @@ export function FeedScreen({
 
         {productsError && !isLoadingProducts && (
           <View style={feedStyles.productsNotice}>
-            <Text style={feedStyles.productsNoticeText}>{productsError}</Text>
+            <Text style={feedStyles.productsNoticeText}>לא ניתן לטעון מוצרים מ-AliExpress כרגע. נסה שוב מאוחר יותר.</Text>
             <TouchableOpacity onPress={() => void loadProducts(1, false)} style={feedStyles.retryBtn} activeOpacity={0.8}>
               <Text style={feedStyles.retryBtnText}>נסה שוב</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {filtered.length === 0 && !isLoadingProducts && (
+        {filtered.length === 0 && !isLoadingProducts && !productsError && (
           <View style={feedStyles.emptyState}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
             <Text style={feedStyles.emptyText}>אין פריטים בטווח התקציב הנבחר</Text>

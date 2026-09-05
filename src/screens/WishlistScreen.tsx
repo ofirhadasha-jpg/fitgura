@@ -1,10 +1,10 @@
 import React from 'react'
 import { View, Text, StyleSheet, ScrollView, Image } from 'react-native'
 import { BottomNav } from '../components'
-import { type Screen, type Product, products } from '../types'
+import { type Screen, type Product } from '../types'
 
-export function WishlistScreen({ onNav, wishlistItems, budget }: { onNav: (s: Screen) => void; wishlistItems: number[]; budget: [number, number] }) {
-  const saved = products.filter((_, i) => wishlistItems.includes(i))
+export function WishlistScreen({ onNav, wishlistItems, budget, catalog }: { onNav: (s: Screen) => void; wishlistItems: number[]; budget: [number, number]; catalog: Product[] }) {
+  const saved = catalog.filter((_, i) => wishlistItems.includes(i))
   const inBudget = saved.filter((p) => p.price >= budget[0] && p.price <= budget[1])
   const outBudget = saved.filter((p) => p.price < budget[0] || p.price > budget[1])
 

@@ -649,17 +649,6 @@ export interface Product {
   matchScore?: number
 }
 
-export const products: Product[] = [
-  { name: 'חולצת לינן קיץ', brand: 'ZARA', price: 189, img: 'photo-1713881842156-3d9ef36418cc', category: 'clothing' },
-  { name: "ג'קט דנים קלאסי", brand: "Levi's", price: 349, img: 'photo-1542291026-7eec264c27ff', category: 'clothing' },
-  { name: 'כיסוי MagSafe', brand: 'Casetify', price: 129, img: 'photo-1511707171634-5f897ff02aa9', category: 'accessories' },
-  { name: "ג'ינס סלים", brand: 'H&M', price: 229, img: 'photo-1542272604-787c3835535d', category: 'clothing' },
-  { name: 'סניקרס אוורסום', brand: 'Nike', price: 420, img: 'photo-1542291026-7eec264c27ff', category: 'shoes' },
-  { name: 'מגן מסך זכוכית', brand: 'Spigen', price: 79, img: 'photo-1580910051074-3eb694886505', category: 'accessories' },
-  { name: 'חולצת פולו', brand: 'Ralph Lauren', price: 279, img: 'photo-1523381210434-271e8be1f52b', category: 'clothing' },
-  { name: 'נעלי ריצה', brand: 'Adidas', price: 380, img: 'photo-1542291026-7eec264c27ff', category: 'shoes' },
-]
-
 export interface UserDevice {
   id: number
   type: string
