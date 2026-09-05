@@ -73,11 +73,20 @@ export function FeedScreen({
       let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
 
       if (category === 'accessories') {
-        // Accessories: device-specific tech accessory search — short keywords work best with AliExpress API
-        if (deviceName) {
-          keywords = `${deviceName} case cover protector charger`
+        // Accessories: build device-specific search from the recognized device model.
+        // AliExpress titles typically use the model name alone (e.g. "Galaxy S23 case", "iPhone 15 Pro cover")
+        // so we prefer the model over brand+model, and keep keywords short for better API results.
+        if (detectedDevice) {
+          const model = detectedDevice.model.trim()
+          const isDesktop = detectedDevice.brand === 'Desktop'
+          if (isDesktop) {
+            keywords = `laptop case cover sleeve stand`
+          } else {
+            // Use just the model name — it's the most specific and common in product titles
+            keywords = `${model} case cover protector`
+          }
         } else {
-          keywords = `phone case cover protector charger`
+          keywords = `phone case cover protector`
         }
       } else if (category === 'clothing') {
         // Clothing: filtered by gender and size attributes
