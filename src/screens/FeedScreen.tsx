@@ -166,7 +166,8 @@ export function FeedScreen({
 
         {productsError && !isLoadingProducts && (
           <View style={feedStyles.productsNotice}>
-            <Text style={feedStyles.productsNoticeText}>לא ניתן לטעון מוצרים מ-AliExpress כרגע. נסה שוב מאוחר יותר.</Text>
+            <Text style={feedStyles.productsNoticeTitle}>לא ניתן לטעון מוצרים מ-AliExpress</Text>
+            <Text style={feedStyles.productsNoticeText}>{productsError}</Text>
             <TouchableOpacity onPress={() => void loadProducts(1, false)} style={feedStyles.retryBtn} activeOpacity={0.8}>
               <Text style={feedStyles.retryBtnText}>נסה שוב</Text>
             </TouchableOpacity>
@@ -391,8 +392,9 @@ const feedStyles = StyleSheet.create({
   aiMatchCountText: { fontSize: 12, fontWeight: '700', color: '#2ED573' },
   loadingState: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#EEF2FF', borderRadius: 12 },
   loadingText: { color: '#2E5BFF', fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  productsNotice: { padding: 10, backgroundColor: '#FFF7ED', borderRadius: 10, borderWidth: 1, borderColor: '#FED7AA' },
-  productsNoticeText: { color: '#C2410C', fontSize: 11, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  productsNotice: { padding: 16, backgroundColor: '#FFF7ED', borderRadius: 12, borderWidth: 1, borderColor: '#FED7AA', gap: 8 },
+  productsNoticeTitle: { color: '#C2410C', fontSize: 14, fontWeight: '700', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  productsNoticeText: { color: '#9A3412', fontSize: 12, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   retryBtn: { alignSelf: 'center', marginTop: 8, backgroundColor: '#C2410C', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
   retryBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   emptyState: { alignItems: 'center', paddingTop: 40 },
