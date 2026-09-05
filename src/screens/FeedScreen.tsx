@@ -4,7 +4,7 @@ import { LinearGradient, BottomNav } from '../components'
 import { type Screen, type User, type Product, type ScannedSizes } from '../types'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 50
 
 export function FeedScreen({
   wishlistItems,
@@ -42,8 +42,15 @@ export function FeedScreen({
     try {
       const gender = scannedSizes?.gender ?? 'unisex'
       const remoteProducts = await fetchAliExpressProducts('fashion clothing shoes accessories', page, PAGE_SIZE, gender)
+      console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
-      setCatalog((prev) => append ? [...prev, ...remoteProducts] : remoteProducts)
+      setCatalog((prev) => {
+        const existingSkus = new Set(prev.map((p) => p.aliexpressSku).filter(Boolean))
+        const deduped = remoteProducts.filter((p) => !p.aliexpressSku || !existingSkus.has(p.aliexpressSku))
+        const next = append ? [...prev, ...deduped] : deduped
+        console.log('[FeedScreen] Catalog after update:', next.length, 'deduped:', remoteProducts.length - deduped.length)
+        return next
+      })
       if (!append && remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
     } catch (error: unknown) {
       if (!append) setCatalog([])
@@ -178,6 +185,13 @@ export function FeedScreen({
           <View style={feedStyles.emptyState}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
             <Text style={feedStyles.emptyText}>אין פריטים בטווח התקציב הנבחר</Text>
+            <TouchableOpacity
+              onPress={() => { setFilter('all'); setSearch(''); setBudget([50, 1000]); }}
+              activeOpacity={0.8}
+              style={{ marginTop: 12, backgroundColor: '#2E5BFF', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>אפס סינון</Text>
+            </TouchableOpacity>
           </View>
         )}
 
