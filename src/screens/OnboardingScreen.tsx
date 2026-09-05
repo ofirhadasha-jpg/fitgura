@@ -5,7 +5,7 @@ import {
   type ScannedSizes,
   type PersonBounds,
   type ScanEntry,
-  TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
+  TOP_SIZES, BOTTOM_SIZES, FIT_TYPES, SHOE_SIZES_EU,
   PRIMARY_STYLES, SEC_STYLES,
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
@@ -318,6 +318,7 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
   const [topSize, setTopSize] = useState(sizes.sizing.top)
   const [bottomSize, setBottomSize] = useState(sizes.sizing.bottom)
   const [fitType, setFitType] = useState(sizes.sizing.fit)
+  const [shoeSize, setShoeSize] = useState(sizes.shoeSize ?? '42')
   const [metricsEditing, setMetricsEditing] = useState(false)
   const [styleEditing, setStyleEditing] = useState(false)
   const [primaryStyle, setPrimaryStyle] = useState(sizes.style?.primaryStyle ?? '')
@@ -493,6 +494,7 @@ function ResultView({ onNext, sizes, scanError, faceMissing, onRetake }: { onNex
             { label: 'חולצה', value: topSize, options: TOP_SIZES, set: setTopSize },
             { label: 'מכנסיים', value: bottomSize, options: BOTTOM_SIZES, set: setBottomSize },
             { label: 'גזרה', value: fitType, options: FIT_TYPES, set: setFitType },
+            { label: 'נעליים', value: shoeSize, options: SHOE_SIZES_EU, set: setShoeSize },
           ].map(({ label, value, options, set }) => (
             <View key={label} style={[obStyles.sizeBox, { borderColor: editing ? '#2E5BFF' : '#E2E8F0', borderWidth: editing ? 2 : 1.5 }]}>
               {editing ? (

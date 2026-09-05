@@ -1,0 +1,16 @@
+Please implement Shoe Size extraction, editing, and direct-purchase size recommendation across the application:
+
+1. AI Scan & Profile Integration:
+   - Update the AI image analysis prompt/schema to extract or estimate `shoe_size` (EU format, e.g. 36-47).
+   - Add `shoe_size` to the editable fields in the Scan Results Modal and the User Profile page (numeric input or dropdown range 35-48 EU).
+   - Persist `shoe_size` in `localStorage` for guests and in the Supabase `profiles` table upon login.
+
+2. Shoe Search Query Enhancement:
+   - In `aliexpressClient.ts`, when the "Shoes" category (נעליים) is selected, combine `gender` and `shoe_size` into the search parameters (e.g., query keywords including "size EU <shoe_size>").
+
+3. Product Card Recommended Size & Quick Purchase Action:
+   - On each Product Card (especially for shoes and clothing):
+     - Display a prominent badge showing the user's matched size: `מידה מומלצת עבורך: <shoe_size> EU` (or recommended clothing size).
+   - When the user clicks "לקנייה ב-AliExpress" / "Buy on AliExpress":
+     - Show a quick confirmation overlay/toast alerting the user: "המידה המומלצת עבורך היא <shoe_size> EU - אנא בחר מידה זו בעמוד המוצר!".
+     - Open the product affiliate link (`promotion_link`) in a new tab for seamless checkout.

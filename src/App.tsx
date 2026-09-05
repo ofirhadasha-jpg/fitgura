@@ -36,7 +36,7 @@ function saveGuestProfile(sizes: ScannedSizes | null) {
     shoulder: sizes.sizing.bodyMetrics?.shoulder_width_cm ?? null,
     height: sizes.sizing.bodyMetrics?.estimated_height_cm ?? null,
     weight: sizes.sizing.bodyMetrics?.estimated_weight_kg ?? null,
-    shoeSize: null,
+    shoeSize: sizes.shoeSize ?? null,
   }
   localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile))
 }

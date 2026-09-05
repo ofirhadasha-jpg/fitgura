@@ -29,6 +29,12 @@ FACE DETECTION:
 - Set "face_detected" to true if a face is visible, false if the face is missing, obscured, cropped out, or not recognizable.
 - This field is critical for the app to decide whether to ask the user for a better photo.
 
+SHOE SIZE DETECTION:
+- Estimate the person's EU shoe size based on their height, body frame, and proportions.
+- Typical adult male EU shoe size: 40-46. Typical adult female EU shoe size: 36-42.
+- Use height as the primary factor: taller individuals generally have larger feet.
+- Set "recommended_shoe_size_eu" to an integer EU shoe size. If truly undeterminable, use null.
+
 OUTPUT REQUIREMENTS:
 - Respond ONLY with a valid clean JSON object.
 - ALL fields in body_metrics MUST have numeric values (never null).
@@ -74,6 +80,7 @@ EXPECTED JSON STRUCTURE:
     },
     "recommended_top_size": "XS | S | M | L | XL | XXL",
     "recommended_bottom_size": "28 | 30 | 32 | 34 | 36 | 38",
+    "recommended_shoe_size_eu": 42,
     "fit_preference": "Slim | Regular | Loose | Oversized",
     "body_frame_estimate": "Small | Medium | Large | Athletic",
     "confidence_score": 0.75

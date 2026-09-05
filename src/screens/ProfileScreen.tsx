@@ -5,7 +5,7 @@ import {
   type Screen, type User, type UserDevice,
   type DeviceIdentificationResult,
   type DetectedDevice, type ScannedSizes, type ScanEntry, type GalleryAccessState,
-  TOP_SIZES, BOTTOM_SIZES, FIT_TYPES,
+  TOP_SIZES, BOTTOM_SIZES, FIT_TYPES, SHOE_SIZES_EU,
   SCAN_NO_NEW_MESSAGE,
   nextDevId, identifyDevice,
   analyzeBodyImage, aiAnalysisToScannedSizes,
@@ -32,6 +32,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [profTop, setProfTop] = useState(scannedSizes?.sizing.top ?? 'M')
   const [profBottom, setProfBottom] = useState(scannedSizes?.sizing.bottom ?? '32')
   const [profFit, setProfFit] = useState(scannedSizes?.sizing.fit ?? 'Slim Fit')
+  const [profShoe, setProfShoe] = useState(scannedSizes?.shoeSize ?? '42')
 
   const [devices, setDevices] = useState<UserDevice[]>(() => {
     if (detectedDevice) {
@@ -327,6 +328,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
               { label: 'חולצה', value: profTop, options: TOP_SIZES, set: setProfTop },
               { label: 'מכנסיים', value: profBottom, options: BOTTOM_SIZES, set: setProfBottom },
               { label: 'גזרה', value: profFit, options: FIT_TYPES, set: setProfFit },
+              { label: 'נעליים', value: profShoe, options: SHOE_SIZES_EU, set: setProfShoe },
             ].map(({ label, value, options, set }) => (
               <View key={label} style={[profStyles.sizeBox, { borderColor: editingSizes ? '#2E5BFF' : '#E2E8F0', borderWidth: editingSizes ? 2 : 1.5 }]}>
                 {editingSizes ? (

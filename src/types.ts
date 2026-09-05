@@ -168,6 +168,7 @@ export interface ScannedSizes {
   fit: string
   gender: 'male' | 'female' | 'unisex'
   personBounds: PersonBounds
+  shoeSize: string | null
 }
 
 export interface PersonBounds {
@@ -192,6 +193,7 @@ export interface AIBodyAnalysis {
     body_metrics: BodyMetrics
     recommended_top_size: string | null
     recommended_bottom_size: string | null
+    recommended_shoe_size_eu: number | null
     fit_preference: string
     body_frame_estimate: string
     confidence_score: number
@@ -289,6 +291,7 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
 
   const top = sp.recommended_top_size ?? 'M'
   const bottom = sp.recommended_bottom_size ?? '32'
+  const shoeSize = sp.recommended_shoe_size_eu != null ? String(sp.recommended_shoe_size_eu) : null
   const fitMap: Record<string, string> = { 'Slim': 'Slim Fit', 'Regular': 'Regular', 'Loose': 'Relaxed', 'Oversized': 'Relaxed' }
   const fit = fitMap[sp.fit_preference] ?? 'Regular'
   const bodyFrame = sp.body_frame_estimate ?? 'Medium'
@@ -327,12 +330,14 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
     fit,
     gender,
     personBounds,
+    shoeSize,
   }
 }
 
 export const TOP_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 export const BOTTOM_SIZES = ['28', '30', '32', '34', '36', '38']
 export const FIT_TYPES = ['Slim Fit', 'Regular', 'Relaxed', 'Athletic']
+export const SHOE_SIZES_EU = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48']
 
 export const BODY_FRAMES    = ['Small', 'Medium', 'Large', 'Athletic']
 export const PRIMARY_STYLES = ['Casual', 'Streetwear', 'Classic', 'Minimalist', 'Smart Casual', 'Athletic']

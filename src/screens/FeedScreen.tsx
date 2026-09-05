@@ -79,8 +79,12 @@ export function FeedScreen({
           keywords = `${keywords} ${scannedSizes.style.primaryStyle}`
         }
       } else if (category === 'shoes') {
-        // Shoes: filtered by gender
+        // Shoes: filtered by gender and shoe size
+        const shoeSize = scannedSizes?.shoeSize
         keywords = `${keywords} ${gender}`
+        if (shoeSize) {
+          keywords = `${keywords} size ${shoeSize} EU`
+        }
       } else if (category === 'all') {
         // All: combine clothes, shoes, and device-compatible accessories
         if (scannedSizes?.style?.aestheticTags?.length) {
@@ -276,6 +280,7 @@ export function FeedScreen({
                 inWishlist={wishlistItems.includes(globalIdx)}
                 onToggleWishlist={() => onToggleWishlist(globalIdx)}
                 scannedSizes={scannedSizes}
+                category={filter}
               />
             )
           })}
@@ -381,7 +386,16 @@ function formatPrice(price: number, currency?: string): string {
   return `${symbol}${price.toLocaleString()}`
 }
 
-function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null }) {
+function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null; category: string }) {
+  const [toast, setToast] = useState<string | null>(null)
+
+  function handleBuy() {
+    const url = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
+    window.open(url, '_blank')
+    setToast('מעביר ל-AliExpress...')
+    setTimeout(() => setToast(null), 2500)
+  }
+
   return (
     <View style={feedStyles.productCard}>
       <View style={feedStyles.productImageWrap}>
@@ -404,7 +418,11 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes }: { 
       <View style={feedStyles.productInfo}>
         <View style={feedStyles.matchChip}>
           <Text style={feedStyles.matchChipText}>
-            {scannedSizes ? `✓ מתאים למידה: ${scannedSizes.sizing.top} / ${scannedSizes.sizing.bottom}` : '✓ מתאים למידה שנסרקה'}
+            {category === 'shoes' && scannedSizes?.shoeSize
+              ? `✓ מתאים למידה נעל: EU ${scannedSizes.shoeSize}`
+              : scannedSizes
+                ? `✓ מתאים למידה: ${scannedSizes.sizing.top} / ${scannedSizes.sizing.bottom}`
+                : '✓ מתאים למידה שנסרקה'}
           </Text>
         </View>
         <Text style={feedStyles.productName}>{product.name}</Text>
@@ -417,13 +435,18 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes }: { 
         </View>
         <View style={feedStyles.buyBtnRow}>
           <TouchableOpacity
-            onPress={() => window.open(product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`, '_blank')}
+            onPress={handleBuy}
             activeOpacity={0.8}
             style={feedStyles.buyBtnAli}
           >
             <Text style={feedStyles.buyBtnText}>🛒 AliExpress</Text>
           </TouchableOpacity>
         </View>
+        {toast && (
+          <View style={feedStyles.toast}>
+            <Text style={feedStyles.toastText}>{toast}</Text>
+          </View>
+        )}
       </View>
     </View>
   )
@@ -510,4 +533,6 @@ const feedStyles = StyleSheet.create({
   familySub: { fontSize: 11, color: '#FB923C', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familyBadge: { backgroundColor: 'rgba(255,107,107,0.12)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
   familyBadgeText: { fontSize: 11, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  toast: { marginTop: 6, backgroundColor: '#0B1437', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
+  toastText: { color: '#fff', fontSize: 10, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
