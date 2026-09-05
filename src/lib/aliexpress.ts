@@ -1,66 +1,42 @@
 import type { Product } from '../types'
-
-const API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aliexpress-search`
-
-const HEADERS = {
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-} as const
+import { supabase } from './supabase'
 
 export async function fetchAliExpressProducts(keywords: string, pageNo = 1, pageSize = 20, gender?: 'male' | 'female' | 'unisex'): Promise<Product[]> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: HEADERS,
-    body: JSON.stringify({ action: 'search', keywords, pageNo, pageSize, gender }),
+  const { data, error } = await supabase.functions.invoke('aliexpress-search', {
+    body: { action: 'search', keywords, pageNo, pageSize, gender },
   })
 
-  const result: unknown = await response.json().catch(() => null)
-  if (!response.ok) {
-    const message = typeof result === 'object' && result !== null && 'error' in result
-      ? String(result.error)
-      : `AliExpress request failed (${response.status})`
-    throw new Error(message)
+  if (error) {
+    throw new Error(error.message || 'AliExpress request failed')
   }
 
-  if (typeof result !== 'object' || result === null || !('products' in result) || !Array.isArray(result.products)) {
+  const result = data as { products?: Product[] } | null
+  if (!result || !result.products || !Array.isArray(result.products)) {
     throw new Error('AliExpress returned an invalid product list')
   }
 
-  return result.products as Product[]
+  return result.products
 }
 
 export async function fetchProductDetails(productIds: string[]): Promise<unknown> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: HEADERS,
-    body: JSON.stringify({ action: 'details', productIds }),
+  const { data, error } = await supabase.functions.invoke('aliexpress-search', {
+    body: { action: 'details', productIds },
   })
 
-  const result: unknown = await response.json().catch(() => null)
-  if (!response.ok) {
-    const message = typeof result === 'object' && result !== null && 'error' in result
-      ? String(result.error)
-      : `AliExpress request failed (${response.status})`
-    throw new Error(message)
+  if (error) {
+    throw new Error(error.message || 'AliExpress request failed')
   }
 
-  return result
+  return data
 }
 
 export async function generateAffiliateLink(sourceUrl: string): Promise<string | null> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: HEADERS,
-    body: JSON.stringify({ action: 'affiliate-link', sourceUrl }),
+  const { data, error } = await supabase.functions.invoke('aliexpress-search', {
+    body: { action: 'affiliate-link', sourceUrl },
   })
 
-  const result: unknown = await response.json().catch(() => null)
-  if (!response.ok) return null
+  if (error || !data) return null
 
-  if (typeof result === 'object' && result !== null && 'links' in result) {
-    const links = (result as { links: { promotion_link?: string }[] | null }).links
-    return links?.[0]?.promotion_link ?? null
-  }
-
-  return null
+  const result = data as { links?: { promotion_link?: string }[] | null } | null
+  return result?.links?.[0]?.promotion_link ?? null
 }
