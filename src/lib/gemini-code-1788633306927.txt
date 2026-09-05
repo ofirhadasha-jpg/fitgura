@@ -1,0 +1,12 @@
+Please fix the budget/price filtering logic in `Feed.tsx` and `aliexpressClient.ts`:
+
+1. Budget Filter Parameters:
+   - Check if `min_sale_price` or `max_sale_price` are being sent to AliExpress API. If no explicit budget is set by the user, remove price limit parameters from the API request payload so all available items are returned.
+   - If a budget range is selected, ensure values are properly converted if AliExpress returns prices in USD versus ILS (e.g., do not pass ILS values into a USD-denominated API parameter).
+
+2. Graceful UI Fallback & Filter Reset:
+   - When no items match the active budget range, display a user-friendly empty state with an active button: "Widen Budget / Reset Filters".
+   - Clicking "Reset Filters" should reset `minPrice` and `maxPrice` state variables to null/default and immediately re-fetch the AliExpress live feed.
+
+3. Log Applied Filters:
+   - Add console logs showing the exact `min_sale_price`, `max_sale_price`, and `target_currency` being sent to AliExpress during feed requests.
