@@ -1,0 +1,19 @@
+Please fix the measurement persistence bug in `ScanModal.tsx`, `AuthContext.tsx`, and `Feed.tsx`:
+
+1. Fix Post-Scan State Persistence (`ScanModal.tsx` & `AuthContext.tsx`):
+   - When the user edits any measurement field (chest, waist, hips, height, weight, top_size, pants_size, shoe_size) in the Scan Results Modal and clicks "Save" / "אישור ושמירה":
+     - Immediately invoke `updateProfile(updatedData)` in `AuthContext`.
+     - Save the updated values directly to `localStorage` (for guest users) AND trigger an upsert/update to the Supabase `profiles` table (for authenticated users).
+     - Ensure the local `userProfile` state reflects these new manual edits as the single source of truth, completely superseding the raw AI output.
+
+2. Trigger Immediate Feed Refresh (`Feed.tsx`):
+   - Add the user profile object (or its individual measurement fields) as a dependency to the main product fetch effect in `Feed.tsx`.
+   - When the profile measurements change:
+     - Clear the existing products array (`setProducts([])`).
+     - Reset `page_no` to 1.
+     - Automatically execute a new API request to AliExpress using the newly saved measurements and sizes.
+
+3. Verification Logging:
+   - Add explicit console logs:
+     - `console.log('[ScanModal] Successfully saved edited measurements:', updatedData)`
+     - `console.log('[Feed] Re-fetching feed with updated profile measurements:', userProfile)`
