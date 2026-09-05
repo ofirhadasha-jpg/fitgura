@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
-import { type Screen, type User, type Product, type ScannedSizes } from '../types'
+import { type Screen, type User, type Product, type ScannedSizes, products as fallbackProducts } from '../types'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
 
 const PAGE_SIZE = 20
@@ -43,9 +43,11 @@ export function FeedScreen({
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
       setCatalog((prev) => append ? [...prev, ...remoteProducts] : remoteProducts)
       if (!append && remoteProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
-    } catch (error: unknown) {
-      if (!append) setCatalog([])
-      setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חיים')
+    } catch {
+      const start = (page - 1) * PAGE_SIZE
+      const pageItems = fallbackProducts.slice(start, start + PAGE_SIZE)
+      if (pageItems.length < PAGE_SIZE) setHasMore(false)
+      setCatalog((prev) => append ? [...prev, ...pageItems] : pageItems)
     } finally {
       setIsLoadingProducts(false)
       setIsLoadingMore(false)
