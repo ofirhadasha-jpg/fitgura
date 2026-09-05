@@ -13,6 +13,7 @@ import { WishlistScreen } from './screens/WishlistScreen'
 
 const GUEST_PROFILE_KEY = 'fitgura_guest_profile'
 const GUEST_FAVORITES_KEY = 'fitgura_guest_favorites'
+const GUEST_DEVICE_KEY = 'fitgura_guest_device'
 
 interface GuestProfile {
   gender: 'male' | 'female' | 'unisex'
@@ -22,6 +23,7 @@ interface GuestProfile {
   shoulder: number | null
   height: number | null
   weight: number | null
+  shoeSize: string | null
 }
 
 function saveGuestProfile(sizes: ScannedSizes | null) {
@@ -34,8 +36,20 @@ function saveGuestProfile(sizes: ScannedSizes | null) {
     shoulder: sizes.sizing.bodyMetrics?.shoulder_width_cm ?? null,
     height: sizes.sizing.bodyMetrics?.estimated_height_cm ?? null,
     weight: sizes.sizing.bodyMetrics?.estimated_weight_kg ?? null,
+    shoeSize: null,
   }
   localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile))
+}
+
+function saveGuestDevice(device: DetectedDevice | null) {
+  if (!device) return
+  localStorage.setItem(GUEST_DEVICE_KEY, JSON.stringify(device))
+}
+
+function loadGuestDevice(): DetectedDevice | null {
+  const raw = localStorage.getItem(GUEST_DEVICE_KEY)
+  if (!raw) return null
+  try { return JSON.parse(raw) as DetectedDevice } catch { return null }
 }
 
 function saveGuestFavorites(items: number[], catalog: Product[]) {
@@ -61,11 +75,13 @@ function loadGuestFavorites(): { productId: string; productName: string }[] {
 function clearGuestData() {
   localStorage.removeItem(GUEST_PROFILE_KEY)
   localStorage.removeItem(GUEST_FAVORITES_KEY)
+  localStorage.removeItem(GUEST_DEVICE_KEY)
 }
 
 async function migrateGuestData(userId: string) {
   const guestProfile = loadGuestProfile()
   const guestFavorites = loadGuestFavorites()
+  const guestDevice = loadGuestDevice()
 
   if (guestProfile) {
     await supabase.from('profiles').upsert({
@@ -77,6 +93,13 @@ async function migrateGuestData(userId: string) {
       shoulder_cm: guestProfile.shoulder,
       height_cm: guestProfile.height,
       weight_kg: guestProfile.weight,
+      shoe_size: guestProfile.shoeSize,
+      registered_device: guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null,
+    })
+  } else if (guestDevice) {
+    await supabase.from('profiles').upsert({
+      user_id: userId,
+      registered_device: `${guestDevice.brand} ${guestDevice.model}`,
     })
   }
 
@@ -138,6 +161,27 @@ export default function App() {
             email: u.email ?? '',
             avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
           })
+          // Hydrate profile (measurements + registered_device) from Supabase
+          const { data: profileRow } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', u.id)
+            .maybeSingle()
+          if (profileRow?.registered_device) {
+            const parts = profileRow.registered_device.split(' ')
+            const brand = parts[0] ?? 'Unknown'
+            const model = parts.slice(1).join(' ') || profileRow.registered_device
+            setDetectedDevice((prev) => prev ?? {
+              brand,
+              model,
+              chip: '',
+              year: '',
+              name: profileRow.registered_device,
+              screen_size_inches: null,
+              camera_layout: null,
+              confidence: 0.5,
+            })
+          }
         } else {
           setUser(null)
         }
@@ -191,6 +235,19 @@ export default function App() {
     if (!user) saveGuestProfile(scannedSizes)
   }, [scannedSizes, user])
 
+  // Persist detected device for guests
+  useEffect(() => {
+    if (!user && detectedDevice) saveGuestDevice(detectedDevice)
+  }, [detectedDevice, user])
+
+  // Hydrate guest device on initial mount
+  useEffect(() => {
+    if (!user) {
+      const guestDevice = loadGuestDevice()
+      if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
+    }
+  }, [])
+
   return (
     <ErrorBoundary>
     <View style={styles.outer}>
@@ -198,7 +255,7 @@ export default function App() {
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={setDetectedDevice} />}
-        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} onCatalogChange={setFeedCatalog} />}
+        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} />}
         {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} />}

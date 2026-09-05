@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
-import { type Screen, type User, type Product, type ScannedSizes } from '../types'
+import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice } from '../types'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
 
 const PAGE_SIZE = 50
@@ -28,6 +28,7 @@ export function FeedScreen({
   setBudget,
   user,
   scannedSizes,
+  detectedDevice,
   onCatalogChange,
 }: {
   wishlistItems: number[]
@@ -37,6 +38,7 @@ export function FeedScreen({
   setBudget: (b: [number, number]) => void
   user: User | null
   scannedSizes: ScannedSizes | null
+  detectedDevice: DetectedDevice | null
   onCatalogChange: (catalog: Product[]) => void
 }) {
   const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
@@ -55,16 +57,37 @@ export function FeedScreen({
     setProductsError(null)
     try {
       const gender = scannedSizes?.gender ?? 'unisex'
-      let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
+      const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim() : ''
       const categoryIds = CATEGORY_IDS[category] || undefined
 
-      // AI scan-based personalization: inject detected style/aesthetic tags into search keywords
-      if (scannedSizes?.style?.aestheticTags?.length) {
-        keywords = `${keywords} ${scannedSizes.style.aestheticTags.slice(0, 2).join(' ')}`
+      // Build keywords dynamically based on category, device, and measurements
+      let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
+
+      if (category === 'accessories' && deviceName) {
+        // Accessories: append exact device name for compatible cases, holders, watch bands
+        keywords = `${deviceName} case holder watch bands bags`
+      } else if (category === 'clothing') {
+        // Clothing: filtered by gender and size attributes
+        if (scannedSizes?.style?.aestheticTags?.length) {
+          keywords = `${keywords} ${scannedSizes.style.aestheticTags.slice(0, 2).join(' ')}`
+        }
+        if (scannedSizes?.style?.primaryStyle) {
+          keywords = `${keywords} ${scannedSizes.style.primaryStyle}`
+        }
+      } else if (category === 'shoes') {
+        // Shoes: filtered by gender
+        keywords = `${keywords} ${gender}`
+      } else if (category === 'all') {
+        // All: combine clothes, shoes, and device-compatible accessories
+        if (scannedSizes?.style?.aestheticTags?.length) {
+          keywords = `${keywords} ${scannedSizes.style.aestheticTags.slice(0, 2).join(' ')}`
+        }
+        if (deviceName) {
+          keywords = `${keywords} ${deviceName} accessories`
+        }
       }
-      if (scannedSizes?.style?.primaryStyle) {
-        keywords = `${keywords} ${scannedSizes.style.primaryStyle}`
-      }
+
+      console.log(`[Feed] Fetching results for Device: ${deviceName || 'N/A'}, Gender: ${gender}, Category: ${category}`)
 
       const remoteProducts = await fetchAliExpressProducts(keywords, page, PAGE_SIZE, gender, categoryIds)
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'keywords:', keywords)
@@ -86,7 +109,7 @@ export function FeedScreen({
       setIsLoadingProducts(false)
       setIsLoadingMore(false)
     }
-  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle])
+  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, detectedDevice])
 
   const handleFilterChange = useCallback((newFilter: typeof filter) => {
     console.log(`[Feed] Category changed to: ${newFilter}`)
