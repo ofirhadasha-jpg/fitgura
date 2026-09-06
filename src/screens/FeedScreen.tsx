@@ -262,10 +262,6 @@ export function FeedScreen({
   const isFemaleRender = scannedSizes?.gender === 'female'
   const isMaleRender = scannedSizes?.gender === 'male'
 
-  // Positive gender indicators — product title must contain at least one when gender is set
-  const FEMININE_RENDER_INDICATORS = /\b(women|womens|female|lady|ladies|dress|skirt|bra|lingerie|panties|blouse|נשים|אישה|שמלה|חצאית)\b/i
-  const MASCULINE_RENDER_INDICATORS = /\b(men|mens|male|boy|man|גברים|גבר)\b/i
-
   const filtered = catalog.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
     const price = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0
@@ -273,9 +269,6 @@ export function FeedScreen({
     // 1. Gender Validation — render-time double-check
     if (isFemaleRender && MENS_RENDER_REGEX.test(p.name)) return false
     if (isMaleRender && WOMENS_RENDER_REGEX.test(p.name)) return false
-    // 1b. Positive gender enforcement — require gender marker in title
-    if (isFemaleRender && !FEMININE_RENDER_INDICATORS.test(p.name)) return false
-    if (isMaleRender && !MASCULINE_RENDER_INDICATORS.test(p.name)) return false
     // 2. Category Validation — render-time double-check
     if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(p.name)) return false
     if (filter === 'shoes' && APPAREL_RENDER_REGEX.test(p.name)) return false

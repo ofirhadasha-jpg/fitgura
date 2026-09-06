@@ -262,17 +262,12 @@ Deno.serve(async (req: Request) => {
       const APPAREL_KEYWORDS = /\b(dress|skirt|suit|bra|lingerie|panties|shirt|blouse|jacket|coat|pants|trouser|hoodie|sweater|jeans|shorts|top|t-shirt|שמלה|חצאית|חליפה|חולצה|מעיל|מכנסיים|בגד)\b/i;
       const MENS_KEYWORDS = /\b(men|mens|male|boy|man|גברים|גבר)\b/i;
       const WOMENS_KEYWORDS = /\b(women|womens|female|girl|lady|ladies|נשים|אישה)\b/i;
-      const FEMININE_INDICATORS = /\b(women|womens|female|lady|ladies|dress|skirt|bra|lingerie|panties|blouse|נשים|אישה|שמלה|חצאית)\b/i;
-      const MASCULINE_INDICATORS = /\b(men|mens|male|boy|man|גברים|גבר)\b/i;
       const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i;
 
       const filteredProducts = mapped.filter((p) => {
         // 1. Strict gender isolation — reject opposite gender
         if (isFemaleSearch && MENS_KEYWORDS.test(p.name)) return false;
         if (isMaleSearch && WOMENS_KEYWORDS.test(p.name)) return false;
-        // 1b. Positive gender enforcement — require gender marker in title
-        if (isFemaleSearch && !FEMININE_INDICATORS.test(p.name)) return false;
-        if (isMaleSearch && !MASCULINE_INDICATORS.test(p.name)) return false;
         // 2. Clothing tab: hard-exclude all footwear
         if (isClothingSearch && FOOTWEAR_KEYWORDS.test(p.name)) return false;
         // 3. Shoes tab: hard-exclude all apparel

@@ -116,11 +116,6 @@ const SHOES_SUBQUERIES_UNISEX = [
   'wedges',
 ]
 
-// ── Gender enforcement ──────────────────────────────────────────────────────
-// Positive gender indicators — product title must contain at least one when gender is set
-const FEMININE_INDICATORS = /\b(women|womens|female|lady|ladies|dress|skirt|bra|lingerie|panties|blouse|נשים|אישה|שמלה|חצאית)\b/i
-const MASCULINE_INDICATORS = /\b(men|mens|male|boy|man|גברים|גבר)\b/i
-
 // ── Hard-exclusion keyword lists ───────────────────────────────────────────
 
 const FOOTWEAR_TERMS = [
@@ -191,7 +186,8 @@ export async function searchProductsByCategory(
     const perQuerySize = Math.max(12, Math.ceil(pageSize / subqueries.length))
     const results = await Promise.all(
       subqueries.map((sq) => {
-        const kw = `${genderPrefix}${sq}`
+        let kw = `${genderPrefix}${sq}`
+        if (extraKeywords) kw += ` ${extraKeywords}`
         return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds)
       }),
     )
@@ -213,7 +209,8 @@ export async function searchProductsByCategory(
     const perQuerySize = Math.max(15, Math.ceil(pageSize / subqueries.length))
     const results = await Promise.all(
       subqueries.map((sq) => {
-        const kw = `${genderPrefix}${sq}`
+        let kw = `${genderPrefix}${sq}`
+        if (extraKeywords) kw += ` ${extraKeywords}`
         return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds)
       }),
     )
@@ -323,9 +320,6 @@ export function filterProducts(
   return products.filter((p) => {
     // 1. Gender Validation — discard opposite-gender items
     if (rejectRegex.test(p.name)) return false
-    // 1b. Positive gender enforcement — require gender marker when gender is set
-    if (gender === 'female' && !FEMININE_INDICATORS.test(p.name)) return false
-    if (gender === 'male' && !MASCULINE_INDICATORS.test(p.name)) return false
 
     // 2. Category Validation
     if (category === 'clothing') {
