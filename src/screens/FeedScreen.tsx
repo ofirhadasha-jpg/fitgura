@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import type { GestureResponderEvent } from 'react-native'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
+import { AddDeviceModal } from '../components/AddDeviceModal'
 import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice } from '../types'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
 import { formatFullPantsSizeLabel, euToUsPants, type SizeRegion } from '../utils/sizeConverter'
@@ -68,7 +69,6 @@ export function FeedScreen({
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [showDeviceModal, setShowDeviceModal] = useState(false)
-  const [deviceSearch, setDeviceSearch] = useState('')
 
   const loadProducts = useCallback(async (page: number, append: boolean, category: string) => {
     if (append) setIsLoadingMore(true)
@@ -428,38 +428,11 @@ export function FeedScreen({
 
       <BottomNav current="feed" onNav={onNav} />
 
-      {showDeviceModal && (
-        <View style={feedStyles.deviceModalOverlay}>
-          <TouchableOpacity onPress={() => { setShowDeviceModal(false); setDeviceSearch('') }} activeOpacity={1} style={feedStyles.sizeModalBackdrop} />
-          <View style={feedStyles.deviceModalSheet}>
-            <TouchableOpacity onPress={() => { setShowDeviceModal(false); setDeviceSearch('') }} activeOpacity={0.7} style={feedStyles.sizeModalCloseBtn}>
-              <Text style={feedStyles.sizeModalCloseText}>×</Text>
-            </TouchableOpacity>
-            <Text style={feedStyles.deviceModalTitle}>הוסף מכשיר</Text>
-            <Text style={feedStyles.deviceModalSub}>הקלד את דגם המכשיר (לדוגמה: iPhone 15 Pro, Galaxy S23)</Text>
-            <TextInput
-              placeholder="דגם מכשיר..."
-              value={deviceSearch}
-              onChangeText={setDeviceSearch}
-              style={feedStyles.deviceModalInput}
-              autoFocus
-            />
-            <TouchableOpacity
-              onPress={() => {
-                if (deviceSearch.trim()) {
-                  onAddDevice(deviceSearch.trim())
-                  setDeviceSearch('')
-                  setShowDeviceModal(false)
-                }
-              }}
-              activeOpacity={0.8}
-              style={feedStyles.deviceModalSaveBtn}
-            >
-              <Text style={feedStyles.deviceModalSaveBtnText}>שמור מכשיר</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      <AddDeviceModal
+        visible={showDeviceModal}
+        onClose={() => setShowDeviceModal(false)}
+        onAdd={(deviceName) => { onAddDevice(deviceName); setShowDeviceModal(false) }}
+      />
     </View>
   )
 }
@@ -834,11 +807,5 @@ const feedStyles = StyleSheet.create({
   deviceChipRemoveText: { fontSize: 10, fontWeight: '700', color: '#EF4444' },
   addDeviceBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2E5BFF', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 14 },
   addDeviceBtnText: { fontSize: 12, fontWeight: '700', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deviceModalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'center', alignItems: 'center' },
-  deviceModalSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 20, width: 320, maxWidth: '90%', gap: 12, elevation: 10 },
-  deviceModalTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deviceModalSub: { fontSize: 12, color: '#94A3B8', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deviceModalInput: { borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14, color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deviceModalSaveBtn: { width: '100%', backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  deviceModalSaveBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+
 })
