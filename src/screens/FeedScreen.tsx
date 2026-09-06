@@ -727,7 +727,7 @@ const feedStyles = StyleSheet.create({
   sizeModalConfirmBtn: { width: '100%', backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 8, alignItems: 'center' },
   sizeModalConfirmBtnText: { fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sizeBreakdownBox: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, gap: 10, borderWidth: 1.5, borderColor: '#E2E8F0' },
-  sizeBreakdownRow: { flexDirection: 'row-reverse', alignItems: 'flex-start', minHeight: 24 },
-  sizeBreakdownLabel: { width: 76, fontSize: 13, lineHeight: 20, fontWeight: '700', color: '#64748B', textAlign: 'right', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeBreakdownValue: { flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '800', color: '#2E5BFF', textAlign: 'left', writingDirection: 'ltr', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeBreakdownRow: { alignItems: 'flex-end', gap: 2 },
+  sizeBreakdownLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#64748B', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeBreakdownValue: { fontSize: 15, lineHeight: 20, fontWeight: '800', color: '#2E5BFF', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
