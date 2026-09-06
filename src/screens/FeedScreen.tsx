@@ -8,6 +8,7 @@ import {
   searchProductsByCategory,
   searchDeviceAccessories,
   filterProducts,
+  filterByPrice,
   isSmartwatch,
   type FeedCategory,
   type Gender,
@@ -292,8 +293,7 @@ export function FeedScreen({
 
   const filtered = catalog.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
-    const price = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0
-    const matchBudget = price >= budget[0] && price <= budget[1]
+    const matchBudget = filterByPrice(p, budget[0], budget[1])
     // 1. Gender Validation — render-time double-check
     if (isFemaleRender && MENS_RENDER_REGEX.test(p.name)) return false
     if (isMaleRender && WOMENS_RENDER_REGEX.test(p.name)) return false

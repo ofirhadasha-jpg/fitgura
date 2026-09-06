@@ -5,6 +5,21 @@ export type Gender = 'male' | 'female' | 'unisex'
 export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
 
 const BATCH_SIZE = 500
+const ILS_TO_USD_RATE = 3.7
+
+/**
+ * Safe client-side price filter.
+ * Prices from the edge function arrive in ILS (target_currency=ILS).
+ * If price parsing fails (NaN or 0), the item is kept — never discarded.
+ */
+export function filterByPrice(product: Product, minILS: number, maxILS: number): boolean {
+  const rawPrice = product.price
+  const numericPrice = typeof rawPrice === 'number' && !isNaN(rawPrice) ? rawPrice : 0
+  if (numericPrice === 0) return true
+  const isUSD = product.currency === 'USD' || (!product.currency || product.currency === '')
+  const priceInILS = isUSD ? numericPrice * ILS_TO_USD_RATE : numericPrice
+  return priceInILS >= minILS && priceInILS <= maxILS
+}
 
 // ── Gender keyword injection ──────────────────────────────────────────────
 
