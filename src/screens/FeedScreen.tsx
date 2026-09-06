@@ -553,13 +553,12 @@ function SizeReminderModal({ recommendedSize, onConfirm, onDismiss }: {
         <TouchableOpacity onPress={onDismiss} activeOpacity={0.7} style={feedStyles.sizeModalCloseBtn}>
           <Text style={feedStyles.sizeModalCloseText}>×</Text>
         </TouchableOpacity>
-        <Text style={feedStyles.sizeModalIcon}>📏</Text>
-        <Text style={feedStyles.sizeModalTitle}>תזכורת מידה</Text>
-        <View style={feedStyles.sizeModalHighlight}>
-          <Text style={feedStyles.sizeModalHighlightValue} numberOfLines={2}>
-            {recommendedSize ? `מידה מומלצת ב-Fitgura: ${recommendedSize}` : 'מידה מומלצת ב-Fitgura'}
-          </Text>
+        <View style={feedStyles.sizeModalLogo}>
+          <Text style={feedStyles.sizeModalLogoText}>Fitgura</Text>
         </View>
+        <Text style={feedStyles.sizeModalHighlightValue} numberOfLines={2}>
+          {recommendedSize ? `מידה מומלצת: ${recommendedSize}` : 'מידה מומלצת'}
+        </Text>
         <TouchableOpacity onPress={onConfirm} activeOpacity={0.8} style={feedStyles.sizeModalConfirmBtn}>
           <Text style={feedStyles.sizeModalConfirmBtnText}>המשך לרכישה</Text>
         </TouchableOpacity>
@@ -655,13 +654,12 @@ const feedStyles = StyleSheet.create({
   sizeBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sizeModalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'center', alignItems: 'center' },
   sizeModalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(11,20,55,0.65)' },
-  sizeModalSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 16, width: 220, maxWidth: '84%', gap: 8, elevation: 10 },
-  sizeModalCloseBtn: { position: 'absolute', top: 8, right: 8, width: 24, height: 24, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  sizeModalCloseText: { color: '#94A3B8', fontSize: 24, lineHeight: 24, fontWeight: '500' },
-  sizeModalIcon: { fontSize: 20, textAlign: 'center' },
-  sizeModalTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeModalHighlight: { backgroundColor: '#EEF2FF', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center' },
-  sizeModalHighlightValue: { fontSize: 14, lineHeight: 19, fontWeight: '800', color: '#2E5BFF', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 16, width: 220, maxWidth: '84%', gap: 12, elevation: 10 },
+  sizeModalCloseBtn: { position: 'absolute', top: 6, right: 6, width: 26, height: 26, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  sizeModalCloseText: { color: '#94A3B8', fontSize: 22, lineHeight: 22, fontWeight: '500' },
+  sizeModalLogo: { alignSelf: 'center', backgroundColor: '#0B1437', borderRadius: 10, paddingVertical: 5, paddingHorizontal: 14 },
+  sizeModalLogoText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.5, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalHighlightValue: { fontSize: 16, lineHeight: 21, fontWeight: '800', color: '#2E5BFF', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sizeModalConfirmBtn: { width: '100%', backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 8, alignItems: 'center' },
   sizeModalConfirmBtnText: { fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
