@@ -667,6 +667,7 @@ export interface Product {
   category: string
   aliexpressUrl?: string
   aliexpressSku?: string
+  promotionLink?: string | null
   matchScore?: number
   ordersCount?: number
   volume?: number

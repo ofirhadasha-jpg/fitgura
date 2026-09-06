@@ -14,6 +14,7 @@ import {
   type Gender,
 } from '../services/aliexpressClient'
 import { formatFullPantsSizeLabel, euToUsPants, type SizeRegion } from '../utils/sizeConverter'
+import { supabase } from '../lib/supabase'
 
 const PAGE_SIZE = 50
 
@@ -715,13 +716,26 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
     setShowSizeModal(true)
   }
 
-  function confirmBuy(e: GestureResponderEvent & { preventDefault: () => void }) {
+  async function confirmBuy(e: GestureResponderEvent & { preventDefault: () => void }) {
     e.preventDefault()
     e.stopPropagation()
     setShowSizeModal(false)
-    const targetUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
-    window.open(targetUrl, '_blank', 'noopener,noreferrer')
-    setToast('מעביר ל-AliExpress...')
+    let targetUrl = product.promotionLink ?? null
+    if (!targetUrl) {
+      const sourceUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
+      try {
+        const { data } = await supabase.functions.invoke('aliexpress-search', {
+          body: { action: 'affiliate-link', sourceUrl },
+        })
+        const links = (data as Record<string, unknown>)?.links as { promotion_link?: string }[] | undefined
+        targetUrl = links?.[0]?.promotion_link ?? null
+      } catch {
+        targetUrl = null
+      }
+    }
+    const finalUrl = targetUrl ?? product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
+    window.open(finalUrl, '_blank', 'noopener,noreferrer')
+    setToast('מעביר לרכישה...')
     setTimeout(() => setToast(null), 2500)
   }
 

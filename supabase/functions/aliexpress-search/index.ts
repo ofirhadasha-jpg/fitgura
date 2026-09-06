@@ -147,6 +147,34 @@ interface AliExpressProduct {
   product_detail_url: string;
   evaluate_rate?: string;
   lastest_volume?: number;
+  promotion_link?: string;
+}
+
+async function generateAffiliateLinks(sourceValues: string[]): Promise<Map<string, string>> {
+  const linkMap = new Map<string, string>();
+  if (sourceValues.length === 0) return linkMap;
+
+  try {
+    const result = await callAliExpressApi("aliexpress.affiliate.link.generate", {
+      promotion_link_type: "0",
+      source_values: sourceValues.join(" "),
+    });
+
+    const links = (result as Record<string, unknown>)?.aliexpress_affiliate_link_generate_response
+      ?.resp_result?.result?.promotion_links as { promotion_link?: string; source_values?: string }[] | undefined;
+
+    if (Array.isArray(links)) {
+      for (const link of links) {
+        if (link.promotion_link && link.source_values) {
+          linkMap.set(link.source_values, link.promotion_link);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[ALIEXPRESS] Affiliate link generation failed:", err instanceof Error ? err.message : err);
+  }
+
+  return linkMap;
 }
 
 Deno.serve(async (req: Request) => {
@@ -287,12 +315,28 @@ Deno.serve(async (req: Request) => {
           category,
           aliexpressUrl: p.product_detail_url ?? "",
           aliexpressSku: p.product_id ?? "",
+          promotionLink: p.promotion_link ?? null,
           matchScore: Math.round((evaluateRate || 0.9) * 100),
           ordersCount: volume,
           volume: volume,
           evaluateRate: evaluateRate,
         };
       });
+
+      // Generate affiliate links for all products that don't already have one
+      const urlsNeedingLinks = mapped
+        .filter((p) => !p.promotionLink && p.aliexpressUrl)
+        .map((p) => p.aliexpressUrl);
+
+      if (urlsNeedingLinks.length > 0) {
+        console.log("[ALIEXPRESS] Generating affiliate links for", urlsNeedingLinks.length, "products");
+        const linkMap = await generateAffiliateLinks(urlsNeedingLinks);
+        for (const p of mapped) {
+          if (!p.promotionLink && p.aliexpressUrl && linkMap.has(p.aliexpressUrl)) {
+            p.promotionLink = linkMap.get(p.aliexpressUrl) ?? null;
+          }
+        }
+      }
 
       // Server-side filtering with strict gender + category isolation
       const APPAREL_KEYWORDS = /\b(dress|skirt|suit|bra|lingerie|panties|shirt|blouse|jacket|coat|pants|trouser|hoodie|sweater|jeans|shorts|top|t-shirt|שמלה|חצאית|חליפה|חולצה|מעיל|מכנסיים|בגד)\b/i;
