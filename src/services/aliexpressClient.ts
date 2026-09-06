@@ -1,6 +1,196 @@
 import { fetchAliExpressProducts, fetchProductDetails, generateAffiliateLink as fetchAffiliateLink } from '../lib/aliexpress'
 import type { Product } from '../types'
 
+export type Gender = 'male' | 'female' | 'unisex'
+export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
+
+// ── Gender keyword injection ──────────────────────────────────────────────
+
+const GENDER_POSITIVE: Record<string, string[]> = {
+  female: ['women', 'womens', 'female', 'ladies', 'lady'],
+  male: ['men', 'mens', 'male'],
+  unisex: [],
+}
+
+const GENDER_REJECT: Record<string, RegExp> = {
+  female: /\b(men|mens|male|boy|man)\b/i,
+  male: /\b(women|womens|female|girl|lady|ladies)\b/i,
+  unisex: /$^/,
+}
+
+// ── Category query templates (gender-prefixed at call time) ────────────────
+
+const CLOTHING_SUBQUERIES = [
+  'suit sets',
+  'two piece sets',
+  'blazer set',
+  'dresses',
+  'casual skirts',
+  'evening dresses',
+  'bras',
+  'lingerie set',
+  'panties underwear',
+  'tops blouses',
+  't-shirts',
+  'coats jackets',
+  'pants trousers',
+  'jeans',
+  'hoodies',
+  'sweaters',
+]
+
+const SHOES_SUBQUERIES = [
+  'sneakers',
+  'running shoes',
+  'high heels pumps',
+  'ankle boots',
+  'sandals',
+  'flat shoes',
+  'boots',
+  'loafers',
+  'slippers',
+  'wedges',
+]
+
+// ── Hard-exclusion keyword lists ───────────────────────────────────────────
+
+const FOOTWEAR_TERMS = [
+  'shoe', 'shoes', 'sneaker', 'sneakers', 'boot', 'boots',
+  'heel', 'heels', 'sandal', 'sandals', 'slipper', 'slippers',
+  'footwear', 'flat', 'flats', 'pump', 'pumps', 'loafer', 'loafers',
+  'wedge', 'wedges', 'נעל', 'נעליים', 'סניקרס', 'מגף', 'מגפיים', 'סנדל', 'סנדלים',
+]
+
+const APPAREL_TERMS = [
+  'dress', 'skirt', 'suit', 'bra', 'lingerie', 'panties',
+  'shirt', 'blouse', 'jacket', 'coat', 'pants', 'trouser',
+  'hoodie', 'sweater', 'jeans', 'shorts', 'top', 't-shirt',
+  'שמלה', 'חצאית', 'חליפה', 'חולצה', 'מעיל', 'מכנסיים', 'בגד',
+]
+
+const FOOTWEAR_REGEX = new RegExp(`\\b(${FOOTWEAR_TERMS.join('|')})\\b`, 'i')
+const APPAREL_REGEX = new RegExp(`\\b(${APPAREL_TERMS.join('|')})\\b`, 'i')
+
+// ── Category IDs ────────────────────────────────────────────────────────────
+
+const CATEGORY_IDS: Record<FeedCategory, string | undefined> = {
+  all: '200000783,200000782,200000835,200000832,200000831',
+  clothing: '200000783,200000782',
+  shoes: '200000832,200000831,200000835',
+  accessories: '5090301,509',
+}
+
+// ── Public API ──────────────────────────────────────────────────────────────
+
+/**
+ * Search for products by category with strict gender isolation and
+ * clothing/footwear separation. Returns deduplicated, filtered products.
+ */
+export async function searchProductsByCategory(
+  category: FeedCategory,
+  gender: Gender,
+  pageNo: number,
+  pageSize: number,
+  extraKeywords?: string,
+): Promise<Product[]> {
+  const positiveTerms = GENDER_POSITIVE[gender] ?? []
+  const genderPrefix = positiveTerms.length > 0 ? positiveTerms[0] + ' ' : ''
+  const categoryIds = CATEGORY_IDS[category]
+
+  let keywords: string
+
+  if (category === 'clothing') {
+    // Rotate through clothing subqueries based on page number for variety
+    const subIdx = (pageNo - 1) % CLOTHING_SUBQUERIES.length
+    keywords = `${genderPrefix}${CLOTHING_SUBQUERIES[subIdx]}`
+    if (extraKeywords) keywords += ` ${extraKeywords}`
+  } else if (category === 'shoes') {
+    const subIdx = (pageNo - 1) % SHOES_SUBQUERIES.length
+    keywords = `${genderPrefix}${SHOES_SUBQUERIES[subIdx]}`
+    if (extraKeywords) keywords += ` ${extraKeywords}`
+  } else if (category === 'all') {
+    keywords = `${genderPrefix}fashion clothing`
+    if (extraKeywords) keywords += ` ${extraKeywords}`
+  } else {
+    // accessories — caller provides device-specific keywords
+    keywords = extraKeywords ?? `${genderPrefix}phone case cover`
+  }
+
+  console.log('[aliexpressClient] searchProductsByCategory:', { category, gender, pageNo, keywords, categoryIds })
+
+  const products = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds)
+
+  // Apply strict post-fetch validation
+  return filterProducts(products, category, gender)
+}
+
+/**
+ * Search for tech accessories matching a specific device model.
+ */
+export async function searchDeviceAccessories(
+  deviceName: string,
+  pageNo: number,
+  pageSize: number,
+  gender?: Gender,
+): Promise<Product[]> {
+  const isDesktop = deviceName.toLowerCase().includes('desktop') || deviceName.toLowerCase().includes('laptop')
+  const keywords = isDesktop
+    ? `${deviceName} laptop case cover sleeve charger stand cable adapter dock`
+    : `${deviceName} case cover screen protector charger cable holder stand`
+  const categoryIds = CATEGORY_IDS.accessories
+
+  console.log('[aliexpressClient] searchDeviceAccessories:', { deviceName, keywords, categoryIds })
+
+  const products = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds)
+
+  // Filter out any apparel/footwear that leaked through
+  return products.filter((p) => {
+    if (APPAREL_REGEX.test(p.name)) return false
+    if (FOOTWEAR_REGEX.test(p.name)) return false
+    return true
+  })
+}
+
+/**
+ * Client-side double-validation filter.
+ * Discards products that violate gender isolation or category separation.
+ */
+export function filterProducts(
+  products: Product[],
+  category: FeedCategory,
+  gender: Gender,
+): Product[] {
+  const rejectRegex = GENDER_REJECT[gender] ?? /$^/
+
+  return products.filter((p) => {
+    const title = p.name.toLowerCase()
+
+    // 1. Gender Validation — discard opposite-gender items
+    if (rejectRegex.test(p.name)) return false
+
+    // 2. Category Validation
+    if (category === 'clothing') {
+      // Hard-exclude all footwear terms
+      if (FOOTWEAR_REGEX.test(p.name)) return false
+    }
+
+    if (category === 'shoes') {
+      // Hard-exclude all apparel terms
+      if (APPAREL_REGEX.test(p.name)) return false
+    }
+
+    if (category === 'accessories') {
+      // Accessories tab: exclude both apparel and footwear
+      if (APPAREL_REGEX.test(p.name)) return false
+      if (FOOTWEAR_REGEX.test(p.name)) return false
+    }
+
+    return true
+  })
+}
+
+// ── Legacy wrappers (kept for backward compatibility) ──────────────────────
+
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
   return fetchAliExpressProducts(keywords, pageNo, pageSize)
 }

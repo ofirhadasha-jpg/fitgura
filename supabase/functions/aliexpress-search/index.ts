@@ -164,9 +164,14 @@ Deno.serve(async (req: Request) => {
       const isFemaleSearch = gender === "female";
       const isMaleSearch = gender === "male";
       const isClothingSearch = categoryIds === "200000783,200000782";
+      const isShoesSearch = categoryIds === "200000832,200000831,200000835";
+      // When the client sends clothing/shoes keywords, use them as-is (already gender-prefixed by aliexpressClient)
+      // Only inject generic clothing keywords if the caller didn't provide category-specific ones
       const clothingKeywords = "dress shirt pants top skirt blouse t-shirt hoodie sweater coat jacket jeans";
       const searchKeywords = keywords
-        ? `${genderPrefix}${isClothingSearch ? clothingKeywords : keywords}`
+        ? (isClothingSearch && !keywords.toLowerCase().startsWith("women") && !keywords.toLowerCase().startsWith("men")
+            ? `${genderPrefix}${clothingKeywords}`
+            : keywords)
         : "";
 
       const apiParams: RequestParams = {
@@ -258,23 +263,22 @@ Deno.serve(async (req: Request) => {
         };
       });
 
-      // Server-side apparel + footwear filtering for accessories searches
-      const APPAREL_KEYWORDS = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|shoes|socks|sneakers|boots|sandals|חולצה|מכנסיים|שמלה|נעליים|גרביים|מעיל|בגד|גופייה)\b/i;
-      // Men's keywords — discard when gender is female
-      const MENS_KEYWORDS = /\b(men|man|male|גברים|גבר|mens)\b/i;
-      // Women's keywords — discard when gender is male
-      const WOMENS_KEYWORDS = /\b(women|woman|female|lady|נשים|אישה)\b/i;
-      // Footwear keywords — discard under clothing category
-      const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|flat|flats|loafer|loafers|pump|pumps|trainer|trainers|slipper|slippers|oxford|running|cleat|cleats|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i;
+      // Server-side filtering with strict gender + category isolation
+      const APPAREL_KEYWORDS = /\b(dress|skirt|suit|bra|lingerie|panties|shirt|blouse|jacket|coat|pants|trouser|hoodie|sweater|jeans|shorts|top|t-shirt|שמלה|חצאית|חליפה|חולצה|מעיל|מכנסיים|בגד)\b/i;
+      const MENS_KEYWORDS = /\b(men|mens|male|boy|man|גברים|גבר)\b/i;
+      const WOMENS_KEYWORDS = /\b(women|womens|female|girl|lady|ladies|נשים|אישה)\b/i;
+      const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|flat|flats|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i;
 
       const filteredProducts = mapped.filter((p) => {
-        // Strict gender isolation
+        // 1. Strict gender isolation
         if (isFemaleSearch && MENS_KEYWORDS.test(p.name)) return false;
         if (isMaleSearch && WOMENS_KEYWORDS.test(p.name)) return false;
-        // Clothing tab: exclude footwear
+        // 2. Clothing tab: hard-exclude all footwear
         if (isClothingSearch && FOOTWEAR_KEYWORDS.test(p.name)) return false;
-        // Accessories tab: exclude apparel/footwear
-        if (isAccessoriesSearch && APPAREL_KEYWORDS.test(p.name)) return false;
+        // 3. Shoes tab: hard-exclude all apparel
+        if (isShoesSearch && APPAREL_KEYWORDS.test(p.name)) return false;
+        // 4. Accessories tab: exclude apparel + footwear
+        if (isAccessoriesSearch && (APPAREL_KEYWORDS.test(p.name) || FOOTWEAR_KEYWORDS.test(p.name))) return false;
         return true;
       });
 
