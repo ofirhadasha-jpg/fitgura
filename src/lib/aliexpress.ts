@@ -1,6 +1,26 @@
 import type { Product } from '../types'
 import { supabase } from './supabase'
 
+/**
+ * Invokes the aliexpress-search edge function.
+ * The edge function ALWAYS returns HTTP 200 — errors are embedded in the JSON body as { error: string }.
+ * This wrapper extracts the body-level error and converts it to a thrown Error so callers can handle it uniformly.
+ */
+async function invokeEdgeFunction(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase.functions.invoke('aliexpress-search', { body })
+
+  if (error) {
+    throw new Error(error.message || 'AliExpress request failed')
+  }
+
+  const result = data as Record<string, unknown> | null
+  if (result?.error) {
+    throw new Error(String(result.error))
+  }
+
+  return result
+}
+
 export async function fetchAliExpressProducts(
   keywords: string,
   pageNo = 1,
@@ -9,41 +29,53 @@ export async function fetchAliExpressProducts(
   categoryIds?: string,
   sort?: string,
 ): Promise<Product[]> {
-  const { data, error } = await supabase.functions.invoke('aliexpress-search', {
-    body: { action: 'search', keywords, pageNo, pageSize, gender, categoryIds, sort },
-  })
+  try {
+    const result = await invokeEdgeFunction({
+      action: 'search',
+      keywords,
+      pageNo,
+      pageSize,
+      gender,
+      categoryIds,
+      sort,
+    })
 
-  if (error) {
-    throw new Error(error.message || 'AliExpress request failed')
+    const products = result?.products
+    if (!Array.isArray(products)) {
+      return []
+    }
+
+    return products as Product[]
+  } catch (err) {
+    console.error('[aliexpress] fetchAliExpressProducts failed:', err instanceof Error ? err.message : err)
+    return []
   }
-
-  const result = data as { products?: Product[] } | null
-  if (!result || !result.products || !Array.isArray(result.products)) {
-    throw new Error('AliExpress returned an invalid product list')
-  }
-
-  return result.products
 }
 
 export async function fetchProductDetails(productIds: string[]): Promise<unknown> {
-  const { data, error } = await supabase.functions.invoke('aliexpress-search', {
-    body: { action: 'details', productIds },
-  })
-
-  if (error) {
-    throw new Error(error.message || 'AliExpress request failed')
+  try {
+    const result = await invokeEdgeFunction({
+      action: 'details',
+      productIds,
+    })
+    return result?.details ?? null
+  } catch (err) {
+    console.error('[aliexpress] fetchProductDetails failed:', err instanceof Error ? err.message : err)
+    return null
   }
-
-  return data
 }
 
 export async function generateAffiliateLink(sourceUrl: string): Promise<string | null> {
-  const { data, error } = await supabase.functions.invoke('aliexpress-search', {
-    body: { action: 'affiliate-link', sourceUrl },
-  })
+  try {
+    const result = await invokeEdgeFunction({
+      action: 'affiliate-link',
+      sourceUrl,
+    })
 
-  if (error || !data) return null
-
-  const result = data as { links?: { promotion_link?: string }[] | null } | null
-  return result?.links?.[0]?.promotion_link ?? null
+    const links = result?.links as { promotion_link?: string }[] | null | undefined
+    return links?.[0]?.promotion_link ?? null
+  } catch (err) {
+    console.error('[aliexpress] generateAffiliateLink failed:', err instanceof Error ? err.message : err)
+    return null
+  }
 }

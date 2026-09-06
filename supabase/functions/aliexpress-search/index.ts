@@ -1,12 +1,26 @@
 import { createHash } from "node:crypto";
 
 // Fitgura AliExpress Affiliate API proxy — Beijing timezone, ILS currency, detailed error surfacing
+// IMPORTANT: This function NEVER returns a non-2xx status code.
+// All errors are returned as HTTP 200 with { error: "...", products: [] } in the JSON body.
+// Returning 4xx/5xx causes the Supabase client SDK to throw FunctionsHttpError.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+function okResponse(body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function errorResponse(message: string, extra: Record<string, unknown> = {}): Response {
+  return okResponse({ error: message, products: [], ...extra });
+}
 
 const ALIEXPRESS_GATEWAY = "https://api-sg.aliexpress.com/sync";
 
@@ -135,11 +149,9 @@ interface AliExpressProduct {
   lastest_volume?: number;
 }
 
-
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -151,10 +163,7 @@ Deno.serve(async (req: Request) => {
       const categoryIds = body.categoryIds as string | undefined;
 
       if (!keywords && !categoryIds) {
-        return new Response(
-          JSON.stringify({ error: "Missing keywords or categoryIds" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return errorResponse("Missing keywords or categoryIds");
       }
 
       const pageNo = body.pageNo ?? 1;
@@ -167,11 +176,7 @@ Deno.serve(async (req: Request) => {
       const isFemaleSearch = gender === "female";
       const isMaleSearch = gender === "male";
       const isClothingSearch = categoryIds === "200000783,200000782";
-      // Always use the client-provided keywords as-is — the client already builds
-      // gender-prefixed, category-specific query strings via aliexpressClient.ts
       const searchKeywords = keywords ?? "";
-      // Detect shoes search by footwear keywords in the query, since we no longer
-      // send shoes category IDs (they were causing zero-result API errors).
       const shoesTerms = ["shoe", "shoes", "sneaker", "sneakers", "boot", "boots", "heel", "heels", "sandal", "sandals", "slipper", "slippers", "loafer", "loafers", "wedge", "wedges", "pump", "pumps", "footwear"];
       const isShoesSearch = shoesTerms.some((t) => searchKeywords.toLowerCase().includes(t));
 
@@ -188,18 +193,14 @@ Deno.serve(async (req: Request) => {
       if (categoryIds) {
         apiParams.category_ids = categoryIds;
       }
-      // Sort by best sellers (sales volume descending) by default
       if (sort) {
         apiParams.sort = sort;
       } else {
         apiParams.sort = "VOLUME_DOWN";
       }
 
-      // Hard exclusion: when searching accessories, exclude apparel category IDs
       const isAccessoriesSearch = categoryIds === "5090301,509" || categoryIds === "509";
       if (isAccessoriesSearch) {
-        // These are the apparel category IDs we want to keep out of accessories results
-        // We can't pass exclude params directly to the API, but we'll filter client-side below
         console.log("[ALIEXPRESS] Accessories search — apparel will be filtered out");
       }
 
@@ -212,7 +213,6 @@ Deno.serve(async (req: Request) => {
           ?.resp_result?.result?.products?.product ?? [];
 
       // Fallback: if HE-language search returned no results, retry without target_language
-      // The AliExpress affiliate API has fewer products indexed in Hebrew, especially for shoes.
       if (products.length === 0) {
         console.log("[ALIEXPRESS] No results with target_language=HE, retrying without language filter");
         const noLangParams: RequestParams = {
@@ -263,10 +263,8 @@ Deno.serve(async (req: Request) => {
       }
 
       const mapped = products.map((p) => {
-        // With target_currency=ILS, target_sale_price is already in shekels
         const salePrice = parseFloat(p.target_sale_price || p.app_sale_price || "0");
         const originalPrice = parseFloat(p.target_original_price || "0");
-        // Infer category from categoryIds if available, else from search context
         let category = "clothing";
         if (categoryIds) {
           if (/200000832|200000831|200000835/.test(categoryIds)) category = "shoes";
@@ -305,26 +303,18 @@ Deno.serve(async (req: Request) => {
       const BOTH_GENDERS_REGEX = /\b(men|mens|male|boy|man).*(women|womens|female|girl|lady|ladies)\b|\b(women|womens|female|girl|lady|ladies).*(men|mens|male|boy|man)\b/i;
 
       const filteredProducts = mapped.filter((p) => {
-        // 1. Strict gender isolation — reject opposite gender
         if (isFemaleSearch && MENS_KEYWORDS.test(p.name)) return false;
         if (isMaleSearch && WOMENS_KEYWORDS.test(p.name)) return false;
-        // 1b. Products mentioning both genders are unisex-only
         if ((isFemaleSearch || isMaleSearch) && BOTH_GENDERS_REGEX.test(p.name)) return false;
-        // 2. Clothing tab: hard-exclude all footwear
         if (isClothingSearch && FOOTWEAR_KEYWORDS.test(p.name)) return false;
-      // 3. Shoes tab: hard-exclude obvious apparel, but don't require footwear terms in the title
-      //    since AliExpress may return Hebrew product titles without English shoe keywords
-      if (isShoesSearch) {
-        if (APPAREL_KEYWORDS.test(p.name) && !FOOTWEAR_KEYWORDS.test(p.name)) return false;
-      }
-        // 4. Accessories tab: exclude apparel + footwear
+        if (isShoesSearch) {
+          if (APPAREL_KEYWORDS.test(p.name) && !FOOTWEAR_KEYWORDS.test(p.name)) return false;
+        }
         if (isAccessoriesSearch && (APPAREL_KEYWORDS.test(p.name) || FOOTWEAR_KEYWORDS.test(p.name))) return false;
-        // 5. Filter out items with zero sales and very low ratings
         if ((p.ordersCount ?? 0) === 0 && (p.evaluateRate ?? 0) < 0.9) return false;
         return true;
       });
 
-      // Sort by best sellers (volume) then by rating
       filteredProducts.sort((a, b) => {
         const salesA = a.ordersCount ?? a.volume ?? 0;
         const salesB = b.ordersCount ?? b.volume ?? 0;
@@ -333,19 +323,13 @@ Deno.serve(async (req: Request) => {
         return (salesB - salesA) || (ratingB - ratingA);
       });
 
-      return new Response(
-        JSON.stringify({ products: filteredProducts, count: filteredProducts.length, page: pageNo }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return okResponse({ products: filteredProducts, count: filteredProducts.length, page: pageNo });
     }
 
     if (action === "details") {
       const productIds = body.productIds as string[];
       if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
-        return new Response(
-          JSON.stringify({ error: "Missing productIds" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return errorResponse("Missing productIds", { details: null });
       }
 
       const result = await callAliExpressApi("aliexpress.affiliate.productdetail.get", {
@@ -357,19 +341,13 @@ Deno.serve(async (req: Request) => {
       const details = (result as Record<string, unknown>)?.aliexpress_affiliate_productdetail_get_response
         ?.resp_result?.result ?? null;
 
-      return new Response(
-        JSON.stringify({ details }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return okResponse({ details });
     }
 
     if (action === "affiliate-link") {
       const sourceUrl = body.sourceUrl as string;
       if (!sourceUrl) {
-        return new Response(
-          JSON.stringify({ error: "Missing sourceUrl" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return errorResponse("Missing sourceUrl", { links: null });
       }
 
       const result = await callAliExpressApi("aliexpress.affiliate.link.generate", {
@@ -380,10 +358,7 @@ Deno.serve(async (req: Request) => {
       const links = (result as Record<string, unknown>)?.aliexpress_affiliate_link_generate_response
         ?.resp_result?.result?.promotion_links ?? null;
 
-      return new Response(
-        JSON.stringify({ links }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return okResponse({ links });
     }
 
     if (action === "test") {
@@ -415,45 +390,33 @@ Deno.serve(async (req: Request) => {
           (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
             ?.resp_result?.result?.products?.product ?? [];
 
-        return new Response(
-          JSON.stringify({
-            envAudit,
-            missingVars: missing,
-            connectivity: "ok",
-            productCount: products.length,
-            rawResponseKeys: Object.keys(result),
-            rawResponsePreview: JSON.stringify(result).slice(0, 1000),
-            sampleProducts: products.slice(0, 3).map((p) => ({
-              product_id: p.product_id,
-              product_title: p.product_title,
-              target_sale_price: p.target_sale_price,
-              app_sale_price: p.app_sale_price,
-            })),
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return okResponse({
+          envAudit,
+          missingVars: missing,
+          connectivity: "ok",
+          productCount: products.length,
+          rawResponseKeys: Object.keys(result),
+          rawResponsePreview: JSON.stringify(result).slice(0, 1000),
+          sampleProducts: products.slice(0, 3).map((p) => ({
+            product_id: p.product_id,
+            product_title: p.product_title,
+            target_sale_price: p.target_sale_price,
+            app_sale_price: p.app_sale_price,
+          })),
+        });
       } catch (testErr) {
-        return new Response(
-          JSON.stringify({
-            envAudit,
-            missingVars: missing,
-            connectivity: "failed",
-            error: testErr instanceof Error ? testErr.message : "Unknown error",
-          }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return okResponse({
+          envAudit,
+          missingVars: missing,
+          connectivity: "failed",
+          error: testErr instanceof Error ? testErr.message : "Unknown error",
+        });
       }
     }
 
-    return new Response(
-      JSON.stringify({ error: `Unknown action: ${action}` }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return errorResponse(`Unknown action: ${action}`);
   } catch (err) {
     console.error("[ALIEXPRESS] Handler error:", err instanceof Error ? err.message : err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return errorResponse(err instanceof Error ? err.message : "Internal server error");
   }
 });
