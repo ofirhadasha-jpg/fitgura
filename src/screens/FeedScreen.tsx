@@ -96,6 +96,7 @@ export function FeedScreen({
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [showDeviceModal, setShowDeviceModal] = useState(false)
+  const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [pendingNewDevice, setPendingNewDevice] = useState<string | null>(null)
 
   // When a new device is added (from any screen), fetch its accessories and prepend to the catalog
@@ -115,6 +116,7 @@ export function FeedScreen({
           return titleLower.includes(model) || (lastPart.length >= 2 && titleLower.includes(lastPart))
         })
         if (cleaned.length === 0) return
+        if (selectedDevice && selectedDevice !== latestAddedDevice) return
         setCatalog((prev) => {
           const newIds = new Set(cleaned.map((p) => p.aliexpressSku).filter(Boolean))
           return [...cleaned, ...prev.filter((p) => !p.aliexpressSku || !newIds.has(p.aliexpressSku))]
@@ -125,7 +127,7 @@ export function FeedScreen({
       })
       .catch((err) => console.error('[Feed] Failed to fetch accessories for new device:', err))
     return () => { cancelled = true }
-  }, [latestAddedDevice, scannedSizes?.gender])
+  }, [latestAddedDevice, scannedSizes?.gender, selectedDevice])
 
   // When a device is removed, purge its products from the catalog and re-fetch for remaining devices
   const prevDevicesRef = useRef<string>(registeredDevices.join(','))
@@ -135,6 +137,10 @@ export function FeedScreen({
     const prevDevices = prevDevicesRef.current.split(',').filter(Boolean)
     const currentDevices = currentSig.split(',').filter(Boolean)
     prevDevicesRef.current = currentSig
+
+    if (selectedDevice && !currentDevices.includes(selectedDevice)) {
+      setSelectedDevice(null)
+    }
 
     // Only purge if a device was removed (not added — addition is handled by latestAddedDevice effect)
     const removedDevices = prevDevices.filter((d) => !currentDevices.includes(d))
@@ -159,7 +165,7 @@ export function FeedScreen({
       setHasMore(true)
       void loadProductsRef.current(1, false, 'accessories')
     }
-  }, [registeredDevices])
+  }, [registeredDevices, selectedDevice])
 
   // When user switches to the accessories tab, clear the pending flag so new-device products are already at top
   useEffect(() => {
@@ -180,7 +186,7 @@ export function FeedScreen({
       const feedCategory = category as FeedCategory
       const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim() : ''
       const accessoryDevices = category === 'accessories'
-        ? Array.from(new Set(registeredDevices))
+        ? (selectedDevice ? [selectedDevice] : Array.from(new Set(registeredDevices)))
         : []
 
       // Build extra keywords from style/size for clothing & shoes
@@ -281,7 +287,7 @@ export function FeedScreen({
         setIsLoadingMore(false)
       }
     }
-  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
+  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices, selectedDevice])
 
   // Refs to avoid effect dependency on loadProducts/filter identity — prevents infinite reload loop
   const loadProductsRef = useRef(loadProducts)
@@ -311,6 +317,7 @@ export function FeedScreen({
     detectedDevice?.brand,
     detectedDevice?.model,
     registeredDevices.join(','),
+    selectedDevice ?? '',
   ].join('|')
 
   // Initial load — only once on mount
@@ -468,9 +475,34 @@ export function FeedScreen({
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8, paddingBottom: 4 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedDevice === null) return
+                  setSelectedDevice(null)
+                  setCatalog([])
+                  setPageNo(1)
+                  setHasMore(true)
+                }}
+                activeOpacity={0.75}
+                style={[feedStyles.deviceChip, !selectedDevice && feedStyles.deviceChipSelected]}
+              >
+                <Text style={[feedStyles.deviceChipText, !selectedDevice && feedStyles.deviceChipTextSelected]}>כל המכשירים</Text>
+              </TouchableOpacity>
               {registeredDevices.map((device) => (
-                <View key={device} style={feedStyles.deviceChip}>
-                  <Text style={feedStyles.deviceChipText}>{device}</Text>
+                <View key={device} style={[feedStyles.deviceChip, selectedDevice === device && feedStyles.deviceChipSelected]}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (selectedDevice === device) return
+                      setSelectedDevice(device)
+                      setCatalog([])
+                      setPageNo(1)
+                      setHasMore(true)
+                    }}
+                    activeOpacity={0.75}
+                    style={feedStyles.deviceChipName}
+                  >
+                    <Text style={[feedStyles.deviceChipText, selectedDevice === device && feedStyles.deviceChipTextSelected]}>{device}</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => onRemoveDevice(device)}
                     activeOpacity={0.6}
@@ -961,8 +993,11 @@ const feedStyles = StyleSheet.create({
   deviceBar: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F1F5F9', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
   deviceBarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   deviceBarTitle: { flex: 1, fontSize: 12, fontWeight: '700', color: '#475569', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deviceChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#2E5BFF' },
+  deviceChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#CBD5E1' },
+  deviceChipSelected: { backgroundColor: '#2E5BFF', borderColor: '#2E5BFF' },
+  deviceChipName: { paddingVertical: 1 },
   deviceChipText: { fontSize: 12, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceChipTextSelected: { color: '#FFFFFF' },
   deviceChipRemove: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
   deviceChipRemoveText: { fontSize: 10, fontWeight: '700', color: '#EF4444' },
   addDeviceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2E5BFF', borderRadius: 16, paddingVertical: 7, paddingHorizontal: 13, minWidth: 112 },
