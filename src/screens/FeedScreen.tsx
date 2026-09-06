@@ -122,9 +122,8 @@ export function FeedScreen({
         const usSize = euToUsPants(euSize)
         extraKeywords += ` size ${euSize} EU ${usSize} US`
       }
-      if (category === 'shoes' && scannedSizes?.shoeSize) {
-        extraKeywords += ` size ${scannedSizes.shoeSize} EU`
-      }
+      // Shoe size is used for AI matching/recommendation, not as a search keyword —
+      // injecting it into the AliExpress search over-narrows results to zero.
       if (category === 'all' && deviceName) {
         extraKeywords += ` ${deviceName} accessories`
       }

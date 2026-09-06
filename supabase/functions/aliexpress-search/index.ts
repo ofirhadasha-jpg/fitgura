@@ -226,7 +226,7 @@ Deno.serve(async (req: Request) => {
       // Fallback: if still no results and keywords were used, try a simpler keyword
       if (products.length === 0 && searchKeywords) {
         const isAccessories = isAccessoriesSearch;
-        const simpleKeyword = isAccessories ? "phone case cover" : "fashion clothing";
+        const simpleKeyword = isAccessories ? "phone case cover" : isShoesSearch ? "shoes sneakers" : "fashion clothing";
         console.log("[ALIEXPRESS] Still no results, retrying with simple keyword:", simpleKeyword);
         const fallbackParams: RequestParams = {
           page_no: pageNo,
