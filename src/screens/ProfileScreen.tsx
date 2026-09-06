@@ -19,7 +19,7 @@ import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion }: {
+export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices }: {
   onNav: (s: Screen) => void
   user: User | null
   onSignOut: () => void
@@ -32,6 +32,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   setGalleryAccess: (s: GalleryAccessState) => void
   preferredRegion: SizeRegion
   setPreferredRegion: (r: SizeRegion) => void
+  registeredDevices: string[]
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -71,6 +72,30 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   })
   const [editingDeviceId, setEditingDeviceId] = useState<number | null>(null)
   const [showAddDevice, setShowAddDevice] = useState(false)
+
+  // Sync devices added from the Feed screen into the profile device list
+  useEffect(() => {
+    setDevices((prev) => {
+      const existingNames = new Set(prev.map((d) => `${d.brand} ${d.model}`.trim()))
+      const additions: UserDevice[] = []
+      for (const name of registeredDevices) {
+        if (existingNames.has(name)) continue
+        const parts = name.split(' ')
+        const brand = parts[0] ?? name
+        const model = parts.slice(1).join(' ') || '-'
+        additions.push({
+          id: nextDevId(),
+          type: 'טלפון',
+          brand,
+          model,
+          extra: '',
+          emoji: '📱',
+          primary: prev.length === 0 && additions.length === 0,
+        })
+      }
+      return additions.length > 0 ? [...prev, ...additions] : prev
+    })
+  }, [registeredDevices])
   const [addStep, setAddStep] = useState<'options' | 'scanning' | 'result' | 'form'>('options')
   const [scannedAccessories, setScannedAccessories] = useState<string[]>([])
   const [devPhotoUrl, setDevPhotoUrl] = useState<string | null>(null)

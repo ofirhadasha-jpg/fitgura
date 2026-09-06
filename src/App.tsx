@@ -509,7 +509,7 @@ export default function App() {
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} />}
-        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} />}
+        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} />}
         {screen === 'wishlist' && (
           <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} catalog={feedCatalog} />
         )}
