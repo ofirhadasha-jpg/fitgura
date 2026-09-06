@@ -18,18 +18,53 @@ const GENDER_REJECT: Record<string, RegExp> = {
   unisex: /$^/,
 }
 
-// ── Category query templates (gender-prefixed at call time) ────────────────
+// ── Category query templates (gender-specific) ─────────────────────────────
 
-const CLOTHING_SUBQUERIES = [
+const CLOTHING_SUBQUERIES_FEMALE = [
+  'dresses',
+  'skirts',
+  'women top blouse',
+  'women shirt',
+  'women pants',
+  'women jeans',
+  'women pajama sleepwear',
+  'women outfit set',
+  'women sweater',
+  'women hoodie',
+  'women coat jacket',
+  'women suit blazer',
+  'women leggings',
+  'women lingerie bra set',
+  'women t-shirt',
+  'women shorts',
+]
+
+const CLOTHING_SUBQUERIES_MALE = [
+  'men shirt',
+  'men t-shirt',
+  'men pants',
+  'men jeans',
+  'men suit blazer',
+  'men hoodie',
+  'men jacket coat',
+  'men sweater',
+  'men polo',
+  'men tracksuit set',
+  'men shorts',
+  'men underwear',
+  'men pajama sleepwear',
+  'men outfit set',
+  'men jogger pants',
+  'men vest',
+]
+
+const CLOTHING_SUBQUERIES_UNISEX = [
   'suit sets',
   'two piece sets',
   'blazer set',
   'dresses',
   'casual skirts',
   'evening dresses',
-  'bras',
-  'lingerie set',
-  'panties underwear',
   'tops blouses',
   't-shirts',
   'coats jackets',
@@ -37,9 +72,38 @@ const CLOTHING_SUBQUERIES = [
   'jeans',
   'hoodies',
   'sweaters',
+  'pajama sleepwear',
+  'outfit set',
+  'shorts',
 ]
 
-const SHOES_SUBQUERIES = [
+const SHOES_SUBQUERIES_FEMALE = [
+  'women sneakers',
+  'women running shoes',
+  'women high heels pumps',
+  'women ankle boots',
+  'women sandals',
+  'women flat shoes',
+  'women boots',
+  'women loafers',
+  'women slippers',
+  'women wedges',
+]
+
+const SHOES_SUBQUERIES_MALE = [
+  'men sneakers',
+  'men running shoes',
+  'men boots',
+  'men ankle boots',
+  'men sandals',
+  'men loafers',
+  'men slippers',
+  'men casual shoes',
+  'men leather shoes',
+  'men slip-on shoes',
+]
+
+const SHOES_SUBQUERIES_UNISEX = [
   'sneakers',
   'running shoes',
   'high heels pumps',
@@ -51,6 +115,11 @@ const SHOES_SUBQUERIES = [
   'slippers',
   'wedges',
 ]
+
+// ── Gender enforcement ──────────────────────────────────────────────────────
+// Positive gender indicators — product title must contain at least one when gender is set
+const FEMININE_INDICATORS = /\b(women|womens|female|lady|ladies|dress|skirt|bra|lingerie|panties|blouse|נשים|אישה|שמלה|חצאית)\b/i
+const MASCULINE_INDICATORS = /\b(men|mens|male|boy|man|גברים|גבר)\b/i
 
 // ── Hard-exclusion keyword lists ───────────────────────────────────────────
 
@@ -99,13 +168,24 @@ export async function searchProductsByCategory(
 
   let keywords: string
 
+  // Select subquery pool based on gender
+  const clothingSubqueries = gender === 'female'
+    ? CLOTHING_SUBQUERIES_FEMALE
+    : gender === 'male'
+      ? CLOTHING_SUBQUERIES_MALE
+      : CLOTHING_SUBQUERIES_UNISEX
+  const shoesSubqueries = gender === 'female'
+    ? SHOES_SUBQUERIES_FEMALE
+    : gender === 'male'
+      ? SHOES_SUBQUERIES_MALE
+      : SHOES_SUBQUERIES_UNISEX
+
   if (category === 'clothing') {
     // Search multiple clothing subqueries in parallel for diverse results on every page
-    // Rotate the starting index by page so later pages get different subqueries
-    const startIdx = (pageNo - 1) * 4 % CLOTHING_SUBQUERIES.length
+    const startIdx = (pageNo - 1) * 4 % clothingSubqueries.length
     const subqueries: string[] = []
     for (let i = 0; i < 4; i++) {
-      subqueries.push(CLOTHING_SUBQUERIES[(startIdx + i) % CLOTHING_SUBQUERIES.length])
+      subqueries.push(clothingSubqueries[(startIdx + i) % clothingSubqueries.length])
     }
     // Run all 4 subqueries in parallel and merge results
     const perQuerySize = Math.max(12, Math.ceil(pageSize / subqueries.length))
@@ -125,9 +205,26 @@ export async function searchProductsByCategory(
     })
     return filterProducts(deduped, category, gender)
   } else if (category === 'shoes') {
-    const subIdx = (pageNo - 1) % SHOES_SUBQUERIES.length
-    keywords = `${genderPrefix}${SHOES_SUBQUERIES[subIdx]}`
-    if (extraKeywords) keywords += ` ${extraKeywords}`
+    const startIdx = (pageNo - 1) * 3 % shoesSubqueries.length
+    const subqueries: string[] = []
+    for (let i = 0; i < 3; i++) {
+      subqueries.push(shoesSubqueries[(startIdx + i) % shoesSubqueries.length])
+    }
+    const perQuerySize = Math.max(15, Math.ceil(pageSize / subqueries.length))
+    const results = await Promise.all(
+      subqueries.map((sq) => {
+        const kw = `${genderPrefix}${sq}`
+        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds)
+      }),
+    )
+    const merged = results.flat()
+    const seen = new Set<string>()
+    const deduped = merged.filter((p) => {
+      if (p.aliexpressSku && seen.has(p.aliexpressSku)) return false
+      if (p.aliexpressSku) seen.add(p.aliexpressSku)
+      return true
+    })
+    return filterProducts(deduped, category, gender)
   } else if (category === 'all') {
     keywords = `${genderPrefix}fashion clothing`
     if (extraKeywords) keywords += ` ${extraKeywords}`
@@ -224,10 +321,11 @@ export function filterProducts(
   const rejectRegex = GENDER_REJECT[gender] ?? /$^/
 
   return products.filter((p) => {
-    const title = p.name.toLowerCase()
-
     // 1. Gender Validation — discard opposite-gender items
     if (rejectRegex.test(p.name)) return false
+    // 1b. Positive gender enforcement — require gender marker when gender is set
+    if (gender === 'female' && !FEMININE_INDICATORS.test(p.name)) return false
+    if (gender === 'male' && !MASCULINE_INDICATORS.test(p.name)) return false
 
     // 2. Category Validation
     if (category === 'clothing') {
