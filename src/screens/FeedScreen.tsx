@@ -103,11 +103,10 @@ export function FeedScreen({
       const feedCategory = category as FeedCategory
       const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim() : ''
       const accessoryDevices = category === 'accessories'
-        ? (registeredDevices.length > 0
-          ? registeredDevices
-          : detectedDevice
-            ? [deviceName]
-            : [])
+        ? Array.from(new Set([
+            ...(registeredDevices.length > 0 ? registeredDevices : []),
+            ...(detectedDevice && deviceName ? [deviceName] : []),
+          ]))
         : []
 
       // Build extra keywords from style/size for clothing & shoes
@@ -221,8 +220,11 @@ export function FeedScreen({
     registeredDevices.join(','),
   ].join('|')
 
-  // Initial load
+  // Initial load — only once on mount, not when loadProducts identity changes
+  const hasInitiallyLoaded = useRef(false)
   useEffect(() => {
+    if (hasInitiallyLoaded.current) return
+    hasInitiallyLoaded.current = true
     setPageNo(1)
     setHasMore(true)
     setCatalog([])
