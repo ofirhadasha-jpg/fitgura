@@ -129,7 +129,7 @@ export function AddDeviceModal({ visible, onClose, onAdd }: AddDeviceModalProps)
               >
                 <Text style={{ fontSize: 28 }}>📷</Text>
                 <View>
-                  <Text style={modalStyles.scanOptionTitle}>צלם את המכשיר</Text>
+                  <Text style={modalStyles.scanOptionTitle}>העלה את תמונת המכשיר</Text>
                   <Text style={modalStyles.scanOptionSub}>AI יזהה את המכשיר אוטומטית</Text>
                 </View>
               </TouchableOpacity>

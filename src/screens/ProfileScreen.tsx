@@ -848,7 +848,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   >
                     <Text style={{ fontSize: 28 }}>📷</Text>
                     <View>
-                      <Text style={profStyles.scanOptionTitle}>צלם את המכשיר</Text>
+                      <Text style={profStyles.scanOptionTitle}>העלה את תמונת המכשיר</Text>
                       <Text style={profStyles.scanOptionSub}>AI יזהה את המכשיר אוטומטית</Text>
                     </View>
                   </TouchableOpacity>
