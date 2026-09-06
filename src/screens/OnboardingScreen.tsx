@@ -227,7 +227,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         )}
 
         {step === 'scanning' && <ScanningView progress={scanProgress} sizes={sizes} />}
-        {step === 'result' && sizes && <ResultView onNext={() => { if (sizes) onScanned(sizes); setStep('gallery-access') }} sizes={sizes} setSizes={setSizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
+        {step === 'result' && sizes && <ResultView onNext={() => setStep('gallery-access')} onScanned={onScanned} sizes={sizes} setSizes={setSizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
@@ -316,7 +316,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
   )
 }
 
-function ResultView({ onNext, sizes, setSizes, scanError, faceMissing, onRetake }: { onNext: () => void; sizes: ScannedSizes; setSizes: React.Dispatch<React.SetStateAction<ScannedSizes | null>>; scanError: string | null; faceMissing: boolean; onRetake: () => void }) {
+function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing, onRetake }: { onNext: () => void; onScanned: (s: ScannedSizes) => void; sizes: ScannedSizes; setSizes: React.Dispatch<React.SetStateAction<ScannedSizes | null>>; scanError: string | null; faceMissing: boolean; onRetake: () => void }) {
   const [editing, setEditing] = useState(false)
   const [topSize, setTopSize] = useState(sizes.sizing.top)
   const [bottomSize, setBottomSize] = useState(sizes.sizing.bottom)
@@ -414,6 +414,7 @@ function ResultView({ onNext, sizes, setSizes, scanError, faceMissing, onRetake 
       },
     }
     setSizes(updated)
+    onScanned(updated)
     onNext()
   }
 

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
 import {
@@ -36,6 +36,16 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [profBottom, setProfBottom] = useState(scannedSizes?.sizing.bottom ?? '48')
   const [profFit, setProfFit] = useState(scannedSizes?.sizing.fit ?? 'Slim Fit')
   const [profShoe, setProfShoe] = useState(scannedSizes?.shoeSize ?? '42')
+
+  // Sync local profile fields when scannedSizes changes externally (e.g. from onboarding or a new scan)
+  useEffect(() => {
+    if (scannedSizes) {
+      setProfTop(scannedSizes.sizing.top)
+      setProfBottom(scannedSizes.sizing.bottom)
+      setProfFit(scannedSizes.sizing.fit)
+      if (scannedSizes.shoeSize) setProfShoe(scannedSizes.shoeSize)
+    }
+  }, [scannedSizes?.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.sizing.fit, scannedSizes?.shoeSize])
 
   const [devices, setDevices] = useState<UserDevice[]>(() => {
     if (detectedDevice) {
@@ -244,13 +254,29 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   function handleSaveSizes() {
     setEditingSizes(false)
     if (scannedSizes) {
+      const metrics = computeBodyMetricsFromSizes(profTop, profBottom, scannedSizes.sizing.bodyMetrics)
+      const updated: ScannedSizes = {
+        ...scannedSizes,
+        top: profTop,
+        bottom: profBottom,
+        fit: profFit,
+        shoeSize: profShoe,
+        sizing: {
+          ...scannedSizes.sizing,
+          top: profTop,
+          bottom: profBottom,
+          fit: profFit,
+          bodyMetrics: metrics,
+        },
+      }
+      setScannedSizes(updated)
       console.log('[ProfileScreen] Successfully saved edited measurements:', {
         top: profTop,
         bottom: profBottom,
         fit: profFit,
         shoe: profShoe,
         gender: scannedSizes.gender,
-        bodyMetrics: scannedSizes.sizing.bodyMetrics,
+        bodyMetrics: metrics,
       })
     }
   }

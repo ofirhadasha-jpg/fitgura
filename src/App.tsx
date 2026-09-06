@@ -24,6 +24,9 @@ interface GuestProfile {
   height: number | null
   weight: number | null
   shoeSize: string | null
+  topSize: string | null
+  bottomSize: string | null
+  fit: string | null
 }
 
 function saveGuestProfile(sizes: ScannedSizes | null) {
@@ -37,6 +40,9 @@ function saveGuestProfile(sizes: ScannedSizes | null) {
     height: sizes.sizing.bodyMetrics?.estimated_height_cm ?? null,
     weight: sizes.sizing.bodyMetrics?.estimated_weight_kg ?? null,
     shoeSize: sizes.shoeSize ?? null,
+    topSize: sizes.sizing.top ?? null,
+    bottomSize: sizes.sizing.bottom ?? null,
+    fit: sizes.sizing.fit ?? null,
   }
   localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile))
 }
@@ -94,6 +100,9 @@ async function migrateGuestData(userId: string) {
       height_cm: guestProfile.height,
       weight_kg: guestProfile.weight,
       shoe_size: guestProfile.shoeSize,
+      top_size: guestProfile.topSize,
+      bottom_size: guestProfile.bottomSize,
+      fit: guestProfile.fit,
       registered_device: guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null,
     })
   } else if (guestDevice) {
@@ -249,6 +258,9 @@ export default function App() {
         height_cm: bm?.estimated_height_cm ?? null,
         weight_kg: bm?.estimated_weight_kg ?? null,
         shoe_size: scannedSizes.shoeSize ?? null,
+        top_size: scannedSizes.sizing.top ?? null,
+        bottom_size: scannedSizes.sizing.bottom ?? null,
+        fit: scannedSizes.sizing.fit ?? null,
       }).then(({ error }) => {
         if (error) console.error('[App] Failed to persist profile to Supabase:', error.message)
       })
@@ -265,7 +277,42 @@ export default function App() {
     if (!user) {
       const guestDevice = loadGuestDevice()
       if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
+      // Hydrate guest profile sizes so they survive reloads
+      const gp = loadGuestProfile()
+      if (gp && !scannedSizes) {
+        const restored: ScannedSizes = {
+          sizing: {
+            top: gp.topSize ?? 'M',
+            bottom: gp.bottomSize ?? '48',
+            fit: gp.fit ?? 'Regular',
+            bodyFrame: 'Medium',
+            confidence: 85,
+            baselineMatched: true,
+            isWeeklyUpdate: false,
+            measurementDelta: null,
+            bodyMetrics: {
+              estimated_height_cm: gp.height,
+              estimated_weight_kg: gp.weight,
+              chest_circumference_cm: gp.chest,
+              waist_circumference_cm: gp.waist,
+              hips_circumference_cm: gp.hips,
+              shoulder_width_cm: gp.shoulder,
+            },
+          },
+          style: { primaryStyle: '', secondaryStyle: '', dominantColors: [], patternPreference: '', aestheticTags: [] },
+          confidence: 85,
+          preview: '',
+          top: gp.topSize ?? 'M',
+          bottom: gp.bottomSize ?? '48',
+          fit: gp.fit ?? 'Regular',
+          gender: gp.gender,
+          personBounds: { top: 2, left: 10, width: 80, height: 96 },
+          shoeSize: gp.shoeSize,
+        }
+        setScannedSizes(restored)
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
