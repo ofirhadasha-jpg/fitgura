@@ -536,8 +536,8 @@ export function FeedScreen({
 
         {isLoadingMore && (
           <View style={feedStyles.loadingState}>
-            <Text style={{ fontSize: 20 }}>⟳</Text>
-            <Text style={feedStyles.loadingText}>טוען 500 מוצרים נוספים מ-AliExpress...</Text>
+            <Text style={{ fontSize: 20 }} className="fitgura-spinner">⟳</Text>
+            <Text style={feedStyles.loadingText}>טוען מוצרים נוספים עבורך...</Text>
           </View>
         )}
 
