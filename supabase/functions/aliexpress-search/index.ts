@@ -264,10 +264,14 @@ Deno.serve(async (req: Request) => {
       const WOMENS_KEYWORDS = /\b(women|womens|female|girl|lady|ladies|נשים|אישה)\b/i;
       const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i;
 
+      const BOTH_GENDERS_REGEX = /\b(men|mens|male|boy|man).*(women|womens|female|girl|lady|ladies)\b|\b(women|womens|female|girl|lady|ladies).*(men|mens|male|boy|man)\b/i;
+
       const filteredProducts = mapped.filter((p) => {
         // 1. Strict gender isolation — reject opposite gender
         if (isFemaleSearch && MENS_KEYWORDS.test(p.name)) return false;
         if (isMaleSearch && WOMENS_KEYWORDS.test(p.name)) return false;
+        // 1b. Products mentioning both genders are unisex-only
+        if ((isFemaleSearch || isMaleSearch) && BOTH_GENDERS_REGEX.test(p.name)) return false;
         // 2. Clothing tab: hard-exclude all footwear
         if (isClothingSearch && FOOTWEAR_KEYWORDS.test(p.name)) return false;
         // 3. Shoes tab: hard-exclude all apparel, and require footwear terms

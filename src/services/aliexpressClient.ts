@@ -18,6 +18,9 @@ const GENDER_REJECT: Record<string, RegExp> = {
   unisex: /$^/,
 }
 
+// Products mentioning both genders are unisex-only — exclude from gender-specific results
+const BOTH_GENDERS_REGEX = /\b(men|mens|male|boy|man).*(women|womens|female|girl|lady|ladies)\b|\b(women|womens|female|girl|lady|ladies).*(men|mens|male|boy|man)\b/i
+
 // ── Category query templates (gender-specific) ─────────────────────────────
 
 const CLOTHING_SUBQUERIES_FEMALE = [
@@ -324,6 +327,8 @@ export function filterProducts(
   return products.filter((p) => {
     // 1. Gender Validation — discard opposite-gender items
     if (rejectRegex.test(p.name)) return false
+    // 1b. Products mentioning both genders are unisex-only
+    if (gender !== 'unisex' && BOTH_GENDERS_REGEX.test(p.name)) return false
 
     // 2. Category Validation
     if (category === 'clothing') {

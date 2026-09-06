@@ -26,6 +26,8 @@ const APPAREL_RENDER_REGEX = new RegExp(`\\b(${APPAREL_TERMS.join('|')})\\b`, 'i
 // Gender rejection regexes for render-time validation
 const MENS_RENDER_REGEX = /\b(men|mens|male|boy|man)\b/i
 const WOMENS_RENDER_REGEX = /\b(women|womens|female|girl|lady|ladies)\b/i
+// Products mentioning both genders are unisex-only
+const BOTH_GENDERS_RENDER_REGEX = /\b(men|mens|male|boy|man).*(women|womens|female|girl|lady|ladies)\b|\b(women|womens|female|girl|lady|ladies).*(men|mens|male|boy|man)\b/i
 
 // Clothing/footwear keywords to client-side filter out of accessories results
 const CLOTHING_KEYWORDS_REGEX = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|shoes|socks|sneakers|boots|sandals|חולצה|מכנסיים|שמלה|נעליים|גרביים|ז'?קט|מעיל|בגד|גופייה)\b/i
@@ -279,6 +281,8 @@ export function FeedScreen({
     // 1. Gender Validation — render-time double-check
     if (isFemaleRender && MENS_RENDER_REGEX.test(p.name)) return false
     if (isMaleRender && WOMENS_RENDER_REGEX.test(p.name)) return false
+    // 1b. Products mentioning both genders are unisex-only
+    if ((isFemaleRender || isMaleRender) && BOTH_GENDERS_RENDER_REGEX.test(p.name)) return false
     // 2. Category Validation — render-time double-check
     if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(p.name)) return false
     if (filter === 'shoes') {
