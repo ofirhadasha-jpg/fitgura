@@ -211,6 +211,24 @@ Deno.serve(async (req: Request) => {
         (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
           ?.resp_result?.result?.products?.product ?? [];
 
+      // Fallback: if HE-language search returned no results, retry without target_language
+      // The AliExpress affiliate API has fewer products indexed in Hebrew, especially for shoes.
+      if (products.length === 0) {
+        console.log("[ALIEXPRESS] No results with target_language=HE, retrying without language filter");
+        const noLangParams: RequestParams = {
+          page_no: pageNo,
+          page_size: pageSize,
+          target_currency: "ILS",
+        };
+        if (searchKeywords) noLangParams.keywords = searchKeywords;
+        if (categoryIds) noLangParams.category_ids = categoryIds;
+        noLangParams.sort = sort || "VOLUME_DOWN";
+        result = await callAliExpressApi("aliexpress.affiliate.product.query", noLangParams);
+        products =
+          (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
+            ?.resp_result?.result?.products?.product ?? [];
+      }
+
       // Fallback: if category_ids returned no results, retry with keywords only
       if (products.length === 0 && categoryIds && searchKeywords) {
         console.log("[ALIEXPRESS] No results with category_ids, retrying with keywords only:", searchKeywords);
@@ -218,7 +236,6 @@ Deno.serve(async (req: Request) => {
           page_no: pageNo,
           page_size: pageSize,
           target_currency: "ILS",
-          target_language: targetLanguage,
           keywords: searchKeywords,
           sort: sort || "VOLUME_DOWN",
         };
@@ -230,14 +247,12 @@ Deno.serve(async (req: Request) => {
 
       // Fallback: if still no results and keywords were used, try a simpler keyword
       if (products.length === 0 && searchKeywords) {
-        const isAccessories = isAccessoriesSearch;
-        const simpleKeyword = isAccessories ? "phone case cover" : isShoesSearch ? "shoes sneakers" : "fashion clothing";
+        const simpleKeyword = isAccessoriesSearch ? "phone case cover" : isShoesSearch ? "shoe" : "fashion clothing";
         console.log("[ALIEXPRESS] Still no results, retrying with simple keyword:", simpleKeyword);
         const fallbackParams: RequestParams = {
           page_no: pageNo,
           page_size: pageSize,
           target_currency: "ILS",
-          target_language: targetLanguage,
           keywords: genderPrefix + simpleKeyword,
           sort: sort || "VOLUME_DOWN",
         };
@@ -297,11 +312,11 @@ Deno.serve(async (req: Request) => {
         if ((isFemaleSearch || isMaleSearch) && BOTH_GENDERS_REGEX.test(p.name)) return false;
         // 2. Clothing tab: hard-exclude all footwear
         if (isClothingSearch && FOOTWEAR_KEYWORDS.test(p.name)) return false;
-        // 3. Shoes tab: hard-exclude all apparel, and require footwear terms
-        if (isShoesSearch) {
-          if (APPAREL_KEYWORDS.test(p.name)) return false;
-          if (!FOOTWEAR_KEYWORDS.test(p.name)) return false;
-        }
+      // 3. Shoes tab: hard-exclude obvious apparel, but don't require footwear terms in the title
+      //    since AliExpress may return Hebrew product titles without English shoe keywords
+      if (isShoesSearch) {
+        if (APPAREL_KEYWORDS.test(p.name) && !FOOTWEAR_KEYWORDS.test(p.name)) return false;
+      }
         // 4. Accessories tab: exclude apparel + footwear
         if (isAccessoriesSearch && (APPAREL_KEYWORDS.test(p.name) || FOOTWEAR_KEYWORDS.test(p.name))) return false;
         // 5. Filter out items with zero sales and very low ratings

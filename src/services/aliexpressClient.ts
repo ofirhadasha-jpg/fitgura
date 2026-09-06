@@ -83,7 +83,7 @@ const CLOTHING_SUBQUERIES_UNISEX = [
 const SHOES_SUBQUERIES_FEMALE = [
   'women sneakers',
   'women running shoes',
-  'women high heels pumps',
+  'women high heels',
   'women ankle boots',
   'women sandals',
   'women flat shoes',
@@ -103,13 +103,13 @@ const SHOES_SUBQUERIES_MALE = [
   'men slippers',
   'men casual shoes',
   'men leather shoes',
-  'men slip-on shoes',
+  'men slip-on',
 ]
 
 const SHOES_SUBQUERIES_UNISEX = [
   'sneakers',
   'running shoes',
-  'high heels pumps',
+  'high heels',
   'ankle boots',
   'sandals',
   'flat shoes',
@@ -143,7 +143,7 @@ const APPAREL_REGEX = new RegExp(`\\b(${APPAREL_TERMS.join('|')})\\b`, 'i')
 const CATEGORY_IDS: Record<FeedCategory, string | undefined> = {
   all: '200000783,200000782,200000835,200000832,200000831',
   clothing: '200000783,200000782',
-  shoes: undefined,
+  shoes: '200000835,200000832,200000831',
   accessories: '5090301,509',
 }
 
@@ -345,10 +345,9 @@ export function filterProducts(
     }
 
     if (category === 'shoes') {
-      // Hard-exclude all apparel terms
-      if (APPAREL_REGEX.test(p.name)) return false
-      // Require at least one footwear term in the title
-      if (!FOOTWEAR_REGEX.test(p.name)) return false
+      // Exclude obvious apparel, but don't require footwear terms in the title
+      // since AliExpress may return Hebrew product titles without English shoe keywords
+      if (APPAREL_REGEX.test(p.name) && !FOOTWEAR_REGEX.test(p.name)) return false
     }
 
     if (category === 'accessories') {

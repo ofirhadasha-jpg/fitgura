@@ -302,8 +302,7 @@ export function FeedScreen({
     // 2. Category Validation — render-time double-check
     if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(p.name)) return false
     if (filter === 'shoes') {
-      if (APPAREL_RENDER_REGEX.test(p.name)) return false
-      if (!FOOTWEAR_RENDER_REGEX.test(p.name)) return false
+      if (APPAREL_RENDER_REGEX.test(p.name) && !FOOTWEAR_RENDER_REGEX.test(p.name)) return false
     }
     // Accessories tab: exclude clothing items that leaked through, but allow watch accessory terms
     if (filter === 'accessories') {
