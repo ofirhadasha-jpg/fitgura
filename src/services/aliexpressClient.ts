@@ -124,8 +124,31 @@ export async function searchProductsByCategory(
   return filterProducts(products, category, gender)
 }
 
+// ── Smartwatch / Wearable detection ──────────────────────────────────────────
+
+const SMARTWATCH_KEYWORDS = ['watch', 'galaxy watch', 'apple watch', 'pixel watch', 'garmin', 'fitbit']
+
+export function isSmartwatch(deviceName: string): boolean {
+  const lower = deviceName.toLowerCase()
+  return SMARTWATCH_KEYWORDS.some((kw) => lower.includes(kw))
+}
+
+// Dedicated smartwatch accessory query variations for rich, high-converting results
+const SMARTWATCH_QUERIES = [
+  (d: string) => `${d} strap`,
+  (d: string) => `${d} band wristband`,
+  (d: string) => `${d} silicone band metal strap`,
+  (d: string) => `${d} screen protector case cover`,
+  (d: string) => `${d} charger charging dock`,
+]
+
+// Watch accessory terms — explicitly permitted in accessories tab
+const WATCH_ACCESSORY_TERMS = ['strap', 'band', 'wristband', 'bracelet', 'screen protector', 'charging dock', 'bezel']
+const WATCH_ACCESSORY_REGEX = new RegExp(`\\b(${WATCH_ACCESSORY_TERMS.join('|').replace(' ', '\\s+')})\\b`, 'i')
+
 /**
  * Search for tech accessories matching a specific device model.
+ * Uses dedicated smartwatch queries for wearable devices.
  */
 export async function searchDeviceAccessories(
   deviceName: string,
@@ -133,18 +156,36 @@ export async function searchDeviceAccessories(
   pageSize: number,
   gender?: Gender,
 ): Promise<Product[]> {
-  const isDesktop = deviceName.toLowerCase().includes('desktop') || deviceName.toLowerCase().includes('laptop')
-  const keywords = isDesktop
-    ? `${deviceName} laptop case cover sleeve charger stand cable adapter dock`
-    : `${deviceName} case cover screen protector charger cable holder stand`
   const categoryIds = CATEGORY_IDS.accessories
+  const lower = deviceName.toLowerCase()
+  const watch = isSmartwatch(deviceName)
+  const isDesktop = lower.includes('desktop') || lower.includes('laptop')
 
-  console.log('[aliexpressClient] searchDeviceAccessories:', { deviceName, keywords, categoryIds })
+  let allProducts: Product[] = []
 
-  const products = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds)
+  if (watch) {
+    // Run all 5 smartwatch query variations and merge results
+    const perQuerySize = Math.max(10, Math.ceil(pageSize / SMARTWATCH_QUERIES.length))
+    const results = await Promise.all(
+      SMARTWATCH_QUERIES.map((q) => {
+        const keywords = q(deviceName)
+        console.log('[aliexpressClient] smartwatch query:', { deviceName, keywords })
+        return fetchAliExpressProducts(keywords, pageNo, perQuerySize, gender, categoryIds)
+      }),
+    )
+    allProducts = results.flat()
+  } else if (isDesktop) {
+    const keywords = `${deviceName} laptop case cover sleeve charger stand cable adapter dock`
+    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds)
+  } else {
+    const keywords = `${deviceName} case cover screen protector charger cable holder stand`
+    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds)
+  }
 
-  // Filter out any apparel/footwear that leaked through
-  return products.filter((p) => {
+  console.log('[aliexpressClient] searchDeviceAccessories:', { deviceName, watch, isDesktop, totalFetched: allProducts.length })
+
+  // Filter out apparel/footwear that leaked through, but keep watch accessory terms
+  return allProducts.filter((p) => {
     if (APPAREL_REGEX.test(p.name)) return false
     if (FOOTWEAR_REGEX.test(p.name)) return false
     return true

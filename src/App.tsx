@@ -413,12 +413,12 @@ export default function App() {
   async function handleAddDevice(deviceName: string) {
     const trimmed = deviceName.trim()
     if (!trimmed) return
-    setRegisteredDevices((prev) => prev.includes(trimmed) ? prev : [...prev, trimmed])
+    setRegisteredDevices((prev) => prev.includes(trimmed) ? prev : [trimmed, ...prev])
     if (user && isSupabaseConfigured) {
       try {
         const { data: row } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
         const current: string[] = Array.isArray(row?.registered_devices) ? row.registered_devices : []
-        const next = current.includes(trimmed) ? current : [...current, trimmed]
+        const next = current.includes(trimmed) ? current : [trimmed, ...current]
         const { error } = await supabase.from('profiles').update({ registered_devices: next }).eq('user_id', user.id)
         if (error) console.error('[App] Failed to persist device to Supabase:', error.message)
       } catch (err) {

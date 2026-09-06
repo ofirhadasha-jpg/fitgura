@@ -9,6 +9,7 @@ import {
   searchProductsByCategory,
   searchDeviceAccessories,
   filterProducts,
+  isSmartwatch,
   type FeedCategory,
   type Gender,
 } from '../services/aliexpressClient'
@@ -28,6 +29,30 @@ const WOMENS_RENDER_REGEX = /\b(women|womens|female|girl|lady|ladies)\b/i
 
 // Clothing/footwear keywords to client-side filter out of accessories results
 const CLOTHING_KEYWORDS_REGEX = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|shoes|socks|sneakers|boots|sandals|חולצה|מכנסיים|שמלה|נעליים|גרביים|ז'?קט|מעיל|בגד|גופייה)\b/i
+
+// Watch accessory terms — explicitly permitted in accessories tab even if they contain words like "band" that might overlap with apparel
+const WATCH_ACCESSORY_TERMS = ['strap', 'band', 'wristband', 'bracelet', 'screen protector', 'charging dock', 'bezel']
+const WATCH_ACCESSORY_REGEX = /\b(strap|band|wristband|bracelet|screen\s*protector|charging\s*dock|bezel)\b/i
+
+// Sort accessories so products matching the newest device (index 0) appear at the very top
+function sortAccessoriesByDevicePriority(products: Product[], devices: string[]): Product[] {
+  const deviceModels = devices.map((d) => {
+    const model = d.replace(/^\w+\s+/, '').trim().toLowerCase() || d.toLowerCase()
+    const parts = model.split(' ')
+    return { model, lastPart: parts[parts.length - 1] }
+  })
+  return [...products].sort((a, b) => {
+    const aTitle = a.name.toLowerCase()
+    const bTitle = b.name.toLowerCase()
+    // Find the highest-priority device (lowest index) that matches each product
+    const aPriority = deviceModels.findIndex((dm) => aTitle.includes(dm.model) || (dm.lastPart.length >= 2 && aTitle.includes(dm.lastPart)))
+    const bPriority = deviceModels.findIndex((dm) => bTitle.includes(dm.model) || (dm.lastPart.length >= 2 && bTitle.includes(dm.lastPart)))
+    // Products matching no device go last; products matching device 0 go first
+    const aRank = aPriority === -1 ? deviceModels.length : aPriority
+    const bRank = bPriority === -1 ? deviceModels.length : bPriority
+    return aRank - bRank
+  })
+}
 
 export function FeedScreen({
   wishlistItems,
@@ -109,10 +134,13 @@ export function FeedScreen({
       let remoteProducts: Product[]
 
       if (category === 'accessories' && accessoryDevices.length > 0) {
-        // Search accessories for each registered device in parallel
-        remoteProducts = (await Promise.all(
+        // Fetch newest device first (index 0), then others — sort results so newest device's products appear at top
+        const deviceResults = await Promise.all(
           accessoryDevices.map((device) => searchDeviceAccessories(device, page, PAGE_SIZE, gender)),
-        )).flat()
+        )
+        // Map each device's results to { device, products } preserving device order (newest first)
+        // Then flatten so newest device's products come first in the array
+        remoteProducts = deviceResults.flat()
       } else {
         remoteProducts = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE, trimmedExtra)
       }
@@ -135,15 +163,20 @@ export function FeedScreen({
           })
         : remoteProducts
 
+      // For accessories: sort so newest device (index 0) products appear at the very top
+      const sortedProducts = category === 'accessories' && accessoryDevices.length > 1
+        ? sortAccessoriesByDevicePriority(cleanedProducts, accessoryDevices)
+        : cleanedProducts
+
       // Direct state hydration — append unique items only
       setCatalog((prev) => {
         const existingIds = new Set(prev.map((p) => p.aliexpressSku).filter(Boolean))
-        const deduped = cleanedProducts.filter((p) => !p.aliexpressSku || !existingIds.has(p.aliexpressSku))
+        const deduped = sortedProducts.filter((p) => !p.aliexpressSku || !existingIds.has(p.aliexpressSku))
         const next = append ? [...prev, ...deduped] : deduped
-        console.log('[FeedScreen] Catalog after update:', next.length, 'deduped:', cleanedProducts.length - deduped.length)
+        console.log('[FeedScreen] Catalog after update:', next.length, 'deduped:', sortedProducts.length - deduped.length)
         return next
       })
-      if (!append && cleanedProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
+      if (!append && sortedProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
     } catch (error: unknown) {
       if (!append) setCatalog([])
       setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חיים')
@@ -239,8 +272,10 @@ export function FeedScreen({
     // 2. Category Validation — render-time double-check
     if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(p.name)) return false
     if (filter === 'shoes' && APPAREL_RENDER_REGEX.test(p.name)) return false
-    // Accessories tab: exclude clothing items that leaked through
-    if (filter === 'accessories' && CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
+    // Accessories tab: exclude clothing items that leaked through, but allow watch accessory terms
+    if (filter === 'accessories') {
+      if (CLOTHING_KEYWORDS_REGEX.test(p.name) && !WATCH_ACCESSORY_REGEX.test(p.name)) return false
+    }
     return matchSearch && matchBudget
   })
 
