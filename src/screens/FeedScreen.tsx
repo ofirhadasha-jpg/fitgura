@@ -41,6 +41,9 @@ export function FeedScreen({
   scannedSizes,
   detectedDevice,
   onCatalogChange,
+  registeredDevices,
+  onAddDevice,
+  onRemoveDevice,
 }: {
   wishlistItems: number[]
   onToggleWishlist: (i: number) => void
@@ -51,6 +54,9 @@ export function FeedScreen({
   scannedSizes: ScannedSizes | null
   detectedDevice: DetectedDevice | null
   onCatalogChange: (catalog: Product[]) => void
+  registeredDevices: string[]
+  onAddDevice: (deviceName: string) => void
+  onRemoveDevice: (deviceName: string) => void
 }) {
   const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
   const [search, setSearch] = useState('')
@@ -61,6 +67,8 @@ export function FeedScreen({
   const [pageNo, setPageNo] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const [showDeviceModal, setShowDeviceModal] = useState(false)
+  const [deviceSearch, setDeviceSearch] = useState('')
 
   const loadProducts = useCallback(async (page: number, append: boolean, category: string) => {
     if (append) setIsLoadingMore(true)
@@ -75,17 +83,25 @@ export function FeedScreen({
       let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
 
       if (category === 'accessories') {
-        // Accessories: build device-specific search from the recognized device model.
-        // AliExpress titles typically use the model name alone (e.g. "Galaxy S23 case", "iPhone 15 Pro cover")
-        // so we prefer the model over brand+model, and keep keywords short for better API results.
-        if (detectedDevice) {
-          const model = detectedDevice.model.trim()
-          const isDesktop = detectedDevice.brand === 'Desktop'
+        // Multi-device: build search from all registered devices
+        const allDevices = registeredDevices.length > 0
+          ? registeredDevices
+          : detectedDevice
+            ? [`${detectedDevice.brand} ${detectedDevice.model}`.trim()]
+            : []
+        if (allDevices.length > 0) {
+          // Use the first device model for the primary search query, include others as OR keywords
+          const firstModel = allDevices[0].replace(/^\w+\s+/, '').trim() || allDevices[0]
+          const isDesktop = allDevices[0].toLowerCase().includes('desktop') || allDevices[0].toLowerCase().includes('laptop')
           if (isDesktop) {
             keywords = `laptop case cover sleeve stand`
           } else {
-            // Use just the model name — it's the most specific and common in product titles
-            keywords = `${model} case cover protector`
+            keywords = `${firstModel} case cover protector`
+          }
+          // Append additional device models for broader matching
+          if (allDevices.length > 1) {
+            const extraModels = allDevices.slice(1).map((d) => d.replace(/^\w+\s+/, '').trim() || d).join(' ')
+            keywords = `${keywords} ${extraModels}`
           }
         } else {
           keywords = `phone case cover protector`
@@ -129,9 +145,22 @@ export function FeedScreen({
 
       // Client-side filtering for accessories:
       //  Exclusion: discard any product whose title contains apparel/footwear keywords
-      //  (Inclusion is handled by the search keywords + category_ids — no extra device-name gate)
+      //  Inclusion: if we have registered devices, at least one device model should appear in the title
       const cleanedProducts = category === 'accessories'
-        ? remoteProducts.filter((p) => !CLOTHING_KEYWORDS_REGEX.test(p.name))
+        ? remoteProducts.filter((p) => {
+            if (CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
+            const allDevices = registeredDevices.length > 0
+              ? registeredDevices
+              : detectedDevice
+                ? [`${detectedDevice.brand} ${detectedDevice.model}`.trim()]
+                : []
+            if (allDevices.length === 0) return true
+            const titleLower = p.name.toLowerCase()
+            return allDevices.some((d) => {
+              const model = d.replace(/^\w+\s+/, '').trim().toLowerCase() || d.toLowerCase()
+              return titleLower.includes(model)
+            })
+          })
         : remoteProducts
 
       // Direct state hydration — append unique items only
@@ -150,7 +179,7 @@ export function FeedScreen({
       setIsLoadingProducts(false)
       setIsLoadingMore(false)
     }
-  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes?.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice])
+  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
 
   const handleFilterChange = useCallback((newFilter: typeof filter) => {
     console.log(`[Feed] Category changed to: ${newFilter}`)
@@ -172,6 +201,7 @@ export function FeedScreen({
     scannedSizes?.style?.aestheticTags?.join(','),
     detectedDevice?.brand,
     detectedDevice?.model,
+    registeredDevices.join(','),
   ].join('|')
 
   // Initial load
@@ -287,6 +317,33 @@ export function FeedScreen({
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {filter === 'accessories' && (
+          <View style={feedStyles.deviceBar}>
+            <Text style={feedStyles.deviceBarTitle}>📱 המכשירים שלי</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8, paddingBottom: 4 }}>
+              {registeredDevices.map((device) => (
+                <View key={device} style={feedStyles.deviceChip}>
+                  <Text style={feedStyles.deviceChipText}>{device}</Text>
+                  <TouchableOpacity
+                    onPress={() => onRemoveDevice(device)}
+                    activeOpacity={0.6}
+                    style={feedStyles.deviceChipRemove}
+                  >
+                    <Text style={feedStyles.deviceChipRemoveText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity
+                onPress={() => setShowDeviceModal(true)}
+                activeOpacity={0.7}
+                style={feedStyles.addDeviceBtn}
+              >
+                <Text style={feedStyles.addDeviceBtnText}>+ הוסף מכשיר</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 100 }}>
@@ -370,6 +427,39 @@ export function FeedScreen({
       </ScrollView>
 
       <BottomNav current="feed" onNav={onNav} />
+
+      {showDeviceModal && (
+        <View style={feedStyles.deviceModalOverlay}>
+          <TouchableOpacity onPress={() => { setShowDeviceModal(false); setDeviceSearch('') }} activeOpacity={1} style={feedStyles.sizeModalBackdrop} />
+          <View style={feedStyles.deviceModalSheet}>
+            <TouchableOpacity onPress={() => { setShowDeviceModal(false); setDeviceSearch('') }} activeOpacity={0.7} style={feedStyles.sizeModalCloseBtn}>
+              <Text style={feedStyles.sizeModalCloseText}>×</Text>
+            </TouchableOpacity>
+            <Text style={feedStyles.deviceModalTitle}>הוסף מכשיר</Text>
+            <Text style={feedStyles.deviceModalSub}>הקלד את דגם המכשיר (לדוגמה: iPhone 15 Pro, Galaxy S23)</Text>
+            <TextInput
+              placeholder="דגם מכשיר..."
+              value={deviceSearch}
+              onChangeText={setDeviceSearch}
+              style={feedStyles.deviceModalInput}
+              autoFocus
+            />
+            <TouchableOpacity
+              onPress={() => {
+                if (deviceSearch.trim()) {
+                  onAddDevice(deviceSearch.trim())
+                  setDeviceSearch('')
+                  setShowDeviceModal(false)
+                }
+              }}
+              activeOpacity={0.8}
+              style={feedStyles.deviceModalSaveBtn}
+            >
+              <Text style={feedStyles.deviceModalSaveBtnText}>שמור מכשיר</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
@@ -736,4 +826,19 @@ const feedStyles = StyleSheet.create({
   sizeBreakdownRow: { alignItems: 'center', gap: 2 },
   sizeBreakdownLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#64748B', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sizeBreakdownValue: { fontSize: 15, lineHeight: 20, fontWeight: '800', color: '#2E5BFF', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceBar: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F1F5F9', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  deviceBarTitle: { fontSize: 12, fontWeight: '700', color: '#475569', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#2E5BFF' },
+  deviceChipText: { fontSize: 12, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceChipRemove: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
+  deviceChipRemoveText: { fontSize: 10, fontWeight: '700', color: '#EF4444' },
+  addDeviceBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2E5BFF', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 14 },
+  addDeviceBtnText: { fontSize: 12, fontWeight: '700', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceModalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'center', alignItems: 'center' },
+  deviceModalSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 20, width: 320, maxWidth: '90%', gap: 12, elevation: 10 },
+  deviceModalTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceModalSub: { fontSize: 12, color: '#94A3B8', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceModalInput: { borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14, color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceModalSaveBtn: { width: '100%', backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  deviceModalSaveBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

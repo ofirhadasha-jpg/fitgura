@@ -15,6 +15,7 @@ import { WishlistScreen } from './screens/WishlistScreen'
 const GUEST_PROFILE_KEY = 'fitgura_guest_profile'
 const GUEST_FAVORITES_KEY = 'fitgura_favorites'
 const GUEST_DEVICE_KEY = 'fitgura_guest_device'
+const GUEST_DEVICES_KEY = 'fitgura_guest_devices'
 const LEGACY_GUEST_FAVORITES_KEY = 'fitgura_guest_favorites'
 
 interface GuestProfile {
@@ -54,6 +55,16 @@ function saveGuestProfile(sizes: ScannedSizes | null, preferredRegion: SizeRegio
 function saveGuestDevice(device: DetectedDevice | null) {
   if (!device) return
   localStorage.setItem(GUEST_DEVICE_KEY, JSON.stringify(device))
+}
+
+function loadGuestDevices(): string[] {
+  const raw = localStorage.getItem(GUEST_DEVICES_KEY)
+  if (!raw) return []
+  try { return JSON.parse(raw) as string[] } catch { return [] }
+}
+
+function saveGuestDevices(devices: string[]) {
+  localStorage.setItem(GUEST_DEVICES_KEY, JSON.stringify(devices))
 }
 
 function loadGuestDevice(): DetectedDevice | null {
@@ -131,6 +142,7 @@ async function migrateGuestData(userId: string) {
 
   try {
     if (guestProfile) {
+      const deviceName = guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null
       const { error } = await supabase.from('profiles').upsert({
         user_id: userId,
         gender: guestProfile.gender,
@@ -145,13 +157,16 @@ async function migrateGuestData(userId: string) {
         bottom_size: guestProfile.bottomSize,
         fit: guestProfile.fit,
         preferred_region: guestProfile.preferredRegion ?? 'EU',
-        registered_device: guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null,
+        registered_device: deviceName,
+        registered_devices: deviceName ? [deviceName] : [],
       })
       if (error) throw error
     } else if (guestDevice) {
+      const deviceName = `${guestDevice.brand} ${guestDevice.model}`
       const { error } = await supabase.from('profiles').upsert({
         user_id: userId,
-        registered_device: `${guestDevice.brand} ${guestDevice.model}`,
+        registered_device: deviceName,
+        registered_devices: [deviceName],
       })
       if (error) throw error
     }
@@ -214,6 +229,7 @@ export default function App() {
     const gp = loadGuestProfile()
     return gp?.preferredRegion ?? 'EU'
   })
+  const [registeredDevices, setRegisteredDevices] = useState<string[]>(() => loadGuestDevices())
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -249,6 +265,13 @@ export default function App() {
           if (profileRow?.preferred_region === 'EU' || profileRow?.preferred_region === 'US' || profileRow?.preferred_region === 'UK') {
             setPreferredRegion(profileRow.preferred_region)
           }
+          // Load registered_devices array (with legacy fallback)
+          const devices: string[] = Array.isArray(profileRow?.registered_devices) && profileRow.registered_devices.length > 0
+            ? profileRow.registered_devices
+            : profileRow?.registered_device
+              ? [profileRow.registered_device]
+              : []
+          if (devices.length > 0) setRegisteredDevices(devices)
           if (profileRow?.registered_device) {
             const parts = profileRow.registered_device.split(' ')
             const brand = parts[0] ?? 'Unknown'
@@ -382,12 +405,51 @@ export default function App() {
     if (!user && detectedDevice) saveGuestDevice(detectedDevice)
   }, [detectedDevice, user])
 
+  // Persist registered devices for guests
+  useEffect(() => {
+    if (!user) saveGuestDevices(registeredDevices)
+  }, [registeredDevices, user])
+
+  async function handleAddDevice(deviceName: string) {
+    const trimmed = deviceName.trim()
+    if (!trimmed) return
+    setRegisteredDevices((prev) => prev.includes(trimmed) ? prev : [...prev, trimmed])
+    if (user && isSupabaseConfigured) {
+      try {
+        const { data: row } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
+        const current: string[] = Array.isArray(row?.registered_devices) ? row.registered_devices : []
+        const next = current.includes(trimmed) ? current : [...current, trimmed]
+        const { error } = await supabase.from('profiles').update({ registered_devices: next }).eq('user_id', user.id)
+        if (error) console.error('[App] Failed to persist device to Supabase:', error.message)
+      } catch (err) {
+        console.error('[App] Device add failed:', err)
+      }
+    }
+  }
+
+  async function handleRemoveDevice(deviceName: string) {
+    setRegisteredDevices((prev) => prev.filter((d) => d !== deviceName))
+    if (user && isSupabaseConfigured) {
+      try {
+        const { data: row } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
+        const current: string[] = Array.isArray(row?.registered_devices) ? row.registered_devices : []
+        const next = current.filter((d) => d !== deviceName)
+        const { error } = await supabase.from('profiles').update({ registered_devices: next }).eq('user_id', user.id)
+        if (error) console.error('[App] Failed to remove device from Supabase:', error.message)
+      } catch (err) {
+        console.error('[App] Device remove failed:', err)
+      }
+    }
+  }
+
   // Hydrate guest device and favorites on initial mount
   useEffect(() => {
     if (!user) {
       migrateLegacyFavorites()
       const guestDevice = loadGuestDevice()
       if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
+      const guestDevices = loadGuestDevices()
+      if (guestDevices.length > 0) setRegisteredDevices((prev) => prev.length > 0 ? prev : guestDevices)
       // Hydrate guest profile sizes so they survive reloads
       const gp = loadGuestProfile()
       if (gp?.preferredRegion) setPreferredRegion(gp.preferredRegion)
@@ -439,7 +501,7 @@ export default function App() {
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={setDetectedDevice} />}
-        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} />}
+        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} />}
         {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} />}
