@@ -605,13 +605,20 @@ function formatSizeBreakdown(items: SizeBreakdownItem[]): string {
 function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
   if (category === 'shoes') {
-    return scannedSizes.shoeSize ? `EU ${scannedSizes.shoeSize}` : null
+    return scannedSizes.shoeSize ? `נעל: EU ${scannedSizes.shoeSize}` : null
   }
+  if (category === 'accessories') return null
   const top = scannedSizes.sizing.top
   const bottom = scannedSizes.sizing.bottom
-  if (SHIRT_KEYWORDS.test(productName) && !PANTS_KEYWORDS.test(productName) && !SUIT_KEYWORDS.test(productName)) return top
-  if (PANTS_KEYWORDS.test(productName) && !SHIRT_KEYWORDS.test(productName) && !SUIT_KEYWORDS.test(productName)) return formatFullPantsSizeLabel(bottom)
-  return `${top}/${formatFullPantsSizeLabel(bottom)}`
+  const isSuit = SUIT_KEYWORDS.test(productName)
+  const isShirt = SHIRT_KEYWORDS.test(productName)
+  const isPants = PANTS_KEYWORDS.test(productName)
+  if (isSuit || (isShirt && isPants)) {
+    return `חולצה: ${top}  |  מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
+  }
+  if (isShirt && !isPants) return `חולצה: ${top}`
+  if (isPants && !isShirt) return `מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
+  return `חולצה: ${top}  |  מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
 }
 
 function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null; category: string }) {
@@ -728,7 +735,7 @@ function SizeReminderModal({ recommendedSize, sizeBreakdown, onConfirm, onDismis
           <Text style={feedStyles.sizeModalLogoText}>Fitgura</Text>
         </View>
         <Text style={feedStyles.sizeModalHighlightValue} numberOfLines={2}>
-          {recommendedSize ? `מידה מומלצת: ${recommendedSize}` : 'מידה מומלצת'}
+          מידה מומלצת
         </Text>
         {sizeBreakdown.length > 0 && (
           <View style={feedStyles.sizeBreakdownBox}>
