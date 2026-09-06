@@ -1,3 +1,5 @@
+import { usToEuPants, euToUsPants } from './utils/sizeConverter'
+
 export type Screen = 'splash' | 'onboarding' | 'device' | 'feed' | 'events' | 'profile' | 'wishlist'
 
 export interface FitEvent {
@@ -291,7 +293,8 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
   const st = analysis.style_profile
 
   const top = sp.recommended_top_size ?? 'M'
-  const bottom = sp.recommended_bottom_size ?? '32'
+  const rawBottom = sp.recommended_bottom_size ?? '38'
+  const bottom = usToEuPants(rawBottom)
   const shoeSize = sp.recommended_shoe_size_eu != null ? String(sp.recommended_shoe_size_eu) : null
   const fitMap: Record<string, string> = { 'Slim': 'Slim Fit', 'Regular': 'Regular', 'Loose': 'Relaxed', 'Oversized': 'Relaxed' }
   const fit = fitMap[sp.fit_preference] ?? 'Regular'
@@ -346,12 +349,8 @@ export function getBottomSizesForGender(_gender: 'male' | 'female' | 'unisex' | 
   return BOTTOM_SIZES_EU
 }
 
-// Convert between EU pants size and US waist inches. EU = US + 10 (approx)
 export function convertPantsSize(value: string, target: 'EU' | 'US'): string {
-  const num = parseInt(value, 10)
-  if (isNaN(num)) return value
-  if (target === 'EU') return String(num + 10)
-  return String(num - 10)
+  return target === 'EU' ? usToEuPants(value) : euToUsPants(value)
 }
 export const FIT_TYPES = ['Slim Fit', 'Regular', 'Relaxed', 'Athletic']
 export const SHOE_SIZES_EU = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48']

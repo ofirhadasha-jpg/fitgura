@@ -1,6 +1,7 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product } from './types'
+import type { SizeRegion } from './utils/sizeConverter'
 import { AuthModal } from './components'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
 import { SplashScreen } from './screens/SplashScreen'
@@ -28,9 +29,10 @@ interface GuestProfile {
   topSize: string | null
   bottomSize: string | null
   fit: string | null
+  preferredRegion: SizeRegion | null
 }
 
-function saveGuestProfile(sizes: ScannedSizes | null) {
+function saveGuestProfile(sizes: ScannedSizes | null, preferredRegion: SizeRegion = 'EU') {
   if (!sizes) return
   const profile: GuestProfile = {
     gender: sizes.gender ?? 'unisex',
@@ -44,6 +46,7 @@ function saveGuestProfile(sizes: ScannedSizes | null) {
     topSize: sizes.sizing.top ?? null,
     bottomSize: sizes.sizing.bottom ?? null,
     fit: sizes.sizing.fit ?? null,
+    preferredRegion: preferredRegion ?? 'EU',
   }
   localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile))
 }
@@ -141,6 +144,7 @@ async function migrateGuestData(userId: string) {
         top_size: guestProfile.topSize,
         bottom_size: guestProfile.bottomSize,
         fit: guestProfile.fit,
+        preferred_region: guestProfile.preferredRegion ?? 'EU',
         registered_device: guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null,
       })
       if (error) throw error
@@ -206,6 +210,10 @@ export default function App() {
   const [scanGallery, setScanGallery] = useState<ScanEntry[]>([])
   const [galleryAccess, setGalleryAccess] = useState<GalleryAccessState>('pending')
   const [feedCatalog, setFeedCatalog] = useState<Product[]>([])
+  const [preferredRegion, setPreferredRegion] = useState<SizeRegion>(() => {
+    const gp = loadGuestProfile()
+    return gp?.preferredRegion ?? 'EU'
+  })
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -238,6 +246,9 @@ export default function App() {
             .eq('user_id', u.id)
             .maybeSingle()
           if (error) throw error
+          if (profileRow?.preferred_region === 'EU' || profileRow?.preferred_region === 'US' || profileRow?.preferred_region === 'UK') {
+            setPreferredRegion(profileRow.preferred_region)
+          }
           if (profileRow?.registered_device) {
             const parts = profileRow.registered_device.split(' ')
             const brand = parts[0] ?? 'Unknown'
@@ -338,7 +349,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) {
-      saveGuestProfile(scannedSizes)
+      saveGuestProfile(scannedSizes, preferredRegion)
       return
     }
     // Logged-in user: persist to Supabase profiles table
@@ -357,13 +368,14 @@ export default function App() {
         top_size: scannedSizes.sizing.top ?? null,
         bottom_size: scannedSizes.sizing.bottom ?? null,
         fit: scannedSizes.sizing.fit ?? null,
+        preferred_region: preferredRegion,
       }).then(({ error }) => {
         if (error) console.error('[App] Failed to persist profile to Supabase:', error.message)
       }).catch((err) => {
         console.error('[App] Supabase profile persist failed, keeping local only:', err)
       })
     }
-  }, [scannedSizes, user])
+  }, [scannedSizes, user, preferredRegion])
 
   // Persist detected device for guests
   useEffect(() => {
@@ -378,6 +390,7 @@ export default function App() {
       if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
       // Hydrate guest profile sizes so they survive reloads
       const gp = loadGuestProfile()
+      if (gp?.preferredRegion) setPreferredRegion(gp.preferredRegion)
       if (gp && !scannedSizes) {
         const restored: ScannedSizes = {
           sizing: {
@@ -429,7 +442,7 @@ export default function App() {
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} />}
-        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} />}
+        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} />}
         {screen === 'wishlist' && (
           <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} catalog={feedCatalog} />
         )}

@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image 
 import { LinearGradient, BottomNav } from '../components'
 import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice } from '../types'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
+import { formatFullPantsSizeLabel, euToUsPants, type SizeRegion } from '../utils/sizeConverter'
 
 const PAGE_SIZE = 50
 
@@ -96,6 +97,12 @@ export function FeedScreen({
         }
         if (scannedSizes?.style?.primaryStyle) {
           keywords = `${keywords} ${scannedSizes.style.primaryStyle}`
+        }
+        // Include both EU and US pants size equivalencies for broader seller matching
+        if (scannedSizes?.sizing?.bottom) {
+          const euSize = scannedSizes.sizing.bottom
+          const usSize = euToUsPants(euSize)
+          keywords = `${keywords} size ${euSize} EU ${usSize} US`
         }
       } else if (category === 'shoes') {
         // Shoes: filtered by gender and shoe size
@@ -235,7 +242,7 @@ export function FeedScreen({
           <View style={feedStyles.statusLeft}>
             <View style={feedStyles.statusDot} />
             <Text style={feedStyles.statusText}>
-              {scannedSizes ? `מידות: ${scannedSizes.sizing.top} · ${TOP_TO_BOTTOM_EU[scannedSizes.sizing.top] ?? scannedSizes.sizing.bottom} EU · ${scannedSizes.sizing.fit}` : 'טרם נסרקת'}
+              {scannedSizes ? `מידות: ${scannedSizes.sizing.top} · ${scannedSizes.sizing.bottom} EU · ${scannedSizes.sizing.fit}` : 'טרם נסרקת'}
             </Text>
             {user ? (
               <View style={feedStyles.loggedInBadge}><Text style={feedStyles.loggedInBadgeText}>מחובר ✓</Text></View>
@@ -441,10 +448,6 @@ function formatPrice(price: number, currency?: string): string {
   return `${symbol}${price.toLocaleString()}`
 }
 
-const TOP_TO_BOTTOM_EU: Record<string, string> = {
-  'XS': '44', 'S': '46', 'M': '48', 'L': '50', 'XL': '52', 'XXL': '54',
-}
-
 const SUIT_KEYWORDS = /\b(suit|blazer set|two.?piece|tracksuit|set|חליפה|סט|סט חליפה)\b/i
 const SHIRT_KEYWORDS = /\b(shirt|t-?shirt|hoodie|sweater|jacket|coat|polo|tank|top|blouse|חולצה|ג'?קט|מעיל|סוודר|בגד עליון)\b/i
 const PANTS_KEYWORDS = /\b(pants|jeans|trousers|shorts|leggings|jogger|מכנסיים|מכנס)\b/i
@@ -459,7 +462,7 @@ function getSizeBreakdown(productName: string, scannedSizes: ScannedSizes | null
   if (category === 'accessories') return []
 
   const top = scannedSizes.sizing.top
-  const bottom = TOP_TO_BOTTOM_EU[top] ?? scannedSizes.sizing.bottom
+  const bottom = scannedSizes.sizing.bottom
 
   const isSuit = SUIT_KEYWORDS.test(productName)
   const isShirt = SHIRT_KEYWORDS.test(productName)
@@ -468,19 +471,19 @@ function getSizeBreakdown(productName: string, scannedSizes: ScannedSizes | null
   if (isSuit || (isShirt && isPants)) {
     return [
       { label: 'חולצה', value: top },
-      { label: 'מכנסיים', value: `${bottom} EU` },
+      { label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) },
     ]
   }
   if (isShirt) {
     return [{ label: 'חולצה', value: top }]
   }
   if (isPants) {
-    return [{ label: 'מכנסיים', value: `${bottom} EU` }]
+    return [{ label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) }]
   }
   // Default: show both for generic clothing
   return [
     { label: 'חולצה', value: top },
-    { label: 'מכנסיים', value: `${bottom} EU` },
+    { label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) },
   ]
 }
 
@@ -488,21 +491,23 @@ function formatSizeBreakdown(items: SizeBreakdownItem[]): string {
   return items.map((item) => `${item.label}: ${item.value}`).join('  |  ')
 }
 
-function getRecommendedSizeLabel(scannedSizes: ScannedSizes | null, category: string): string | null {
+function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
   if (category === 'shoes') {
     return scannedSizes.shoeSize ? `EU ${scannedSizes.shoeSize}` : null
   }
   const top = scannedSizes.sizing.top
-  const bottom = TOP_TO_BOTTOM_EU[top] ?? scannedSizes.sizing.bottom
-  return `${top}/${bottom}`
+  const bottom = scannedSizes.sizing.bottom
+  if (SHIRT_KEYWORDS.test(productName) && !PANTS_KEYWORDS.test(productName) && !SUIT_KEYWORDS.test(productName)) return top
+  if (PANTS_KEYWORDS.test(productName) && !SHIRT_KEYWORDS.test(productName) && !SUIT_KEYWORDS.test(productName)) return formatFullPantsSizeLabel(bottom)
+  return `${top}/${formatFullPantsSizeLabel(bottom)}`
 }
 
 function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null; category: string }) {
   const [toast, setToast] = useState<string | null>(null)
   const [showSizeModal, setShowSizeModal] = useState(false)
 
-  const recommendedSize = getRecommendedSizeLabel(scannedSizes, category)
+  const recommendedSize = getRecommendedSizeLabel(product.name, scannedSizes, category)
   const sizeBreakdown = getSizeBreakdown(product.name, scannedSizes, category)
 
   function handleBuy() {
@@ -549,7 +554,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
             {category === 'shoes' && scannedSizes?.shoeSize
               ? `✓ מתאים למידה נעל: EU ${scannedSizes.shoeSize}`
               : scannedSizes
-                ? `✓ מתאים למידה: ${scannedSizes.sizing.top}/${TOP_TO_BOTTOM_EU[scannedSizes.sizing.top] ?? scannedSizes.sizing.bottom}`
+                ? `✓ מתאים למידה: ${scannedSizes.sizing.top}/${scannedSizes.sizing.bottom} EU`
                 : '✓ מתאים למידה שנסרקת'}
           </Text>
         </View>

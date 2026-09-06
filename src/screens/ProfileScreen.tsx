@@ -15,10 +15,11 @@ import {
   formatTimestamp, nextScanId, computeDelta,
   formatNextScanDate, formatLastScanDate,
 } from '../types'
+import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type SizeRegion } from '../utils/sizeConverter'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess }: {
+export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion }: {
   onNav: (s: Screen) => void
   user: User | null
   onSignOut: () => void
@@ -29,6 +30,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   setScanGallery: (g: ScanEntry[] | ((prev: ScanEntry[]) => ScanEntry[])) => void
   galleryAccess: GalleryAccessState
   setGalleryAccess: (s: GalleryAccessState) => void
+  preferredRegion: SizeRegion
+  setPreferredRegion: (r: SizeRegion) => void
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -459,6 +462,26 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   <Text style={profStyles.sizeValue}>{value}</Text>
                 )}
               </View>
+            ))}
+          </View>
+          <Text style={profStyles.sizeRegionHint}>מידת המכנסיים נשמרת כ-{formatFullPantsSizeLabel(profBottom)}</Text>
+        </View>
+
+        <View style={profStyles.card}>
+          <Text style={profStyles.sizesTitle}>אזור מידות מועדף</Text>
+          <Text style={profStyles.regionSub}>בחר כיצד להציג מידות באפליקציה</Text>
+          <View style={profStyles.regionOptionsRow}>
+            {SIZE_REGION_OPTIONS.map((region) => (
+              <TouchableOpacity
+                key={region}
+                onPress={() => setPreferredRegion(region)}
+                activeOpacity={0.75}
+                style={[profStyles.regionOption, preferredRegion === region && profStyles.regionOptionActive]}
+              >
+                <Text style={[profStyles.regionOptionText, preferredRegion === region && profStyles.regionOptionTextActive]}>
+                  {SIZE_REGION_LABELS[region]}
+                </Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -982,6 +1005,13 @@ const profStyles = StyleSheet.create({
   sizesGrid: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   sizeBox: { flex: 1, minWidth: 150, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, alignItems: 'stretch', borderWidth: 1.5 },
   sizeValue: { fontSize: 18, fontWeight: '700', color: '#2E5BFF', textAlign: 'right' },
+  sizeRegionHint: { fontSize: 11, color: '#64748B', marginTop: 10, textAlign: 'right', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  regionSub: { fontSize: 11, color: '#94A3B8', marginTop: 4, marginBottom: 12, textAlign: 'right', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  regionOptionsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  regionOption: { flex: 1, minWidth: 88, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC', alignItems: 'center' },
+  regionOptionActive: { borderColor: '#2E5BFF', backgroundColor: '#EEF2FF' },
+  regionOptionText: { fontSize: 12, fontWeight: '700', color: '#64748B', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  regionOptionTextActive: { color: '#2E5BFF' },
   sizeLabel: { fontSize: 11, color: '#475569', marginBottom: 8, textAlign: 'right', fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sizeOptionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-start' },
   sizeOption: { fontSize: 14, fontWeight: '700', color: '#475569', paddingVertical: 4, paddingHorizontal: 5 },
