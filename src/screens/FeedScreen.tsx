@@ -235,7 +235,7 @@ export function FeedScreen({
           <View style={feedStyles.statusLeft}>
             <View style={feedStyles.statusDot} />
             <Text style={feedStyles.statusText}>
-              {scannedSizes ? `מידות: ${scannedSizes.sizing.top} · ${scannedSizes.sizing.bottom} EU · ${scannedSizes.sizing.fit}` : 'טרם נסרקת'}
+              {scannedSizes ? `מידות: ${scannedSizes.sizing.top} · ${TOP_TO_BOTTOM_EU[scannedSizes.sizing.top] ?? scannedSizes.sizing.bottom} EU · ${scannedSizes.sizing.fit}` : 'טרם נסרקת'}
             </Text>
             {user ? (
               <View style={feedStyles.loggedInBadge}><Text style={feedStyles.loggedInBadgeText}>מחובר ✓</Text></View>
@@ -441,15 +441,18 @@ function formatPrice(price: number, currency?: string): string {
   return `${symbol}${price.toLocaleString()}`
 }
 
+const TOP_TO_BOTTOM_EU: Record<string, string> = {
+  'XS': '44', 'S': '46', 'M': '48', 'L': '50', 'XL': '52', 'XXL': '54',
+}
+
 function getRecommendedSizeLabel(scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
   if (category === 'shoes') {
     return scannedSizes.shoeSize ? `EU ${scannedSizes.shoeSize}` : null
   }
-  if (category === 'clothing') {
-    return `${scannedSizes.sizing.top} / ${scannedSizes.sizing.bottom}`
-  }
-  return `${scannedSizes.sizing.top} / ${scannedSizes.sizing.bottom}`
+  const top = scannedSizes.sizing.top
+  const bottom = TOP_TO_BOTTOM_EU[top] ?? scannedSizes.sizing.bottom
+  return `${top}/${bottom}`
 }
 
 function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null; category: string }) {
@@ -502,8 +505,8 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
             {category === 'shoes' && scannedSizes?.shoeSize
               ? `✓ מתאים למידה נעל: EU ${scannedSizes.shoeSize}`
               : scannedSizes
-                ? `✓ מתאים למידה: ${scannedSizes.sizing.top} / ${scannedSizes.sizing.bottom}`
-                : '✓ מתאים למידה שנסרקה'}
+                ? `✓ מתאים למידה: ${scannedSizes.sizing.top}/${TOP_TO_BOTTOM_EU[scannedSizes.sizing.top] ?? scannedSizes.sizing.bottom}`
+                : '✓ מתאים למידה שנסרקת'}
           </Text>
         </View>
         <Text style={feedStyles.productName}>{product.name}</Text>
