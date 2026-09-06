@@ -158,6 +158,7 @@ Deno.serve(async (req: Request) => {
       const pageNo = body.pageNo ?? 1;
       const pageSize = body.pageSize ?? 50;
       const targetLanguage = "HE";
+      const sort = body.sort as string | undefined;
 
       const gender = body.gender as string | undefined;
       const genderPrefix = gender === "male" ? "men " : gender === "female" ? "women " : "";
@@ -181,6 +182,12 @@ Deno.serve(async (req: Request) => {
       }
       if (categoryIds) {
         apiParams.category_ids = categoryIds;
+      }
+      // Sort by best sellers (sales volume descending) by default
+      if (sort) {
+        apiParams.sort = sort;
+      } else {
+        apiParams.sort = "VOLUME_DOWN";
       }
 
       // Hard exclusion: when searching accessories, exclude apparel category IDs
@@ -208,6 +215,7 @@ Deno.serve(async (req: Request) => {
           target_currency: "ILS",
           target_language: targetLanguage,
           keywords: searchKeywords,
+          sort: sort || "VOLUME_DOWN",
         };
         result = await callAliExpressApi("aliexpress.affiliate.product.query", fallbackParams);
         products =
@@ -226,6 +234,7 @@ Deno.serve(async (req: Request) => {
           target_currency: "ILS",
           target_language: targetLanguage,
           keywords: genderPrefix + simpleKeyword,
+          sort: sort || "VOLUME_DOWN",
         };
         result = await callAliExpressApi("aliexpress.affiliate.product.query", fallbackParams);
         products =
@@ -244,6 +253,8 @@ Deno.serve(async (req: Request) => {
           else if (/200000788|200000785|200001661|5090301|509/.test(categoryIds)) category = "accessories";
           else category = "clothing";
         }
+        const evaluateRate = parseFloat(p.evaluate_rate || "0");
+        const volume = p.lastest_volume ?? 0;
         return {
           name: p.product_title ?? "Unknown Product",
           brand: "AliExpress",
@@ -254,7 +265,10 @@ Deno.serve(async (req: Request) => {
           category,
           aliexpressUrl: p.product_detail_url ?? "",
           aliexpressSku: p.product_id ?? "",
-          matchScore: Math.round((parseFloat(p.evaluate_rate || "0.9")) * 100),
+          matchScore: Math.round((evaluateRate || 0.9) * 100),
+          ordersCount: volume,
+          volume: volume,
+          evaluateRate: evaluateRate,
         };
       });
 
@@ -281,7 +295,18 @@ Deno.serve(async (req: Request) => {
         }
         // 4. Accessories tab: exclude apparel + footwear
         if (isAccessoriesSearch && (APPAREL_KEYWORDS.test(p.name) || FOOTWEAR_KEYWORDS.test(p.name))) return false;
+        // 5. Filter out items with zero sales and very low ratings
+        if ((p.ordersCount ?? 0) === 0 && (p.evaluateRate ?? 0) < 0.9) return false;
         return true;
+      });
+
+      // Sort by best sellers (volume) then by rating
+      filteredProducts.sort((a, b) => {
+        const salesA = a.ordersCount ?? a.volume ?? 0;
+        const salesB = b.ordersCount ?? b.volume ?? 0;
+        const ratingA = a.evaluateRate ?? 0;
+        const ratingB = b.evaluateRate ?? 0;
+        return (salesB - salesA) || (ratingB - ratingA);
       });
 
       return new Response(

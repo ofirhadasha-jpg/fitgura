@@ -7,10 +7,11 @@ export async function fetchAliExpressProducts(
   pageSize = 50,
   gender?: 'male' | 'female' | 'unisex',
   categoryIds?: string,
+  sort?: string,
 ): Promise<Product[]> {
-  console.log('[aliexpress] Fetching products:', { keywords, pageNo, pageSize, gender, categoryIds })
+  console.log('[aliexpress] Fetching products:', { keywords, pageNo, pageSize, gender, categoryIds, sort })
   const { data, error } = await supabase.functions.invoke('aliexpress-search', {
-    body: { action: 'search', keywords, pageNo, pageSize, gender, categoryIds },
+    body: { action: 'search', keywords, pageNo, pageSize, gender, categoryIds, sort },
   })
 
   if (error) {

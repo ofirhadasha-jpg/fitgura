@@ -193,7 +193,7 @@ export async function searchProductsByCategory(
         const prefix = sq.startsWith('women') || sq.startsWith('men') ? '' : genderPrefix
         let kw = `${prefix}${sq}`
         if (extraKeywords) kw += ` ${extraKeywords}`
-        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds)
+        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
       }),
     )
     const merged = results.flat()
@@ -204,7 +204,9 @@ export async function searchProductsByCategory(
       if (p.aliexpressSku) seen.add(p.aliexpressSku)
       return true
     })
-    return filterProducts(deduped, category, gender)
+    const filtered = filterProducts(deduped, category, gender)
+    // Client-side sort: best sellers first, then highest rating
+    return sortByBestSellers(filtered)
   } else if (category === 'shoes') {
     const startIdx = (pageNo - 1) * 3 % shoesSubqueries.length
     const subqueries: string[] = []
@@ -218,7 +220,7 @@ export async function searchProductsByCategory(
         const prefix = sq.startsWith('women') || sq.startsWith('men') ? '' : genderPrefix
         let kw = `${prefix}${sq}`
         if (extraKeywords) kw += ` ${extraKeywords}`
-        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds)
+        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
       }),
     )
     const merged = results.flat()
@@ -228,7 +230,9 @@ export async function searchProductsByCategory(
       if (p.aliexpressSku) seen.add(p.aliexpressSku)
       return true
     })
-    return filterProducts(deduped, category, gender)
+    const filtered = filterProducts(deduped, category, gender)
+    // Client-side sort: best sellers first, then highest rating
+    return sortByBestSellers(filtered)
   } else if (category === 'all') {
     keywords = `${genderPrefix}fashion clothing`
     if (extraKeywords) keywords += ` ${extraKeywords}`
@@ -239,10 +243,12 @@ export async function searchProductsByCategory(
 
   console.log('[aliexpressClient] searchProductsByCategory:', { category, gender, pageNo, keywords, categoryIds })
 
-  const products = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds)
+  const products = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
 
   // Apply strict post-fetch validation
-  return filterProducts(products, category, gender)
+  const filtered = filterProducts(products, category, gender)
+  // Client-side sort: best sellers first, then highest rating
+  return sortByBestSellers(filtered)
 }
 
 // ── Smartwatch / Wearable detection ──────────────────────────────────────────
@@ -297,19 +303,32 @@ export async function searchDeviceAccessories(
     allProducts = results.flat()
   } else if (isDesktop) {
     const keywords = `${deviceName} laptop case cover sleeve charger stand cable adapter dock`
-    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds)
+    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
   } else {
     const keywords = `${deviceName} case cover screen protector charger cable holder stand`
-    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds)
+    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
   }
 
   console.log('[aliexpressClient] searchDeviceAccessories:', { deviceName, watch, isDesktop, totalFetched: allProducts.length })
 
   // Filter out apparel/footwear that leaked through, but keep watch accessory terms
-  return allProducts.filter((p) => {
+  const filtered = allProducts.filter((p) => {
     if (APPAREL_REGEX.test(p.name)) return false
     if (FOOTWEAR_REGEX.test(p.name)) return false
     return true
+  })
+  // Client-side sort: best sellers first, then highest rating
+  return sortByBestSellers(filtered)
+}
+
+// Sort products by best sellers (volume/orders) then by highest rating
+function sortByBestSellers(products: Product[]): Product[] {
+  return [...products].sort((a, b) => {
+    const salesA = a.ordersCount ?? a.volume ?? 0
+    const salesB = b.ordersCount ?? b.volume ?? 0
+    const ratingA = a.evaluateRate ?? 0
+    const ratingB = b.evaluateRate ?? 0
+    return (salesB - salesA) || (ratingB - ratingA)
   })
 }
 

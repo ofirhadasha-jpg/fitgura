@@ -668,6 +668,9 @@ export interface Product {
   aliexpressUrl?: string
   aliexpressSku?: string
   matchScore?: number
+  ordersCount?: number
+  volume?: number
+  evaluateRate?: number
 }
 
 export interface UserDevice {
