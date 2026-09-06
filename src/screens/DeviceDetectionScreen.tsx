@@ -92,7 +92,7 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
         {phase === 'detecting' && (
           <View style={{ alignItems: 'center', gap: 28, paddingTop: 20 }}>
             <View style={devStyles.phoneWrap}>
-              <View style={[devStyles.phoneGlow, { borderTopColor: '#2E5BFF', borderTopWidth: scanPct * 3.6 }]} />
+              <View style={[devStyles.phoneProgressBorder, { opacity: scanPct / 100 }]} />
               <View style={devStyles.phoneBody}>
                 <View style={devStyles.scanBeam} />
                 <Text style={devStyles.phoneLabel}>
@@ -290,8 +290,8 @@ const devStyles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 21, fontWeight: '700', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   headerSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   phoneWrap: { width: 140, height: 240, position: 'relative' },
-  phoneGlow: { position: 'absolute', top: -20, left: -20, right: -20, bottom: -20, borderRadius: 44, borderTopWidth: 0 },
   phoneBody: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0F172A', borderRadius: 28, borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14 },
+  phoneProgressBorder: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 30, borderWidth: 2, borderColor: '#2E5BFF', opacity: 0.5 },
   scanBeam: { position: 'absolute', left: 0, right: 0, top: '50%', height: 2, backgroundColor: '#2ED573' },
   phoneLabel: { fontSize: 10, color: 'rgba(46,213,115,0.8)', fontWeight: '600' },
   progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
