@@ -256,14 +256,27 @@ export function isSmartwatch(deviceName: string): boolean {
 }
 
 const DEVICE_ACCESSORY_QUERIES = (d: string) => [
-  `${d} case cover`, `${d} strap band`, `${d} screen protector`,
-  `${d} charger`, `${d} cable adapter`, `${d} holder stand`,
+  `${d} strap band`,
+  `${d} screen protector glass`,
+  `${d} charger cable`,
+  `${d} case cover protector`,
+  `${d} accessories`,
 ]
 
 const SMARTWATCH_QUERIES = (d: string) => [
-  `${d} strap band`, `${d} silicone band metal strap`,
-  `${d} screen protector case cover`, `${d} charger charging dock`,
-  `${d} bezel frame`,
+  `${d} strap band`,
+  `${d} screen protector glass`,
+  `${d} charger cable`,
+  `${d} case cover protector`,
+  `${d} accessories`,
+]
+
+const LAPTOP_QUERIES = (d: string) => [
+  `${d} laptop case cover sleeve`,
+  `${d} screen protector glass`,
+  `${d} charger cable adapter`,
+  `${d} stand holder dock`,
+  `${d} accessories`,
 ]
 
 export async function searchDeviceAccessories(
@@ -280,25 +293,34 @@ export async function searchDeviceAccessories(
   const queries = watch
     ? SMARTWATCH_QUERIES(deviceName)
     : isDesktop
-      ? [`${deviceName} laptop case cover sleeve`, `${deviceName} charger adapter`, `${deviceName} stand holder dock`, `${deviceName} cable hub adapter`]
+      ? LAPTOP_QUERIES(deviceName)
       : DEVICE_ACCESSORY_QUERIES(deviceName)
 
-  const collected: Product[] = []
-  const seenIds = new Set<string>()
-  let currentPage = pageNo
-  let attempts = 0
-  const maxAttempts = 5
+  // Run all 5 query categories in parallel for maximum yield per page
+  const parallelResults = await Promise.all(
+    queries.map((q) => fetchAliExpressProducts(q, pageNo, 50, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
+  )
 
-  while (collected.length < BATCH_SIZE && attempts < maxAttempts) {
-    attempts++
-    const raw = await fetchBatch(queries, gender ?? 'unisex', categoryIds, currentPage, 50)
-    for (const p of raw) {
+  const seenIds = new Set<string>()
+  const collected: Product[] = []
+  for (const p of parallelResults.flat()) {
+    const id = p.aliexpressSku
+    if (id && seenIds.has(id)) continue
+    if (id) seenIds.add(id)
+    collected.push(p)
+  }
+
+  // If first page didn't yield enough, try page pageNo+1 across all queries
+  if (collected.length < 100 && pageNo < 10) {
+    const moreResults = await Promise.all(
+      queries.map((q) => fetchAliExpressProducts(q, pageNo + 1, 50, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
+    )
+    for (const p of moreResults.flat()) {
       const id = p.aliexpressSku
       if (id && seenIds.has(id)) continue
       if (id) seenIds.add(id)
       collected.push(p)
     }
-    currentPage++
   }
 
   const filtered = collected.filter((p) => {

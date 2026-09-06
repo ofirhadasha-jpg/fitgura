@@ -126,6 +126,40 @@ export function FeedScreen({
     return () => { cancelled = true }
   }, [latestAddedDevice, scannedSizes?.gender])
 
+  // When a device is removed, purge its products from the catalog and re-fetch for remaining devices
+  const prevDevicesRef = useRef<string>(registeredDevices.join(','))
+  useEffect(() => {
+    const currentSig = registeredDevices.join(',')
+    if (prevDevicesRef.current === currentSig) return
+    const prevDevices = prevDevicesRef.current.split(',').filter(Boolean)
+    const currentDevices = currentSig.split(',').filter(Boolean)
+    prevDevicesRef.current = currentSig
+
+    // Only purge if a device was removed (not added — addition is handled by latestAddedDevice effect)
+    const removedDevices = prevDevices.filter((d) => !currentDevices.includes(d))
+    if (removedDevices.length === 0) return
+
+    console.log('[Feed] Device removed, purging accessories for:', removedDevices)
+
+    // Hard-filter out products matching the removed device
+    setCatalog((prev) => prev.filter((p) => {
+      const titleLower = p.name.toLowerCase()
+      return !removedDevices.some((d) => {
+        const model = d.replace(/^\w+\s+/, '').trim().toLowerCase() || d.toLowerCase()
+        const parts = model.split(' ')
+        const lastPart = parts[parts.length - 1]
+        return titleLower.includes(model) || (lastPart.length >= 2 && titleLower.includes(lastPart))
+      })
+    }))
+
+    // If on accessories tab, re-fetch for remaining devices to fill the gap
+    if (filterRef.current === 'accessories' && currentDevices.length > 0) {
+      setPageNo(1)
+      setHasMore(true)
+      void loadProductsRef.current(1, false, 'accessories')
+    }
+  }, [registeredDevices])
+
   // When user switches to the accessories tab, clear the pending flag so new-device products are already at top
   useEffect(() => {
     if (filter === 'accessories' && pendingNewDevice) {
@@ -142,10 +176,7 @@ export function FeedScreen({
       const feedCategory = category as FeedCategory
       const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim() : ''
       const accessoryDevices = category === 'accessories'
-        ? Array.from(new Set([
-            ...(registeredDevices.length > 0 ? registeredDevices : []),
-            ...(detectedDevice && deviceName ? [deviceName] : []),
-          ]))
+        ? Array.from(new Set(registeredDevices))
         : []
 
       // Build extra keywords from style/size for clothing & shoes
@@ -172,11 +203,15 @@ export function FeedScreen({
 
       let remoteProducts: Product[]
 
-      if (category === 'accessories' && accessoryDevices.length > 0) {
-        const deviceResults = await Promise.all(
-          accessoryDevices.map((device) => searchDeviceAccessories(device, page, PAGE_SIZE, gender)),
-        )
-        remoteProducts = deviceResults.flat()
+      if (category === 'accessories') {
+        if (accessoryDevices.length === 0) {
+          remoteProducts = []
+        } else {
+          const deviceResults = await Promise.all(
+            accessoryDevices.map((device) => searchDeviceAccessories(device, page, PAGE_SIZE, gender)),
+          )
+          remoteProducts = deviceResults.flat()
+        }
       } else {
         remoteProducts = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE, trimmedExtra)
       }
@@ -220,8 +255,13 @@ export function FeedScreen({
       // Continue loading as long as we got new unique items.
       // Only stop when a page yields zero new products (exhausted results).
       // Safety cap at 10 pages to avoid infinite loops.
-      if (newItemsCount === 0 || page >= 20) {
+      // For accessories, keep loading until we have a substantial pool
+      const minThreshold = category === 'accessories' ? 20 : 0
+      if (newItemsCount === 0 || page >= 20 || (append && catalog.length + newItemsCount > 500)) {
         setHasMore(false)
+      } else if (category === 'accessories' && newItemsCount < minThreshold && page < 10) {
+        // Don't set hasMore=false yet — accessories need more pages to build a full feed
+        setHasMore(true)
       }
 
       if (!append && sortedProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
