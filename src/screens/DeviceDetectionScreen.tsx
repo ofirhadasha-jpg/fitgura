@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
 import { LinearGradient } from '../components'
+import { fetchAliExpressProducts } from '../lib/aliexpress'
 import { deviceOptions, detectDevice, type DetectedDevice } from '../types'
 
 export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => void; onDetected: (d: DetectedDevice) => void }) {
@@ -14,6 +15,8 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
   const [customModel, setCustomModel] = useState('')
   const [customYear, setCustomYear] = useState('')
   const [detected, setDetected] = useState<DetectedDevice | null>(null)
+  const [accessoryCounts, setAccessoryCounts] = useState<{ cases: number; protectors: number; charging: number; total: number } | null>(null)
+  const [accessoryLoadError, setAccessoryLoadError] = useState(false)
 
   const filteredDevices = deviceOptions.filter((d) => {
     const q = deviceSearch.toLowerCase()
@@ -25,13 +28,34 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
     const d = detectDevice()
     setDetected(d)
     onDetected(d)
+    let active = true
+    setAccessoryCounts(null)
+    setAccessoryLoadError(false)
+    const searchKeywords = d.brand === 'Desktop'
+      ? `${d.model} laptop case cover sleeve charger stand`
+      : `${d.model} case cover screen protector charger cable`
+    void fetchAliExpressProducts(searchKeywords, 1, 50, undefined, '5090301,509')
+      .then((products) => {
+        if (!active) return
+        const productNames = products.map((product) => product.name.toLowerCase())
+        const cases = productNames.filter((name) => /case|cover|sleeve|pouch|bag|כיסוי/.test(name)).length
+        const protectors = productNames.filter((name) => /screen protector|tempered|glass|film|מגן/.test(name)).length
+        const charging = productNames.filter((name) => /charger|charging|cable|adapter|dock|power bank|טעינה|מטען/.test(name)).length
+        setAccessoryCounts({ cases, protectors, charging, total: products.length })
+      })
+      .catch(() => {
+        if (active) setAccessoryLoadError(true)
+      })
     const t = setInterval(() => {
       setScanPct((p) => {
         if (p >= 100) { clearInterval(t); setTimeout(() => setPhase('confirmed'), 300); return 100 }
         return p + 4
       })
     }, 60)
-    return () => clearInterval(t)
+    return () => {
+      active = false
+      clearInterval(t)
+    }
   }, [phase])
 
   return (
@@ -122,27 +146,33 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
 
             <View style={devStyles.matchBadge}>
               <View style={devStyles.matchIcon}><Text style={{ fontSize: 22 }}>🛡️</Text></View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={devStyles.matchTitle}>התאמה מלאה לאביזרי מגן, כיסויים וטעינה</Text>
-                <Text style={devStyles.matchSub}>כל המוצרים בפיד מסוננים לדגם שלך</Text>
+                <Text style={devStyles.matchSub}>המוצרים מחפשים התאמה ל-{detected.model}</Text>
               </View>
             </View>
 
             <View style={devStyles.accessoryCard}>
               <Text style={devStyles.accessoryTitle}>אביזרים תואמים שנמצאו:</Text>
-              <View style={devStyles.accessoryRow}>
-                {[
-                  { icon: '📱', label: 'כיסויים', count: 48 },
-                  { icon: '🛡️', label: 'מגני מסך', count: 23 },
-                  { icon: '⚡', label: 'טעינה', count: 31 },
-                ].map(({ icon, label, count }) => (
-                  <View key={label} style={devStyles.accessoryItem}>
-                    <Text style={{ fontSize: 22, marginBottom: 4 }}>{icon}</Text>
-                    <Text style={devStyles.accessoryCount}>{count}</Text>
-                    <Text style={devStyles.accessoryLabel}>{label}</Text>
-                  </View>
-                ))}
-              </View>
+              {accessoryCounts ? (
+                <View style={devStyles.accessoryRow}>
+                  {[
+                    { icon: '📱', label: 'כיסויים', count: accessoryCounts.cases },
+                    { icon: '🛡️', label: 'מגני מסך', count: accessoryCounts.protectors },
+                    { icon: '⚡', label: 'טעינה', count: accessoryCounts.charging },
+                  ].map(({ icon, label, count }) => (
+                    <View key={label} style={devStyles.accessoryItem}>
+                      <Text style={{ fontSize: 22, marginBottom: 4 }}>{icon}</Text>
+                      <Text style={devStyles.accessoryCount}>{count}</Text>
+                      <Text style={devStyles.accessoryLabel}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={devStyles.accessoryLoading}>
+                  {accessoryLoadError ? 'לא ניתן לטעון כרגע את תוצאות האביזרים' : `מחפש אביזרים ל-${detected.model}...`}
+                </Text>
+              )}
             </View>
 
             <View style={{ gap: 10 }}>
