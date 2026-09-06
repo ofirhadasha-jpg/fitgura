@@ -160,6 +160,7 @@ export async function searchProductsByCategory(
   pageSize: number,
   extraKeywords?: string,
 ): Promise<Product[]> {
+  const positiveTerms = GENDER_POSITIVE[gender] ?? []
   const genderPrefix = positiveTerms.length > 0 ? positiveTerms[0] + ' ' : ''
   const categoryIds = CATEGORY_IDS[category]
 
@@ -278,6 +279,7 @@ export async function searchDeviceAccessories(
   const lower = deviceName.toLowerCase()
   const watch = isSmartwatch(deviceName)
   const isDesktop = lower.includes('desktop') || lower.includes('laptop')
+  const categoryIds = CATEGORY_IDS.accessories
 
   let allProducts: Product[] = []
 
