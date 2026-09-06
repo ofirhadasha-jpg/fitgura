@@ -448,7 +448,16 @@ export function FeedScreen({
 
         {filter === 'accessories' && (
           <View style={feedStyles.deviceBar}>
-            <Text style={feedStyles.deviceBarTitle}>📱 המכשירים שלי</Text>
+            <View style={feedStyles.deviceBarHeader}>
+              <Text style={feedStyles.deviceBarTitle}>📱 המכשירים שלי</Text>
+              <TouchableOpacity
+                onPress={() => setShowDeviceModal(true)}
+                activeOpacity={0.75}
+                style={feedStyles.addDeviceBtn}
+              >
+                <Text style={feedStyles.addDeviceBtnText}>+ הוסף מכשיר</Text>
+              </TouchableOpacity>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8, paddingBottom: 4 }}>
               {registeredDevices.map((device) => (
                 <View key={device} style={feedStyles.deviceChip}>
@@ -462,13 +471,6 @@ export function FeedScreen({
                   </TouchableOpacity>
                 </View>
               ))}
-              <TouchableOpacity
-                onPress={() => setShowDeviceModal(true)}
-                activeOpacity={0.7}
-                style={feedStyles.addDeviceBtn}
-              >
-                <Text style={feedStyles.addDeviceBtnText}>+ הוסף מכשיר</Text>
-              </TouchableOpacity>
             </ScrollView>
           </View>
         )}
@@ -948,12 +950,13 @@ const feedStyles = StyleSheet.create({
   sizeBreakdownLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#64748B', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sizeBreakdownValue: { fontSize: 15, lineHeight: 20, fontWeight: '800', color: '#2E5BFF', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deviceBar: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F1F5F9', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  deviceBarTitle: { fontSize: 12, fontWeight: '700', color: '#475569', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deviceBarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  deviceBarTitle: { flex: 1, fontSize: 12, fontWeight: '700', color: '#475569', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deviceChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#2E5BFF' },
   deviceChipText: { fontSize: 12, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deviceChipRemove: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
   deviceChipRemoveText: { fontSize: 10, fontWeight: '700', color: '#EF4444' },
-  addDeviceBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2E5BFF', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 14 },
-  addDeviceBtnText: { fontSize: 12, fontWeight: '700', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  addDeviceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2E5BFF', borderRadius: 16, paddingVertical: 7, paddingHorizontal: 13, minWidth: 112 },
+  addDeviceBtnText: { fontSize: 11, fontWeight: '700', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 
 })

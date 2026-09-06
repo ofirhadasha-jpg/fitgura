@@ -80,5 +80,7 @@ body {
 
 .fitgura-spinner {
   display: inline-block;
-  animation: fitgura-spin 1s linear infinite;
+  animation: fitgura-spin 0.9s linear infinite;
+  transform-origin: center center;
+  will-change: transform;
 }
