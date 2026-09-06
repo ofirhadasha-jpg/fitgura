@@ -259,13 +259,24 @@ export function FeedScreen({
     onCatalogChange(catalog)
   }, [catalog, onCatalogChange])
 
+  // Refs for loadMore guards — keeps loadMore identity stable so the
+  // IntersectionObserver is created once instead of being recreated every render
+  const pageNoRef = useRef(pageNo)
+  pageNoRef.current = pageNo
+  const isLoadingMoreRef = useRef(isLoadingMore)
+  isLoadingMoreRef.current = isLoadingMore
+  const hasMoreRef = useRef(hasMore)
+  hasMoreRef.current = hasMore
+  const isLoadingProductsRef = useRef(isLoadingProducts)
+  isLoadingProductsRef.current = isLoadingProducts
+
   const loadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore || isLoadingProducts) return
-    const nextPage = pageNo + 1
+    if (isLoadingMoreRef.current || !hasMoreRef.current || isLoadingProductsRef.current) return
+    const nextPage = pageNoRef.current + 1
     console.log(`[Feed] Loading next page: ${nextPage}`)
     setPageNo(nextPage)
     void loadProductsRef.current(nextPage, true, filterRef.current)
-  }, [isLoadingMore, hasMore, isLoadingProducts, pageNo])
+  }, [])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
