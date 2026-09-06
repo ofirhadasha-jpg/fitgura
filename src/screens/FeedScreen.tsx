@@ -775,7 +775,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
             activeOpacity={0.8}
             style={feedStyles.buyBtnAli}
           >
-            <Text style={feedStyles.buyBtnText}>🛒 לקנייה ב-AliExpress</Text>
+            <Text style={feedStyles.buyBtnText}>🛒 לקניה במחיר הטוב ביותר</Text>
           </TouchableOpacity>
         </View>
         {toast && (
