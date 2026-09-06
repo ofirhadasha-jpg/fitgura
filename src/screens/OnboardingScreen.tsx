@@ -167,7 +167,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
               </View>
               <View style={{ gap: 7 }}>
                 {[
-                  { icon: '📐', text: 'AI ינתח את המידות שלך ויתאים מוצרים בדיוק לגוף שלך' },
+                  { icon: '📐', text: 'פיטגורה תנתח את המידות שלך ותתאים מוצרים בדיוק לגזרה שלך' },
                   { icon: '🔄', text: 'המערכת תסרוק את הגלריה שלך כל שבוע ותעדכן את המידות אוטומטית' },
                   { icon: '🎯', text: 'ככל שתעלה יותר תמונות — הדיוק של ההתאמות ישתפר' },
                 ].map(({ icon, text }) => (
@@ -791,7 +791,7 @@ const obStyles = StyleSheet.create({
   explainTitle: { fontWeight: '800', fontSize: 15, color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   explainSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   explainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  explainRowText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', flex: 1, lineHeight: 18, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  explainRowText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', flex: 1, lineHeight: 18, textAlign: 'right', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   dropZone: { borderWidth: 2, borderColor: '#CBD5E1', borderRadius: 24, padding: 36, alignItems: 'center', gap: 14, backgroundColor: '#fff', minHeight: 200, justifyContent: 'center' },
   dropZoneActive: { borderColor: '#2E5BFF', backgroundColor: '#EEF2FF' },
   dropIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
