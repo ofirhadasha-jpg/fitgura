@@ -154,24 +154,33 @@ async function generateAffiliateLinks(sourceValues: string[]): Promise<Map<strin
   const linkMap = new Map<string, string>();
   if (sourceValues.length === 0) return linkMap;
 
-  try {
-    const result = await callAliExpressApi("aliexpress.affiliate.link.generate", {
-      promotion_link_type: "0",
-      source_values: sourceValues.join(" "),
-    });
+  // Batch in groups of 40 to stay within API limits
+  const BATCH_SIZE = 40;
+  const batches: string[][] = [];
+  for (let i = 0; i < sourceValues.length; i += BATCH_SIZE) {
+    batches.push(sourceValues.slice(i, i + BATCH_SIZE));
+  }
 
-    const links = (result as Record<string, unknown>)?.aliexpress_affiliate_link_generate_response
-      ?.resp_result?.result?.promotion_links as { promotion_link?: string; source_values?: string }[] | undefined;
+  for (const batch of batches) {
+    try {
+      const result = await callAliExpressApi("aliexpress.affiliate.link.generate", {
+        promotion_link_type: 0,
+        source_values: batch.join(","),
+      });
 
-    if (Array.isArray(links)) {
-      for (const link of links) {
-        if (link.promotion_link && link.source_values) {
-          linkMap.set(link.source_values, link.promotion_link);
+      const links = (result as Record<string, unknown>)?.aliexpress_affiliate_link_generate_response
+        ?.resp_result?.result?.promotion_links as { promotion_link?: string; source_values?: string }[] | undefined;
+
+      if (Array.isArray(links)) {
+        for (const link of links) {
+          if (link.promotion_link && link.source_values) {
+            linkMap.set(link.source_values, link.promotion_link);
+          }
         }
       }
+    } catch (err) {
+      console.error("[ALIEXPRESS] Affiliate link generation failed for batch:", err instanceof Error ? err.message : err);
     }
-  } catch (err) {
-    console.error("[ALIEXPRESS] Affiliate link generation failed:", err instanceof Error ? err.message : err);
   }
 
   return linkMap;
@@ -323,16 +332,16 @@ Deno.serve(async (req: Request) => {
         };
       });
 
-      // Generate affiliate links for all products that don't already have one
-      const urlsNeedingLinks = mapped
-        .filter((p) => !p.promotionLink && p.aliexpressUrl)
+      // Generate affiliate links for ALL products via the official AliExpress Affiliate API
+      const allProductUrls = mapped
+        .filter((p) => p.aliexpressUrl)
         .map((p) => p.aliexpressUrl);
 
-      if (urlsNeedingLinks.length > 0) {
-        console.log("[ALIEXPRESS] Generating affiliate links for", urlsNeedingLinks.length, "products");
-        const linkMap = await generateAffiliateLinks(urlsNeedingLinks);
+      if (allProductUrls.length > 0) {
+        console.log("[ALIEXPRESS] Generating affiliate links for", allProductUrls.length, "products");
+        const linkMap = await generateAffiliateLinks(allProductUrls);
         for (const p of mapped) {
-          if (!p.promotionLink && p.aliexpressUrl && linkMap.has(p.aliexpressUrl)) {
+          if (p.aliexpressUrl && linkMap.has(p.aliexpressUrl)) {
             p.promotionLink = linkMap.get(p.aliexpressUrl) ?? null;
           }
         }
@@ -395,7 +404,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const result = await callAliExpressApi("aliexpress.affiliate.link.generate", {
-        promotion_link_type: "0",
+        promotion_link_type: 0,
         source_values: sourceUrl,
       });
 
