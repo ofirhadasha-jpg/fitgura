@@ -57,7 +57,7 @@ const SHOES_SUBQUERIES = [
 const FOOTWEAR_TERMS = [
   'shoe', 'shoes', 'sneaker', 'sneakers', 'boot', 'boots',
   'heel', 'heels', 'sandal', 'sandals', 'slipper', 'slippers',
-  'footwear', 'flat', 'flats', 'pump', 'pumps', 'loafer', 'loafers',
+  'footwear', 'pump', 'pumps', 'loafer', 'loafers',
   'wedge', 'wedges', 'נעל', 'נעליים', 'סניקרס', 'מגף', 'מגפיים', 'סנדל', 'סנדלים',
 ]
 
@@ -100,10 +100,30 @@ export async function searchProductsByCategory(
   let keywords: string
 
   if (category === 'clothing') {
-    // Rotate through clothing subqueries based on page number for variety
-    const subIdx = (pageNo - 1) % CLOTHING_SUBQUERIES.length
-    keywords = `${genderPrefix}${CLOTHING_SUBQUERIES[subIdx]}`
-    if (extraKeywords) keywords += ` ${extraKeywords}`
+    // Search multiple clothing subqueries in parallel for diverse results on every page
+    // Rotate the starting index by page so later pages get different subqueries
+    const startIdx = (pageNo - 1) * 4 % CLOTHING_SUBQUERIES.length
+    const subqueries: string[] = []
+    for (let i = 0; i < 4; i++) {
+      subqueries.push(CLOTHING_SUBQUERIES[(startIdx + i) % CLOTHING_SUBQUERIES.length])
+    }
+    // Run all 4 subqueries in parallel and merge results
+    const perQuerySize = Math.max(12, Math.ceil(pageSize / subqueries.length))
+    const results = await Promise.all(
+      subqueries.map((sq) => {
+        const kw = `${genderPrefix}${sq}`
+        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds)
+      }),
+    )
+    const merged = results.flat()
+    // Deduplicate by SKU
+    const seen = new Set<string>()
+    const deduped = merged.filter((p) => {
+      if (p.aliexpressSku && seen.has(p.aliexpressSku)) return false
+      if (p.aliexpressSku) seen.add(p.aliexpressSku)
+      return true
+    })
+    return filterProducts(deduped, category, gender)
   } else if (category === 'shoes') {
     const subIdx = (pageNo - 1) % SHOES_SUBQUERIES.length
     keywords = `${genderPrefix}${SHOES_SUBQUERIES[subIdx]}`

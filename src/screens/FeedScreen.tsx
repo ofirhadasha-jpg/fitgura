@@ -18,7 +18,7 @@ import { formatFullPantsSizeLabel, euToUsPants, type SizeRegion } from '../utils
 const PAGE_SIZE = 50
 
 // Footwear terms — used for render-time clothing/shoes separation
-const FOOTWEAR_TERMS = ['shoe', 'shoes', 'sneaker', 'sneakers', 'boot', 'boots', 'heel', 'heels', 'sandal', 'sandals', 'slipper', 'slippers', 'footwear', 'flat', 'flats', 'pump', 'pumps', 'loafer', 'loafers', 'wedge', 'wedges', 'נעל', 'נעליים', 'סניקרס', 'מגף', 'מגפיים', 'סנדל', 'סנדלים']
+const FOOTWEAR_TERMS = ['shoe', 'shoes', 'sneaker', 'sneakers', 'boot', 'boots', 'heel', 'heels', 'sandal', 'sandals', 'slipper', 'slippers', 'footwear', 'pump', 'pumps', 'loafer', 'loafers', 'wedge', 'wedges', 'נעל', 'נעליים', 'סניקרס', 'מגף', 'מגפיים', 'סנדל', 'סנדלים']
 const APPAREL_TERMS = ['dress', 'skirt', 'suit', 'bra', 'lingerie', 'panties', 'shirt', 'blouse', 'jacket', 'coat', 'pants', 'trouser', 'hoodie', 'sweater', 'jeans', 'shorts', 'שמלה', 'חצאית', 'חליפה', 'חולצה', 'מעיל', 'מכנסיים', 'בגד']
 const FOOTWEAR_RENDER_REGEX = new RegExp(`\\b(${FOOTWEAR_TERMS.join('|')})\\b`, 'i')
 const APPAREL_RENDER_REGEX = new RegExp(`\\b(${APPAREL_TERMS.join('|')})\\b`, 'i')

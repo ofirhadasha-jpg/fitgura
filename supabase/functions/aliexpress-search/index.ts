@@ -165,14 +165,9 @@ Deno.serve(async (req: Request) => {
       const isMaleSearch = gender === "male";
       const isClothingSearch = categoryIds === "200000783,200000782";
       const isShoesSearch = categoryIds === "200000832,200000831,200000835";
-      // When the client sends clothing/shoes keywords, use them as-is (already gender-prefixed by aliexpressClient)
-      // Only inject generic clothing keywords if the caller didn't provide category-specific ones
-      const clothingKeywords = "dress shirt pants top skirt blouse t-shirt hoodie sweater coat jacket jeans";
-      const searchKeywords = keywords
-        ? (isClothingSearch && !keywords.toLowerCase().startsWith("women") && !keywords.toLowerCase().startsWith("men")
-            ? `${genderPrefix}${clothingKeywords}`
-            : keywords)
-        : "";
+      // Always use the client-provided keywords as-is — the client already builds
+      // gender-prefixed, category-specific query strings via aliexpressClient.ts
+      const searchKeywords = keywords ?? "";
 
       const apiParams: RequestParams = {
         page_no: pageNo,
@@ -267,7 +262,7 @@ Deno.serve(async (req: Request) => {
       const APPAREL_KEYWORDS = /\b(dress|skirt|suit|bra|lingerie|panties|shirt|blouse|jacket|coat|pants|trouser|hoodie|sweater|jeans|shorts|top|t-shirt|שמלה|חצאית|חליפה|חולצה|מעיל|מכנסיים|בגד)\b/i;
       const MENS_KEYWORDS = /\b(men|mens|male|boy|man|גברים|גבר)\b/i;
       const WOMENS_KEYWORDS = /\b(women|womens|female|girl|lady|ladies|נשים|אישה)\b/i;
-      const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|flat|flats|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i;
+      const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i;
 
       const filteredProducts = mapped.filter((p) => {
         // 1. Strict gender isolation
