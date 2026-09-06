@@ -230,6 +230,7 @@ export default function App() {
     return gp?.preferredRegion ?? 'EU'
   })
   const [registeredDevices, setRegisteredDevices] = useState<string[]>(() => loadGuestDevices())
+  const [latestAddedDevice, setLatestAddedDevice] = useState<string | null>(null)
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -414,6 +415,7 @@ export default function App() {
     const trimmed = deviceName.trim()
     if (!trimmed) return
     setRegisteredDevices((prev) => prev.includes(trimmed) ? prev : [trimmed, ...prev])
+    setLatestAddedDevice(trimmed)
     if (user && isSupabaseConfigured) {
       try {
         const { data: row } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
@@ -434,6 +436,7 @@ export default function App() {
 
   async function handleRemoveDevice(deviceName: string) {
     setRegisteredDevices((prev) => prev.filter((d) => d !== deviceName))
+    setLatestAddedDevice((prev) => prev === deviceName ? null : prev)
     if (user && isSupabaseConfigured) {
       try {
         const { data: row } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
@@ -506,10 +509,10 @@ export default function App() {
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={handleDeviceDetected} />}
-        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} />}
+        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} />}
-        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} />}
+        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} />}
         {screen === 'wishlist' && (
           <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} catalog={feedCatalog} />
         )}

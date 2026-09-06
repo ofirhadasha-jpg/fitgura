@@ -69,6 +69,7 @@ export function FeedScreen({
   registeredDevices,
   onAddDevice,
   onRemoveDevice,
+  latestAddedDevice,
 }: {
   wishlistItems: number[]
   onToggleWishlist: (i: number) => void
@@ -82,6 +83,7 @@ export function FeedScreen({
   registeredDevices: string[]
   onAddDevice: (deviceName: string) => void
   onRemoveDevice: (deviceName: string) => void
+  latestAddedDevice: string | null
 }) {
   const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
   const [search, setSearch] = useState('')
@@ -93,6 +95,43 @@ export function FeedScreen({
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [showDeviceModal, setShowDeviceModal] = useState(false)
+  const [pendingNewDevice, setPendingNewDevice] = useState<string | null>(null)
+
+  // When a new device is added (from any screen), fetch its accessories and prepend to the catalog
+  useEffect(() => {
+    if (!latestAddedDevice) return
+    let cancelled = false
+    const gender: Gender = (scannedSizes?.gender as Gender) ?? 'unisex'
+    searchDeviceAccessories(latestAddedDevice, 1, PAGE_SIZE, gender)
+      .then((newProducts) => {
+        if (cancelled || newProducts.length === 0) return
+        const cleaned = newProducts.filter((p) => {
+          if (CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
+          const titleLower = p.name.toLowerCase()
+          const model = latestAddedDevice.replace(/^\w+\s+/, '').trim().toLowerCase() || latestAddedDevice.toLowerCase()
+          const parts = model.split(' ')
+          const lastPart = parts[parts.length - 1]
+          return titleLower.includes(model) || (lastPart.length >= 2 && titleLower.includes(lastPart))
+        })
+        if (cleaned.length === 0) return
+        setCatalog((prev) => {
+          const newIds = new Set(cleaned.map((p) => p.aliexpressSku).filter(Boolean))
+          return [...cleaned, ...prev.filter((p) => !p.aliexpressSku || !newIds.has(p.aliexpressSku))]
+        })
+        if (filterRef.current !== 'accessories') {
+          setPendingNewDevice(latestAddedDevice)
+        }
+      })
+      .catch((err) => console.error('[Feed] Failed to fetch accessories for new device:', err))
+    return () => { cancelled = true }
+  }, [latestAddedDevice, scannedSizes?.gender])
+
+  // When user switches to the accessories tab, clear the pending flag so new-device products are already at top
+  useEffect(() => {
+    if (filter === 'accessories' && pendingNewDevice) {
+      setPendingNewDevice(null)
+    }
+  }, [filter, pendingNewDevice])
 
   const loadProducts = useCallback(async (page: number, append: boolean, category: string) => {
     if (append) setIsLoadingMore(true)

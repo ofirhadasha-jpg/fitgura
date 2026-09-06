@@ -19,7 +19,7 @@ import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices }: {
+export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices, onAddDevice, onRemoveDevice }: {
   onNav: (s: Screen) => void
   user: User | null
   onSignOut: () => void
@@ -33,6 +33,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   preferredRegion: SizeRegion
   setPreferredRegion: (r: SizeRegion) => void
   registeredDevices: string[]
+  onAddDevice: (deviceName: string) => void
+  onRemoveDevice: (deviceName: string) => void
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -385,6 +387,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
   function addDevice() {
     if (!newDevBrand || !newDevModel) return
+    const deviceName = `${newDevBrand} ${newDevModel}`.trim()
     setDevices((prev) => [...prev, {
       id: nextDevId(),
       type: newDevType,
@@ -393,6 +396,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       extra: newDevExtra,
       emoji: DEV_TYPE_EMOJI[newDevType] ?? '🔧',
     }])
+    onAddDevice(deviceName)
     setShowAddDevice(false)
     setAddStep('options')
     if (devPhotoUrl) { URL.revokeObjectURL(devPhotoUrl); setDevPhotoUrl(null) }
@@ -401,6 +405,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   }
 
   function removeDevice(id: number) {
+    const dev = devices.find((d) => d.id === id)
+    if (dev) onRemoveDevice(`${dev.brand} ${dev.model}`.trim())
     setDevices((prev) => prev.filter((d) => d.id !== id))
   }
 
