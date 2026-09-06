@@ -182,8 +182,10 @@ export function FeedScreen({
         return next
       })
 
-      // Continue loading if the API returned a full page AND we got new unique items
-      if (remoteProducts.length < PAGE_SIZE || newItemsCount === 0) {
+      // Continue loading as long as we got new unique items.
+      // Only stop when a page yields zero new products (exhausted results).
+      // Safety cap at 10 pages to avoid infinite loops.
+      if (newItemsCount === 0 || page >= 10) {
         setHasMore(false)
       }
 
