@@ -13,7 +13,7 @@ const CATEGORY_IDS: Record<string, string> = {
   all: '200000783,200000782,200000835,200000832,200000831',
   // Clothing only — excludes ALL footwear category IDs (200000831, 200000832, 200000835)
   clothing: '200000783,200000782',
-  shoes: '200000832,200000831',
+  shoes: '200000832,200000831,200000835',
   accessories: '5090301,509',
 }
 
@@ -33,11 +33,11 @@ const MENS_KEYWORDS_REGEX = /\b(men|man|male|גברים|גבר|mens)\b/i
 const WOMENS_KEYWORDS = ['women', 'female', 'lady', 'נשים']
 
 // Footwear keywords — products containing these are discarded under the Clothing tab
-const FOOTWEAR_KEYWORDS_REGEX = /\b(shoes|sneakers|boots|heels|sandals|נעליים|סניקרס|מגפיים)\b/i
+const FOOTWEAR_KEYWORDS_REGEX = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|flat|flats|loafer|loafers|pump|pumps|trainer|trainers|slipper|slippers|oxford|running|cleat|cleats|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
 
 const CATEGORY_KEYWORDS: Record<string, string> = {
   all: 'fashion clothing',
-  clothing: 'clothing apparel',
+  clothing: 'dress shirt pants top skirt blouse t-shirt hoodie sweater coat jacket jeans',
   shoes: 'shoes footwear',
   accessories: 'accessories bags',
 }
@@ -91,6 +91,13 @@ export function FeedScreen({
       const genderPrefix = isFemale ? 'women ' : isMale ? 'men ' : ''
       const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim() : ''
       const categoryIds = CATEGORY_IDS[category] || undefined
+      const accessoryDevices = category === 'accessories'
+        ? (registeredDevices.length > 0
+          ? registeredDevices
+          : detectedDevice
+            ? [`${detectedDevice.brand} ${detectedDevice.model}`.trim()]
+            : [])
+        : []
 
       // Build keywords dynamically based on category, device, and measurements
       let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
@@ -122,6 +129,7 @@ export function FeedScreen({
       } else if (category === 'clothing') {
         // Clothing: filtered by gender and size attributes — prepend gender prefix for strict filtering
         keywords = `${genderPrefix}${keywords}`
+        // Hard-exclude footwear at the API level by not including any shoe terms
         if (scannedSizes?.style?.aestheticTags?.length) {
           keywords = `${keywords} ${scannedSizes.style.aestheticTags.slice(0, 2).join(' ')}`
         }
@@ -154,9 +162,19 @@ export function FeedScreen({
 
       console.log(`[Feed] Fetching results for Device: ${deviceName || 'N/A'}, Gender: ${gender}, Category: ${category}`)
 
-      const remoteProducts = await fetchAliExpressProducts(keywords, page, PAGE_SIZE, gender, categoryIds)
-      console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'keywords:', keywords)
-      if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
+      const remoteProducts = category === 'accessories' && accessoryDevices.length > 0
+        ? (await Promise.all(
+            accessoryDevices.map((device) => fetchAliExpressProducts(
+              `${device} case cover screen protector charger cable holder stand`,
+              page,
+              PAGE_SIZE,
+              gender,
+              categoryIds,
+            )),
+          )).flat()
+        : await fetchAliExpressProducts(keywords, page, PAGE_SIZE, gender, categoryIds)
+      console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'keywords:', keywords, 'devices:', accessoryDevices)
+      if (remoteProducts.length < PAGE_SIZE && category !== 'accessories') setHasMore(false)
 
       // Client-side filtering:
       //  1. Gender isolation: when female, discard any product containing men's keywords
@@ -182,7 +200,10 @@ export function FeedScreen({
           const titleLower = p.name.toLowerCase()
           return allDevices.some((d) => {
             const model = d.replace(/^\w+\s+/, '').trim().toLowerCase() || d.toLowerCase()
-            return titleLower.includes(model)
+            // Also check for the last significant word (e.g., "S23" from "Galaxy S23")
+            const parts = model.split(' ')
+            const lastPart = parts[parts.length - 1]
+            return titleLower.includes(model) || (lastPart.length >= 2 && titleLower.includes(lastPart))
           })
         }
 

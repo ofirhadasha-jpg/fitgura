@@ -163,7 +163,11 @@ Deno.serve(async (req: Request) => {
       const genderPrefix = gender === "male" ? "men " : gender === "female" ? "women " : "";
       const isFemaleSearch = gender === "female";
       const isMaleSearch = gender === "male";
-      const searchKeywords = keywords ? genderPrefix + keywords : "";
+      const isClothingSearch = categoryIds === "200000783,200000782";
+      const clothingKeywords = "dress shirt pants top skirt blouse t-shirt hoodie sweater coat jacket jeans";
+      const searchKeywords = keywords
+        ? `${genderPrefix}${isClothingSearch ? clothingKeywords : keywords}`
+        : "";
 
       const apiParams: RequestParams = {
         page_no: pageNo,
@@ -236,7 +240,7 @@ Deno.serve(async (req: Request) => {
         // Infer category from categoryIds if available
         let category = "clothing";
         if (categoryIds) {
-          if (/200000832|200000831/.test(categoryIds)) category = "shoes";
+          if (/200000832|200000831|200000835/.test(categoryIds)) category = "shoes";
           else if (/200000788|200000785|200001661|5090301|509/.test(categoryIds)) category = "accessories";
           else category = "clothing";
         }
@@ -261,8 +265,7 @@ Deno.serve(async (req: Request) => {
       // Women's keywords — discard when gender is male
       const WOMENS_KEYWORDS = /\b(women|woman|female|lady|נשים|אישה)\b/i;
       // Footwear keywords — discard under clothing category
-      const FOOTWEAR_KEYWORDS = /\b(shoes|sneakers|boots|heels|sandals|נעליים|סניקרס|מגפיים)\b/i;
-      const isClothingSearch = categoryIds === "200000783,200000782";
+      const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|flat|flats|loafer|loafers|pump|pumps|trainer|trainers|slipper|slippers|oxford|running|cleat|cleats|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i;
 
       const filteredProducts = mapped.filter((p) => {
         // Strict gender isolation

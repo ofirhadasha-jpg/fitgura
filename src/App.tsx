@@ -427,6 +427,11 @@ export default function App() {
     }
   }
 
+  function handleDeviceDetected(device: DetectedDevice) {
+    setDetectedDevice(device)
+    void handleAddDevice(`${device.brand} ${device.model}`)
+  }
+
   async function handleRemoveDevice(deviceName: string) {
     setRegisteredDevices((prev) => prev.filter((d) => d !== deviceName))
     if (user && isSupabaseConfigured) {
@@ -500,7 +505,7 @@ export default function App() {
       <View style={styles.phoneFrame}>
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
-        {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={setDetectedDevice} />}
+        {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={handleDeviceDetected} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} />}
