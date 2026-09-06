@@ -445,6 +445,49 @@ const TOP_TO_BOTTOM_EU: Record<string, string> = {
   'XS': '44', 'S': '46', 'M': '48', 'L': '50', 'XL': '52', 'XXL': '54',
 }
 
+const SUIT_KEYWORDS = /\b(suit|blazer set|two.?piece|tracksuit|set|חליפה|סט|סט חליפה)\b/i
+const SHIRT_KEYWORDS = /\b(shirt|t-?shirt|hoodie|sweater|jacket|coat|polo|tank|top|blouse|חולצה|ג'?קט|מעיל|סוודר|בגד עליון)\b/i
+const PANTS_KEYWORDS = /\b(pants|jeans|trousers|shorts|leggings|jogger|מכנסיים|מכנס)\b/i
+
+type SizeBreakdownItem = { label: string; value: string }
+
+function getSizeBreakdown(productName: string, scannedSizes: ScannedSizes | null, category: string): SizeBreakdownItem[] {
+  if (!scannedSizes) return []
+  if (category === 'shoes') {
+    return scannedSizes.shoeSize ? [{ label: 'נעל', value: `EU ${scannedSizes.shoeSize}` }] : []
+  }
+  if (category === 'accessories') return []
+
+  const top = scannedSizes.sizing.top
+  const bottom = TOP_TO_BOTTOM_EU[top] ?? scannedSizes.sizing.bottom
+
+  const isSuit = SUIT_KEYWORDS.test(productName)
+  const isShirt = SHIRT_KEYWORDS.test(productName)
+  const isPants = PANTS_KEYWORDS.test(productName)
+
+  if (isSuit || (isShirt && isPants)) {
+    return [
+      { label: 'חולצה', value: top },
+      { label: 'מכנסיים', value: `${bottom} EU` },
+    ]
+  }
+  if (isShirt) {
+    return [{ label: 'חולצה', value: top }]
+  }
+  if (isPants) {
+    return [{ label: 'מכנסיים', value: `${bottom} EU` }]
+  }
+  // Default: show both for generic clothing
+  return [
+    { label: 'חולצה', value: top },
+    { label: 'מכנסיים', value: `${bottom} EU` },
+  ]
+}
+
+function formatSizeBreakdown(items: SizeBreakdownItem[]): string {
+  return items.map((item) => `${item.label}: ${item.value}`).join('  |  ')
+}
+
 function getRecommendedSizeLabel(scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
   if (category === 'shoes') {
@@ -460,6 +503,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
   const [showSizeModal, setShowSizeModal] = useState(false)
 
   const recommendedSize = getRecommendedSizeLabel(scannedSizes, category)
+  const sizeBreakdown = getSizeBreakdown(product.name, scannedSizes, category)
 
   function handleBuy() {
     setShowSizeModal(true)
@@ -536,6 +580,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
       {showSizeModal && (
         <SizeReminderModal
           recommendedSize={recommendedSize}
+          sizeBreakdown={sizeBreakdown}
           onConfirm={confirmBuy}
           onDismiss={() => setShowSizeModal(false)}
         />
@@ -544,8 +589,9 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
   )
 }
 
-function SizeReminderModal({ recommendedSize, onConfirm, onDismiss }: {
+function SizeReminderModal({ recommendedSize, sizeBreakdown, onConfirm, onDismiss }: {
   recommendedSize: string | null
+  sizeBreakdown: SizeBreakdownItem[]
   onConfirm: (e: GestureResponderEvent & { preventDefault: () => void }) => void
   onDismiss: () => void
 }) {
@@ -562,6 +608,16 @@ function SizeReminderModal({ recommendedSize, onConfirm, onDismiss }: {
         <Text style={feedStyles.sizeModalHighlightValue} numberOfLines={2}>
           {recommendedSize ? `מידה מומלצת: ${recommendedSize}` : 'מידה מומלצת'}
         </Text>
+        {sizeBreakdown.length > 0 && (
+          <View style={feedStyles.sizeBreakdownBox}>
+            {sizeBreakdown.map((item) => (
+              <View key={item.label} style={feedStyles.sizeBreakdownRow}>
+                <Text style={feedStyles.sizeBreakdownLabel}>{item.label}</Text>
+                <Text style={feedStyles.sizeBreakdownValue}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         <TouchableOpacity onPress={onConfirm} activeOpacity={0.8} style={feedStyles.sizeModalConfirmBtn}>
           <Text style={feedStyles.sizeModalConfirmBtnText}>המשך לרכישה</Text>
         </TouchableOpacity>
@@ -665,4 +721,8 @@ const feedStyles = StyleSheet.create({
   sizeModalHighlightValue: { fontSize: 16, lineHeight: 21, fontWeight: '800', color: '#2E5BFF', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sizeModalConfirmBtn: { width: '100%', backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 8, alignItems: 'center' },
   sizeModalConfirmBtnText: { fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeBreakdownBox: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, gap: 8, borderWidth: 1.5, borderColor: '#E2E8F0' },
+  sizeBreakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sizeBreakdownLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeBreakdownValue: { fontSize: 14, fontWeight: '800', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
