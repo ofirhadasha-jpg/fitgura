@@ -146,7 +146,6 @@ export function FeedScreen({
       }
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)
-      if (remoteProducts.length < PAGE_SIZE && category !== 'accessories') setHasMore(false)
 
       // The aliexpressClient already applied gender + category filters,
       // but we run a second pass here for accessories device-name matching
@@ -169,13 +168,24 @@ export function FeedScreen({
         : cleanedProducts
 
       // Direct state hydration — append unique items only
+      let newItemsCount = 0
       setCatalog((prev) => {
         const existingIds = new Set(prev.map((p) => p.aliexpressSku).filter(Boolean))
-        const deduped = sortedProducts.filter((p) => !p.aliexpressSku || !existingIds.has(p.aliexpressSku))
+        const deduped = sortedProducts.filter((p) => {
+          if (p.aliexpressSku && existingIds.has(p.aliexpressSku)) return false
+          return true
+        })
+        newItemsCount = deduped.length
         const next = append ? [...prev, ...deduped] : deduped
         console.log('[FeedScreen] Catalog after update:', next.length, 'deduped:', sortedProducts.length - deduped.length)
         return next
       })
+
+      // Continue loading if the API returned a full page AND we got new unique items
+      if (remoteProducts.length < PAGE_SIZE || newItemsCount === 0) {
+        setHasMore(false)
+      }
+
       if (!append && sortedProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
     } catch (error: unknown) {
       if (!append) setCatalog([])
@@ -271,7 +281,10 @@ export function FeedScreen({
     if (isMaleRender && WOMENS_RENDER_REGEX.test(p.name)) return false
     // 2. Category Validation — render-time double-check
     if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(p.name)) return false
-    if (filter === 'shoes' && APPAREL_RENDER_REGEX.test(p.name)) return false
+    if (filter === 'shoes') {
+      if (APPAREL_RENDER_REGEX.test(p.name)) return false
+      if (!FOOTWEAR_RENDER_REGEX.test(p.name)) return false
+    }
     // Accessories tab: exclude clothing items that leaked through, but allow watch accessory terms
     if (filter === 'accessories') {
       if (CLOTHING_KEYWORDS_REGEX.test(p.name) && !WATCH_ACCESSORY_REGEX.test(p.name)) return false

@@ -270,8 +270,11 @@ Deno.serve(async (req: Request) => {
         if (isMaleSearch && WOMENS_KEYWORDS.test(p.name)) return false;
         // 2. Clothing tab: hard-exclude all footwear
         if (isClothingSearch && FOOTWEAR_KEYWORDS.test(p.name)) return false;
-        // 3. Shoes tab: hard-exclude all apparel
-        if (isShoesSearch && APPAREL_KEYWORDS.test(p.name)) return false;
+        // 3. Shoes tab: hard-exclude all apparel, and require footwear terms
+        if (isShoesSearch) {
+          if (APPAREL_KEYWORDS.test(p.name)) return false;
+          if (!FOOTWEAR_KEYWORDS.test(p.name)) return false;
+        }
         // 4. Accessories tab: exclude apparel + footwear
         if (isAccessoriesSearch && (APPAREL_KEYWORDS.test(p.name) || FOOTWEAR_KEYWORDS.test(p.name))) return false;
         return true;

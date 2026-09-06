@@ -186,7 +186,9 @@ export async function searchProductsByCategory(
     const perQuerySize = Math.max(12, Math.ceil(pageSize / subqueries.length))
     const results = await Promise.all(
       subqueries.map((sq) => {
-        let kw = `${genderPrefix}${sq}`
+        // Avoid double-gendering: subqueries for female/male already start with women/men
+        const prefix = sq.startsWith('women') || sq.startsWith('men') ? '' : genderPrefix
+        let kw = `${prefix}${sq}`
         if (extraKeywords) kw += ` ${extraKeywords}`
         return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds)
       }),
@@ -209,7 +211,9 @@ export async function searchProductsByCategory(
     const perQuerySize = Math.max(15, Math.ceil(pageSize / subqueries.length))
     const results = await Promise.all(
       subqueries.map((sq) => {
-        let kw = `${genderPrefix}${sq}`
+        // Avoid double-gendering: subqueries for female/male already start with women/men
+        const prefix = sq.startsWith('women') || sq.startsWith('men') ? '' : genderPrefix
+        let kw = `${prefix}${sq}`
         if (extraKeywords) kw += ` ${extraKeywords}`
         return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds)
       }),
@@ -330,6 +334,8 @@ export function filterProducts(
     if (category === 'shoes') {
       // Hard-exclude all apparel terms
       if (APPAREL_REGEX.test(p.name)) return false
+      // Require at least one footwear term in the title
+      if (!FOOTWEAR_REGEX.test(p.name)) return false
     }
 
     if (category === 'accessories') {
