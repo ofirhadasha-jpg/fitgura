@@ -169,7 +169,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                 {[
                   { icon: '📐', text: 'פיטגורה תנתח את המידות שלך ותתאים מוצרים בדיוק לגזרה שלך' },
                   { icon: '🔄', text: 'המערכת תסרוק את הגלריה שלך כל שבוע ותעדכן את המידות אוטומטית' },
-                  { icon: '🎯', text: 'ככל שתעלה יותר תמונות — הדיוק של ההתאמות ישתפר' },
+                  { icon: '🎯', text: 'העלאת תמונות נוספות לסריקה משפרת את התוצאות' },
                 ].map(({ icon, text }) => (
                   <View key={text} style={obStyles.explainRow}>
                     <Text style={{ fontSize: 14 }}>{icon}</Text>
