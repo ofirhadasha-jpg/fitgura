@@ -97,6 +97,7 @@ export function FeedScreen({
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [showDeviceModal, setShowDeviceModal] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
+  const selectedDeviceRef = useRef<string | null>(null)
   const [pendingNewDevice, setPendingNewDevice] = useState<string | null>(null)
 
   // When a new device is added (from any screen), fetch its accessories and prepend to the catalog
@@ -116,7 +117,7 @@ export function FeedScreen({
           return titleLower.includes(model) || (lastPart.length >= 2 && titleLower.includes(lastPart))
         })
         if (cleaned.length === 0) return
-        if (selectedDevice && selectedDevice !== latestAddedDevice) return
+        if (selectedDeviceRef.current && selectedDeviceRef.current !== latestAddedDevice) return
         setCatalog((prev) => {
           const newIds = new Set(cleaned.map((p) => p.aliexpressSku).filter(Boolean))
           return [...cleaned, ...prev.filter((p) => !p.aliexpressSku || !newIds.has(p.aliexpressSku))]
@@ -127,7 +128,7 @@ export function FeedScreen({
       })
       .catch((err) => console.error('[Feed] Failed to fetch accessories for new device:', err))
     return () => { cancelled = true }
-  }, [latestAddedDevice, scannedSizes?.gender, selectedDevice])
+  }, [latestAddedDevice, scannedSizes?.gender])
 
   // When a device is removed, purge its products from the catalog and re-fetch for remaining devices
   const prevDevicesRef = useRef<string>(registeredDevices.join(','))
@@ -139,6 +140,7 @@ export function FeedScreen({
     prevDevicesRef.current = currentSig
 
     if (selectedDevice && !currentDevices.includes(selectedDevice)) {
+      selectedDeviceRef.current = null
       setSelectedDevice(null)
     }
 
@@ -165,7 +167,7 @@ export function FeedScreen({
       setHasMore(true)
       void loadProductsRef.current(1, false, 'accessories')
     }
-  }, [registeredDevices, selectedDevice])
+  }, [registeredDevices])
 
   // When user switches to the accessories tab, clear the pending flag so new-device products are already at top
   useEffect(() => {
@@ -186,7 +188,7 @@ export function FeedScreen({
       const feedCategory = category as FeedCategory
       const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim() : ''
       const accessoryDevices = category === 'accessories'
-        ? (selectedDevice ? [selectedDevice] : Array.from(new Set(registeredDevices)))
+        ? (selectedDeviceRef.current ? [selectedDeviceRef.current] : Array.from(new Set(registeredDevices)))
         : []
 
       // Build extra keywords from style/size for clothing & shoes
@@ -287,7 +289,7 @@ export function FeedScreen({
         setIsLoadingMore(false)
       }
     }
-  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices, selectedDevice])
+  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
 
   // Refs to avoid effect dependency on loadProducts/filter identity — prevents infinite reload loop
   const loadProductsRef = useRef(loadProducts)
@@ -298,11 +300,22 @@ export function FeedScreen({
   const handleFilterChange = useCallback((newFilter: typeof filter) => {
     console.log(`[Feed] Category changed to: ${newFilter}`)
     filterRef.current = newFilter
-    setFilter(newFilter)
+    selectedDeviceRef.current = null
+    setSelectedDevice(null)
     setPageNo(1)
     setHasMore(true)
     setCatalog([])
     void loadProductsRef.current(1, false, newFilter)
+  }, [])
+
+  const handleSelectDevice = useCallback((device: string | null) => {
+    if (selectedDeviceRef.current === device) return
+    selectedDeviceRef.current = device
+    setSelectedDevice(device)
+    setPageNo(1)
+    setHasMore(true)
+    setCatalog([])
+    void loadProductsRef.current(1, false, 'accessories')
   }, [])
 
   // Measurements signature — changes when any size field the feed depends on changes
@@ -317,7 +330,6 @@ export function FeedScreen({
     detectedDevice?.brand,
     detectedDevice?.model,
     registeredDevices.join(','),
-    selectedDevice ?? '',
   ].join('|')
 
   // Initial load — only once on mount
@@ -476,13 +488,7 @@ export function FeedScreen({
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8, paddingBottom: 4 }}>
               <TouchableOpacity
-                onPress={() => {
-                  if (selectedDevice === null) return
-                  setSelectedDevice(null)
-                  setCatalog([])
-                  setPageNo(1)
-                  setHasMore(true)
-                }}
+                onPress={() => handleSelectDevice(null)}
                 activeOpacity={0.75}
                 style={[feedStyles.deviceChip, !selectedDevice && feedStyles.deviceChipSelected]}
               >
@@ -491,13 +497,7 @@ export function FeedScreen({
               {registeredDevices.map((device) => (
                 <View key={device} style={[feedStyles.deviceChip, selectedDevice === device && feedStyles.deviceChipSelected]}>
                   <TouchableOpacity
-                    onPress={() => {
-                      if (selectedDevice === device) return
-                      setSelectedDevice(device)
-                      setCatalog([])
-                      setPageNo(1)
-                      setHasMore(true)
-                    }}
+                    onPress={() => handleSelectDevice(device)}
                     activeOpacity={0.75}
                     style={feedStyles.deviceChipName}
                   >
