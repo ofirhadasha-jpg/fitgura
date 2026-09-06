@@ -2,7 +2,7 @@ import { useState, useEffect, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product } from './types'
 import { AuthModal } from './components'
-import { supabase } from './lib/supabase'
+import { supabase, isSupabaseConfigured } from './lib/supabase'
 import { SplashScreen } from './screens/SplashScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
 import { DeviceDetectionScreen } from './screens/DeviceDetectionScreen'
@@ -12,8 +12,9 @@ import { ProfileScreen } from './screens/ProfileScreen'
 import { WishlistScreen } from './screens/WishlistScreen'
 
 const GUEST_PROFILE_KEY = 'fitgura_guest_profile'
-const GUEST_FAVORITES_KEY = 'fitgura_guest_favorites'
+const GUEST_FAVORITES_KEY = 'fitgura_favorites'
 const GUEST_DEVICE_KEY = 'fitgura_guest_device'
+const LEGACY_GUEST_FAVORITES_KEY = 'fitgura_guest_favorites'
 
 interface GuestProfile {
   gender: 'male' | 'female' | 'unisex'
@@ -66,6 +67,26 @@ function saveGuestFavorites(items: number[], catalog: Product[]) {
   localStorage.setItem(GUEST_FAVORITES_KEY, JSON.stringify(favorites))
 }
 
+// Merge legacy guest favorites key into the new one on first load
+function migrateLegacyFavorites(): { productId: string; productName: string }[] {
+  const legacy = localStorage.getItem(LEGACY_GUEST_FAVORITES_KEY)
+  if (!legacy) return []
+  try {
+    const parsed = JSON.parse(legacy) as { productId: string; productName: string }[]
+    const current = localStorage.getItem(GUEST_FAVORITES_KEY)
+    const existing = current ? JSON.parse(current) as { productId: string; productName: string }[] : []
+    const merged = [...existing]
+    for (const f of parsed) {
+      if (!merged.some((m) => m.productId === f.productId)) merged.push(f)
+    }
+    localStorage.setItem(GUEST_FAVORITES_KEY, JSON.stringify(merged))
+    localStorage.removeItem(LEGACY_GUEST_FAVORITES_KEY)
+    return merged
+  } catch {
+    return []
+  }
+}
+
 function loadGuestProfile(): GuestProfile | null {
   const raw = localStorage.getItem(GUEST_PROFILE_KEY)
   if (!raw) return null
@@ -76,6 +97,16 @@ function loadGuestFavorites(): { productId: string; productName: string }[] {
   const raw = localStorage.getItem(GUEST_FAVORITES_KEY)
   if (!raw) return []
   try { return JSON.parse(raw) as { productId: string; productName: string }[] } catch { return [] }
+}
+
+function loadFavoriteIndices(catalog: Product[]): number[] {
+  const favorites = loadGuestFavorites()
+  return favorites
+    .map((f) => {
+      const idx = Number(f.productId)
+      return Number.isNaN(idx) ? catalog.findIndex((p) => p.name === f.productName) : idx
+    })
+    .filter((i) => i >= 0 && i < catalog.length)
 }
 
 function clearGuestData() {
@@ -89,36 +120,49 @@ async function migrateGuestData(userId: string) {
   const guestFavorites = loadGuestFavorites()
   const guestDevice = loadGuestDevice()
 
-  if (guestProfile) {
-    await supabase.from('profiles').upsert({
-      user_id: userId,
-      gender: guestProfile.gender,
-      chest_cm: guestProfile.chest,
-      waist_cm: guestProfile.waist,
-      hips_cm: guestProfile.hips,
-      shoulder_cm: guestProfile.shoulder,
-      height_cm: guestProfile.height,
-      weight_kg: guestProfile.weight,
-      shoe_size: guestProfile.shoeSize,
-      top_size: guestProfile.topSize,
-      bottom_size: guestProfile.bottomSize,
-      fit: guestProfile.fit,
-      registered_device: guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null,
-    })
-  } else if (guestDevice) {
-    await supabase.from('profiles').upsert({
-      user_id: userId,
-      registered_device: `${guestDevice.brand} ${guestDevice.model}`,
-    })
+  if (!isSupabaseConfigured) {
+    console.warn('[App] Supabase not configured, skipping guest data migration')
+    return
   }
 
-  if (guestFavorites.length > 0) {
-    const rows = guestFavorites.map((f) => ({
-      user_id: userId,
-      product_id: f.productId,
-      product_name: f.productName,
-    }))
-    await supabase.from('favorites').insert(rows)
+  try {
+    if (guestProfile) {
+      await supabase.from('profiles').upsert({
+        user_id: userId,
+        gender: guestProfile.gender,
+        chest_cm: guestProfile.chest,
+        waist_cm: guestProfile.waist,
+        hips_cm: guestProfile.hips,
+        shoulder_cm: guestProfile.shoulder,
+        height_cm: guestProfile.height,
+        weight_kg: guestProfile.weight,
+        shoe_size: guestProfile.shoeSize,
+        top_size: guestProfile.topSize,
+        bottom_size: guestProfile.bottomSize,
+        fit: guestProfile.fit,
+        registered_device: guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null,
+      })
+    } else if (guestDevice) {
+      await supabase.from('profiles').upsert({
+        user_id: userId,
+        registered_device: `${guestDevice.brand} ${guestDevice.model}`,
+      })
+    }
+  } catch (err) {
+    console.error('[App] Failed to migrate guest profile to Supabase:', err)
+  }
+
+  try {
+    if (guestFavorites.length > 0) {
+      const rows = guestFavorites.map((f) => ({
+        user_id: userId,
+        product_id: f.productId,
+        product_name: f.productName,
+      }))
+      await supabase.from('favorites').insert(rows)
+    }
+  } catch (err) {
+    console.error('[App] Failed to migrate guest favorites to Supabase:', err)
   }
 
   clearGuestData()
@@ -215,15 +259,44 @@ export default function App() {
     setTimeout(() => setToast(null), 3200)
   }
 
-  function handleWishlistToggle(idx: number) {
-    if (wishlistItems.includes(idx)) {
-      setWishlistItems((prev) => prev.filter((x) => x !== idx))
-      return
-    }
-    if (!user) {
-      setAuthModal({ pendingIdx: idx })
-    } else {
-      setWishlistItems((prev) => [...prev, idx])
+  async function handleWishlistToggle(idx: number) {
+    const isAdding = !wishlistItems.includes(idx)
+
+    // Optimistic local state update
+    setWishlistItems((prev) =>
+      isAdding ? [...prev, idx] : prev.filter((x) => x !== idx)
+    )
+
+    // For guests, persist to localStorage immediately (handled by the effect below)
+    if (!user) return
+
+    // For logged-in users, try Supabase — fall back to localStorage on failure
+    const productName = feedCatalog[idx]?.name ?? ''
+    try {
+      if (!isSupabaseConfigured) throw new Error('Supabase not configured')
+      if (isAdding) {
+        const { error } = await supabase.from('favorites').insert({
+          user_id: user.email,
+          product_id: String(idx),
+          product_name: productName,
+        })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('favorites')
+          .delete()
+          .eq('user_id', user.email)
+          .eq('product_id', String(idx))
+        if (error) throw error
+      }
+    } catch (err) {
+      console.error('[App] Supabase favorites call failed, using localStorage fallback:', err)
+      const favorites = loadGuestFavorites()
+      const updated = isAdding
+        ? (favorites.some((f) => f.productId === String(idx))
+            ? favorites
+            : [...favorites, { productId: String(idx), productName }])
+        : favorites.filter((f) => f.productId !== String(idx))
+      localStorage.setItem(GUEST_FAVORITES_KEY, JSON.stringify(updated))
     }
   }
 
@@ -263,6 +336,8 @@ export default function App() {
         fit: scannedSizes.sizing.fit ?? null,
       }).then(({ error }) => {
         if (error) console.error('[App] Failed to persist profile to Supabase:', error.message)
+      }).catch((err) => {
+        console.error('[App] Supabase profile persist failed, keeping local only:', err)
       })
     }
   }, [scannedSizes, user])
@@ -272,9 +347,10 @@ export default function App() {
     if (!user && detectedDevice) saveGuestDevice(detectedDevice)
   }, [detectedDevice, user])
 
-  // Hydrate guest device on initial mount
+  // Hydrate guest device and favorites on initial mount
   useEffect(() => {
     if (!user) {
+      migrateLegacyFavorites()
       const guestDevice = loadGuestDevice()
       if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
       // Hydrate guest profile sizes so they survive reloads
@@ -310,6 +386,11 @@ export default function App() {
           shoeSize: gp.shoeSize,
         }
         setScannedSizes(restored)
+      }
+      // Hydrate guest favorites from localStorage
+      const favIndices = loadFavoriteIndices(feedCatalog)
+      if (favIndices.length > 0) {
+        setWishlistItems(favIndices)
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

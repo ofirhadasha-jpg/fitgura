@@ -458,7 +458,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
           style={feedStyles.productImage}
         />
         <TouchableOpacity
-          onPress={onToggleWishlist}
+          onPress={(e: any) => { e?.preventDefault?.(); e?.stopPropagation?.(); onToggleWishlist() }}
           activeOpacity={0.7}
           style={feedStyles.heartBtn}
         >
