@@ -441,10 +441,29 @@ function formatPrice(price: number, currency?: string): string {
   return `${symbol}${price.toLocaleString()}`
 }
 
+function getRecommendedSizeLabel(scannedSizes: ScannedSizes | null, category: string): string | null {
+  if (!scannedSizes) return null
+  if (category === 'shoes') {
+    return scannedSizes.shoeSize ? `EU ${scannedSizes.shoeSize}` : null
+  }
+  if (category === 'clothing') {
+    return `${scannedSizes.sizing.top} / ${scannedSizes.sizing.bottom}`
+  }
+  return `${scannedSizes.sizing.top} / ${scannedSizes.sizing.bottom}`
+}
+
 function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null; category: string }) {
   const [toast, setToast] = useState<string | null>(null)
+  const [showSizeModal, setShowSizeModal] = useState(false)
+
+  const recommendedSize = getRecommendedSizeLabel(scannedSizes, category)
 
   function handleBuy() {
+    setShowSizeModal(true)
+  }
+
+  function confirmBuy() {
+    setShowSizeModal(false)
     const url = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
     window.open(url, '_blank')
     setToast('מעביר ל-AliExpress...')
@@ -469,6 +488,11 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
           <View style={feedStyles.aiBadgeDot} />
           <Text style={feedStyles.aiBadgeText}>AI Match</Text>
         </View>
+        {recommendedSize && (
+          <View style={feedStyles.sizeBadge}>
+            <Text style={feedStyles.sizeBadgeText}>מידה מומלצת עבורך: {recommendedSize}</Text>
+          </View>
+        )}
       </View>
       <View style={feedStyles.productInfo}>
         <View style={feedStyles.matchChip}>
@@ -494,7 +518,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
             activeOpacity={0.8}
             style={feedStyles.buyBtnAli}
           >
-            <Text style={feedStyles.buyBtnText}>🛒 AliExpress</Text>
+            <Text style={feedStyles.buyBtnText}>🛒 לקנייה ב-AliExpress</Text>
           </TouchableOpacity>
         </View>
         {toast && (
@@ -502,6 +526,72 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
             <Text style={feedStyles.toastText}>{toast}</Text>
           </View>
         )}
+      </View>
+
+      {showSizeModal && (
+        <SizeReminderModal
+          recommendedSize={recommendedSize}
+          productName={product.name}
+          onConfirm={confirmBuy}
+          onDismiss={() => setShowSizeModal(false)}
+        />
+      )}
+    </View>
+  )
+}
+
+function SizeReminderModal({ recommendedSize, productName, onConfirm, onDismiss }: {
+  recommendedSize: string | null
+  productName: string
+  onConfirm: () => void
+  onDismiss: () => void
+}) {
+  return (
+    <View style={feedStyles.sizeModalOverlay}>
+      <TouchableOpacity onPress={onDismiss} activeOpacity={1} style={feedStyles.sizeModalBackdrop} />
+      <View style={feedStyles.sizeModalSheet}>
+        <View style={feedStyles.sizeModalHeader}>
+          <Text style={{ fontSize: 28 }}>📏</Text>
+          <Text style={feedStyles.sizeModalTitle}>תזכורת מידה לפני מעבר לעליאקספרס</Text>
+        </View>
+
+        <Text style={feedStyles.sizeModalProduct}>{productName}</Text>
+
+        {recommendedSize ? (
+          <View style={feedStyles.sizeModalHighlight}>
+            <Text style={feedStyles.sizeModalHighlightLabel}>המידה המומלצת עבורך היא</Text>
+            <Text style={feedStyles.sizeModalHighlightValue}>{recommendedSize}</Text>
+            <Text style={feedStyles.sizeModalHighlightNote}>זכור לבחור מידה זו בעמוד המוצר!</Text>
+          </View>
+        ) : (
+          <View style={feedStyles.sizeModalHighlight}>
+            <Text style={feedStyles.sizeModalHighlightNote}>לא נמצאה מידה מומלצת. אנא בדוק את טבלת המידות בעמוד המוצר.</Text>
+          </View>
+        )}
+
+        <View style={feedStyles.sizeModalVisual}>
+          <View style={feedStyles.sizeModalVisualRow}>
+            <Text style={feedStyles.sizeModalVisualIcon}>🔽</Text>
+            <Text style={feedStyles.sizeModalVisualText}>בחר מידה מתחת לכותרת המוצר</Text>
+          </View>
+          <View style={feedStyles.sizeModalVisualRow}>
+            <Text style={feedStyles.sizeModalVisualIcon}>📋</Text>
+            <Text style={feedStyles.sizeModalVisualText}>בדוק את טבלת מידות (Size Chart)</Text>
+          </View>
+          <View style={feedStyles.sizeModalVisualRow}>
+            <Text style={feedStyles.sizeModalVisualIcon}>✅</Text>
+            <Text style={feedStyles.sizeModalVisualText}>ודא שהמידה תואמת להמלצת ה-AI</Text>
+          </View>
+        </View>
+
+        <View style={feedStyles.sizeModalBtnRow}>
+          <TouchableOpacity onPress={onDismiss} activeOpacity={0.7} style={feedStyles.sizeModalCancelBtn}>
+            <Text style={feedStyles.sizeModalCancelBtnText}>ביטול</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onConfirm} activeOpacity={0.8} style={feedStyles.sizeModalConfirmBtn}>
+            <Text style={feedStyles.sizeModalConfirmBtnText}>המשך לרכישה בעליאקספרס</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   )
@@ -590,4 +680,25 @@ const feedStyles = StyleSheet.create({
   familyBadgeText: { fontSize: 11, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   toast: { marginTop: 6, backgroundColor: '#0B1437', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
   toastText: { color: '#fff', fontSize: 10, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeBadge: { position: 'absolute', bottom: 8, left: 8, backgroundColor: '#2E5BFF', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 },
+  sizeBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'center', alignItems: 'center' },
+  sizeModalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(11,20,55,0.65)' },
+  sizeModalSheet: { backgroundColor: '#fff', borderRadius: 24, padding: 24, width: 320, maxWidth: '92%', gap: 14, elevation: 10 },
+  sizeModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 },
+  sizeModalTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', flexShrink: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalProduct: { fontSize: 13, color: '#64748B', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalHighlight: { backgroundColor: '#EEF2FF', borderRadius: 16, padding: 16, alignItems: 'center', gap: 6 },
+  sizeModalHighlightLabel: { fontSize: 12, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalHighlightValue: { fontSize: 28, fontWeight: '900', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalHighlightNote: { fontSize: 12, color: '#1E293B', fontWeight: '600', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalVisual: { backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, gap: 10 },
+  sizeModalVisualRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sizeModalVisualIcon: { fontSize: 16 },
+  sizeModalVisualText: { fontSize: 12, color: '#475569', flexShrink: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  sizeModalCancelBtn: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  sizeModalCancelBtnText: { fontSize: 14, fontWeight: '700', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeModalConfirmBtn: { flex: 2, backgroundColor: '#FF4747', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  sizeModalConfirmBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
