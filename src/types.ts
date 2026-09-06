@@ -335,18 +335,13 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
 }
 
 export const TOP_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-// EU pants sizes — gender-aware ranges
-// Men's EU pants sizes typically start at EU 40; Women's start at EU 32
-export const BOTTOM_SIZES_EU_MEN = ['40', '42', '44', '46', '48', '50', '52', '54', '56', '58', '60']
-export const BOTTOM_SIZES_EU_WOMEN = ['32', '34', '36', '38', '40', '42', '44', '46', '48', '50', '52']
-export const BOTTOM_SIZES_EU = ['44', '46', '48', '50', '52', '54']
+// EU pants sizes — unified range starting from EU 36
+export const BOTTOM_SIZES_EU = ['36', '38', '40', '42', '44', '46', '48', '50', '52', '54', '56', '58', '60']
 // Kept for backward compatibility — now maps to EU sizes
 export const BOTTOM_SIZES = BOTTOM_SIZES_EU
 
-// Returns the correct EU pants size list based on gender
-export function getBottomSizesForGender(gender: 'male' | 'female' | 'unisex' | undefined): string[] {
-  if (gender === 'male') return BOTTOM_SIZES_EU_MEN
-  if (gender === 'female') return BOTTOM_SIZES_EU_WOMEN
+// Returns the correct EU pants size list based on gender (same unified range for all)
+export function getBottomSizesForGender(_gender: 'male' | 'female' | 'unisex' | undefined): string[] {
   return BOTTOM_SIZES_EU
 }
 

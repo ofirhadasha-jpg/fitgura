@@ -414,26 +414,23 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           </View>
           <View style={profStyles.sizesGrid}>
             {[
-              { label: 'חולצה', value: profTop, options: TOP_SIZES, set: handleProfTopChange },
-              { label: 'מכנסיים (EU)', value: profBottom, options: getBottomSizesForGender(scannedSizes?.gender), set: handleProfBottomChange },
+              { label: 'מידת חולצה', value: profTop, options: TOP_SIZES, set: handleProfTopChange },
+              { label: 'מידת מכנסיים', value: profBottom, options: getBottomSizesForGender(scannedSizes?.gender), set: handleProfBottomChange },
+              { label: 'מידת נעליים', value: profShoe, options: SHOE_SIZES_EU, set: handleProfShoeChange },
               { label: 'גזרה', value: profFit, options: FIT_TYPES, set: handleProfFitChange },
-              { label: 'נעליים', value: profShoe, options: SHOE_SIZES_EU, set: handleProfShoeChange },
             ].map(({ label, value, options, set }) => (
               <View key={label} style={[profStyles.sizeBox, { borderColor: editingSizes ? '#2E5BFF' : '#E2E8F0', borderWidth: editingSizes ? 2 : 1.5 }]}>
+                <Text style={profStyles.sizeLabel}>{label}</Text>
                 {editingSizes ? (
-                  <>
+                  <View style={profStyles.sizeOptionsRow}>
                     {options.map((o) => (
                       <TouchableOpacity key={o} onPress={() => set(o)} activeOpacity={0.7}>
                         <Text style={[profStyles.sizeOption, value === o && profStyles.sizeOptionActive]}>{o}</Text>
                       </TouchableOpacity>
                     ))}
-                    <Text style={profStyles.sizeLabel}>{label}</Text>
-                  </>
+                  </View>
                 ) : (
-                  <>
-                    <Text style={profStyles.sizeValue}>{value}</Text>
-                    <Text style={profStyles.sizeLabel}>{label}</Text>
-                  </>
+                  <Text style={profStyles.sizeValue}>{value}</Text>
                 )}
               </View>
             ))}
@@ -459,14 +456,16 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                 { label: 'כתפיים', value: scannedSizes.sizing.bodyMetrics.shoulder_width_cm, unit: 'ס"מ' },
               ].map(({ label, value, unit, onChange }) => (
                 <View key={label} style={profStyles.bodyMetricItem}>
-                  <TextInput
-                    value={value != null ? String(value) : ''}
-                    onChangeText={onChange ?? undefined}
-                    keyboardType="numeric"
-                    style={profStyles.bodyMetricInput}
-                  />
-                  <Text style={profStyles.bodyMetricUnit}>{unit}</Text>
-                  <Text style={profStyles.bodyMetricLabel}>{label}</Text>
+                  <View style={profStyles.bodyMetricFieldRow}>
+                    <Text style={profStyles.bodyMetricLabel}>{label}</Text>
+                    <TextInput
+                      value={value != null ? String(value) : ''}
+                      onChangeText={onChange ?? undefined}
+                      keyboardType="numeric"
+                      style={profStyles.bodyMetricInput}
+                    />
+                    <Text style={profStyles.bodyMetricUnit}>{unit}</Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -954,12 +953,13 @@ const profStyles = StyleSheet.create({
   editBtnActive: { backgroundColor: '#2E5BFF' },
   editBtnText: { color: '#2E5BFF', fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   editBtnTextActive: { color: '#fff' },
-  sizesGrid: { flexDirection: 'row', gap: 10 },
-  sizeBox: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1.5 },
-  sizeValue: { fontSize: 18, fontWeight: '700', color: '#2E5BFF' },
-  sizeLabel: { fontSize: 11, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeOption: { fontSize: 14, fontWeight: '700', color: '#475569', paddingVertical: 2 },
-  sizeOptionActive: { color: '#2E5BFF' },
+  sizesGrid: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  sizeBox: { flex: 1, minWidth: 150, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, alignItems: 'stretch', borderWidth: 1.5 },
+  sizeValue: { fontSize: 18, fontWeight: '700', color: '#2E5BFF', textAlign: 'right' },
+  sizeLabel: { fontSize: 11, color: '#475569', marginBottom: 8, textAlign: 'right', fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeOptionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-start' },
+  sizeOption: { fontSize: 14, fontWeight: '700', color: '#475569', paddingVertical: 4, paddingHorizontal: 5 },
+  sizeOptionActive: { color: '#2E5BFF', backgroundColor: '#DBEAFE', borderRadius: 5 },
   devicesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   devicesTitle: { fontWeight: '700', color: '#1E293B', fontSize: 15, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   addDeviceBtn: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12 },
@@ -1100,8 +1100,9 @@ const profStyles = StyleSheet.create({
   precisionUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexShrink: 0 },
   precisionUploadBtnText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   bodyMetricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  bodyMetricItem: { width: '31%', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#E2E8F0' },
-  bodyMetricInput: { fontSize: 16, fontWeight: '700', color: '#1E293B', textAlign: 'center', paddingVertical: 4, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  bodyMetricUnit: { fontSize: 10, color: '#94A3B8', marginTop: 2 },
-  bodyMetricLabel: { fontSize: 11, color: '#64748B', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricItem: { width: '31%', minWidth: 96, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, borderWidth: 1.5, borderColor: '#E2E8F0' },
+  bodyMetricFieldRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
+  bodyMetricInput: { flex: 1, minWidth: 34, fontSize: 16, fontWeight: '700', color: '#1E293B', textAlign: 'right', paddingVertical: 4, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricUnit: { fontSize: 10, color: '#94A3B8' },
+  bodyMetricLabel: { flexShrink: 1, fontSize: 11, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
