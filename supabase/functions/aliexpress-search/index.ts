@@ -135,64 +135,7 @@ interface AliExpressProduct {
   lastest_volume?: number;
 }
 
-// Server-side mock product generator — used when the AliExpress API is unavailable
-// or returns zero results, so the feed still renders something.
-const MOCK_IMG = [
-  "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=300&h=345&fit=crop&auto=format",
-  "https://images.unsplash.com/photo-1542272604-787c3835535d?w=300&h=345&fit=crop&auto=format",
-  "https://images.unsplash.com/photo-1551232864-3f0890e5801e?w=300&h=345&fit=crop&auto=format",
-  "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=300&h=345&fit=crop&auto=format",
-  "https://images.unsplash.com/photo-1558105147-52d5063f1d2a?w=300&h=345&fit=crop&auto=format",
-  "https://images.unsplash.com/photo-1600185365926-3b7c5a3b00a8?w=300&h=345&fit=crop&auto=format",
-];
 
-const MOCK_CLOTHING = [
-  "Casual Cotton T-Shirt Slim Fit", "Denim Jacket Classic Blue", "Slim Fit Chino Pants Stretch",
-  "Oversized Hoodie Sweatshirt", "Knit Sweater Pullover Warm", "Casual Button Shirt Long Sleeve",
-  "High Waist Jeans Slim Cut", "Cotton Shorts Summer Casual", "Blazer Suit Jacket Slim Fit",
-];
-const MOCK_SHOES = [
-  "Running Sneakers Lightweight", "Casual Canvas Shoes Flat", "Leather Boots Ankle High",
-  "Sport Sneakers Mesh Athletic", "Slip On Loafers Comfort", "High Heels Pumps Elegant",
-  "Sandals Summer Beach Flat", "Wedge Heels Platform Casual",
-];
-const MOCK_ACCESSORIES = [
-  "Phone Case Cover Silicone", "Screen Protector Tempered Glass", "Charging Cable USB Fast",
-  "Phone Holder Stand Desktop", "Wireless Charger Pad Fast", "Earbuds Case Protective",
-  "Power Bank Portable 10000mAh", "Car Phone Mount Magnetic",
-];
-
-function generateServerMockProducts(
-  keywords: string, gender: string, pageNo: number, pageSize: number,
-  isShoes: boolean, isAccessories: boolean,
-): Record<string, unknown>[] {
-  const prefix = gender === "male" ? "Men " : gender === "female" ? "Women " : "";
-  const pool = isShoes ? MOCK_SHOES : isAccessories ? MOCK_ACCESSORIES : MOCK_CLOTHING;
-  const cat = isShoes ? "shoes" : isAccessories ? "accessories" : "clothing";
-  const offset = (pageNo - 1) * 3;
-  const count = Math.min(pageSize, pool.length);
-  const products: Record<string, unknown>[] = [];
-  for (let i = 0; i < count; i++) {
-    const idx = (offset + i) % pool.length;
-    const price = 35 + (idx * 17) % 80;
-    products.push({
-      name: `${prefix}${pool[idx]}`,
-      brand: "AliExpress",
-      price,
-      originalPrice: Math.round(price * 1.3),
-      currency: "₪",
-      img: MOCK_IMG[idx % MOCK_IMG.length],
-      category: cat,
-      aliexpressUrl: `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(prefix + pool[idx])}`,
-      aliexpressSku: `mock-${cat}-${pageNo}-${i}`,
-      matchScore: 85 + (i % 10),
-      ordersCount: 500 + (idx * 37) % 3000,
-      volume: 500 + (idx * 37) % 3000,
-      evaluateRate: 0.9 + (i % 10) / 100,
-    });
-  }
-  return products;
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -375,16 +318,6 @@ Deno.serve(async (req: Request) => {
         return (salesB - salesA) || (ratingB - ratingA);
       });
 
-      // If we got zero results after all fallbacks, return mock products so the feed still renders
-      if (filteredProducts.length === 0) {
-        console.log("[ALIEXPRESS] No live products found — returning mock fallback");
-        const mockProducts = generateServerMockProducts(searchKeywords, gender, pageNo, pageSize, isShoesSearch, isAccessoriesSearch);
-        return new Response(
-          JSON.stringify({ products: mockProducts, count: mockProducts.length, page: pageNo, isFallback: true }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
       return new Response(
         JSON.stringify({ products: filteredProducts, count: filteredProducts.length, page: pageNo }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -503,13 +436,9 @@ Deno.serve(async (req: Request) => {
     );
   } catch (err) {
     console.error("[ALIEXPRESS] Handler error:", err instanceof Error ? err.message : err);
-    // Return 200 with mock fallback products instead of a 500 error.
-    // The request body was already consumed above, so we can't re-read it here;
-    // use generic mock products that work for any category.
-    const mockProducts = generateServerMockProducts("", "unisex", 1, 12, false, false);
     return new Response(
-      JSON.stringify({ products: mockProducts, count: mockProducts.length, page: 1, isFallback: true, error: err instanceof Error ? err.message : "Internal server error" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ error: err instanceof Error ? err.message : "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

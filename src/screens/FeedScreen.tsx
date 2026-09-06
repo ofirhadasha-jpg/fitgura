@@ -11,7 +11,6 @@ import {
   isSmartwatch,
   type FeedCategory,
   type Gender,
-  type SearchResult,
 } from '../services/aliexpressClient'
 import { formatFullPantsSizeLabel, euToUsPants, type SizeRegion } from '../utils/sizeConverter'
 
@@ -93,7 +92,6 @@ export function FeedScreen({
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [showDeviceModal, setShowDeviceModal] = useState(false)
-  const [showFallbackToast, setShowFallbackToast] = useState(false)
 
   const loadProducts = useCallback(async (page: number, append: boolean, category: string) => {
     if (append) setIsLoadingMore(true)
@@ -132,24 +130,15 @@ export function FeedScreen({
 
       console.log(`[Feed] Fetching: gender=${gender}, category=${category}, page=${page}, devices=${accessoryDevices.length}`)
 
-      let remoteResult: SearchResult
+      let remoteProducts: Product[]
 
       if (category === 'accessories' && accessoryDevices.length > 0) {
         const deviceResults = await Promise.all(
           accessoryDevices.map((device) => searchDeviceAccessories(device, page, PAGE_SIZE, gender)),
         )
-        remoteResult = {
-          products: deviceResults.flatMap((r) => r.products),
-          isFallback: deviceResults.some((r) => r.isFallback),
-        }
+        remoteProducts = deviceResults.flat()
       } else {
-        remoteResult = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE, trimmedExtra)
-      }
-
-      const remoteProducts = remoteResult.products
-      if (remoteResult.isFallback && !append) {
-        setShowFallbackToast(true)
-        setTimeout(() => setShowFallbackToast(false), 5000)
+        remoteProducts = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE, trimmedExtra)
       }
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)
@@ -485,21 +474,6 @@ export function FeedScreen({
 
         <View style={{ height: 80 }} />
       </ScrollView>
-
-      {showFallbackToast && (
-        <View style={{
-          position: 'absolute', bottom: 90, left: 16, right: 16,
-          backgroundColor: '#FEF3C7', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14,
-          flexDirection: 'row', alignItems: 'center', gap: 8,
-          shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 8,
-          elevation: 4,
-        }}>
-          <Text style={{ fontSize: 16 }}>⚠️</Text>
-          <Text style={{ flex: 1, fontSize: 12, color: '#92400E', fontFamily: "'Noto Sans Hebrew', sans-serif", fontWeight: '600' }}>
-            מוצגים מוצרי מדגם (יש להגדיר מפתחות API ב-Supabase Secrets)
-          </Text>
-        </View>
-      )}
 
       <BottomNav current="feed" onNav={onNav} />
 

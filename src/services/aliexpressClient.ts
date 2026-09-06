@@ -1,13 +1,8 @@
-import { fetchAliExpressProductsWithFlag, fetchProductDetails, generateAffiliateLink as fetchAffiliateLink } from '../lib/aliexpress'
+import { fetchAliExpressProducts, fetchProductDetails, generateAffiliateLink as fetchAffiliateLink } from '../lib/aliexpress'
 import type { Product } from '../types'
 
 export type Gender = 'male' | 'female' | 'unisex'
 export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
-
-export interface SearchResult {
-  products: Product[]
-  isFallback: boolean
-}
 
 // ── Gender keyword injection ──────────────────────────────────────────────
 
@@ -164,8 +159,7 @@ export async function searchProductsByCategory(
   pageNo: number,
   pageSize: number,
   extraKeywords?: string,
-): Promise<SearchResult> {
-  const positiveTerms = GENDER_POSITIVE[gender] ?? []
+): Promise<Product[]> {
   const genderPrefix = positiveTerms.length > 0 ? positiveTerms[0] + ' ' : ''
   const categoryIds = CATEGORY_IDS[category]
 
@@ -197,11 +191,10 @@ export async function searchProductsByCategory(
         const prefix = sq.startsWith('women') || sq.startsWith('men') ? '' : genderPrefix
         let kw = `${prefix}${sq}`
         if (extraKeywords) kw += ` ${extraKeywords}`
-        return fetchAliExpressProductsWithFlag(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
+        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
       }),
     )
-    const merged = results.flatMap((r) => r.products)
-    const isFallback = results.some((r) => r.isFallback)
+    const merged = results.flat()
     const seen = new Set<string>()
     const deduped = merged.filter((p) => {
       if (p.aliexpressSku && seen.has(p.aliexpressSku)) return false
@@ -209,7 +202,7 @@ export async function searchProductsByCategory(
       return true
     })
     const filtered = filterProducts(deduped, category, gender)
-    return { products: sortByBestSellers(filtered), isFallback }
+    return sortByBestSellers(filtered)
   } else if (category === 'shoes') {
     const startIdx = (pageNo - 1) * 3 % shoesSubqueries.length
     const subqueries: string[] = []
@@ -222,11 +215,10 @@ export async function searchProductsByCategory(
         const prefix = sq.startsWith('women') || sq.startsWith('men') ? '' : genderPrefix
         let kw = `${prefix}${sq}`
         if (extraKeywords) kw += ` ${extraKeywords}`
-        return fetchAliExpressProductsWithFlag(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
+        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
       }),
     )
-    const merged = results.flatMap((r) => r.products)
-    const isFallback = results.some((r) => r.isFallback)
+    const merged = results.flat()
     const seen = new Set<string>()
     const deduped = merged.filter((p) => {
       if (p.aliexpressSku && seen.has(p.aliexpressSku)) return false
@@ -234,7 +226,7 @@ export async function searchProductsByCategory(
       return true
     })
     const filtered = filterProducts(deduped, category, gender)
-    return { products: sortByBestSellers(filtered), isFallback }
+    return sortByBestSellers(filtered)
   } else if (category === 'all') {
     keywords = `${genderPrefix}fashion clothing`
     if (extraKeywords) keywords += ` ${extraKeywords}`
@@ -245,10 +237,10 @@ export async function searchProductsByCategory(
 
   console.log('[aliexpressClient] searchProductsByCategory:', { category, gender, pageNo, keywords, categoryIds })
 
-  const { products, isFallback } = await fetchAliExpressProductsWithFlag(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
+  const products = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
 
   const filtered = filterProducts(products, category, gender)
-  return { products: sortByBestSellers(filtered), isFallback }
+  return sortByBestSellers(filtered)
 }
 
 // ── Smartwatch / Wearable detection ──────────────────────────────────────────
@@ -282,14 +274,12 @@ export async function searchDeviceAccessories(
   pageNo: number,
   pageSize: number,
   gender?: Gender,
-): Promise<SearchResult> {
-  const categoryIds = CATEGORY_IDS.accessories
+): Promise<Product[]> {
   const lower = deviceName.toLowerCase()
   const watch = isSmartwatch(deviceName)
   const isDesktop = lower.includes('desktop') || lower.includes('laptop')
 
   let allProducts: Product[] = []
-  let isFallback = false
 
   if (watch) {
     // Run all 5 smartwatch query variations and merge results
@@ -298,21 +288,16 @@ export async function searchDeviceAccessories(
       SMARTWATCH_QUERIES.map((q) => {
         const keywords = q(deviceName)
         console.log('[aliexpressClient] smartwatch query:', { deviceName, keywords })
-        return fetchAliExpressProductsWithFlag(keywords, pageNo, perQuerySize, gender, categoryIds)
+        return fetchAliExpressProducts(keywords, pageNo, perQuerySize, gender, categoryIds)
       }),
     )
-    allProducts = results.flatMap((r) => r.products)
-    isFallback = results.some((r) => r.isFallback)
+    allProducts = results.flat()
   } else if (isDesktop) {
     const keywords = `${deviceName} laptop case cover sleeve charger stand cable adapter dock`
-    const res = await fetchAliExpressProductsWithFlag(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
-    allProducts = res.products
-    isFallback = res.isFallback
+    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
   } else {
     const keywords = `${deviceName} case cover screen protector charger cable holder stand`
-    const res = await fetchAliExpressProductsWithFlag(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
-    allProducts = res.products
-    isFallback = res.isFallback
+    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
   }
 
   console.log('[aliexpressClient] searchDeviceAccessories:', { deviceName, watch, isDesktop, totalFetched: allProducts.length })
@@ -322,7 +307,7 @@ export async function searchDeviceAccessories(
     if (FOOTWEAR_REGEX.test(p.name)) return false
     return true
   })
-  return { products: sortByBestSellers(filtered), isFallback }
+  return sortByBestSellers(filtered)
 }
 
 // Sort products by best sellers (volume/orders) then by highest rating
@@ -379,8 +364,7 @@ export function filterProducts(
 // ── Legacy wrappers (kept for backward compatibility) ──────────────────────
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
-  const { products } = await fetchAliExpressProductsWithFlag(keywords, pageNo, pageSize)
-  return products
+  return fetchAliExpressProducts(keywords, pageNo, pageSize)
 }
 
 export async function getProductDetails(productIds: string[]): Promise<unknown> {
