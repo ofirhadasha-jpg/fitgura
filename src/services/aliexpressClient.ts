@@ -143,7 +143,7 @@ const APPAREL_REGEX = new RegExp(`\\b(${APPAREL_TERMS.join('|')})\\b`, 'i')
 const CATEGORY_IDS: Record<FeedCategory, string | undefined> = {
   all: '200000783,200000782,200000835,200000832,200000831',
   clothing: '200000783,200000782',
-  shoes: '200000832,200000831,200000835',
+  shoes: undefined,
   accessories: '5090301,509',
 }
 

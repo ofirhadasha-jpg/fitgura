@@ -165,7 +165,10 @@ Deno.serve(async (req: Request) => {
       const isFemaleSearch = gender === "female";
       const isMaleSearch = gender === "male";
       const isClothingSearch = categoryIds === "200000783,200000782";
-      const isShoesSearch = categoryIds === "200000832,200000831,200000835";
+      // Detect shoes search by footwear keywords in the query, since we no longer
+      // send shoes category IDs (they were causing zero-result API errors).
+      const shoesTerms = ["shoe", "shoes", "sneaker", "sneakers", "boot", "boots", "heel", "heels", "sandal", "sandals", "slipper", "slippers", "loafer", "loafers", "wedge", "wedges", "pump", "pumps", "footwear"];
+      const isShoesSearch = shoesTerms.some((t) => (searchKeywords || "").toLowerCase().includes(t));
       // Always use the client-provided keywords as-is — the client already builds
       // gender-prefixed, category-specific query strings via aliexpressClient.ts
       const searchKeywords = keywords ?? "";
@@ -246,12 +249,16 @@ Deno.serve(async (req: Request) => {
         // With target_currency=ILS, target_sale_price is already in shekels
         const salePrice = parseFloat(p.target_sale_price || p.app_sale_price || "0");
         const originalPrice = parseFloat(p.target_original_price || "0");
-        // Infer category from categoryIds if available
+        // Infer category from categoryIds if available, else from search context
         let category = "clothing";
         if (categoryIds) {
           if (/200000832|200000831|200000835/.test(categoryIds)) category = "shoes";
           else if (/200000788|200000785|200001661|5090301|509/.test(categoryIds)) category = "accessories";
           else category = "clothing";
+        } else if (isShoesSearch) {
+          category = "shoes";
+        } else if (isAccessoriesSearch) {
+          category = "accessories";
         }
         const evaluateRate = parseFloat(p.evaluate_rate || "0");
         const volume = p.lastest_volume ?? 0;
