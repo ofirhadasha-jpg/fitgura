@@ -511,6 +511,10 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
   const sizeBreakdown = getSizeBreakdown(product.name, scannedSizes, category)
 
   function handleBuy() {
+    if (category === 'accessories') {
+      confirmBuy({ preventDefault: () => {}, stopPropagation: () => {} } as GestureResponderEvent & { preventDefault: () => void })
+      return
+    }
     setShowSizeModal(true)
   }
 
@@ -542,22 +546,24 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
           <View style={feedStyles.aiBadgeDot} />
           <Text style={feedStyles.aiBadgeText}>AI Match</Text>
         </View>
-        {recommendedSize && (
+        {recommendedSize && category !== 'accessories' && (
           <View style={feedStyles.sizeBadge}>
             <Text style={feedStyles.sizeBadgeText}>מידה מומלצת עבורך: {recommendedSize}</Text>
           </View>
         )}
       </View>
       <View style={feedStyles.productInfo}>
-        <View style={feedStyles.matchChip}>
-          <Text style={feedStyles.matchChipText}>
-            {category === 'shoes' && scannedSizes?.shoeSize
-              ? `✓ מתאים למידה נעל: EU ${scannedSizes.shoeSize}`
-              : scannedSizes
-                ? `✓ מתאים למידה: ${scannedSizes.sizing.top}/${scannedSizes.sizing.bottom} EU`
-                : '✓ מתאים למידה שנסרקת'}
-          </Text>
-        </View>
+        {category !== 'accessories' && (
+          <View style={feedStyles.matchChip}>
+            <Text style={feedStyles.matchChipText}>
+              {category === 'shoes' && scannedSizes?.shoeSize
+                ? `✓ מתאים למידה נעל: EU ${scannedSizes.shoeSize}`
+                : scannedSizes
+                  ? `✓ מתאים למידה: ${scannedSizes.sizing.top}/${scannedSizes.sizing.bottom} EU`
+                  : '✓ מתאים למידה שנסרקת'}
+            </Text>
+          </View>
+        )}
         <Text style={feedStyles.productName}>{product.name}</Text>
         <Text style={feedStyles.productBrand}>{product.brand}</Text>
         <View style={feedStyles.priceRow}>
@@ -582,7 +588,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
         )}
       </View>
 
-      {showSizeModal && (
+      {showSizeModal && category !== 'accessories' && (
         <SizeReminderModal
           recommendedSize={recommendedSize}
           sizeBreakdown={sizeBreakdown}
