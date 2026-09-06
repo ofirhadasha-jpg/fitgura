@@ -487,7 +487,7 @@ export function FeedScreen({
 
         {isLoadingProducts && (
           <View style={feedStyles.loadingState}>
-            <Text style={{ fontSize: 20 }}>⟳</Text>
+            <Text style={{ fontSize: 20 }} className="fitgura-spinner">⟳</Text>
             <Text style={feedStyles.loadingText}>פיטגורה מתאימה מוצרים חדשים עבורך</Text>
           </View>
         )}

@@ -72,3 +72,13 @@ body {
   background: transparent;
   height: 6px;
 }
+
+@keyframes fitgura-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.fitgura-spinner {
+  display: inline-block;
+  animation: fitgura-spin 1s linear infinite;
+}
