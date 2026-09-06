@@ -198,14 +198,20 @@ export function FeedScreen({
     }
   }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
 
+  // Refs to avoid effect dependency on loadProducts/filter identity — prevents infinite reload loop
+  const loadProductsRef = useRef(loadProducts)
+  loadProductsRef.current = loadProducts
+  const filterRef = useRef(filter)
+  filterRef.current = filter
+
   const handleFilterChange = useCallback((newFilter: typeof filter) => {
     console.log(`[Feed] Category changed to: ${newFilter}`)
     setFilter(newFilter)
     setPageNo(1)
     setHasMore(true)
     setCatalog([])
-    void loadProducts(1, false, newFilter)
-  }, [loadProducts])
+    void loadProductsRef.current(1, false, newFilter)
+  }, [])
 
   // Measurements signature — changes when any size field the feed depends on changes
   const measurementsSignature = [
@@ -221,7 +227,7 @@ export function FeedScreen({
     registeredDevices.join(','),
   ].join('|')
 
-  // Initial load — only once on mount, not when loadProducts identity changes
+  // Initial load — only once on mount
   const hasInitiallyLoaded = useRef(false)
   useEffect(() => {
     if (hasInitiallyLoaded.current) return
@@ -229,8 +235,8 @@ export function FeedScreen({
     setPageNo(1)
     setHasMore(true)
     setCatalog([])
-    void loadProducts(1, false, 'all')
-  }, [loadProducts])
+    void loadProductsRef.current(1, false, 'all')
+  }, [])
 
   // Re-fetch when measurements change (but not on initial mount — the effect above handles that)
   const prevSignatureRef = useRef<string | null>(null)
@@ -245,9 +251,9 @@ export function FeedScreen({
       setPageNo(1)
       setHasMore(true)
       setCatalog([])
-      void loadProducts(1, false, filter)
+      void loadProductsRef.current(1, false, filterRef.current)
     }
-  }, [measurementsSignature, loadProducts, filter, scannedSizes])
+  }, [measurementsSignature])
 
   useEffect(() => {
     onCatalogChange(catalog)
@@ -258,8 +264,8 @@ export function FeedScreen({
     const nextPage = pageNo + 1
     console.log(`[Feed] Loading next page: ${nextPage}`)
     setPageNo(nextPage)
-    void loadProducts(nextPage, true, filter)
-  }, [isLoadingMore, hasMore, isLoadingProducts, pageNo, filter, loadProducts])
+    void loadProductsRef.current(nextPage, true, filterRef.current)
+  }, [isLoadingMore, hasMore, isLoadingProducts, pageNo])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
