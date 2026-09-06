@@ -208,7 +208,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
             </View>
 
             <View style={obStyles.scanInfoCard}>
-              <Text style={obStyles.scanInfoTitle}>מה ה-AI סורק:</Text>
+              <Text style={obStyles.scanInfoTitle}>מה פיטגורה בודקת:</Text>
               <View style={obStyles.scanInfoGrid}>
                 {[
                   { icon: '📐', label: 'מידות גוף' },
