@@ -161,6 +161,8 @@ Deno.serve(async (req: Request) => {
 
       const gender = body.gender as string | undefined;
       const genderPrefix = gender === "male" ? "men " : gender === "female" ? "women " : "";
+      const isFemaleSearch = gender === "female";
+      const isMaleSearch = gender === "male";
       const searchKeywords = keywords ? genderPrefix + keywords : "";
 
       const apiParams: RequestParams = {
@@ -254,9 +256,24 @@ Deno.serve(async (req: Request) => {
 
       // Server-side apparel + footwear filtering for accessories searches
       const APPAREL_KEYWORDS = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|shoes|socks|sneakers|boots|sandals|חולצה|מכנסיים|שמלה|נעליים|גרביים|מעיל|בגד|גופייה)\b/i;
-      const filteredProducts = isAccessoriesSearch
-        ? mapped.filter((p) => !APPAREL_KEYWORDS.test(p.name))
-        : mapped;
+      // Men's keywords — discard when gender is female
+      const MENS_KEYWORDS = /\b(men|man|male|גברים|גבר|mens)\b/i;
+      // Women's keywords — discard when gender is male
+      const WOMENS_KEYWORDS = /\b(women|woman|female|lady|נשים|אישה)\b/i;
+      // Footwear keywords — discard under clothing category
+      const FOOTWEAR_KEYWORDS = /\b(shoes|sneakers|boots|heels|sandals|נעליים|סניקרס|מגפיים)\b/i;
+      const isClothingSearch = categoryIds === "200000783,200000782";
+
+      const filteredProducts = mapped.filter((p) => {
+        // Strict gender isolation
+        if (isFemaleSearch && MENS_KEYWORDS.test(p.name)) return false;
+        if (isMaleSearch && WOMENS_KEYWORDS.test(p.name)) return false;
+        // Clothing tab: exclude footwear
+        if (isClothingSearch && FOOTWEAR_KEYWORDS.test(p.name)) return false;
+        // Accessories tab: exclude apparel/footwear
+        if (isAccessoriesSearch && APPAREL_KEYWORDS.test(p.name)) return false;
+        return true;
+      });
 
       return new Response(
         JSON.stringify({ products: filteredProducts, count: filteredProducts.length, page: pageNo }),

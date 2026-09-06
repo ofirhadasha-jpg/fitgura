@@ -11,7 +11,8 @@ const PAGE_SIZE = 50
 
 const CATEGORY_IDS: Record<string, string> = {
   all: '200000783,200000782,200000835,200000832,200000831',
-  clothing: '200000783,200000782,200000835',
+  // Clothing only — excludes ALL footwear category IDs (200000831, 200000832, 200000835)
+  clothing: '200000783,200000782',
   shoes: '200000832,200000831',
   accessories: '5090301,509',
 }
@@ -24,6 +25,15 @@ const CLOTHING_KEYWORDS_REGEX = /\b(shirt|pants|dress|hoodie|jacket|sweater|jean
 
 // Tech accessory keywords — products must match at least one to be included in accessories
 const TECH_ACCESSORY_KEYWORDS_REGEX = /\b(case|cover|protector|charger|holder|cable|adapter|stand|mount|screen\s*protector|wireless\s*charger|camera\s*lens|tempered\s*glass|dock|hub|power\s*bank|car\s*charger)\b/i
+
+// Men's keywords — products containing these are discarded when gender is female
+const MENS_KEYWORDS_REGEX = /\b(men|man|male|גברים|גבר|mens)\b/i
+
+// Women's keywords — required in search when gender is female
+const WOMENS_KEYWORDS = ['women', 'female', 'lady', 'נשים']
+
+// Footwear keywords — products containing these are discarded under the Clothing tab
+const FOOTWEAR_KEYWORDS_REGEX = /\b(shoes|sneakers|boots|heels|sandals|נעליים|סניקרס|מגפיים)\b/i
 
 const CATEGORY_KEYWORDS: Record<string, string> = {
   all: 'fashion clothing',
@@ -76,6 +86,9 @@ export function FeedScreen({
     setProductsError(null)
     try {
       const gender = scannedSizes?.gender ?? 'unisex'
+      const isFemale = gender === 'female'
+      const isMale = gender === 'male'
+      const genderPrefix = isFemale ? 'women ' : isMale ? 'men ' : ''
       const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim() : ''
       const categoryIds = CATEGORY_IDS[category] || undefined
 
@@ -83,7 +96,7 @@ export function FeedScreen({
       let keywords = CATEGORY_KEYWORDS[category] ?? CATEGORY_KEYWORDS.all
 
       if (category === 'accessories') {
-        // Multi-device: build search from all registered devices
+        // Multi-device: build search from all registered devices (or fallback to detected device)
         const allDevices = registeredDevices.length > 0
           ? registeredDevices
           : detectedDevice
@@ -96,7 +109,7 @@ export function FeedScreen({
           if (isDesktop) {
             keywords = `laptop case cover sleeve stand`
           } else {
-            keywords = `${firstModel} case cover protector`
+            keywords = `${firstModel} case cover screen protector charger`
           }
           // Append additional device models for broader matching
           if (allDevices.length > 1) {
@@ -104,10 +117,11 @@ export function FeedScreen({
             keywords = `${keywords} ${extraModels}`
           }
         } else {
-          keywords = `phone case cover protector`
+          keywords = `phone case cover screen protector charger`
         }
       } else if (category === 'clothing') {
-        // Clothing: filtered by gender and size attributes
+        // Clothing: filtered by gender and size attributes — prepend gender prefix for strict filtering
+        keywords = `${genderPrefix}${keywords}`
         if (scannedSizes?.style?.aestheticTags?.length) {
           keywords = `${keywords} ${scannedSizes.style.aestheticTags.slice(0, 2).join(' ')}`
         }
@@ -123,12 +137,13 @@ export function FeedScreen({
       } else if (category === 'shoes') {
         // Shoes: filtered by gender and shoe size
         const shoeSize = scannedSizes?.shoeSize
-        keywords = `${keywords} ${gender}`
+        keywords = `${genderPrefix}${keywords}`
         if (shoeSize) {
           keywords = `${keywords} size ${shoeSize} EU`
         }
       } else if (category === 'all') {
         // All: combine clothes, shoes, and device-compatible accessories
+        if (isFemale) keywords = `${WOMENS_KEYWORDS[0]} ${keywords}`
         if (scannedSizes?.style?.aestheticTags?.length) {
           keywords = `${keywords} ${scannedSizes.style.aestheticTags.slice(0, 2).join(' ')}`
         }
@@ -143,25 +158,36 @@ export function FeedScreen({
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'keywords:', keywords)
       if (remoteProducts.length < PAGE_SIZE) setHasMore(false)
 
-      // Client-side filtering for accessories:
-      //  Exclusion: discard any product whose title contains apparel/footwear keywords
-      //  Inclusion: if we have registered devices, at least one device model should appear in the title
-      const cleanedProducts = category === 'accessories'
-        ? remoteProducts.filter((p) => {
-            if (CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
-            const allDevices = registeredDevices.length > 0
-              ? registeredDevices
-              : detectedDevice
-                ? [`${detectedDevice.brand} ${detectedDevice.model}`.trim()]
-                : []
-            if (allDevices.length === 0) return true
-            const titleLower = p.name.toLowerCase()
-            return allDevices.some((d) => {
-              const model = d.replace(/^\w+\s+/, '').trim().toLowerCase() || d.toLowerCase()
-              return titleLower.includes(model)
-            })
+      // Client-side filtering:
+      //  1. Gender isolation: when female, discard any product containing men's keywords
+      //  2. Clothing tab: discard any product containing footwear keywords
+      //  3. Accessories tab: discard apparel/footwear; require device model match when devices exist
+      const cleanedProducts = remoteProducts.filter((p) => {
+        // Strict gender isolation — eliminate men's items for female scans (and vice versa)
+        if (isFemale && MENS_KEYWORDS_REGEX.test(p.name)) return false
+        if (isMale && /\b(women|woman|female|lady|נשים|אישה)\b/i.test(p.name)) return false
+
+        // Clothing tab: hard-discard any footwear product
+        if (category === 'clothing' && FOOTWEAR_KEYWORDS_REGEX.test(p.name)) return false
+
+        // Accessories tab: discard apparel/footwear; require device model match
+        if (category === 'accessories') {
+          if (CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
+          const allDevices = registeredDevices.length > 0
+            ? registeredDevices
+            : detectedDevice
+              ? [`${detectedDevice.brand} ${detectedDevice.model}`.trim()]
+              : []
+          if (allDevices.length === 0) return true
+          const titleLower = p.name.toLowerCase()
+          return allDevices.some((d) => {
+            const model = d.replace(/^\w+\s+/, '').trim().toLowerCase() || d.toLowerCase()
+            return titleLower.includes(model)
           })
-        : remoteProducts
+        }
+
+        return true
+      })
 
       // Direct state hydration — append unique items only
       setCatalog((prev) => {
@@ -254,10 +280,18 @@ export function FeedScreen({
     return () => observer.disconnect()
   }, [loadMore])
 
+  const isFemaleRender = scannedSizes?.gender === 'female'
+  const isMaleRender = scannedSizes?.gender === 'male'
+
   const filtered = catalog.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
     const price = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0
     const matchBudget = price >= budget[0] && price <= budget[1]
+    // Strict gender isolation at render time too
+    if (isFemaleRender && MENS_KEYWORDS_REGEX.test(p.name)) return false
+    if (isMaleRender && /\b(women|woman|female|lady|נשים|אישה)\b/i.test(p.name)) return false
+    // Clothing tab: exclude footwear at render time
+    if (filter === 'clothing' && FOOTWEAR_KEYWORDS_REGEX.test(p.name)) return false
     // Accessories tab: only exclude clothing items that leaked through
     if (filter === 'accessories' && CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
     return matchSearch && matchBudget
