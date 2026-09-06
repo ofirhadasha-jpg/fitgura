@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
+import type { GestureResponderEvent } from 'react-native'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
 import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice } from '../types'
@@ -458,7 +459,7 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
           style={feedStyles.productImage}
         />
         <TouchableOpacity
-          onPress={(e: any) => { e?.preventDefault?.(); e?.stopPropagation?.(); onToggleWishlist() }}
+          onPress={(e: GestureResponderEvent & { preventDefault: () => void }) => { e.preventDefault(); e.stopPropagation(); onToggleWishlist() }}
           activeOpacity={0.7}
           style={feedStyles.heartBtn}
         >

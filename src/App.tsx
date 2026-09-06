@@ -119,6 +119,7 @@ async function migrateGuestData(userId: string) {
   const guestProfile = loadGuestProfile()
   const guestFavorites = loadGuestFavorites()
   const guestDevice = loadGuestDevice()
+  let migrationSucceeded = true
 
   if (!isSupabaseConfigured) {
     console.warn('[App] Supabase not configured, skipping guest data migration')
@@ -127,7 +128,7 @@ async function migrateGuestData(userId: string) {
 
   try {
     if (guestProfile) {
-      await supabase.from('profiles').upsert({
+      const { error } = await supabase.from('profiles').upsert({
         user_id: userId,
         gender: guestProfile.gender,
         chest_cm: guestProfile.chest,
@@ -142,13 +143,16 @@ async function migrateGuestData(userId: string) {
         fit: guestProfile.fit,
         registered_device: guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null,
       })
+      if (error) throw error
     } else if (guestDevice) {
-      await supabase.from('profiles').upsert({
+      const { error } = await supabase.from('profiles').upsert({
         user_id: userId,
         registered_device: `${guestDevice.brand} ${guestDevice.model}`,
       })
+      if (error) throw error
     }
   } catch (err) {
+    migrationSucceeded = false
     console.error('[App] Failed to migrate guest profile to Supabase:', err)
   }
 
@@ -159,13 +163,15 @@ async function migrateGuestData(userId: string) {
         product_id: f.productId,
         product_name: f.productName,
       }))
-      await supabase.from('favorites').insert(rows)
+      const { error } = await supabase.from('favorites').insert(rows)
+      if (error) throw error
     }
   } catch (err) {
+    migrationSucceeded = false
     console.error('[App] Failed to migrate guest favorites to Supabase:', err)
   }
 
-  clearGuestData()
+  if (migrationSucceeded) clearGuestData()
 }
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -202,24 +208,36 @@ export default function App() {
   const [feedCatalog, setFeedCatalog] = useState<Product[]>([])
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
-      (async () => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          await migrateGuestData(session.user.id)
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      void (async () => {
+        if (!session?.user) {
+          if (event === 'SIGNED_OUT') setUser(null)
+          return
         }
-        if (session?.user) {
-          const u = session.user
-          setUser({
-            name: u.user_metadata?.full_name ?? u.email?.split('@')[0] ?? 'משתמש',
-            email: u.email ?? '',
-            avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
-          })
-          // Hydrate profile (measurements + registered_device) from Supabase
-          const { data: profileRow } = await supabase
+
+        const u = session.user
+        setUser({
+          id: u.id,
+          name: u.user_metadata?.full_name ?? u.email?.split('@')[0] ?? 'משתמש',
+          email: u.email ?? '',
+          avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
+        })
+
+        if (event === 'SIGNED_IN') {
+          try {
+            await migrateGuestData(u.id)
+          } catch (err) {
+            console.error('[App] Guest data migration failed:', err)
+          }
+        }
+
+        try {
+          const { data: profileRow, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('user_id', u.id)
             .maybeSingle()
+          if (error) throw error
           if (profileRow?.registered_device) {
             const parts = profileRow.registered_device.split(' ')
             const brand = parts[0] ?? 'Unknown'
@@ -235,11 +253,12 @@ export default function App() {
               confidence: 0.5,
             })
           }
-        } else {
-          setUser(null)
+        } catch (err) {
+          console.error('[App] Profile lookup failed; keeping auth session:', err)
         }
       })()
     })
+    return () => listener.subscription.unsubscribe()
   }, [])
 
   async function handleSignOut() {
@@ -268,7 +287,10 @@ export default function App() {
     )
 
     // For guests, persist to localStorage immediately (handled by the effect below)
-    if (!user) return
+    if (!user) {
+      setAuthModal({ pendingIdx: idx })
+      return
+    }
 
     // For logged-in users, try Supabase — fall back to localStorage on failure
     const productName = feedCatalog[idx]?.name ?? ''
@@ -276,7 +298,7 @@ export default function App() {
       if (!isSupabaseConfigured) throw new Error('Supabase not configured')
       if (isAdding) {
         const { error } = await supabase.from('favorites').insert({
-          user_id: user.email,
+          user_id: user.id,
           product_id: String(idx),
           product_name: productName,
         })
@@ -284,12 +306,13 @@ export default function App() {
       } else {
         const { error } = await supabase.from('favorites')
           .delete()
-          .eq('user_id', user.email)
+          .eq('user_id', user.id)
           .eq('product_id', String(idx))
         if (error) throw error
       }
     } catch (err) {
       console.error('[App] Supabase favorites call failed, using localStorage fallback:', err)
+      showToast('הפריט נשמר מקומית')
       const favorites = loadGuestFavorites()
       const updated = isAdding
         ? (favorites.some((f) => f.productId === String(idx))
@@ -322,7 +345,7 @@ export default function App() {
     if (scannedSizes) {
       const bm = scannedSizes.sizing.bodyMetrics
       supabase.from('profiles').upsert({
-        user_id: user.email,
+        user_id: user.id,
         gender: scannedSizes.gender ?? 'unisex',
         chest_cm: bm?.chest_circumference_cm ?? null,
         waist_cm: bm?.waist_circumference_cm ?? null,

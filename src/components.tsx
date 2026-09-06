@@ -141,13 +141,13 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) { setAuthError(error.message); setLoading(false); return }
         if (data.user) {
-          onAuth({ name: email.split('@')[0] || 'משתמש', email, avatar: '✉' })
+          onAuth({ id: data.user.id, name: email.split('@')[0] || 'משתמש', email, avatar: '✉' })
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) { setAuthError(error.message); setLoading(false); return }
         if (data.user) {
-          onAuth({ name: data.user.email?.split('@')[0] || 'משתמש', email: data.user.email ?? email, avatar: '✉' })
+          onAuth({ id: data.user.id, name: data.user.email?.split('@')[0] || 'משתמש', email: data.user.email ?? email, avatar: '✉' })
         }
       }
     } catch (err) {
@@ -259,7 +259,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
           )}
 
           <TouchableOpacity onPress={onDismiss} activeOpacity={0.7} style={authStyles.guestBtn}>
-            <Text style={authStyles.guestText}>המשך כאורח ללא שמירה</Text>
+            <Text style={authStyles.guestText}>המשך כאורח ושמור במכשיר הזה</Text>
           </TouchableOpacity>
         </View>
       </View>
