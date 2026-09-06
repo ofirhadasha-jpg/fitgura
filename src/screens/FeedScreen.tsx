@@ -488,7 +488,7 @@ export function FeedScreen({
         {isLoadingProducts && (
           <View style={feedStyles.loadingState}>
             <Text style={{ fontSize: 20 }}>⟳</Text>
-            <Text style={feedStyles.loadingText}>טוען מוצרים חדשים מ-AliExpress...</Text>
+            <Text style={feedStyles.loadingText}>פיטגורה מתאימה מוצרים חדשים עבורך</Text>
           </View>
         )}
 
