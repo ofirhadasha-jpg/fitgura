@@ -4,6 +4,13 @@ import { LinearGradient } from '../components'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
 import { deviceOptions, detectDevice, type DetectedDevice } from '../types'
 
+interface AccessoryCategory {
+  icon: string
+  label: string
+  examples: string
+  count: number
+}
+
 export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => void; onDetected: (d: DetectedDevice) => void }) {
   const [phase, setPhase] = useState<'detecting' | 'confirmed'>('detecting')
   const [scanPct, setScanPct] = useState(0)
@@ -15,7 +22,7 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
   const [customModel, setCustomModel] = useState('')
   const [customYear, setCustomYear] = useState('')
   const [detected, setDetected] = useState<DetectedDevice | null>(null)
-  const [accessoryCounts, setAccessoryCounts] = useState<{ cases: number; protectors: number; charging: number; total: number } | null>(null)
+  const [accessoryCounts, setAccessoryCounts] = useState<AccessoryCategory[] | null>(null)
   const [accessoryLoadError, setAccessoryLoadError] = useState(false)
 
   const filteredDevices = deviceOptions.filter((d) => {
@@ -32,16 +39,23 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
     setAccessoryCounts(null)
     setAccessoryLoadError(false)
     const searchKeywords = d.brand === 'Desktop'
-      ? `${d.model} laptop case cover sleeve charger stand`
-      : `${d.model} case cover screen protector charger cable`
+      ? `${d.model} laptop case cover sleeve charger stand cable adapter dock`
+      : `${d.model} case cover screen protector tempered glass charger cable adapter dock power bank earphones holder mount`
     void fetchAliExpressProducts(searchKeywords, 1, 50, undefined, '5090301,509')
       .then((products) => {
         if (!active) return
         const productNames = products.map((product) => product.name.toLowerCase())
-        const cases = productNames.filter((name) => /case|cover|sleeve|pouch|bag|כיסוי/.test(name)).length
-        const protectors = productNames.filter((name) => /screen protector|tempered|glass|film|מגן/.test(name)).length
-        const charging = productNames.filter((name) => /charger|charging|cable|adapter|dock|power bank|טעינה|מטען/.test(name)).length
-        setAccessoryCounts({ cases, protectors, charging, total: products.length })
+        const categories: AccessoryCategory[] = [
+          { icon: '📱', label: 'כיסויים', examples: 'סיליקון, פאייפ, עור, שקוף', count: productNames.filter((name) => /case|cover|כיסוי/.test(name)).length },
+          { icon: '🛡️', label: 'מגני מסך', examples: 'זכוכית מחוסמת, פילם, מגן פרטיות', count: productNames.filter((name) => /screen protector|tempered|glass|film|מגן/.test(name)).length },
+          { icon: '🔌', label: 'כבלי טעינה', examples: 'USB-C, Lightning, מיקרו-USB', count: productNames.filter((name) => /cable|כבל/.test(name)).length },
+          { icon: '⚡', label: 'מטענים', examples: 'מטען קיר, אלחוטי, מהיר', count: productNames.filter((name) => /charger|charging|מטען|טעינה/.test(name)).length },
+          { icon: '🔋', label: 'סוללות ניידות', examples: 'Power Bank, מטען נייד', count: productNames.filter((name) => /power bank|powerbank|סוללה/.test(name)).length },
+          { icon: '🎵', label: 'אוזניות', examples: 'אלחוטיות, חוטיות, אינ-אר', count: productNames.filter((name) => /earphone|earbud|headphone|אוזני/.test(name)).length },
+          { icon: '🔗', label: 'מתאמים וחיבורים', examples: 'USB-C ל-USB, AUX, HDMI', count: productNames.filter((name) => /adapter|connector|hub|מתאם/.test(name)).length },
+          { icon: '🚗', label: 'מחזיקים ומתקנים', examples: 'לרכב, לשולחן, מעמד', count: productNames.filter((name) => /holder|mount|stand|dock|מחזיק|מעמד/.test(name)).length },
+        ].filter((cat) => cat.count > 0)
+        setAccessoryCounts(categories.length > 0 ? categories : null)
       })
       .catch(() => {
         if (active) setAccessoryLoadError(true)
@@ -135,7 +149,9 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
                       detected.screen_size_inches ? `${detected.screen_size_inches}" מסך` : null,
                       detected.camera_layout,
                       'כיסויים',
-                      'מגיני מסך',
+                      'מגני מסך',
+                      'כבלים',
+                      'מטענים',
                     ].filter(Boolean).map((tag) => (
                       <View key={tag!} style={devStyles.deviceTag}><Text style={devStyles.deviceTagText}>{tag}</Text></View>
                     ))}
@@ -153,18 +169,17 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
             </View>
 
             <View style={devStyles.accessoryCard}>
-              <Text style={devStyles.accessoryTitle}>אביזרים תואמים שנמצאו:</Text>
+              <Text style={devStyles.accessoryTitle}>אביזרים תואמים שנמצאו ל-{detected.model}:</Text>
               {accessoryCounts ? (
-                <View style={devStyles.accessoryRow}>
-                  {[
-                    { icon: '📱', label: 'כיסויים', count: accessoryCounts.cases },
-                    { icon: '🛡️', label: 'מגני מסך', count: accessoryCounts.protectors },
-                    { icon: '⚡', label: 'טעינה', count: accessoryCounts.charging },
-                  ].map(({ icon, label, count }) => (
-                    <View key={label} style={devStyles.accessoryItem}>
-                      <Text style={{ fontSize: 22, marginBottom: 4 }}>{icon}</Text>
-                      <Text style={devStyles.accessoryCount}>{count}</Text>
-                      <Text style={devStyles.accessoryLabel}>{label}</Text>
+                <View style={devStyles.accessoryList}>
+                  {accessoryCounts.map(({ icon, label, examples, count }) => (
+                    <View key={label} style={devStyles.accessoryItemRow}>
+                      <View style={devStyles.accessoryIconBox}><Text style={{ fontSize: 18 }}>{icon}</Text></View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={devStyles.accessoryItemLabel}>{label}</Text>
+                        <Text style={devStyles.accessoryItemExamples}>{examples}</Text>
+                      </View>
+                      <View style={devStyles.accessoryCountBadge}><Text style={devStyles.accessoryCountText}>{count}</Text></View>
                     </View>
                   ))}
                 </View>
@@ -307,10 +322,14 @@ const devStyles = StyleSheet.create({
   matchSub: { fontSize: 12, color: '#16A34A', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   accessoryCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
   accessoryTitle: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  accessoryRow: { flexDirection: 'row', gap: 10 },
-  accessoryItem: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#E2E8F0' },
-  accessoryCount: { fontSize: 18, fontWeight: '800', color: '#2E5BFF' },
-  accessoryLabel: { fontSize: 11, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  accessoryList: { gap: 10 },
+  accessoryItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F8FAFC', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#E2E8F0' },
+  accessoryIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  accessoryItemLabel: { fontSize: 13, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  accessoryItemExamples: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  accessoryCountBadge: { backgroundColor: '#2E5BFF', borderRadius: 10, paddingVertical: 4, paddingHorizontal: 10, minWidth: 32, alignItems: 'center' },
+  accessoryCountText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  accessoryLoading: { fontSize: 13, color: '#94A3B8', textAlign: 'center', paddingVertical: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   continueBtn: { padding: 18, borderRadius: 20, backgroundColor: '#2E5BFF', alignItems: 'center' },
   continueBtnText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   changeBtnText: { color: '#94A3B8', fontSize: 14, fontWeight: '600', textAlign: 'center', textDecorationLine: 'underline', fontFamily: "'Noto Sans Hebrew', sans-serif" },
