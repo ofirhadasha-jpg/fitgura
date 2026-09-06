@@ -21,102 +21,62 @@ const GENDER_REJECT: Record<string, RegExp> = {
 // Products mentioning both genders are unisex-only — exclude from gender-specific results
 const BOTH_GENDERS_REGEX = /\b(men|mens|male|boy|man).*(women|womens|female|girl|lady|ladies)\b|\b(women|womens|female|girl|lady|ladies).*(men|mens|male|boy|man)\b/i
 
-// ── Category query templates (gender-specific) ─────────────────────────────
+// ── Top-searched AliExpress query arrays by category & gender ──────────────
 
-const CLOTHING_SUBQUERIES_FEMALE = [
-  'dresses',
-  'skirts',
-  'women top blouse',
-  'women shirt',
-  'women pants',
-  'women jeans',
-  'women pajama sleepwear',
-  'women outfit set',
-  'women sweater',
-  'women hoodie',
-  'women coat jacket',
-  'women suit blazer',
-  'women leggings',
-  'women lingerie bra set',
-  'women t-shirt',
-  'women shorts',
-]
+export const TOP_ALIEXPRESS_QUERIES = {
+  female: {
+    clothing: [
+      'women dress',
+      'women tops blouses',
+      'women pants jeans',
+      'women skirts',
+      'women sweaters hoodies',
+      'women coats jackets',
+      'women suits sets',
+      'women lingerie underwear',
+      'women activewear leggings',
+    ],
+    shoes: [
+      'women sneakers',
+      'women boots',
+      'women sandals',
+      'women heels pumps',
+      'women casual shoes',
+      'women loafers flats',
+      'women running shoes',
+    ],
+  },
+  male: {
+    clothing: [
+      'men t shirts',
+      'men pants jeans',
+      'men hoodies sweatshirts',
+      'men jackets coats',
+      'men shirts',
+      'men shorts',
+      'men suits blazers',
+      'men sportswear tracksuit',
+    ],
+    shoes: [
+      'men sneakers',
+      'men casual shoes',
+      'men running shoes',
+      'men boots',
+      'men sandals slippers',
+      'men dress shoes loafers',
+    ],
+  },
+} as const
 
-const CLOTHING_SUBQUERIES_MALE = [
-  'men shirt',
-  'men t-shirt',
-  'men pants',
-  'men jeans',
-  'men suit blazer',
-  'men hoodie',
-  'men jacket coat',
-  'men sweater',
-  'men polo',
-  'men tracksuit set',
-  'men shorts',
-  'men underwear',
-  'men pajama sleepwear',
-  'men outfit set',
-  'men jogger pants',
-  'men vest',
-]
-
+// Unisex fallback: merge female + male pools
 const CLOTHING_SUBQUERIES_UNISEX = [
-  'suit sets',
-  'two piece sets',
-  'blazer set',
-  'dresses',
-  'casual skirts',
-  'evening dresses',
-  'tops blouses',
-  't-shirts',
-  'coats jackets',
-  'pants trousers',
-  'jeans',
-  'hoodies',
-  'sweaters',
-  'pajama sleepwear',
-  'outfit set',
-  'shorts',
-]
-
-const SHOES_SUBQUERIES_FEMALE = [
-  'women sneakers',
-  'women running shoes',
-  'women high heels',
-  'women ankle boots',
-  'women sandals',
-  'women flat shoes',
-  'women boots',
-  'women loafers',
-  'women slippers',
-  'women wedges',
-]
-
-const SHOES_SUBQUERIES_MALE = [
-  'men sneakers',
-  'men running shoes',
-  'men boots',
-  'men ankle boots',
-  'men sandals',
-  'men loafers',
-  'men slippers',
-  'men casual shoes',
-  'men leather shoes',
-  'men slip-on',
+  ...TOP_ALIEXPRESS_QUERIES.female.clothing,
+  ...TOP_ALIEXPRESS_QUERIES.male.clothing,
 ]
 
 const SHOES_SUBQUERIES_UNISEX = [
-  'sneakers',
-  'running shoes',
-  'high heels',
-  'ankle boots',
-  'sandals',
-  'flat shoes',
-  'boots',
-  'loafers',
-  'slippers',
-  'wedges',
+  ...TOP_ALIEXPRESS_QUERIES.female.shoes,
+  ...TOP_ALIEXPRESS_QUERIES.male.shoes,
 ]
 
 // ── Hard-exclusion keyword lists ───────────────────────────────────────────
@@ -147,11 +107,51 @@ const CATEGORY_IDS: Record<FeedCategory, string | undefined> = {
   accessories: '5090301,509',
 }
 
+// ── Parallel fetch + aggregation helpers ────────────────────────────────────
+
+function pickSubqueries(pool: readonly string[], count: number, pageNo: number): string[] {
+  const startIdx = (pageNo - 1) * count % pool.length
+  const selected: string[] = []
+  for (let i = 0; i < count; i++) {
+    selected.push(pool[(startIdx + i) % pool.length])
+  }
+  return selected
+}
+
+function dedupById(products: Product[]): Product[] {
+  const seen = new Set<string>()
+  return products.filter((p) => {
+    if (p.aliexpressSku && seen.has(p.aliexpressSku)) return false
+    if (p.aliexpressSku) seen.add(p.aliexpressSku)
+    return true
+  })
+}
+
+async function parallelFetch(
+  subqueries: string[],
+  gender: Gender,
+  categoryIds: string | undefined,
+  pageNo: number,
+  pageSize: number,
+  extraKeywords?: string,
+): Promise<Product[]> {
+  const perQuerySize = Math.max(12, Math.ceil(pageSize / subqueries.length))
+  const results = await Promise.all(
+    subqueries.map((sq) => {
+      let kw = sq
+      if (extraKeywords) kw += ` ${extraKeywords}`
+      return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
+    }),
+  )
+  return results.flat()
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
  * Search for products by category with strict gender isolation and
- * clothing/footwear separation. Returns deduplicated, filtered products.
+ * clothing/footwear separation. Runs 3-4 parallel queries per page
+ * and aggregates 100-300 items per batch.
  */
 export async function searchProductsByCategory(
   category: FeedCategory,
@@ -164,82 +164,56 @@ export async function searchProductsByCategory(
   const genderPrefix = positiveTerms.length > 0 ? positiveTerms[0] + ' ' : ''
   const categoryIds = CATEGORY_IDS[category]
 
-  let keywords: string
+  if (category === 'clothing' || category === 'all') {
+    const pool = gender === 'female'
+      ? TOP_ALIEXPRESS_QUERIES.female.clothing
+      : gender === 'male'
+        ? TOP_ALIEXPRESS_QUERIES.male.clothing
+        : CLOTHING_SUBQUERIES_UNISEX
 
-  // Select subquery pool based on gender
-  const clothingSubqueries = gender === 'female'
-    ? CLOTHING_SUBQUERIES_FEMALE
-    : gender === 'male'
-      ? CLOTHING_SUBQUERIES_MALE
-      : CLOTHING_SUBQUERIES_UNISEX
-  const shoesSubqueries = gender === 'female'
-    ? SHOES_SUBQUERIES_FEMALE
-    : gender === 'male'
-      ? SHOES_SUBQUERIES_MALE
-      : SHOES_SUBQUERIES_UNISEX
+    if (category === 'clothing') {
+      const subqueries = pickSubqueries(pool, 4, pageNo)
+      const raw = await parallelFetch(subqueries, gender, categoryIds, pageNo, pageSize, extraKeywords)
+      const deduped = dedupById(raw)
+      const filtered = filterProducts(deduped, category, gender)
+      return sortByBestSellers(filtered)
+    }
 
-  if (category === 'clothing') {
-    // Search multiple clothing subqueries in parallel for diverse results on every page
-    const startIdx = (pageNo - 1) * 4 % clothingSubqueries.length
-    const subqueries: string[] = []
-    for (let i = 0; i < 4; i++) {
-      subqueries.push(clothingSubqueries[(startIdx + i) % clothingSubqueries.length])
-    }
-    // Run all 4 subqueries in parallel and merge results
-    const perQuerySize = Math.max(12, Math.ceil(pageSize / subqueries.length))
-    const results = await Promise.all(
-      subqueries.map((sq) => {
-        const prefix = sq.startsWith('women') || sq.startsWith('men') ? '' : genderPrefix
-        let kw = `${prefix}${sq}`
-        if (extraKeywords) kw += ` ${extraKeywords}`
-        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
-      }),
-    )
-    const merged = results.flat()
-    const seen = new Set<string>()
-    const deduped = merged.filter((p) => {
-      if (p.aliexpressSku && seen.has(p.aliexpressSku)) return false
-      if (p.aliexpressSku) seen.add(p.aliexpressSku)
-      return true
-    })
-    const filtered = filterProducts(deduped, category, gender)
+    // "all" tab: run 4 clothing + 3 shoe queries in parallel for maximum variety
+    const shoePool = gender === 'female'
+      ? TOP_ALIEXPRESS_QUERIES.female.shoes
+      : gender === 'male'
+        ? TOP_ALIEXPRESS_QUERIES.male.shoes
+        : SHOES_SUBQUERIES_UNISEX
+
+    const clothingSubs = pickSubqueries(pool, 4, pageNo)
+    const shoeSubs = pickSubqueries(shoePool, 3, pageNo)
+    const allSubs = [...clothingSubs, ...shoeSubs]
+    const raw = await parallelFetch(allSubs, gender, categoryIds, pageNo, pageSize, extraKeywords)
+    const deduped = dedupById(raw)
+    const filtered = filterProducts(deduped, 'all', gender)
     return sortByBestSellers(filtered)
-  } else if (category === 'shoes') {
-    const startIdx = (pageNo - 1) * 3 % shoesSubqueries.length
-    const subqueries: string[] = []
-    for (let i = 0; i < 3; i++) {
-      subqueries.push(shoesSubqueries[(startIdx + i) % shoesSubqueries.length])
-    }
-    const perQuerySize = Math.max(15, Math.ceil(pageSize / subqueries.length))
-    const results = await Promise.all(
-      subqueries.map((sq) => {
-        const prefix = sq.startsWith('women') || sq.startsWith('men') ? '' : genderPrefix
-        let kw = `${prefix}${sq}`
-        if (extraKeywords) kw += ` ${extraKeywords}`
-        return fetchAliExpressProducts(kw, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
-      }),
-    )
-    const merged = results.flat()
-    const seen = new Set<string>()
-    const deduped = merged.filter((p) => {
-      if (p.aliexpressSku && seen.has(p.aliexpressSku)) return false
-      if (p.aliexpressSku) seen.add(p.aliexpressSku)
-      return true
-    })
-    const filtered = filterProducts(deduped, category, gender)
-    return sortByBestSellers(filtered)
-  } else if (category === 'all') {
-    keywords = `${genderPrefix}fashion clothing`
-    if (extraKeywords) keywords += ` ${extraKeywords}`
-  } else {
-    // accessories — caller provides device-specific keywords
-    keywords = extraKeywords ?? `${genderPrefix}phone case cover`
   }
 
+  if (category === 'shoes') {
+    const pool = gender === 'female'
+      ? TOP_ALIEXPRESS_QUERIES.female.shoes
+      : gender === 'male'
+        ? TOP_ALIEXPRESS_QUERIES.male.shoes
+        : SHOES_SUBQUERIES_UNISEX
+
+    const subqueries = pickSubqueries(pool, 4, pageNo)
+    const raw = await parallelFetch(subqueries, gender, categoryIds, pageNo, pageSize, extraKeywords)
+    const deduped = dedupById(raw)
+    const filtered = filterProducts(deduped, category, gender)
+    return sortByBestSellers(filtered)
+  }
+
+  // accessories — caller provides device-specific keywords
+  const keywords = extraKeywords ?? `${genderPrefix}phone case cover`
   console.log('[aliexpressClient] searchProductsByCategory:', { category, gender, pageNo, keywords, categoryIds })
 
   const products = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
-
   const filtered = filterProducts(products, category, gender)
   return sortByBestSellers(filtered)
 }
@@ -253,13 +227,23 @@ export function isSmartwatch(deviceName: string): boolean {
   return SMARTWATCH_KEYWORDS.some((kw) => lower.includes(kw))
 }
 
-// Dedicated smartwatch accessory query variations for rich, high-converting results
-const SMARTWATCH_QUERIES = [
-  (d: string) => `${d} strap`,
-  (d: string) => `${d} band wristband`,
-  (d: string) => `${d} silicone band metal strap`,
-  (d: string) => `${d} screen protector case cover`,
-  (d: string) => `${d} charger charging dock`,
+// Core accessory query categories for any device
+const DEVICE_ACCESSORY_QUERIES = (d: string) => [
+  `${d} case cover`,
+  `${d} strap band`,
+  `${d} screen protector`,
+  `${d} charger`,
+  `${d} cable adapter`,
+  `${d} holder stand`,
+]
+
+// Watch-specific accessory queries (broader than generic)
+const SMARTWATCH_QUERIES = (d: string) => [
+  `${d} strap band`,
+  `${d} silicone band metal strap`,
+  `${d} screen protector case cover`,
+  `${d} charger charging dock`,
+  `${d} bezel frame`,
 ]
 
 // Watch accessory terms — explicitly permitted in accessories tab
@@ -268,7 +252,7 @@ const WATCH_ACCESSORY_REGEX = new RegExp(`\\b(${WATCH_ACCESSORY_TERMS.join('|').
 
 /**
  * Search for tech accessories matching a specific device model.
- * Uses dedicated smartwatch queries for wearable devices.
+ * Runs parallel queries across all core accessory categories.
  */
 export async function searchDeviceAccessories(
   deviceName: string,
@@ -281,26 +265,25 @@ export async function searchDeviceAccessories(
   const isDesktop = lower.includes('desktop') || lower.includes('laptop')
   const categoryIds = CATEGORY_IDS.accessories
 
-  let allProducts: Product[] = []
+  const queryFns = watch
+    ? SMARTWATCH_QUERIES(deviceName)
+    : isDesktop
+      ? [
+          `${deviceName} laptop case cover sleeve`,
+          `${deviceName} charger adapter`,
+          `${deviceName} stand holder dock`,
+          `${deviceName} cable hub adapter`,
+        ]
+      : DEVICE_ACCESSORY_QUERIES(deviceName)
 
-  if (watch) {
-    // Run all 5 smartwatch query variations and merge results
-    const perQuerySize = Math.max(10, Math.ceil(pageSize / SMARTWATCH_QUERIES.length))
-    const results = await Promise.all(
-      SMARTWATCH_QUERIES.map((q) => {
-        const keywords = q(deviceName)
-        console.log('[aliexpressClient] smartwatch query:', { deviceName, keywords })
-        return fetchAliExpressProducts(keywords, pageNo, perQuerySize, gender, categoryIds)
-      }),
-    )
-    allProducts = results.flat()
-  } else if (isDesktop) {
-    const keywords = `${deviceName} laptop case cover sleeve charger stand cable adapter dock`
-    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
-  } else {
-    const keywords = `${deviceName} case cover screen protector charger cable holder stand`
-    allProducts = await fetchAliExpressProducts(keywords, pageNo, pageSize, gender, categoryIds, 'VOLUME_DOWN')
-  }
+  const perQuerySize = Math.max(10, Math.ceil(pageSize / queryFns.length))
+  const results = await Promise.all(
+    queryFns.map((keywords) => {
+      console.log('[aliexpressClient] device accessory query:', { deviceName, keywords })
+      return fetchAliExpressProducts(keywords, pageNo, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
+    }),
+  )
+  const allProducts = results.flat()
 
   console.log('[aliexpressClient] searchDeviceAccessories:', { deviceName, watch, isDesktop, totalFetched: allProducts.length })
 
@@ -309,17 +292,20 @@ export async function searchDeviceAccessories(
     if (FOOTWEAR_REGEX.test(p.name)) return false
     return true
   })
-  return sortByBestSellers(filtered)
+  return sortByBestSellers(dedupById(filtered))
 }
 
-// Sort products by best sellers (volume/orders) then by highest rating
+// ── Sort: weighted best-sellers + high ratings ─────────────────────────────
+
 function sortByBestSellers(products: Product[]): Product[] {
   return [...products].sort((a, b) => {
     const salesA = a.ordersCount ?? a.volume ?? 0
     const salesB = b.ordersCount ?? b.volume ?? 0
     const ratingA = a.evaluateRate ?? 0
     const ratingB = b.evaluateRate ?? 0
-    return (salesB - salesA) || (ratingB - ratingA)
+    const scoreA = salesA * 0.6 + ratingA * 0.4
+    const scoreB = salesB * 0.6 + ratingB * 0.4
+    return scoreB - scoreA
   })
 }
 
