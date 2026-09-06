@@ -180,7 +180,7 @@ export function FeedScreen({
       // Continue loading as long as we got new unique items.
       // Only stop when a page yields zero new products (exhausted results).
       // Safety cap at 10 pages to avoid infinite loops.
-      if (newItemsCount === 0 || page >= 10) {
+      if (newItemsCount === 0 || page >= 20) {
         setHasMore(false)
       }
 
@@ -458,7 +458,7 @@ export function FeedScreen({
         {isLoadingMore && (
           <View style={feedStyles.loadingState}>
             <Text style={{ fontSize: 20 }}>⟳</Text>
-            <Text style={feedStyles.loadingText}>טוען עוד מוצרים...</Text>
+            <Text style={feedStyles.loadingText}>טוען 500 מוצרים נוספים מ-AliExpress...</Text>
           </View>
         )}
 
