@@ -168,7 +168,10 @@ export function FeedScreen({
     }
   }, [filter, pendingNewDevice])
 
+  const loadRequestRef = useRef(0)
+
   const loadProducts = useCallback(async (page: number, append: boolean, category: string) => {
+    const requestId = ++loadRequestRef.current
     if (append) setIsLoadingMore(true)
     else setIsLoadingProducts(true)
     setProductsError(null)
@@ -219,6 +222,8 @@ export function FeedScreen({
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)
 
+      if (requestId !== loadRequestRef.current) return
+
       // The aliexpressClient already applied gender + category filters,
       // but we run a second pass here for accessories device-name matching
       const cleanedProducts = category === 'accessories' && accessoryDevices.length > 0
@@ -267,11 +272,14 @@ export function FeedScreen({
 
       if (!append && sortedProducts.length === 0) setProductsError('לא נמצאו מוצרים חיים כרגע')
     } catch (error: unknown) {
+      if (requestId !== loadRequestRef.current) return
       if (!append) setCatalog([])
       setProductsError(error instanceof Error ? error.message : 'לא ניתן לטעון מוצרים חיים')
     } finally {
-      setIsLoadingProducts(false)
-      setIsLoadingMore(false)
+      if (requestId === loadRequestRef.current) {
+        setIsLoadingProducts(false)
+        setIsLoadingMore(false)
+      }
     }
   }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
 
@@ -283,6 +291,7 @@ export function FeedScreen({
 
   const handleFilterChange = useCallback((newFilter: typeof filter) => {
     console.log(`[Feed] Category changed to: ${newFilter}`)
+    filterRef.current = newFilter
     setFilter(newFilter)
     setPageNo(1)
     setHasMore(true)
