@@ -1,0 +1,54 @@
+Please execute a complete, final refactor of Fitgura. Understand the core mission of the app, enforce all filtering and sizing rules strictly, and verify every feature before finishing.
+
+---
+
+### 1. CORE MISSION & PURPOSE OF FITGURA
+Fitgura is a frictionless AI shopping aggregator for AliExpress. It eliminates manual sizing confusion and irrelevant feed items by:
+- Automatically mapping the user's exact body/device profile to returned products.
+- Enforcing absolute gender and category isolation across all feed tabs.
+- Sorting products by Best Sellers (High Sales Volume) AND High Customer Ratings.
+
+---
+
+### 2. DYNAMIC PRODUCT-TYPE SIZING ENGINE (`ProductCard.tsx` / `productUtils.ts`)
+Implement an automatic product classifier based on title keywords:
+- **Shoe Classifier**: Keywords `["shoe", "shoes", "sneaker", "boot", "heel", "sandal", "slipper", "footwear", "flat", "pump"]`.
+  -> ALWAYS render: `userProfile.shoe_size` (e.g., "EU 38").
+- **Pants Classifier**: Keywords `["pants", "trousers", "jeans", "leggings", "shorts", "sweatpants", "slacks"]`.
+  -> ALWAYS render: `userProfile.pants_size` (e.g., "EU 38").
+- **Shirt/Top Classifier**: Keywords `["shirt", "t-shirt", "blouse", "top", "jacket", "coat", "hoodie", "sweater", "bra", "lingerie", "suit", "dress"]`.
+  -> ALWAYS render: `userProfile.shirt_size` (e.g., "M / EU 38").
+- **Accessory Classifier**: Tech/wearable items matching `registered_devices`.
+  -> ALWAYS render: `"מכשיר מתאים: <device_name>"`.
+
+---
+
+### 3. STRICT CATEGORY & GENDER ISOLATION (`aliexpressClient.ts` & `Feed.tsx`)
+- **Gender Isolation**:
+  - `female`: Query ONLY women's items (`"women"`). HARD REJECT any title containing `["men", "mens", "male", "boy", "man"]`.
+  - `male`: Query ONLY men's items (`"men"`). HARD REJECT any title containing `["women", "womens", "female", "lady", "ladies", "girl"]`.
+- **Feed Tabs**:
+  1. **Clothing Tab (בגדים)**: Shirts, pants, suits, dresses, underwear ONLY. STRICTLY ZERO SHOES.
+  2. **Shoes Tab (נעליים)**: Footwear ONLY. STRICTLY ZERO CLOTHING.
+  3. **Accessories Tab (אביזרים)**: Device cases, straps, chargers matching `registered_devices`. Prioritize the newest registered device at index 0.
+  4. **Everything Tab (הכל)**: A balanced feed (40% Clothing, 40% Shoes, 20% Accessories). Each product card MUST display its own correct contextual size badge (Shoe size on shoes, Pants size on pants, Shirt size on shirts).
+
+---
+
+### 4. API SORTING & PAGINATION (100 Items + Infinite Scroll)
+- **Sorting Algorithm**: Request AliExpress items sorted by sales volume (`VOLUME_DOWN`) and filter out items with low ratings. Apply a secondary client-side sort: `(salesCount * 0.6) + (rating * 0.4)` to surface the absolute best sellers with high reviews first.
+- **Batch Size**: Fetch **100 products per page**.
+- **Infinite Scrolling**: Attach an `IntersectionObserver` to the bottom sentinel. When triggered, increment `page_no`, fetch the next 100 items, and append `[...prevProducts, ...newProducts]` without resetting the scroll.
+
+---
+
+### 5. COMPACT SIZE MODAL & REDIRECT FIX (`ProductCard.tsx`)
+- Keep the pre-redirect popup compact (`max-w-sm`).
+- REMOVE all instructions telling the user to check size tables.
+- Display ONLY: **"המידה המומלצת עבורך ב-Fitgura: EU <user_size>"**
+- Direct "המשך לרכישה בעליאקספרס" button fix: `window.open(product.promotion_link || product.product_url, '_blank', 'noopener,noreferrer')`.
+
+---
+
+### 6. END-TO-END VERIFICATION
+Run a full system check across all tabs, verify size badge accuracy on each product card, confirm 100-item batch infinite scrolling, test AliExpress redirect buttons, and ensure ZERO category leaks before completing.
