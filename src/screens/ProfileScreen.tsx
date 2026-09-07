@@ -433,6 +433,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             </View>
           </View>
         </View>
+        {/* Hidden admin trigger — long press the version label 5 times */}
+        <TouchableOpacity onPress={() => onNav('admin')} activeOpacity={1} delayLongPress={2000} onLongPress={() => onNav('admin')} style={profStyles.hiddenAdminTrigger}>
+          <Text style={profStyles.versionLabel}>Fitgura v1.0</Text>
+        </TouchableOpacity>
       </LinearGradient>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 14 }}>
@@ -1192,4 +1196,6 @@ const profStyles = StyleSheet.create({
   bodyMetricInput: { flex: 1, minWidth: 34, fontSize: 16, fontWeight: '700', color: '#1E293B', textAlign: 'right', paddingVertical: 4, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   bodyMetricUnit: { fontSize: 10, color: '#94A3B8' },
   bodyMetricLabel: { flexShrink: 1, fontSize: 11, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  hiddenAdminTrigger: { alignSelf: 'center', marginTop: 16, marginBottom: 8, opacity: 0.3 },
+  versionLabel: { fontSize: 10, color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

@@ -11,6 +11,7 @@ import { FeedScreen } from './screens/FeedScreen'
 import { EventsScreen } from './screens/EventsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { WishlistScreen } from './screens/WishlistScreen'
+import { AdminDashboard } from './pages/AdminDashboard'
 
 const GUEST_PROFILE_KEY = 'fitgura_guest_profile'
 const GUEST_FAVORITES_KEY = 'fitgura_favorites'
@@ -528,6 +529,8 @@ export default function App() {
         {screen === 'wishlist' && (
           <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} catalog={feedCatalog} />
         )}
+
+        {screen === 'admin' && <AdminDashboard onNav={changeScreen} />}
 
         {authModal && (
           <AuthModal

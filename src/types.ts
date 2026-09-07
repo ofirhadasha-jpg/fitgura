@@ -1,6 +1,6 @@
 import { usToEuPants, euToUsPants } from './utils/sizeConverter'
 
-export type Screen = 'splash' | 'onboarding' | 'device' | 'feed' | 'events' | 'profile' | 'wishlist'
+export type Screen = 'splash' | 'onboarding' | 'device' | 'feed' | 'events' | 'profile' | 'wishlist' | 'admin'
 
 export interface FitEvent {
   id: number
