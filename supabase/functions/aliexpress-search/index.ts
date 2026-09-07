@@ -1,9 +1,66 @@
 import { createHash } from "node:crypto";
 
 // Fitgura AliExpress Affiliate API proxy — Beijing timezone, ILS currency, detailed error surfacing
-// IMPORTANT: This function NEVER returns a non-2xx status code.
+// IMPORTANT: This function NEVER returns a non-2xx status code for search/actions.
 // All errors are returned as HTTP 200 with { error: "...", products: [] } in the JSON body.
 // Returning 4xx/5xx causes the Supabase client SDK to throw FunctionsHttpError.
+// The ONLY exception is a missing Authorization header, which returns HTTP 401.
+
+// ── In-memory cache (15-minute TTL) ──────────────────────────────────────────
+interface CacheEntry {
+  payload: Record<string, unknown>;
+  expiresAt: number;
+}
+const responseCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
+function buildCacheKey(params: Record<string, unknown>): string {
+  const { action, keywords, categoryIds, gender, pageNo, userSizes, registeredDevices } = params;
+  return [
+    action ?? "search",
+    keywords ?? "",
+    categoryIds ?? "",
+    gender ?? "",
+    pageNo ?? 1,
+    JSON.stringify(userSizes ?? null),
+    JSON.stringify(registeredDevices ?? null),
+  ].join("|");
+}
+
+function getCached(key: string): Record<string, unknown> | null {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry.payload;
+}
+
+function setCached(key: string, payload: Record<string, unknown>): void {
+  responseCache.set(key, { payload, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
+// ── JWT verification ────────────────────────────────────────────────────────
+
+interface JwtPayload {
+  sub: string;
+  exp?: number;
+}
+
+async function verifyJwt(token: string): Promise<JwtPayload | null> {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payloadB64 = parts[1];
+    const payloadJson = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(payloadJson) as JwtPayload;
+    if (payload.exp && Date.now() >= payload.exp * 1000) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -191,11 +248,45 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // JWT authentication: require a valid Bearer token for all requests.
+  // Guests (no token) are rejected with HTTP 401 to prevent anonymous API abuse.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized: Missing or invalid Auth Header" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const token = authHeader.slice(7);
+  const jwtPayload = await verifyJwt(token);
+  if (!jwtPayload) {
+    return new Response(JSON.stringify({ error: "Unauthorized: Invalid or expired token" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const body = await req.json();
     const action = body.action ?? "search";
 
     if (action === "search") {
+      // ── Cache check ────────────────────────────────────────────────────
+      const cacheKey = buildCacheKey({
+        action,
+        keywords: body.keywords,
+        categoryIds: body.categoryIds,
+        gender: body.gender,
+        pageNo: body.pageNo,
+        userSizes: body.userSizes,
+        registeredDevices: body.registeredDevices,
+      });
+      const cached = getCached(cacheKey);
+      if (cached) {
+        console.log("[ALIEXPRESS] Cache HIT — returning cached payload");
+        return okResponse({ ...cached, cached: true });
+      }
       const keywords = body.keywords as string | undefined;
       const categoryIds = body.categoryIds as string | undefined;
 
@@ -401,7 +492,9 @@ Deno.serve(async (req: Request) => {
         return (salesB - salesA) || (ratingB - ratingA);
       });
 
-      return okResponse({ products: filteredProducts, count: filteredProducts.length, page: pageNo });
+      const responsePayload = { products: filteredProducts, count: filteredProducts.length, page: pageNo };
+      setCached(cacheKey, responsePayload);
+      return okResponse(responsePayload);
     }
 
     if (action === "details") {

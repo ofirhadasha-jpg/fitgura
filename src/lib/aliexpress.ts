@@ -2,12 +2,22 @@ import type { Product } from '../types'
 import { supabase } from './supabase'
 
 /**
- * Invokes the aliexpress-search edge function.
- * The edge function ALWAYS returns HTTP 200 — errors are embedded in the JSON body as { error: string }.
- * This wrapper extracts the body-level error and converts it to a thrown Error so callers can handle it uniformly.
+ * Invokes the aliexpress-search edge function with JWT authentication.
+ * The edge function requires a valid Bearer token from a logged-in user.
+ * Returns null for unauthenticated requests so callers can handle gracefully.
  */
 async function invokeEdgeFunction(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
-  const { data, error } = await supabase.functions.invoke('aliexpress-search', { body })
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    throw new Error('Authentication required')
+  }
+
+  const { data, error } = await supabase.functions.invoke('aliexpress-search', {
+    body,
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  })
 
   if (error) {
     throw new Error(error.message || 'AliExpress request failed')
