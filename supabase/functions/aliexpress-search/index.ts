@@ -217,6 +217,32 @@ Deno.serve(async (req: Request) => {
       const shoesTerms = ["shoe", "shoes", "sneaker", "sneakers", "boot", "boots", "heel", "heels", "sandal", "sandals", "slipper", "slippers", "loafer", "loafers", "wedge", "wedges", "pump", "pumps", "footwear"];
       const isShoesSearch = shoesTerms.some((t) => searchKeywords.toLowerCase().includes(t));
 
+      const isAccessoriesSearch = categoryIds === "5090301,509" || categoryIds === "509";
+
+      // user_sizes JSONB from profiles table — used for size-aware query enrichment
+      const userSizes = body.userSizes as { shirt?: string; pants?: string; shoes?: string; height_cm?: number | null; weight_kg?: number | null } | undefined;
+      const registeredDevices = body.registeredDevices as string[] | undefined;
+
+      // Enrich keywords with size info when available (e.g. "men shirt size M")
+      let enrichedKeywords = searchKeywords;
+      if (userSizes && !isShoesSearch && !isAccessoriesSearch) {
+        const sizeHint = userSizes.shirt ? ` size ${userSizes.shirt}` : "";
+        if (sizeHint && !enrichedKeywords.toLowerCase().includes("size")) {
+          enrichedKeywords = `${genderPrefix}${enrichedKeywords}${sizeHint}`;
+        }
+      }
+      if (userSizes && isShoesSearch && userSizes.shoes) {
+        if (!enrichedKeywords.toLowerCase().includes("size")) {
+          enrichedKeywords = `${enrichedKeywords} size ${userSizes.shoes}`;
+        }
+      }
+
+      // For accessories search with registered devices, the client already sends per-device keywords.
+      // If registeredDevices is provided but no keywords, build a broad accessories query.
+      if (!enrichedKeywords && registeredDevices && registeredDevices.length > 0) {
+        enrichedKeywords = registeredDevices.slice(0, 3).map((d) => `${d} accessories`).join(" ");
+      }
+
       const apiParams: RequestParams = {
         page_no: pageNo,
         page_size: pageSize,
@@ -224,8 +250,8 @@ Deno.serve(async (req: Request) => {
         target_language: targetLanguage,
       };
 
-      if (searchKeywords) {
-        apiParams.keywords = searchKeywords;
+      if (enrichedKeywords) {
+        apiParams.keywords = enrichedKeywords;
       }
       if (categoryIds) {
         apiParams.category_ids = categoryIds;
@@ -236,12 +262,11 @@ Deno.serve(async (req: Request) => {
         apiParams.sort = "VOLUME_DOWN";
       }
 
-      const isAccessoriesSearch = categoryIds === "5090301,509" || categoryIds === "509";
       if (isAccessoriesSearch) {
         console.log("[ALIEXPRESS] Accessories search — apparel will be filtered out");
       }
 
-      console.log("[ALIEXPRESS] Search params:", { keywords: searchKeywords, categoryIds, pageNo, pageSize, targetLanguage });
+      console.log("[ALIEXPRESS] Search params:", { keywords: enrichedKeywords, categoryIds, pageNo, pageSize, targetLanguage });
 
       let result = await callAliExpressApi("aliexpress.affiliate.product.query", apiParams);
 
@@ -257,7 +282,7 @@ Deno.serve(async (req: Request) => {
           page_size: pageSize,
           target_currency: "ILS",
         };
-        if (searchKeywords) noLangParams.keywords = searchKeywords;
+        if (enrichedKeywords) noLangParams.keywords = enrichedKeywords;
         if (categoryIds) noLangParams.category_ids = categoryIds;
         noLangParams.sort = sort || "VOLUME_DOWN";
         result = await callAliExpressApi("aliexpress.affiliate.product.query", noLangParams);
@@ -267,13 +292,13 @@ Deno.serve(async (req: Request) => {
       }
 
       // Fallback: if category_ids returned no results, retry with keywords only
-      if (products.length === 0 && categoryIds && searchKeywords) {
-        console.log("[ALIEXPRESS] No results with category_ids, retrying with keywords only:", searchKeywords);
+      if (products.length === 0 && categoryIds && enrichedKeywords) {
+        console.log("[ALIEXPRESS] No results with category_ids, retrying with keywords only:", enrichedKeywords);
         const fallbackParams: RequestParams = {
           page_no: pageNo,
           page_size: pageSize,
           target_currency: "ILS",
-          keywords: searchKeywords,
+          keywords: enrichedKeywords,
           sort: sort || "VOLUME_DOWN",
         };
         result = await callAliExpressApi("aliexpress.affiliate.product.query", fallbackParams);
@@ -283,7 +308,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Fallback: if still no results and keywords were used, try a simpler keyword
-      if (products.length === 0 && searchKeywords) {
+      if (products.length === 0 && enrichedKeywords) {
         const simpleKeyword = isAccessoriesSearch ? "phone case cover" : isShoesSearch ? "shoe" : "fashion clothing";
         console.log("[ALIEXPRESS] Still no results, retrying with simple keyword:", simpleKeyword);
         const fallbackParams: RequestParams = {

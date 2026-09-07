@@ -381,6 +381,7 @@ export default function App() {
       const bm = scannedSizes.sizing.bodyMetrics
       supabase.from('profiles').upsert({
         user_id: user.id,
+        email: user.email,
         gender: scannedSizes.gender ?? 'unisex',
         chest_cm: bm?.chest_circumference_cm ?? null,
         waist_cm: bm?.waist_circumference_cm ?? null,
@@ -393,6 +394,17 @@ export default function App() {
         bottom_size: scannedSizes.sizing.bottom ?? null,
         fit: scannedSizes.sizing.fit ?? null,
         preferred_region: preferredRegion,
+        user_sizes: {
+          shirt: scannedSizes.sizing.top ?? 'M',
+          pants: scannedSizes.sizing.bottom ?? '40',
+          shoes: scannedSizes.shoeSize ?? '42',
+          chest_cm: bm?.chest_circumference_cm ?? null,
+          waist_cm: bm?.waist_circumference_cm ?? null,
+          hips_cm: bm?.hips_circumference_cm ?? null,
+          foot_length_cm: null,
+          height_cm: bm?.estimated_height_cm ?? null,
+          weight_kg: bm?.estimated_weight_kg ?? null,
+        },
       }).then(({ error }) => {
         if (error) console.error('[App] Failed to persist profile to Supabase:', error.message)
       }).catch((err) => {

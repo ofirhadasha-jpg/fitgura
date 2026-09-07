@@ -780,6 +780,18 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
     window.open(finalUrl, '_blank', 'noopener,noreferrer')
     setToast('מעביר לרכישה...')
     setTimeout(() => setToast(null), 2500)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('affiliate_clicks').insert({
+        user_id: user?.id ?? null,
+        product_id: product.aliexpressSku ?? '',
+        product_title: product.name,
+        tracking_id: 'fitgura',
+        promotion_link: finalUrl,
+      })
+    } catch {
+      // Click logging is best-effort — never block the purchase flow
+    }
   }
 
   return (
