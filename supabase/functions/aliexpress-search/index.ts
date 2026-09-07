@@ -62,6 +62,10 @@ async function verifyJwt(token: string): Promise<JwtPayload | null> {
   }
 }
 
+// ── Guest rate limiting (IP-based, 30 req/min) ────────────────────────────────
+
+const guestRateMap = new Map<string, { count: number; windowStart: number }>();
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -248,23 +252,36 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // JWT authentication: require a valid Bearer token for all requests.
-  // Guests (no token) are rejected with HTTP 401 to prevent anonymous API abuse.
+  // Flexible auth: authenticated users get full access; guests are rate-limited by IP.
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return new Response(JSON.stringify({ error: "Unauthorized: Missing or invalid Auth Header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  const hasToken = authHeader && authHeader.startsWith("Bearer ");
 
-  const token = authHeader.slice(7);
-  const jwtPayload = await verifyJwt(token);
-  if (!jwtPayload) {
-    return new Response(JSON.stringify({ error: "Unauthorized: Invalid or expired token" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (hasToken) {
+    const token = authHeader!.slice(7);
+    const jwtPayload = await verifyJwt(token);
+    if (!jwtPayload) {
+      return new Response(JSON.stringify({ error: "Unauthorized: Invalid or expired token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  } else {
+    // Guest request — apply IP-based rate limiting (30 req/min)
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      ?? req.headers.get("x-real-ip") ?? "unknown";
+    const now = Date.now();
+    const entry = guestRateMap.get(clientIp);
+    if (!entry || now - entry.windowStart > 60000) {
+      guestRateMap.set(clientIp, { count: 1, windowStart: now });
+    } else {
+      entry.count++;
+      if (entry.count > 30) {
+        return new Response(JSON.stringify({ error: "יותר מדי בקשות. התחבר לחשבון לקבלת גישה ללא הגבלה." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
   }
 
   try {

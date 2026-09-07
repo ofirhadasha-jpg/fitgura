@@ -8,15 +8,15 @@ import { supabase } from './supabase'
  */
 async function invokeEdgeFunction(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.access_token) {
-    throw new Error('Authentication required')
+
+  const headers: Record<string, string> = {}
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`
   }
 
   const { data, error } = await supabase.functions.invoke('aliexpress-search', {
     body,
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers,
   })
 
   if (error) {

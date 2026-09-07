@@ -767,8 +767,14 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
     if (!targetUrl) {
       const sourceUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
       try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const invokeHeaders: Record<string, string> = {}
+        if (session?.access_token) {
+          invokeHeaders['Authorization'] = `Bearer ${session.access_token}`
+        }
         const { data } = await supabase.functions.invoke('aliexpress-search', {
           body: { action: 'affiliate-link', sourceUrl },
+          headers: invokeHeaders,
         })
         const links = (data as Record<string, unknown>)?.links as { promotion_link?: string }[] | undefined
         targetUrl = links?.[0]?.promotion_link ?? null
