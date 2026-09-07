@@ -191,7 +191,12 @@ async function migrateGuestData(userId: string) {
     console.error('[App] Failed to migrate guest favorites to Supabase:', err)
   }
 
-  if (migrationSucceeded) clearGuestData()
+  if (migrationSucceeded) {
+    // Delay clearing guest data so the hydration effect (which runs on mount)
+    // can still read localStorage before it's wiped — critical for Google OAuth
+    // where the page reloads and onAuthStateChange fires before hydration.
+    setTimeout(() => clearGuestData(), 3000)
+  }
 }
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -255,6 +260,8 @@ export default function App() {
           } catch (err) {
             console.error('[App] Guest data migration failed:', err)
           }
+          // After Google OAuth redirect, land on the feed — not the onboarding/device screen
+          setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
         }
 
         try {
@@ -370,6 +377,8 @@ export default function App() {
       showToast('הפריט נשמר ב-Wishlist שלך! 💚')
     }
     setAuthModal(null)
+    // Navigate to feed so users land on the product feed after registration/login
+    changeScreen('feed')
   }
 
   useEffect(() => {
@@ -465,52 +474,52 @@ export default function App() {
 
   // Hydrate guest device and favorites on initial mount
   useEffect(() => {
-    if (!user) {
-      migrateLegacyFavorites()
-      const guestDevice = loadGuestDevice()
-      if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
-      const guestDevices = loadGuestDevices()
-      if (guestDevices.length > 0) setRegisteredDevices((prev) => prev.length > 0 ? prev : guestDevices)
-      // Hydrate guest profile sizes so they survive reloads
-      const gp = loadGuestProfile()
-      if (gp?.preferredRegion) setPreferredRegion(gp.preferredRegion)
-      if (gp && !scannedSizes) {
-        const restored: ScannedSizes = {
-          sizing: {
-            top: gp.topSize ?? 'M',
-            bottom: gp.bottomSize ?? '48',
-            fit: gp.fit ?? 'Regular',
-            bodyFrame: 'Medium',
-            confidence: 85,
-            baselineMatched: true,
-            isWeeklyUpdate: false,
-            measurementDelta: null,
-            bodyMetrics: {
-              estimated_height_cm: gp.height,
-              estimated_weight_kg: gp.weight,
-              chest_circumference_cm: gp.chest,
-              waist_circumference_cm: gp.waist,
-              hips_circumference_cm: gp.hips,
-              shoulder_width_cm: gp.shoulder,
-            },
-          },
-          style: { primaryStyle: '', secondaryStyle: '', dominantColors: [], patternPreference: '', aestheticTags: [] },
-          confidence: 85,
-          preview: '',
+    // Restore guest data from localStorage — works for both guests and users
+    // who just signed in via Google OAuth (page reload clears React state)
+    migrateLegacyFavorites()
+    const guestDevice = loadGuestDevice()
+    if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
+    const guestDevices = loadGuestDevices()
+    if (guestDevices.length > 0) setRegisteredDevices((prev) => prev.length > 0 ? prev : guestDevices)
+    // Hydrate guest profile sizes so they survive reloads
+    const gp = loadGuestProfile()
+    if (gp?.preferredRegion) setPreferredRegion(gp.preferredRegion)
+    if (gp && !scannedSizes) {
+      const restored: ScannedSizes = {
+        sizing: {
           top: gp.topSize ?? 'M',
           bottom: gp.bottomSize ?? '48',
           fit: gp.fit ?? 'Regular',
-          gender: gp.gender,
-          personBounds: { top: 2, left: 10, width: 80, height: 96 },
-          shoeSize: gp.shoeSize,
-        }
-        setScannedSizes(restored)
+          bodyFrame: 'Medium',
+          confidence: 85,
+          baselineMatched: true,
+          isWeeklyUpdate: false,
+          measurementDelta: null,
+          bodyMetrics: {
+            estimated_height_cm: gp.height,
+            estimated_weight_kg: gp.weight,
+            chest_circumference_cm: gp.chest,
+            waist_circumference_cm: gp.waist,
+            hips_circumference_cm: gp.hips,
+            shoulder_width_cm: gp.shoulder,
+          },
+        },
+        style: { primaryStyle: '', secondaryStyle: '', dominantColors: [], patternPreference: '', aestheticTags: [] },
+        confidence: 85,
+        preview: '',
+        top: gp.topSize ?? 'M',
+        bottom: gp.bottomSize ?? '48',
+        fit: gp.fit ?? 'Regular',
+        gender: gp.gender,
+        personBounds: { top: 2, left: 10, width: 80, height: 96 },
+        shoeSize: gp.shoeSize,
       }
-      // Hydrate guest favorites from localStorage
-      const favIndices = loadFavoriteIndices(feedCatalog)
-      if (favIndices.length > 0) {
-        setWishlistItems(favIndices)
-      }
+      setScannedSizes(restored)
+    }
+    // Hydrate guest favorites from localStorage
+    const favIndices = loadFavoriteIndices(feedCatalog)
+    if (favIndices.length > 0) {
+      setWishlistItems(favIndices)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
