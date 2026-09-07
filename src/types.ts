@@ -245,7 +245,11 @@ export async function fileToCompressedBase64(file: File, maxDim: number = 768, q
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
-    const ctx = canvas.getContext('2d')!
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      // Canvas 2D context unavailable (rare on some mobile browsers) — return raw data URL
+      return dataUrl
+    }
     ctx.drawImage(img, 0, 0, width, height)
 
     const compressed = canvas.toDataURL('image/jpeg', quality)

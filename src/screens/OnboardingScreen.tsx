@@ -118,15 +118,22 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   }
 
   useEffect(() => {
-    const pending = sessionStorage.getItem(PENDING_SCAN_KEY)
-    if (!pending) return
-    sessionStorage.removeItem(PENDING_SCAN_KEY)
-    const byteString = atob(pending.split(',')[1] ?? '')
-    const ab = new Uint8Array(byteString.length)
-    for (let i = 0; i < byteString.length; i++) ab[i] = byteString.charCodeAt(i)
-    const blob = new Blob([ab], { type: 'image/jpeg' })
-    const file = new File([blob], 'resumed-scan.jpg', { type: 'image/jpeg' })
-    startScan(file)
+    try {
+      const pending = sessionStorage.getItem(PENDING_SCAN_KEY)
+      if (!pending) return
+      sessionStorage.removeItem(PENDING_SCAN_KEY)
+      const byteString = atob(pending.split(',')[1] ?? '')
+      const ab = new Uint8Array(byteString.length)
+      for (let i = 0; i < byteString.length; i++) ab[i] = byteString.charCodeAt(i)
+      const blob = new Blob([ab], { type: 'image/jpeg' })
+      const file = new File([blob], 'resumed-scan.jpg', { type: 'image/jpeg' })
+      startScan(file)
+    } catch (err) {
+      console.error('[Onboarding] Failed to resume pending scan:', err)
+      sessionStorage.removeItem(PENDING_SCAN_KEY)
+      setScanError('שגיאה בטעינת התמונה. נסה להעלות שוב.')
+      setStep('upload')
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

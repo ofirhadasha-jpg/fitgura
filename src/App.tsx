@@ -203,12 +203,20 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   state = { hasError: false }
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidCatch(err: unknown) { console.error('App crash caught:', err) }
+  handleRecover = () => {
+    this.setState({ hasError: false })
+    sessionStorage.removeItem('fitgura_screen')
+    sessionStorage.removeItem('fitgura_pending_scan')
+  }
   render() {
     if (this.state.hasError) {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B' }}>משהו השתבש</Text>
           <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center' }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
+          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8 }}>
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>חזור להתחלה</Text>
+          </TouchableOpacity>
         </View>
       )
     }
@@ -474,17 +482,18 @@ export default function App() {
 
   // Hydrate guest device and favorites on initial mount
   useEffect(() => {
-    // Restore guest data from localStorage — works for both guests and users
-    // who just signed in via Google OAuth (page reload clears React state)
-    migrateLegacyFavorites()
-    const guestDevice = loadGuestDevice()
-    if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
-    const guestDevices = loadGuestDevices()
-    if (guestDevices.length > 0) setRegisteredDevices((prev) => prev.length > 0 ? prev : guestDevices)
-    // Hydrate guest profile sizes so they survive reloads
-    const gp = loadGuestProfile()
-    if (gp?.preferredRegion) setPreferredRegion(gp.preferredRegion)
-    if (gp && !scannedSizes) {
+    try {
+      // Restore guest data from localStorage — works for both guests and users
+      // who just signed in via Google OAuth (page reload clears React state)
+      migrateLegacyFavorites()
+      const guestDevice = loadGuestDevice()
+      if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
+      const guestDevices = loadGuestDevices()
+      if (guestDevices.length > 0) setRegisteredDevices((prev) => prev.length > 0 ? prev : guestDevices)
+      // Hydrate guest profile sizes so they survive reloads
+      const gp = loadGuestProfile()
+      if (gp?.preferredRegion) setPreferredRegion(gp.preferredRegion)
+      if (gp && !scannedSizes) {
       const restored: ScannedSizes = {
         sizing: {
           top: gp.topSize ?? 'M',
@@ -516,10 +525,15 @@ export default function App() {
       }
       setScannedSizes(restored)
     }
-    // Hydrate guest favorites from localStorage
-    const favIndices = loadFavoriteIndices(feedCatalog)
-    if (favIndices.length > 0) {
-      setWishlistItems(favIndices)
+      // Hydrate guest favorites from localStorage
+      const favIndices = loadFavoriteIndices(feedCatalog)
+      if (favIndices.length > 0) {
+        setWishlistItems(favIndices)
+      }
+    } catch (err) {
+      console.error('[App] Hydration failed, clearing stale data:', err)
+      sessionStorage.removeItem('fitgura_screen')
+      sessionStorage.removeItem('fitgura_pending_scan')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

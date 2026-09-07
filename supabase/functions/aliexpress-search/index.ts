@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 // IMPORTANT: This function NEVER returns a non-2xx status code for search/actions.
 // All errors are returned as HTTP 200 with { error: "...", products: [] } in the JSON body.
 // Returning 4xx/5xx causes the Supabase client SDK to throw FunctionsHttpError.
-// The ONLY exception is a missing Authorization header, which returns HTTP 401.
+// Guest access is allowed with IP-based rate limiting (30 req/min).
 
 // ── In-memory cache (15-minute TTL) ──────────────────────────────────────────
 interface CacheEntry {
