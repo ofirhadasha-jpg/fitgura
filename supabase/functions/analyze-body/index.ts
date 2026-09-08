@@ -140,12 +140,13 @@ serve(async (req: Request) => {
 
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
+      signal: AbortSignal.timeout(40000),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "deepseek-v4-flash-vision-exp",
+        model: "deepseek-v4-flash",
         temperature: 0.1,
         response_format: { type: "json_object" },
         messages: [
