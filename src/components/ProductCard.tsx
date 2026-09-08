@@ -14,6 +14,7 @@ function formatPrice(price: number, currency?: string): string {
 const SUIT_KEYWORDS = /\b(suit|blazer set|two.?piece|tracksuit|set|חליפה|סט|סט חליפה)\b/i
 const SHIRT_KEYWORDS = /\b(shirt|t-?shirt|hoodie|sweater|jacket|coat|polo|tank|top|blouse|חולצה|ג'?קט|מעיל|סוודר|בגד עליון)\b/i
 const PANTS_KEYWORDS = /\b(pants|jeans|trousers|shorts|leggings|jogger|מכנסיים|מכנס)\b/i
+const DEVICE_ACCESSORY_KEYWORDS = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
 
 type SizeBreakdownItem = { label: string; value: string }
 
@@ -116,11 +117,13 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const [showSizeModal, setShowSizeModal] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  const recommendedSize = getRecommendedSizeLabel(product.name, scannedSizes, category)
-  const sizeBreakdown = getSizeBreakdown(product.name, scannedSizes, category)
+  const isDeviceAccessory = category === 'accessories' || DEVICE_ACCESSORY_KEYWORDS.test(product.name)
+  const showSizeRecommendation = !isDeviceAccessory && category !== 'accessories'
+  const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product.name, scannedSizes, category) : null
+  const sizeBreakdown = showSizeRecommendation ? getSizeBreakdown(product.name, scannedSizes, category) : []
 
   function handleBuy() {
-    if (category === 'accessories') {
+    if (!showSizeRecommendation) {
       confirmBuy({ preventDefault: () => {}, stopPropagation: () => {} } as GestureResponderEvent & { preventDefault: () => void })
       return
     }
@@ -188,14 +191,14 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
           <View style={cardStyles.aiBadgeDot} />
           <Text style={cardStyles.aiBadgeText}>AI Match</Text>
         </View>
-        {recommendedSize && category !== 'accessories' && (
+        {recommendedSize && showSizeRecommendation && (
           <View style={cardStyles.sizeBadge}>
             <Text style={cardStyles.sizeBadgeText}>מידה מומלצת עבורך: {recommendedSize}</Text>
           </View>
         )}
       </View>
       <View style={cardStyles.productInfo}>
-        {category !== 'accessories' && (
+        {showSizeRecommendation && (
           <View style={cardStyles.matchChip}>
             <Text style={cardStyles.matchChipText}>
               {category === 'shoes' && scannedSizes?.shoeSize
@@ -230,7 +233,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         )}
       </View>
 
-      {showSizeModal && category !== 'accessories' && (
+      {showSizeModal && showSizeRecommendation && (
         <SizeReminderModal
           recommendedSize={recommendedSize}
           sizeBreakdown={sizeBreakdown}

@@ -25,10 +25,10 @@ const FOOTWEAR_RENDER_REGEX = new RegExp(`\\b(${FOOTWEAR_TERMS.join('|')})\\b`, 
 const APPAREL_RENDER_REGEX = new RegExp(`\\b(${APPAREL_TERMS.join('|')})\\b`, 'i')
 
 // Gender rejection regexes for render-time validation
-const MENS_RENDER_REGEX = /\b(men|mens|male|boy|man)\b/i
-const WOMENS_RENDER_REGEX = /\b(women|womens|female|girl|lady|ladies)\b/i
+const MENS_RENDER_REGEX = /\b(men|men's|mens|male|boy|boys|man|man's|for him)\b/i
+const WOMENS_RENDER_REGEX = /\b(women|women's|womens|woman|female|girl|girls|lady|ladies|for her)\b/i
 // Products mentioning both genders are unisex-only
-const BOTH_GENDERS_RENDER_REGEX = /\b(men|mens|male|boy|man).*(women|womens|female|girl|lady|ladies)\b|\b(women|womens|female|girl|lady|ladies).*(men|mens|male|boy|man)\b/i
+const BOTH_GENDERS_RENDER_REGEX = /\b(men|men's|mens|male|boy|boys|man|man's|for him)\b.*\b(women|women's|womens|woman|female|girl|girls|lady|ladies|for her)\b|\b(women|women's|womens|woman|female|girl|girls|lady|ladies|for her)\b.*\b(men|men's|mens|male|boy|boys|man|man's|for him)\b/i
 
 // Clothing/footwear keywords to client-side filter out of accessories results
 const CLOTHING_KEYWORDS_REGEX = /\b(shirt|pants|dress|hoodie|jacket|sweater|jeans|shorts|skirt|blouse|coat|t-shirt|tank\s*top|underwear|shoes|socks|sneakers|boots|sandals|חולצה|מכנסיים|שמלה|נעליים|גרביים|ז'?קט|מעיל|בגד|גופייה)\b/i

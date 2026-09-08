@@ -30,12 +30,12 @@ const GENDER_POSITIVE: Record<string, string[]> = {
 }
 
 const GENDER_REJECT: Record<string, RegExp> = {
-  female: /\b(men|mens|male|boy|man)\b/i,
-  male: /\b(women|womens|female|girl|lady|ladies)\b/i,
+  female: /\b(men|men's|mens|male|boy|boys|man|man's|for him)\b/i,
+  male: /\b(women|women's|womens|woman|female|girl|girls|lady|ladies|for her)\b/i,
   unisex: /$^/,
 }
 
-const BOTH_GENDERS_REGEX = /\b(men|mens|male|boy|man).*(women|womens|female|girl|lady|ladies)\b|\b(women|womens|female|girl|lady|ladies).*(men|mens|male|boy|man)\b/i
+const BOTH_GENDERS_REGEX = /\b(men|men's|mens|male|boy|boys|man|man's|for him)\b.*\b(women|women's|womens|woman|female|girl|girls|lady|ladies|for her)\b|\b(women|women's|womens|woman|female|girl|girls|lady|ladies|for her)\b.*\b(men|men's|mens|male|boy|boys|man|man's|for him)\b/i
 
 // ── Top-searched AliExpress query arrays by category & gender ──────────────
 
