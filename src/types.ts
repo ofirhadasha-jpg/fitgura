@@ -536,8 +536,9 @@ export async function detectDevice(): Promise<DetectedDevice> {
       highEntropyModel = hv.model ?? ''
     } catch { /* ignore */ }
   }
-  const buildMatch = ua.match(/\(([^)]*);\s*([^)]*Build\/([^)]+)\)/i)
-  const buildModel = buildMatch?.[3]?.trim() ?? ''
+  const buildMatch = ua.match(/\(([^)]*);\s*([^)]*Build\/[^)]+)\)/i)
+  const buildModel = buildMatch?.[2]?.trim() ?? ''
+
   const rawModel = highEntropyModel || buildModel
 
   let brand = 'Other'
