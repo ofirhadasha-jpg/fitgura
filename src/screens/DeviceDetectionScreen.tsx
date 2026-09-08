@@ -24,6 +24,13 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
   const [detected, setDetected] = useState<DetectedDevice | null>(null)
   const [accessoryCounts, setAccessoryCounts] = useState<AccessoryCategory[] | null>(null)
   const [accessoryLoadError, setAccessoryLoadError] = useState(false)
+  const [beamY, setBeamY] = useState(0)
+
+  useEffect(() => {
+    if (phase !== 'detecting') return
+    const t = setInterval(() => setBeamY((y) => (y + 2) % 100), 30)
+    return () => clearInterval(t)
+  }, [phase])
 
   const filteredDevices = deviceOptions.filter((d) => {
     const q = deviceSearch.toLowerCase()
@@ -96,7 +103,7 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
             <View style={devStyles.phoneWrap}>
               <View style={[devStyles.phoneProgressBorder, { opacity: scanPct / 100 }]} />
               <View style={devStyles.phoneBody}>
-                <View style={devStyles.scanBeam} />
+                <View style={[devStyles.scanBeam, { top: `${beamY}%` }]} />
                 <Text style={devStyles.phoneLabel}>
                   {scanPct < 35 ? 'Reading signals...' : scanPct < 70 ? 'Matching model...' : 'Verifying...'}
                 </Text>
@@ -294,7 +301,7 @@ const devStyles = StyleSheet.create({
   phoneWrap: { width: 140, height: 240, position: 'relative' },
   phoneBody: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0F172A', borderRadius: 28, borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14 },
   phoneProgressBorder: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 30, borderWidth: 2, borderColor: '#2E5BFF', opacity: 0.5 },
-  scanBeam: { position: 'absolute', left: 0, right: 0, top: '50%', height: 2, backgroundColor: '#2ED573' },
+  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#2ED573', shadowColor: '#2ED573', shadowRadius: 16, shadowOpacity: 0.6 },
   phoneLabel: { fontSize: 10, color: 'rgba(46,213,115,0.8)', fontWeight: '600' },
   progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   progressLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
