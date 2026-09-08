@@ -52,3 +52,30 @@ export async function getTopProducts(): Promise<TopProduct[]> {
   }
   return (data ?? []) as TopProduct[]
 }
+
+export const logAffiliateClick = async (product: {
+  product_id: string;
+  title?: string;
+  promotion_link: string;
+}) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id || null;
+    const { error } = await supabase.from('affiliate_clicks').insert([
+      {
+        user_id: userId,
+        product_id: String(product.product_id),
+        product_title: product.title || 'AliExpress Product',
+        tracking_id: 'fitgura',
+        promotion_link: product.promotion_link,
+      },
+    ]);
+    if (error) {
+      console.error('Error logging affiliate click to Supabase:', error);
+    } else {
+      console.log('Affiliate click logged successfully!');
+    }
+  } catch (err) {
+    console.error('Failed to log click:', err);
+  }
+};
