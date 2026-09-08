@@ -79,7 +79,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
     try {
       const aiPromise = analyzeBodyImage(file)
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('AI_TIMEOUT')), 8000)
+        setTimeout(() => reject(new Error('AI_TIMEOUT')), 45000)
       )
       const { analysis, preview } = await Promise.race([aiPromise, timeoutPromise])
       if (previewUrlRef.current?.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)

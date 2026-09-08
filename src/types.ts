@@ -291,7 +291,7 @@ export async function fileToCompressedBase64(file: File, maxDim: number = 512, q
 }
 
 export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAnalysis; preview: string }> {
-  const base64Image = await fileToCompressedBase64(file)
+  const base64Image = await fileToCompressedBase64(file, 768, 0.85)
 
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-body`
   const response = await fetch(apiUrl, {
@@ -475,6 +475,11 @@ export function deriveScannedSizes(file: File): ScannedSizes {
     }
   }
 
+  const gender: 'male' | 'female' | 'unisex' = (hash >> 28) % 2 === 0 ? 'female' : 'male'
+  const shoeSize = gender === 'female'
+    ? String(36 + ((hash >> 4) % 6))
+    : String(41 + ((hash >> 4) % 5))
+
   const sizing: SizingProfile = {
     top: TOP_SIZES[topIdx],
     bottom: BOTTOM_SIZES[botIdx],
@@ -484,7 +489,7 @@ export function deriveScannedSizes(file: File): ScannedSizes {
     baselineMatched: isTracking,
     isWeeklyUpdate: false,
     measurementDelta,
-    bodyMetrics: null,
+    bodyMetrics: computeBodyMetricsFromSizes(TOP_SIZES[topIdx], BOTTOM_SIZES[botIdx], null),
   }
 
   const style: StyleProfile = {
@@ -503,7 +508,9 @@ export function deriveScannedSizes(file: File): ScannedSizes {
     top: sizing.top,
     bottom: sizing.bottom,
     fit: sizing.fit,
+    gender,
     personBounds: { top: 2, left: 10, width: 80, height: 96 },
+    shoeSize,
   }
 
   if (!isTracking) _sessionBaseline = result
