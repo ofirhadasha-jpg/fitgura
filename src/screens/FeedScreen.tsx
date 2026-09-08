@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import type { GestureResponderEvent } from 'react-native'
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
 import { AddDeviceModal } from '../components/AddDeviceModal'
 import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice, detectDevice } from '../types'
@@ -13,9 +12,9 @@ import {
   type FeedCategory,
   type Gender,
 } from '../services/aliexpressClient'
-import { formatFullPantsSizeLabel, euToUsPants, type SizeRegion } from '../utils/sizeConverter'
+import { euToUsPants } from '../utils/sizeConverter'
 import { supabase } from '../lib/supabase'
-import { logAffiliateClick } from '../services/analyticsService'
+import ProductCard from '../components/ProductCard'
 
 const PAGE_SIZE = 50
 
@@ -689,238 +688,7 @@ function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudg
   )
 }
 
-function formatPrice(price: number, currency?: string): string {
-  const symbol = currency ?? '₪'
-  return `${symbol}${price.toLocaleString()}`
-}
 
-const SUIT_KEYWORDS = /\b(suit|blazer set|two.?piece|tracksuit|set|חליפה|סט|סט חליפה)\b/i
-const SHIRT_KEYWORDS = /\b(shirt|t-?shirt|hoodie|sweater|jacket|coat|polo|tank|top|blouse|חולצה|ג'?קט|מעיל|סוודר|בגד עליון)\b/i
-const PANTS_KEYWORDS = /\b(pants|jeans|trousers|shorts|leggings|jogger|מכנסיים|מכנס)\b/i
-
-type SizeBreakdownItem = { label: string; value: string }
-
-function getSizeBreakdown(productName: string, scannedSizes: ScannedSizes | null, category: string): SizeBreakdownItem[] {
-  if (!scannedSizes) return []
-  if (category === 'shoes') {
-    return scannedSizes.shoeSize ? [{ label: 'נעל', value: `EU ${scannedSizes.shoeSize}` }] : []
-  }
-  if (category === 'accessories') return []
-
-  const top = scannedSizes.sizing.top
-  const bottom = scannedSizes.sizing.bottom
-
-  const isSuit = SUIT_KEYWORDS.test(productName)
-  const isShirt = SHIRT_KEYWORDS.test(productName)
-  const isPants = PANTS_KEYWORDS.test(productName)
-
-  if (isSuit || (isShirt && isPants)) {
-    return [
-      { label: 'חולצה', value: top },
-      { label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) },
-    ]
-  }
-  if (isShirt) {
-    return [{ label: 'חולצה', value: top }]
-  }
-  if (isPants) {
-    return [{ label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) }]
-  }
-  // Default: show both for generic clothing
-  return [
-    { label: 'חולצה', value: top },
-    { label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) },
-  ]
-}
-
-function formatSizeBreakdown(items: SizeBreakdownItem[]): string {
-  return items.map((item) => `${item.label}: ${item.value}`).join('  |  ')
-}
-
-function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes | null, category: string): string | null {
-  if (!scannedSizes) return null
-  if (category === 'shoes') {
-    return scannedSizes.shoeSize ? `נעל: EU ${scannedSizes.shoeSize}` : null
-  }
-  if (category === 'accessories') return null
-  const top = scannedSizes.sizing.top
-  const bottom = scannedSizes.sizing.bottom
-  const isSuit = SUIT_KEYWORDS.test(productName)
-  const isShirt = SHIRT_KEYWORDS.test(productName)
-  const isPants = PANTS_KEYWORDS.test(productName)
-  if (isSuit || (isShirt && isPants)) {
-    return `חולצה: ${top}  |  מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
-  }
-  if (isShirt && !isPants) return `חולצה: ${top}`
-  if (isPants && !isShirt) return `מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
-  return `חולצה: ${top}  |  מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
-}
-
-function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null; category: string }) {
-  const [toast, setToast] = useState<string | null>(null)
-  const [showSizeModal, setShowSizeModal] = useState(false)
-  const [imgError, setImgError] = useState(false)
-
-  const recommendedSize = getRecommendedSizeLabel(product.name, scannedSizes, category)
-  const sizeBreakdown = getSizeBreakdown(product.name, scannedSizes, category)
-
-  function handleBuy() {
-    if (category === 'accessories') {
-      confirmBuy({ preventDefault: () => {}, stopPropagation: () => {} } as GestureResponderEvent & { preventDefault: () => void })
-      return
-    }
-    setShowSizeModal(true)
-  }
-
-  async function confirmBuy(e: GestureResponderEvent & { preventDefault: () => void }) {
-    e.preventDefault()
-    e.stopPropagation()
-    setShowSizeModal(false)
-    let targetUrl = product.promotionLink ?? null
-    if (!targetUrl) {
-      const sourceUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const invokeHeaders: Record<string, string> = {}
-        if (session?.access_token) {
-          invokeHeaders['Authorization'] = `Bearer ${session.access_token}`
-        }
-        const { data } = await supabase.functions.invoke('aliexpress-search', {
-          body: { action: 'affiliate-link', sourceUrl },
-          headers: invokeHeaders,
-        })
-        const links = (data as Record<string, unknown>)?.links as { promotion_link?: string }[] | undefined
-        targetUrl = links?.[0]?.promotion_link ?? null
-      } catch {
-        targetUrl = null
-      }
-    }
-    const finalUrl = targetUrl ?? product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
-    window.open(finalUrl, '_blank', 'noopener,noreferrer')
-    setToast('מעביר לרכישה...')
-    setTimeout(() => setToast(null), 2500)
-    await logAffiliateClick({
-      product_id: product.aliexpressSku ?? '',
-      title: product.name,
-      promotion_link: finalUrl,
-    })
-  }
-
-  return (
-    <View style={feedStyles.productCard}>
-      <View style={feedStyles.productImageWrap}>
-        {imgError ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
-            <Text style={{ fontSize: 36 }}>📦</Text>
-          </View>
-        ) : (
-          <Image
-            source={{ uri: product.img.startsWith('http://') ? product.img.replace('http://', 'https://') : product.img.startsWith('https://') ? product.img : `https://images.unsplash.com/${product.img}?w=300&h=345&fit=crop&auto=format` }}
-            style={feedStyles.productImage}
-            onError={() => setImgError(true)}
-          />
-        )}
-        <TouchableOpacity
-          onPress={(e: GestureResponderEvent & { preventDefault: () => void }) => { e.preventDefault(); e.stopPropagation(); onToggleWishlist() }}
-          activeOpacity={0.7}
-          style={feedStyles.heartBtn}
-        >
-          <Text style={{ fontSize: 15 }}>{inWishlist ? '❤️' : '🤍'}</Text>
-        </TouchableOpacity>
-        <View style={feedStyles.aiBadge}>
-          <View style={feedStyles.aiBadgeDot} />
-          <Text style={feedStyles.aiBadgeText}>AI Match</Text>
-        </View>
-        {recommendedSize && category !== 'accessories' && (
-          <View style={feedStyles.sizeBadge}>
-            <Text style={feedStyles.sizeBadgeText}>מידה מומלצת עבורך: {recommendedSize}</Text>
-          </View>
-        )}
-      </View>
-      <View style={feedStyles.productInfo}>
-        {category !== 'accessories' && (
-          <View style={feedStyles.matchChip}>
-            <Text style={feedStyles.matchChipText}>
-              {category === 'shoes' && scannedSizes?.shoeSize
-                ? `✓ מתאים למידה נעל: EU ${scannedSizes.shoeSize}`
-                : scannedSizes
-                  ? `✓ מתאים למידה: ${scannedSizes.sizing.top}/${scannedSizes.sizing.bottom} EU`
-                  : '✓ מתאים למידה שנסרקת'}
-            </Text>
-          </View>
-        )}
-        <Text style={feedStyles.productName}>{product.name}</Text>
-        <Text style={feedStyles.productBrand}>{product.brand}</Text>
-        <View style={feedStyles.priceRow}>
-          <Text style={feedStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <Text style={feedStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
-          )}
-        </View>
-        <View style={feedStyles.buyBtnRow}>
-          <TouchableOpacity
-            onPress={handleBuy}
-            activeOpacity={0.8}
-            style={feedStyles.buyBtnAli}
-          >
-            <Text style={feedStyles.buyBtnText}>🛒 לקניה במחיר הטוב ביותר</Text>
-          </TouchableOpacity>
-        </View>
-        {toast && (
-          <View style={feedStyles.toast}>
-            <Text style={feedStyles.toastText}>{toast}</Text>
-          </View>
-        )}
-      </View>
-
-      {showSizeModal && category !== 'accessories' && (
-        <SizeReminderModal
-          recommendedSize={recommendedSize}
-          sizeBreakdown={sizeBreakdown}
-          onConfirm={confirmBuy}
-          onDismiss={() => setShowSizeModal(false)}
-        />
-      )}
-    </View>
-  )
-}
-
-function SizeReminderModal({ recommendedSize, sizeBreakdown, onConfirm, onDismiss }: {
-  recommendedSize: string | null
-  sizeBreakdown: SizeBreakdownItem[]
-  onConfirm: (e: GestureResponderEvent & { preventDefault: () => void }) => void
-  onDismiss: () => void
-}) {
-  return (
-    <View style={feedStyles.sizeModalOverlay}>
-      <TouchableOpacity onPress={onDismiss} activeOpacity={1} style={feedStyles.sizeModalBackdrop} />
-      <View style={feedStyles.sizeModalSheet}>
-        <TouchableOpacity onPress={onDismiss} activeOpacity={0.7} style={feedStyles.sizeModalCloseBtn}>
-          <Text style={feedStyles.sizeModalCloseText}>×</Text>
-        </TouchableOpacity>
-        <View style={feedStyles.sizeModalLogo}>
-          <Text style={feedStyles.sizeModalLogoText}>Fitgura</Text>
-        </View>
-        <Text style={feedStyles.sizeModalHighlightValue} numberOfLines={2}>
-          מידה מומלצת
-        </Text>
-        {sizeBreakdown.length > 0 && (
-          <View style={feedStyles.sizeBreakdownBox}>
-            {sizeBreakdown.map((item) => (
-              <View key={item.label} style={feedStyles.sizeBreakdownRow}>
-                <Text style={feedStyles.sizeBreakdownLabel}>{item.label}</Text>
-                <Text style={feedStyles.sizeBreakdownValue}>{item.value}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-        <TouchableOpacity onPress={onConfirm} activeOpacity={0.8} style={feedStyles.sizeModalConfirmBtn}>
-          <Text style={feedStyles.sizeModalConfirmBtnText}>המשך לרכישה</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  )
-}
 
 const feedStyles = StyleSheet.create({
   header: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingTop: 52, paddingHorizontal: 20 },
@@ -980,47 +748,11 @@ const feedStyles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingTop: 40 },
   emptyText: { color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden' },
-  productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F1F5F9' },
-  productImage: { width: '100%', height: '100%' },
-  heartBtn: { position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
-  aiBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(11,20,55,0.85)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#2ED573' },
-  aiBadgeText: { fontSize: 9, color: '#fff', fontWeight: '600' },
-  productInfo: { padding: 10 },
-  matchChip: { backgroundColor: '#F0FFF6', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 7, paddingVertical: 3, paddingHorizontal: 7, marginBottom: 6, alignSelf: 'flex-start' },
-  matchChipText: { fontSize: 9, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  productName: { fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  productBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
-  productOriginalPrice: { fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through' },
-  buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
-  buyBtnAli: { flex: 1, backgroundColor: '#FF4747', borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
-  buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familyTeaser: { backgroundColor: '#FFF5F0', borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,107,107,0.2)' },
   familyTitle: { fontSize: 13, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familySub: { fontSize: 11, color: '#FB923C', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   familyBadge: { backgroundColor: 'rgba(255,107,107,0.12)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
   familyBadgeText: { fontSize: 11, fontWeight: '700', color: '#FF6B6B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  toast: { marginTop: 6, backgroundColor: '#0B1437', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
-  toastText: { color: '#fff', fontSize: 10, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeBadge: { position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: '#2E5BFF', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 },
-  sizeBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeModalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'center', alignItems: 'center' },
-  sizeModalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(11,20,55,0.65)' },
-  sizeModalSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 18, width: 320, maxWidth: '90%', gap: 12, elevation: 10 },
-  sizeModalCloseBtn: { position: 'absolute', top: 6, right: 6, width: 26, height: 26, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  sizeModalCloseText: { color: '#94A3B8', fontSize: 22, lineHeight: 22, fontWeight: '500' },
-  sizeModalLogo: { alignSelf: 'center', backgroundColor: '#0B1437', borderRadius: 10, paddingVertical: 5, paddingHorizontal: 14 },
-  sizeModalLogoText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.5, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeModalHighlightValue: { fontSize: 16, lineHeight: 22, fontWeight: '800', color: '#2E5BFF', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeModalConfirmBtn: { width: '100%', backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 8, alignItems: 'center' },
-  sizeModalConfirmBtnText: { fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeBreakdownBox: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, gap: 10, borderWidth: 1.5, borderColor: '#E2E8F0' },
-  sizeBreakdownRow: { alignItems: 'center', gap: 2 },
-  sizeBreakdownLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#64748B', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeBreakdownValue: { fontSize: 15, lineHeight: 20, fontWeight: '800', color: '#2E5BFF', textAlign: 'center', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deviceBar: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F1F5F9', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
   deviceBarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   deviceBarTitle: { flex: 1, fontSize: 12, fontWeight: '700', color: '#475569', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
