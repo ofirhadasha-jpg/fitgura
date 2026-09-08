@@ -10,6 +10,7 @@ import {
   PRIMARY_STYLES, SEC_STYLES,
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
+  deriveScannedSizes,
   computeBodyMetricsFromSizes,
   computeBodyMetricsFromHeightWeight,
   fileToCompressedBase64,
@@ -46,17 +47,19 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   }, [])
 
   async function startScan(file: File) {
-    if (previewUrlRef.current) {
+    if (previewUrlRef.current?.startsWith('blob:')) {
       URL.revokeObjectURL(previewUrlRef.current)
-      previewUrlRef.current = null
     }
+    previewUrlRef.current = null
 
     setScanError(null)
+    const instantPreview = URL.createObjectURL(file)
+    previewUrlRef.current = instantPreview
     setSizes({
       sizing: { top: '', bottom: '', fit: '', bodyFrame: '', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: null },
       style: { primaryStyle: '', secondaryStyle: '', dominantColors: [], patternPreference: '', aestheticTags: [] },
       confidence: 0,
-      preview: URL.createObjectURL(file),
+      preview: instantPreview,
       top: '',
       bottom: '',
       fit: '',
@@ -69,12 +72,17 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
     const progressInterval = setInterval(() => {
       setScanProgress((p) => {
         if (p >= 90) return 90
-        return p + 2.5
+        return p + 5
       })
-    }, 60)
+    }, 40)
 
     try {
-      const { analysis, preview } = await analyzeBodyImage(file)
+      const aiPromise = analyzeBodyImage(file)
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('AI_TIMEOUT')), 8000)
+      )
+      const { analysis, preview } = await Promise.race([aiPromise, timeoutPromise])
+      if (previewUrlRef.current?.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
       previewUrlRef.current = preview
       const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
       setSizes(aiSizes)
@@ -96,7 +104,14 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       }
       onGalleryAdd([baselineEntry])
     } catch (err) {
-      setScanError(err instanceof Error ? err.message : 'AI analysis unavailable, using fallback')
+      const fallbackSizes = deriveScannedSizes(file)
+      if (previewUrlRef.current?.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = fallbackSizes.preview
+      setSizes(fallbackSizes)
+      onScanned(fallbackSizes)
+      setScanError(err instanceof Error && err.message === 'AI_TIMEOUT'
+        ? 'ניתוח AI לא הספיק, מציג הערכה מהירה'
+        : err instanceof Error ? err.message : 'AI analysis unavailable, using fallback')
     } finally {
       clearInterval(progressInterval)
       sessionStorage.removeItem(PENDING_SCAN_KEY)
@@ -112,28 +127,30 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         const base64 = await fileToCompressedBase64(file)
         sessionStorage.setItem(PENDING_SCAN_KEY, base64)
       } catch { /* ignore compression errors */ }
-      startScan(file)
+      await startScan(file)
     }
     e.target.value = ''
   }
 
   useEffect(() => {
-    try {
-      const pending = sessionStorage.getItem(PENDING_SCAN_KEY)
-      if (!pending) return
-      sessionStorage.removeItem(PENDING_SCAN_KEY)
-      const byteString = atob(pending.split(',')[1] ?? '')
-      const ab = new Uint8Array(byteString.length)
-      for (let i = 0; i < byteString.length; i++) ab[i] = byteString.charCodeAt(i)
-      const blob = new Blob([ab], { type: 'image/jpeg' })
-      const file = new File([blob], 'resumed-scan.jpg', { type: 'image/jpeg' })
-      startScan(file)
-    } catch (err) {
-      console.error('[Onboarding] Failed to resume pending scan:', err)
-      sessionStorage.removeItem(PENDING_SCAN_KEY)
-      setScanError('שגיאה בטעינת התמונה. נסה להעלות שוב.')
-      setStep('upload')
-    }
+    void (async () => {
+      try {
+        const pending = sessionStorage.getItem(PENDING_SCAN_KEY)
+        if (!pending) return
+        sessionStorage.removeItem(PENDING_SCAN_KEY)
+        const byteString = atob(pending.split(',')[1] ?? '')
+        const ab = new Uint8Array(byteString.length)
+        for (let i = 0; i < byteString.length; i++) ab[i] = byteString.charCodeAt(i)
+        const blob = new Blob([ab], { type: 'image/jpeg' })
+        const file = new File([blob], 'resumed-scan.jpg', { type: 'image/jpeg' })
+        await startScan(file)
+      } catch (err) {
+        console.error('[Onboarding] Failed to resume pending scan:', err)
+        sessionStorage.removeItem(PENDING_SCAN_KEY)
+        setScanError('שגיאה בטעינת התמונה. נסה להעלות שוב.')
+        setStep('upload')
+      }
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

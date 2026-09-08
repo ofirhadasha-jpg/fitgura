@@ -225,13 +225,26 @@ export interface SkuMatchResult {
   recommendation_note: string
 }
 
-export async function fileToCompressedBase64(file: File, maxDim: number = 768, quality: number = 0.7): Promise<string> {
-  const dataUrl = URL.createObjectURL(file)
+export async function fileToCompressedBase64(file: File, maxDim: number = 512, quality: number = 0.6): Promise<string> {
+  let bitmap: ImageBitmap
   try {
+    bitmap = await createImageBitmap(file, {
+      resizeWidth: maxDim,
+      resizeHeight: maxDim,
+      resizeQuality: 'medium',
+    })
+  } catch {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(reader.error ?? new Error('Unable to read image'))
+      reader.readAsDataURL(file)
+    })
+
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image()
       i.onload = () => resolve(i)
-      i.onerror = reject
+      i.onerror = () => reject(new Error('Unable to decode image'))
       i.src = dataUrl
     })
 
@@ -246,22 +259,38 @@ export async function fileToCompressedBase64(file: File, maxDim: number = 768, q
     canvas.width = width
     canvas.height = height
     const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      // Canvas 2D context unavailable (rare on some mobile browsers) — return raw data URL
-      return dataUrl
-    }
+    if (!ctx) return dataUrl
     ctx.drawImage(img, 0, 0, width, height)
-
-    const compressed = canvas.toDataURL('image/jpeg', quality)
-    return compressed
-  } finally {
-    URL.revokeObjectURL(dataUrl)
+    return canvas.toDataURL('image/jpeg', quality)
   }
+
+  let { width, height } = bitmap
+  if (width > maxDim || height > maxDim) {
+    const scale = maxDim / Math.max(width, height)
+    width = Math.round(width * scale)
+    height = Math.round(height * scale)
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    bitmap.close()
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(reader.error ?? new Error('Unable to read image'))
+      reader.readAsDataURL(file)
+    })
+  }
+  ctx.drawImage(bitmap, 0, 0, width, height)
+  bitmap.close()
+
+  return canvas.toDataURL('image/jpeg', quality)
 }
 
 export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAnalysis; preview: string }> {
-  const preview = URL.createObjectURL(file)
-
   const base64Image = await fileToCompressedBase64(file)
 
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-body`
@@ -289,7 +318,7 @@ export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAn
   }
 
   const analysis: AIBodyAnalysis = result
-  return { analysis, preview }
+  return { analysis, preview: base64Image }
 }
 
 export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: string): ScannedSizes {
@@ -493,9 +522,23 @@ export interface DetectedDevice {
   confidence: number
 }
 
-export function detectDevice(): DetectedDevice {
+export async function detectDevice(): Promise<DetectedDevice> {
   const ua = navigator.userAgent
   const uaLower = ua.toLowerCase()
+
+  // Modern Chrome freezes the UA string, stripping device model info.
+  // Use the async getHighEntropyValues API to get the real model.
+  const uaData = (navigator as Navigator & { userAgentData?: { mobile: boolean; platform: string; brands?: { brand: string; version: string }[]; getHighEntropyValues?: (hints: string[]) => Promise<{ model?: string; platform?: string; mobile?: boolean }> } }).userAgentData
+  let highEntropyModel = ''
+  if (uaData?.getHighEntropyValues) {
+    try {
+      const hv = await uaData.getHighEntropyValues(['model', 'platform'])
+      highEntropyModel = hv.model ?? ''
+    } catch { /* ignore */ }
+  }
+  const buildMatch = ua.match(/\(([^)]*);\s*([^)]*Build\/([^)]+)\)/i)
+  const buildModel = buildMatch?.[3]?.trim() ?? ''
+  const rawModel = highEntropyModel || buildModel
 
   let brand = 'Other'
   let model = 'Unknown Device'
@@ -505,122 +548,176 @@ export function detectDevice(): DetectedDevice {
   let camera_layout: string | null = null
   let confidence = 0.5
 
-  if (/iphone/.test(uaLower)) {
-    brand = 'Apple'
-    const modelMatch = ua.match(/iPhone(?:OS)?[\s/]?(\d+,\d+)?/i)
-    const isPro = /pro/i.test(ua)
-    const isMax = /max/i.test(ua)
+  // Samsung model map: Build model code → friendly name
+  const samsungModels: Record<string, { model: string; chip: string; year: string; screen?: number }> = {
+    'sm-s931b': { model: 'Galaxy S25 Ultra', chip: 'Snapdragon 8 Elite', year: '2025', screen: 6.8 },
+    'sm-s936b': { model: 'Galaxy S25+', chip: 'Snapdragon 8 Elite', year: '2025', screen: 6.2 },
+    'sm-s931u': { model: 'Galaxy S25', chip: 'Snapdragon 8 Elite', year: '2025', screen: 6.2 },
+    'sm-s928b': { model: 'Galaxy S24 Ultra', chip: 'Snapdragon 8 Gen 3', year: '2024', screen: 6.8 },
+    'sm-s926b': { model: 'Galaxy S24+', chip: 'Snapdragon 8 Gen 3', year: '2024', screen: 6.2 },
+    'sm-s921b': { model: 'Galaxy S24', chip: 'Exynos 2400', year: '2024', screen: 6.2 },
+    'sm-s918b': { model: 'Galaxy S23 Ultra', chip: 'Snapdragon 8 Gen 2', year: '2023', screen: 6.8 },
+    'sm-s916b': { model: 'Galaxy S23+', chip: 'Snapdragon 8 Gen 2', year: '2023', screen: 6.2 },
+    'sm-s911b': { model: 'Galaxy S23', chip: 'Snapdragon 8 Gen 2', year: '2023', screen: 6.1 },
+    'sm-s911u': { model: 'Galaxy S23', chip: 'Snapdragon 8 Gen 2', year: '2023', screen: 6.1 },
+    'sm-a556b': { model: 'Galaxy A55', chip: 'Exynos 1480', year: '2024', screen: 6.6 },
+    'sm-a546b': { model: 'Galaxy A54', chip: 'Exynos 1380', year: '2023', screen: 6.4 },
+    'sm-a356b': { model: 'Galaxy A35', chip: 'Exynos 1380', year: '2024', screen: 6.6 },
+  }
 
-    if (/iPhone16/.test(ua) || /iPhone15,\d+/.test(ua)) {
-      if (isMax) { model = 'iPhone 16 Pro Max'; chip = 'A18 Pro'; year = '2024' }
-      else if (isPro) { model = 'iPhone 16 Pro'; chip = 'A18 Pro'; year = '2024' }
-      else { model = 'iPhone 16'; chip = 'A18'; year = '2024' }
-    } else if (/iPhone15/.test(ua)) {
-      if (isMax) { model = 'iPhone 15 Pro Max'; chip = 'A17 Pro'; year = '2023' }
-      else if (isPro) { model = 'iPhone 15 Pro'; chip = 'A17 Pro'; year = '2023' }
-      else { model = 'iPhone 15'; chip = 'A16 Bionic'; year = '2023' }
-    } else if (/iPhone14/.test(ua)) {
-      if (isPro) { model = 'iPhone 14 Pro'; chip = 'A16 Bionic'; year = '2022' }
-      else { model = 'iPhone 14'; chip = 'A15 Bionic'; year = '2022' }
-    } else if (/iPhone13/.test(ua)) {
-      model = 'iPhone 13'; chip = 'A15 Bionic'; year = '2021'
-    } else if (/iPhone12/.test(ua)) {
-      model = 'iPhone 12'; chip = 'A14 Bionic'; year = '2020'
-    } else {
-      model = 'iPhone (Unknown Model)'; chip = 'Apple Silicon'; year = '2023'
+  // Check Build model or high-entropy model first (works even with frozen UA)
+  if (rawModel) {
+    const buildLower = rawModel.toLowerCase()
+    const samsungKey = Object.keys(samsungModels).find((k) => buildLower.includes(k))
+    if (samsungKey) {
+      const info = samsungModels[samsungKey]
+      brand = 'Samsung'
+      model = info.model
+      chip = info.chip
+      year = info.year
+      screen_size_inches = info.screen ?? 6.2
+      camera_layout = model.includes('Ultra') ? 'Quad' : 'Triple'
+      confidence = 0.9
     }
-    screen_size_inches = isMax ? 6.9 : isPro ? 6.3 : 6.1
-    camera_layout = isPro || isMax ? 'Triple + LiDAR' : 'Dual'
-    confidence = 0.85
-  } else if (/ipad/.test(uaLower)) {
-    brand = 'Apple'
-    model = 'iPad'
-    chip = 'Apple Silicon'
-    year = '2024'
-    screen_size_inches = 11
-    camera_layout = 'Single'
-    confidence = 0.7
-  } else if (/samsung|sm-|galaxy/.test(uaLower)) {
-    brand = 'Samsung'
-    if (/sm-s93/i.test(ua) || /galaxy s25/i.test(uaLower)) {
-      if (/ultra/i.test(uaLower)) { model = 'Galaxy S25 Ultra'; chip = 'Snapdragon 8 Elite'; year = '2025' }
-      else if (/\+/.test(ua)) { model = 'Galaxy S25+'; chip = 'Snapdragon 8 Elite'; year = '2025' }
-      else { model = 'Galaxy S25'; chip = 'Snapdragon 8 Elite'; year = '2025' }
-    } else if (/sm-s92/i.test(ua) || /galaxy s24/i.test(uaLower)) {
-      if (/ultra/i.test(uaLower)) { model = 'Galaxy S24 Ultra'; chip = 'Snapdragon 8 Gen 3'; year = '2024' }
-      else if (/\+/.test(ua)) { model = 'Galaxy S24+'; chip = 'Snapdragon 8 Gen 3'; year = '2024' }
-      else { model = 'Galaxy S24'; chip = 'Exynos 2400'; year = '2024' }
-    } else if (/sm-s91/i.test(ua) || /galaxy s23/i.test(uaLower)) {
-      model = 'Galaxy S23'; chip = 'Snapdragon 8 Gen 2'; year = '2023'
-    } else if (/sm-a5/i.test(ua)) {
-      model = 'Galaxy A55'; chip = 'Exynos 1480'; year = '2024'
-    } else if (/sm-a3/i.test(ua)) {
-      model = 'Galaxy A35'; chip = 'Exynos 1380'; year = '2024'
-    } else {
-      model = 'Samsung Galaxy'; chip = 'Exynos/Snapdragon'; year = '2024'
+  }
+
+  if (model === 'Unknown Device') {
+    if (/iphone/.test(uaLower)) {
+      brand = 'Apple'
+      const modelMatch = ua.match(/iPhone(?:OS)?[\s/]?(\d+,\d+)?/i)
+      const isPro = /pro/i.test(ua)
+      const isMax = /max/i.test(ua)
+
+      if (/iPhone16/.test(ua) || /iPhone15,\d+/.test(ua)) {
+        if (isMax) { model = 'iPhone 16 Pro Max'; chip = 'A18 Pro'; year = '2024' }
+        else if (isPro) { model = 'iPhone 16 Pro'; chip = 'A18 Pro'; year = '2024' }
+        else { model = 'iPhone 16'; chip = 'A18'; year = '2024' }
+      } else if (/iPhone15/.test(ua)) {
+        if (isMax) { model = 'iPhone 15 Pro Max'; chip = 'A17 Pro'; year = '2023' }
+        else if (isPro) { model = 'iPhone 15 Pro'; chip = 'A17 Pro'; year = '2023' }
+        else { model = 'iPhone 15'; chip = 'A16 Bionic'; year = '2023' }
+      } else if (/iPhone14/.test(ua)) {
+        if (isPro) { model = 'iPhone 14 Pro'; chip = 'A16 Bionic'; year = '2022' }
+        else { model = 'iPhone 14'; chip = 'A15 Bionic'; year = '2022' }
+      } else if (/iPhone13/.test(ua)) {
+        model = 'iPhone 13'; chip = 'A15 Bionic'; year = '2021'
+      } else if (/iPhone12/.test(ua)) {
+        model = 'iPhone 12'; chip = 'A14 Bionic'; year = '2020'
+      } else {
+        model = 'iPhone (Unknown Model)'; chip = 'Apple Silicon'; year = '2023'
+      }
+      screen_size_inches = isMax ? 6.9 : isPro ? 6.3 : 6.1
+      camera_layout = isPro || isMax ? 'Triple + LiDAR' : 'Dual'
+      confidence = 0.85
+    } else if (/ipad/.test(uaLower)) {
+      brand = 'Apple'
+      model = 'iPad'
+      chip = 'Apple Silicon'
+      year = '2024'
+      screen_size_inches = 11
+      camera_layout = 'Single'
+      confidence = 0.7
+    } else if (/samsung|sm-|galaxy/.test(uaLower)) {
+      brand = 'Samsung'
+      if (/sm-s93/i.test(ua) || /galaxy s25/i.test(uaLower)) {
+        if (/ultra/i.test(uaLower)) { model = 'Galaxy S25 Ultra'; chip = 'Snapdragon 8 Elite'; year = '2025' }
+        else if (/\+/.test(ua)) { model = 'Galaxy S25+'; chip = 'Snapdragon 8 Elite'; year = '2025' }
+        else { model = 'Galaxy S25'; chip = 'Snapdragon 8 Elite'; year = '2025' }
+      } else if (/sm-s92/i.test(ua) || /galaxy s24/i.test(uaLower)) {
+        if (/ultra/i.test(uaLower)) { model = 'Galaxy S24 Ultra'; chip = 'Snapdragon 8 Gen 3'; year = '2024' }
+        else if (/\+/.test(ua)) { model = 'Galaxy S24+'; chip = 'Snapdragon 8 Gen 3'; year = '2024' }
+        else { model = 'Galaxy S24'; chip = 'Exynos 2400'; year = '2024' }
+      } else if (/sm-s91/i.test(ua) || /galaxy s23/i.test(uaLower)) {
+        model = 'Galaxy S23'; chip = 'Snapdragon 8 Gen 2'; year = '2023'
+      } else if (/sm-a5/i.test(ua)) {
+        model = 'Galaxy A55'; chip = 'Exynos 1480'; year = '2024'
+      } else if (/sm-a3/i.test(ua)) {
+        model = 'Galaxy A35'; chip = 'Exynos 1380'; year = '2024'
+      } else {
+        model = 'Samsung Galaxy'; chip = 'Exynos/Snapdragon'; year = '2024'
+      }
+      screen_size_inches = /ultra/i.test(uaLower) ? 6.8 : 6.2
+      camera_layout = /ultra/i.test(uaLower) ? 'Quad' : 'Triple'
+      confidence = 0.75
+    } else if (/pixel/i.test(uaLower)) {
+      brand = 'Google'
+      if (/pixel 9 pro/i.test(uaLower)) { model = 'Pixel 9 Pro'; chip = 'Google Tensor G4'; year = '2024'; screen_size_inches = 6.3 }
+      else if (/pixel 9/i.test(uaLower)) { model = 'Pixel 9'; chip = 'Google Tensor G4'; year = '2024'; screen_size_inches = 6.2 }
+      else if (/pixel 8 pro/i.test(uaLower)) { model = 'Pixel 8 Pro'; chip = 'Google Tensor G3'; year = '2023'; screen_size_inches = 6.7 }
+      else if (/pixel 8/i.test(uaLower)) { model = 'Pixel 8'; chip = 'Google Tensor G3'; year = '2023'; screen_size_inches = 6.2 }
+      else if (/pixel 7/i.test(uaLower)) { model = 'Pixel 7'; chip = 'Google Tensor G2'; year = '2022'; screen_size_inches = 6.3 }
+      else { model = 'Pixel'; chip = 'Google Tensor'; year = '2023'; screen_size_inches = 6.2 }
+      camera_layout = 'Triple'
+      confidence = 0.8
+    } else if (/xiaomi|redmi|mi\s/i.test(uaLower)) {
+      brand = 'Xiaomi'
+      if (/14 ultra/i.test(uaLower)) { model = 'Xiaomi 14 Ultra'; chip = 'Snapdragon 8 Gen 3'; year = '2024'; screen_size_inches = 6.73 }
+      else if (/14\b/i.test(uaLower)) { model = 'Xiaomi 14'; chip = 'Snapdragon 8 Gen 3'; year = '2024'; screen_size_inches = 6.36 }
+      else if (/13t pro/i.test(uaLower)) { model = 'Xiaomi 13T Pro'; chip = 'Dimensity 9200+'; year = '2023'; screen_size_inches = 6.67 }
+      else if (/redmi note 13 pro/i.test(uaLower)) { model = 'Redmi Note 13 Pro'; chip = 'Snapdragon 7s Gen 2'; year = '2024'; screen_size_inches = 6.67 }
+      else { model = 'Xiaomi Device'; chip = 'Snapdragon/Dimensity'; year = '2024'; screen_size_inches = 6.5 }
+      camera_layout = 'Triple'
+      confidence = 0.7
+    } else if (/oneplus/i.test(uaLower)) {
+      brand = 'OnePlus'
+      if (/12r/i.test(uaLower)) { model = 'OnePlus 12R'; chip = 'Snapdragon 8 Gen 1'; year = '2024'; screen_size_inches = 6.78 }
+      else if (/12\b/i.test(uaLower)) { model = 'OnePlus 12'; chip = 'Snapdragon 8 Gen 3'; year = '2024'; screen_size_inches = 6.82 }
+      else if (/nord 4/i.test(uaLower)) { model = 'OnePlus Nord 4'; chip = 'Snapdragon 7+ Gen 3'; year = '2024'; screen_size_inches = 6.74 }
+      else { model = 'OnePlus Device'; chip = 'Snapdragon'; year = '2024'; screen_size_inches = 6.7 }
+      camera_layout = 'Triple'
+      confidence = 0.7
+    } else if (/oppo|find x/i.test(uaLower)) {
+      brand = 'OPPO'
+      model = /find x8 pro/i.test(uaLower) ? 'OPPO Find X8 Pro' : 'OPPO Device'
+      chip = 'Dimensity 9400'
+      year = '2024'
+      screen_size_inches = 6.78
+      camera_layout = 'Triple'
+      confidence = 0.65
+    } else if (/motorola|moto/i.test(uaLower)) {
+      brand = 'Motorola'
+      model = /edge 50 pro/i.test(uaLower) ? 'Motorola Edge 50 Pro' : 'Motorola Device'
+      chip = 'Snapdragon 7 Gen 3'
+      year = '2024'
+      screen_size_inches = 6.7
+      camera_layout = 'Triple'
+      confidence = 0.65
+    } else if (/sony|xperia/i.test(uaLower)) {
+      brand = 'Sony'
+      model = /xperia 1 vi/i.test(uaLower) ? 'Sony Xperia 1 VI' : 'Sony Xperia'
+      chip = 'Snapdragon 8 Gen 3'
+      year = '2024'
+      screen_size_inches = 6.5
+      camera_layout = 'Triple'
+      confidence = 0.65
+    } else if (/android/i.test(uaLower)) {
+      brand = 'Android'
+      model = 'Android Phone'
+      chip = 'Snapdragon/Exynos'
+      year = '2024'
+      screen_size_inches = 6.5
+      camera_layout = 'Triple'
+      confidence = 0.55
+    } else if (/macintosh|mac os|windows|linux/i.test(uaLower)) {
+      brand = 'Desktop'
+      model = /mac/i.test(uaLower) ? 'Mac' : /windows/i.test(uaLower) ? 'Windows PC' : 'Linux Desktop'
+      chip = 'Desktop CPU'
+      year = '2024'
+      screen_size_inches = null
+      camera_layout = null
+      confidence = 0.6
     }
-    screen_size_inches = /ultra/i.test(uaLower) ? 6.8 : 6.2
-    camera_layout = /ultra/i.test(uaLower) ? 'Quad' : 'Triple'
-    confidence = 0.75
-  } else if (/pixel/i.test(uaLower)) {
-    brand = 'Google'
-    if (/pixel 9 pro/i.test(uaLower)) { model = 'Pixel 9 Pro'; chip = 'Google Tensor G4'; year = '2024'; screen_size_inches = 6.3 }
-    else if (/pixel 9/i.test(uaLower)) { model = 'Pixel 9'; chip = 'Google Tensor G4'; year = '2024'; screen_size_inches = 6.2 }
-    else if (/pixel 8 pro/i.test(uaLower)) { model = 'Pixel 8 Pro'; chip = 'Google Tensor G3'; year = '2023'; screen_size_inches = 6.7 }
-    else if (/pixel 8/i.test(uaLower)) { model = 'Pixel 8'; chip = 'Google Tensor G3'; year = '2023'; screen_size_inches = 6.2 }
-    else if (/pixel 7/i.test(uaLower)) { model = 'Pixel 7'; chip = 'Google Tensor G2'; year = '2022'; screen_size_inches = 6.3 }
-    else { model = 'Pixel'; chip = 'Google Tensor'; year = '2023'; screen_size_inches = 6.2 }
-    camera_layout = 'Triple'
-    confidence = 0.8
-  } else if (/xiaomi|redmi|mi\s/i.test(uaLower)) {
-    brand = 'Xiaomi'
-    if (/14 ultra/i.test(uaLower)) { model = 'Xiaomi 14 Ultra'; chip = 'Snapdragon 8 Gen 3'; year = '2024'; screen_size_inches = 6.73 }
-    else if (/14\b/i.test(uaLower)) { model = 'Xiaomi 14'; chip = 'Snapdragon 8 Gen 3'; year = '2024'; screen_size_inches = 6.36 }
-    else if (/13t pro/i.test(uaLower)) { model = 'Xiaomi 13T Pro'; chip = 'Dimensity 9200+'; year = '2023'; screen_size_inches = 6.67 }
-    else if (/redmi note 13 pro/i.test(uaLower)) { model = 'Redmi Note 13 Pro'; chip = 'Snapdragon 7s Gen 2'; year = '2024'; screen_size_inches = 6.67 }
-    else { model = 'Xiaomi Device'; chip = 'Snapdragon/Dimensity'; year = '2024'; screen_size_inches = 6.5 }
-    camera_layout = 'Triple'
-    confidence = 0.7
-  } else if (/oneplus/i.test(uaLower)) {
-    brand = 'OnePlus'
-    if (/12r/i.test(uaLower)) { model = 'OnePlus 12R'; chip = 'Snapdragon 8 Gen 1'; year = '2024'; screen_size_inches = 6.78 }
-    else if (/12\b/i.test(uaLower)) { model = 'OnePlus 12'; chip = 'Snapdragon 8 Gen 3'; year = '2024'; screen_size_inches = 6.82 }
-    else if (/nord 4/i.test(uaLower)) { model = 'OnePlus Nord 4'; chip = 'Snapdragon 7+ Gen 3'; year = '2024'; screen_size_inches = 6.74 }
-    else { model = 'OnePlus Device'; chip = 'Snapdragon'; year = '2024'; screen_size_inches = 6.7 }
-    camera_layout = 'Triple'
-    confidence = 0.7
-  } else if (/oppo|find x/i.test(uaLower)) {
-    brand = 'OPPO'
-    model = /find x8 pro/i.test(uaLower) ? 'OPPO Find X8 Pro' : 'OPPO Device'
-    chip = 'Dimensity 9400'
-    year = '2024'
-    screen_size_inches = 6.78
-    camera_layout = 'Triple'
-    confidence = 0.65
-  } else if (/motorola|moto/i.test(uaLower)) {
-    brand = 'Motorola'
-    model = /edge 50 pro/i.test(uaLower) ? 'Motorola Edge 50 Pro' : 'Motorola Device'
-    chip = 'Snapdragon 7 Gen 3'
-    year = '2024'
-    screen_size_inches = 6.7
-    camera_layout = 'Triple'
-    confidence = 0.65
-  } else if (/sony|xperia/i.test(uaLower)) {
-    brand = 'Sony'
-    model = /xperia 1 vi/i.test(uaLower) ? 'Sony Xperia 1 VI' : 'Sony Xperia'
-    chip = 'Snapdragon 8 Gen 3'
-    year = '2024'
-    screen_size_inches = 6.5
-    camera_layout = 'Triple'
-    confidence = 0.65
-  } else if (/macintosh|mac os|windows|linux/i.test(uaLower)) {
-    brand = 'Desktop'
-    model = /mac/i.test(uaLower) ? 'Mac' : /windows/i.test(uaLower) ? 'Windows PC' : 'Linux Desktop'
-    chip = 'Desktop CPU'
-    year = '2024'
-    screen_size_inches = null
-    camera_layout = null
-    confidence = 0.6
+  }
+
+  // userAgentData fallback for Chrome with frozen UA
+  if (model === 'Unknown Device' && uaData?.brands) {
+    const samsungBrand = uaData.brands.find((b) => /samsung/i.test(b.brand))
+    if (samsungBrand) {
+      brand = 'Samsung'
+      model = 'Samsung Galaxy'
+      chip = 'Exynos/Snapdragon'
+      confidence = 0.6
+    }
   }
 
   const name = brand === 'Desktop' ? model : model

@@ -3,7 +3,7 @@ import type { GestureResponderEvent } from 'react-native'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
 import { AddDeviceModal } from '../components/AddDeviceModal'
-import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice } from '../types'
+import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice, detectDevice } from '../types'
 import {
   searchProductsByCategory,
   searchDeviceAccessories,
@@ -299,14 +299,25 @@ export function FeedScreen({
 
   const handleFilterChange = useCallback((newFilter: typeof filter) => {
     console.log(`[Feed] Category changed to: ${newFilter}`)
+    setFilter(newFilter)
     filterRef.current = newFilter
     selectedDeviceRef.current = null
     setSelectedDevice(null)
     setPageNo(1)
     setHasMore(true)
     setCatalog([])
+
+    if (newFilter === 'accessories' && registeredDevices.length === 0) {
+      void detectDevice().then((detected) => {
+        const deviceName = `${detected.brand} ${detected.model}`.trim()
+        onAddDevice(deviceName)
+        void loadProductsRef.current(1, false, 'accessories')
+      })
+      return
+    }
+
     void loadProductsRef.current(1, false, newFilter)
-  }, [])
+  }, [registeredDevices, onAddDevice])
 
   const handleSelectDevice = useCallback((device: string | null) => {
     if (selectedDeviceRef.current === device) return
@@ -531,7 +542,7 @@ export function FeedScreen({
 
         {isLoadingProducts && (
           <View style={feedStyles.loadingState}>
-            <Text style={{ fontSize: 20 }} className="fitgura-spinner">⟳</Text>
+            <span className="fitgura-spinner" style={{ fontSize: 20, lineHeight: '20px' }}>⟳</span>
             <Text style={feedStyles.loadingText}>פיטגורה מתאימה מוצרים חדשים עבורך</Text>
           </View>
         )}
@@ -580,7 +591,7 @@ export function FeedScreen({
 
         {isLoadingMore && (
           <View style={feedStyles.loadingState}>
-            <Text style={{ fontSize: 20 }} className="fitgura-spinner">⟳</Text>
+            <span className="fitgura-spinner" style={{ fontSize: 20, lineHeight: '20px' }}>⟳</span>
             <Text style={feedStyles.loadingText}>טוען מוצרים נוספים עבורך...</Text>
           </View>
         )}
@@ -747,6 +758,7 @@ function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes
 function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: { product: Product; inWishlist: boolean; onToggleWishlist: () => void; scannedSizes: ScannedSizes | null; category: string }) {
   const [toast, setToast] = useState<string | null>(null)
   const [showSizeModal, setShowSizeModal] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   const recommendedSize = getRecommendedSizeLabel(product.name, scannedSizes, category)
   const sizeBreakdown = getSizeBreakdown(product.name, scannedSizes, category)
@@ -803,10 +815,17 @@ function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, cate
   return (
     <View style={feedStyles.productCard}>
       <View style={feedStyles.productImageWrap}>
-        <Image
-          source={{ uri: product.img.startsWith('http') ? product.img : `https://images.unsplash.com/${product.img}?w=300&h=345&fit=crop&auto=format` }}
-          style={feedStyles.productImage}
-        />
+        {imgError ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
+            <Text style={{ fontSize: 36 }}>📦</Text>
+          </View>
+        ) : (
+          <Image
+            source={{ uri: product.img.startsWith('http://') ? product.img.replace('http://', 'https://') : product.img.startsWith('https://') ? product.img : `https://images.unsplash.com/${product.img}?w=300&h=345&fit=crop&auto=format` }}
+            style={feedStyles.productImage}
+            onError={() => setImgError(true)}
+          />
+        )}
         <TouchableOpacity
           onPress={(e: GestureResponderEvent & { preventDefault: () => void }) => { e.preventDefault(); e.stopPropagation(); onToggleWishlist() }}
           activeOpacity={0.7}

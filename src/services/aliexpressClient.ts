@@ -201,10 +201,10 @@ async function aggregateBatch(
 
   const collected: Product[] = []
   const seenIds = new Set<string>()
-  const perQuerySize = 50
+  const perQuerySize = 40
   let currentPage = batchNo
   let attempts = 0
-  const maxAttempts = 5
+  const maxAttempts = 2
 
   while (collected.length < BATCH_SIZE && attempts < maxAttempts) {
     attempts++

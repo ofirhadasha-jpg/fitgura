@@ -32,34 +32,36 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
 
   useEffect(() => {
     if (phase !== 'detecting') return
-    const d = detectDevice()
-    setDetected(d)
-    onDetected(d)
     let active = true
-    setAccessoryCounts(null)
-    setAccessoryLoadError(false)
-    const searchKeywords = d.brand === 'Desktop'
-      ? `${d.model} laptop case cover sleeve charger stand cable adapter dock`
-      : `${d.model} case cover screen protector tempered glass charger cable adapter dock power bank earphones holder mount`
-    void fetchAliExpressProducts(searchKeywords, 1, 50, undefined, '5090301,509')
-      .then((products) => {
-        if (!active) return
-        const productNames = products.map((product) => product.name.toLowerCase())
-        const categories: AccessoryCategory[] = [
-          { icon: '📱', label: 'כיסויים', examples: 'סיליקון, פאייפ, עור, שקוף', count: productNames.filter((name) => /case|cover|כיסוי/.test(name)).length },
-          { icon: '🛡️', label: 'מגני מסך', examples: 'זכוכית מחוסמת, פילם, מגן פרטיות', count: productNames.filter((name) => /screen protector|tempered|glass|film|מגן/.test(name)).length },
-          { icon: '🔌', label: 'כבלי טעינה', examples: 'USB-C, Lightning, מיקרו-USB', count: productNames.filter((name) => /cable|כבל/.test(name)).length },
-          { icon: '⚡', label: 'מטענים', examples: 'מטען קיר, אלחוטי, מהיר', count: productNames.filter((name) => /charger|charging|מטען|טעינה/.test(name)).length },
-          { icon: '🔋', label: 'סוללות ניידות', examples: 'Power Bank, מטען נייד', count: productNames.filter((name) => /power bank|powerbank|סוללה/.test(name)).length },
-          { icon: '🎵', label: 'אוזניות', examples: 'אלחוטיות, חוטיות, אינ-אר', count: productNames.filter((name) => /earphone|earbud|headphone|אוזני/.test(name)).length },
-          { icon: '🔗', label: 'מתאמים וחיבורים', examples: 'USB-C ל-USB, AUX, HDMI', count: productNames.filter((name) => /adapter|connector|hub|מתאם/.test(name)).length },
-          { icon: '🚗', label: 'מחזיקים ומתקנים', examples: 'לרכב, לשולחן, מעמד', count: productNames.filter((name) => /holder|mount|stand|dock|מחזיק|מעמד/.test(name)).length },
-        ].filter((cat) => cat.count > 0)
-        setAccessoryCounts(categories.length > 0 ? categories : null)
-      })
-      .catch(() => {
-        if (active) setAccessoryLoadError(true)
-      })
+    void detectDevice().then((d) => {
+      if (!active) return
+      setDetected(d)
+      onDetected(d)
+      setAccessoryCounts(null)
+      setAccessoryLoadError(false)
+      const searchKeywords = d.brand === 'Desktop'
+        ? `${d.model} laptop case cover sleeve charger stand cable adapter dock`
+        : `${d.model} case cover screen protector tempered glass charger cable adapter dock power bank earphones holder mount`
+      void fetchAliExpressProducts(searchKeywords, 1, 50, undefined, '5090301,509')
+        .then((products) => {
+          if (!active) return
+          const productNames = products.map((product) => product.name.toLowerCase())
+          const categories: AccessoryCategory[] = [
+            { icon: '📱', label: 'כיסויים', examples: 'סיליקון, פאייפ, עור, שקוף', count: productNames.filter((name) => /case|cover|כיסוי/.test(name)).length },
+            { icon: '🛡️', label: 'מגני מסך', examples: 'זכוכית מחוסמת, פילם, מגן פרטיות', count: productNames.filter((name) => /screen protector|tempered|glass|film|מגן/.test(name)).length },
+            { icon: '🔌', label: 'כבלי טעינה', examples: 'USB-C, Lightning, מיקרו-USB', count: productNames.filter((name) => /cable|כבל/.test(name)).length },
+            { icon: '⚡', label: 'מטענים', examples: 'מטען קיר, אלחוטי, מהיר', count: productNames.filter((name) => /charger|charging|מטען|טעינה/.test(name)).length },
+            { icon: '🔋', label: 'סוללות ניידות', examples: 'Power Bank, מטען נייד', count: productNames.filter((name) => /power bank|powerbank|סוללה/.test(name)).length },
+            { icon: '🎵', label: 'אוזניות', examples: 'אלחוטיות, חוטיות, אינ-אר', count: productNames.filter((name) => /earphone|earbud|headphone|אוזני/.test(name)).length },
+            { icon: '🔗', label: 'מתאמים וחיבורים', examples: 'USB-C ל-USB, AUX, HDMI', count: productNames.filter((name) => /adapter|connector|hub|מתאם/.test(name)).length },
+            { icon: '🚗', label: 'מחזיקים ומתקנים', examples: 'לרכב, לשולחן, מעמד', count: productNames.filter((name) => /holder|mount|stand|dock|מחזיק|מעמד/.test(name)).length },
+          ].filter((cat) => cat.count > 0)
+          setAccessoryCounts(categories.length > 0 ? categories : null)
+        })
+        .catch(() => {
+          if (active) setAccessoryLoadError(true)
+        })
+    })
     const t = setInterval(() => {
       setScanPct((p) => {
         if (p >= 100) { clearInterval(t); setTimeout(() => setPhase('confirmed'), 300); return 100 }

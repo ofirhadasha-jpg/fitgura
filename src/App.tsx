@@ -1,5 +1,5 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product } from './types'
 import type { SizeRegion } from './utils/sizeConverter'
 import { AuthModal } from './components'
@@ -59,9 +59,13 @@ function saveGuestDevice(device: DetectedDevice | null) {
 }
 
 function loadGuestDevices(): string[] {
-  const raw = localStorage.getItem(GUEST_DEVICES_KEY)
-  if (!raw) return []
-  try { return JSON.parse(raw) as string[] } catch { return [] }
+  try {
+    const raw = localStorage.getItem(GUEST_DEVICES_KEY)
+    if (!raw) return []
+    return JSON.parse(raw) as string[]
+  } catch {
+    return []
+  }
 }
 
 function saveGuestDevices(devices: string[]) {
@@ -103,9 +107,13 @@ function migrateLegacyFavorites(): { productId: string; productName: string }[] 
 }
 
 function loadGuestProfile(): GuestProfile | null {
-  const raw = localStorage.getItem(GUEST_PROFILE_KEY)
-  if (!raw) return null
-  try { return JSON.parse(raw) as GuestProfile } catch { return null }
+  try {
+    const raw = localStorage.getItem(GUEST_PROFILE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as GuestProfile
+  } catch {
+    return null
+  }
 }
 
 function loadGuestFavorites(): { productId: string; productName: string }[] {
@@ -226,8 +234,12 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>(() => {
-    const saved = sessionStorage.getItem('fitgura_screen')
-    return (saved === 'onboarding' || saved === 'device') ? saved : 'splash'
+    try {
+      const saved = sessionStorage.getItem('fitgura_screen')
+      return (saved === 'onboarding' || saved === 'device') ? saved : 'splash'
+    } catch {
+      return 'splash'
+    }
   })
   const [wishlistItems, setWishlistItems] = useState<number[]>([])
   const [budget, setBudget] = useState<[number, number]>([0, 5000])
@@ -247,6 +259,20 @@ export default function App() {
   const [latestAddedDevice, setLatestAddedDevice] = useState<string | null>(null)
 
   useEffect(() => {
+    // Check for existing session on mount — critical for Google OAuth redirects
+    // where the SIGNED_IN event fires before the listener is attached
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return
+      const u = session.user
+      setUser({
+        id: u.id,
+        name: u.user_metadata?.full_name ?? u.email?.split('@')[0] ?? 'משתמש',
+        email: u.email ?? '',
+        avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
+      })
+      setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+    })
+
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       void (async () => {
         if (!session?.user) {
@@ -262,14 +288,17 @@ export default function App() {
           avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
         })
 
+        // Navigate to feed on SIGNED_IN or INITIAL_SESSION (covers Google OAuth redirect)
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+        }
+
         if (event === 'SIGNED_IN') {
           try {
             await migrateGuestData(u.id)
           } catch (err) {
             console.error('[App] Guest data migration failed:', err)
           }
-          // After Google OAuth redirect, land on the feed — not the onboarding/device screen
-          setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
         }
 
         try {
