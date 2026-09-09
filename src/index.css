@@ -84,3 +84,9 @@ body {
   transform-origin: center center;
   will-change: transform;
 }
+
+@media (max-width: 480px) {
+  .product-card {
+    width: 100% !important;
+  }
+}

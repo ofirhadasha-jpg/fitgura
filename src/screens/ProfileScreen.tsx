@@ -620,8 +620,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
         {/* AI scan gallery */}
         <View style={profStyles.card}>
-          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleManualUpload} />
-          <input ref={galleryMultiUploadRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleGalleryMultiUpload} />
+          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleManualUpload} />
+          <input ref={galleryMultiUploadRef} type="file" accept="image/*" multiple style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleGalleryMultiUpload} />
           <View style={profStyles.galleryHeader}>
             <View>
               <Text style={profStyles.galleryTitle}>🖼️ גלריית סריקות AI</Text>
@@ -833,8 +833,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             style={profStyles.sheetBackdrop}
           />
           <View style={profStyles.sheet}>
-            <input ref={devCameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleDevPhoto} />
-            <input ref={devGalleryInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleDevPhoto} />
+            <input ref={devCameraInputRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleDevPhoto} />
+            <input ref={devGalleryInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleDevPhoto} />
 
             <View style={profStyles.sheetHeaderRow}>
               <Text style={profStyles.sheetTitle}>הוסף מכשיר</Text>

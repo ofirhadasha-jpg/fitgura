@@ -453,7 +453,7 @@ Deno.serve(async (req: Request) => {
           price: Math.round(salePrice),
           originalPrice: originalPrice > 0 ? Math.round(originalPrice) : null,
           currency: "₪",
-          img: p.product_main_image_url ?? "",
+          img: (p.product_main_image_url ?? "").replace(/^\/\//, "https://"),
           category,
           aliexpressUrl: p.product_detail_url ?? "",
           aliexpressSku: p.product_id ?? "",

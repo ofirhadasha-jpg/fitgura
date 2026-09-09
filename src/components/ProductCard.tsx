@@ -11,6 +11,15 @@ function formatPrice(price: number, currency?: string): string {
   return `${symbol}${price.toLocaleString()}`
 }
 
+function normalizeProductImageUrl(imageUrl: string): string | null {
+  const value = imageUrl.trim()
+  if (!value) return null
+  if (value.startsWith('//')) return `https:${value}`
+  if (value.startsWith('http://')) return value.replace('http://', 'https://')
+  if (value.startsWith('https://')) return value
+  return null
+}
+
 const SUIT_KEYWORDS = /\b(suit|blazer set|two.?piece|tracksuit|set|חליפה|סט|סט חליפה)\b/i
 const SHIRT_KEYWORDS = /\b(shirt|t-?shirt|hoodie|sweater|jacket|coat|polo|tank|top|blouse|חולצה|ג'?קט|מעיל|סוודר|בגד עליון)\b/i
 const PANTS_KEYWORDS = /\b(pants|jeans|trousers|shorts|leggings|jogger|מכנסיים|מכנס)\b/i
@@ -117,6 +126,8 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const [showSizeModal, setShowSizeModal] = useState(false)
   const [imgError, setImgError] = useState(false)
 
+  const imageUrl = normalizeProductImageUrl(product.img)
+
   const isDeviceAccessory = category === 'accessories' || DEVICE_ACCESSORY_KEYWORDS.test(product.name)
   const showSizeRecommendation = !isDeviceAccessory && category !== 'accessories'
   const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product.name, scannedSizes, category) : null
@@ -167,15 +178,15 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   }
 
   return (
-    <View style={cardStyles.productCard}>
+    <View style={cardStyles.productCard} className="product-card">
       <View style={cardStyles.productImageWrap}>
-        {imgError ? (
+        {imgError || !imageUrl ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
             <Text style={{ fontSize: 36 }}>📦</Text>
           </View>
         ) : (
           <Image
-            source={{ uri: product.img.startsWith('http://') ? product.img.replace('http://', 'https://') : product.img.startsWith('https://') ? product.img : `https://images.unsplash.com/${product.img}?w=300&h=345&fit=crop&auto=format` }}
+            source={{ uri: imageUrl }}
             style={cardStyles.productImage}
             onError={() => setImgError(true)}
           />

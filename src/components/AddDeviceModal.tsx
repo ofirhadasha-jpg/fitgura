@@ -104,8 +104,8 @@ export function AddDeviceModal({ visible, onClose, onAdd }: AddDeviceModalProps)
         style={modalStyles.sheetBackdrop}
       />
       <View style={modalStyles.sheet}>
-        <input ref={devCameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleDevPhoto} />
-        <input ref={devGalleryInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleDevPhoto} />
+        <input ref={devCameraInputRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleDevPhoto} />
+        <input ref={devGalleryInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleDevPhoto} />
 
         <View style={modalStyles.sheetHeaderRow}>
           <Text style={modalStyles.sheetTitle}>הוסף מכשיר</Text>

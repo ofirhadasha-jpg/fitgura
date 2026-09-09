@@ -174,9 +174,9 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         </Text>
       </LinearGradient>
 
-      {/* Hidden file inputs for web */}
-      <input ref={galleryRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFile} />
+      {/* Hidden file inputs — use opacity:0 + absolute positioning instead of display:none so .click() works on mobile browsers */}
+      <input ref={galleryRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleFile} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleFile} />
 
       <View style={{ flex: 1, padding: 24, gap: 20 }}>
         {step === 'upload' && (
