@@ -21,6 +21,14 @@ function normalizeProductImageUrl(imageUrl: string): string | null {
 }
 
 const DEVICE_ACCESSORY_KEYWORDS = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
+const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
+
+function detectEffectiveCategory(productName: string, category: string): string {
+  if (category !== 'all') return category
+  if (FOOTWEAR_KEYWORDS.test(productName)) return 'shoes'
+  if (DEVICE_ACCESSORY_KEYWORDS.test(productName)) return 'accessories'
+  return 'clothing'
+}
 
 export interface ProductDetailModalProps {
   product: Product
@@ -38,11 +46,12 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   if (!visible) return null
 
   const imageUrl = normalizeProductImageUrl(product.img)
-  const isDeviceAccessory = category === 'accessories' || DEVICE_ACCESSORY_KEYWORDS.test(product.name)
-  const showSizeRecommendation = !isDeviceAccessory && category !== 'accessories'
+  const effectiveCategory = detectEffectiveCategory(product.name, category)
+  const isDeviceAccessory = effectiveCategory === 'accessories'
+  const showSizeRecommendation = !isDeviceAccessory
 
   const sizeMatch: SizeMatchResult | null = showSizeRecommendation
-    ? getRecommendedSize(scannedSizes, sellerSizeChart, category)
+    ? getRecommendedSize(scannedSizes, sellerSizeChart, effectiveCategory)
     : null
 
   async function handleProceedToBuy(e: GestureResponderEvent & { preventDefault: () => void }) {

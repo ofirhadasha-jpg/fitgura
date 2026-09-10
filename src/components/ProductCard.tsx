@@ -22,16 +22,25 @@ function normalizeProductImageUrl(imageUrl: string): string | null {
 const SUIT_KEYWORDS = /\b(suit|blazer set|two.?piece|tracksuit|set|חליפה|סט|סט חליפה)\b/i
 const SHIRT_KEYWORDS = /\b(shirt|t-?shirt|hoodie|sweater|jacket|coat|polo|tank|top|blouse|חולצה|ג'?קט|מעיל|סוודר|בגד עליון)\b/i
 const PANTS_KEYWORDS = /\b(pants|jeans|trousers|shorts|leggings|jogger|מכנסיים|מכנס)\b/i
+const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
 const DEVICE_ACCESSORY_KEYWORDS = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
+
+function detectEffectiveCategory(productName: string, category: string): string {
+  if (category !== 'all') return category
+  if (FOOTWEAR_KEYWORDS.test(productName)) return 'shoes'
+  if (DEVICE_ACCESSORY_KEYWORDS.test(productName)) return 'accessories'
+  return 'clothing'
+}
 
 type SizeBreakdownItem = { label: string; value: string }
 
 function getSizeBreakdown(productName: string, scannedSizes: ScannedSizes | null, category: string): SizeBreakdownItem[] {
   if (!scannedSizes) return []
-  if (category === 'shoes') {
+  const effectiveCategory = detectEffectiveCategory(productName, category)
+  if (effectiveCategory === 'shoes') {
     return scannedSizes.shoeSize ? [{ label: 'נעל', value: `EU ${scannedSizes.shoeSize}` }] : []
   }
-  if (category === 'accessories') return []
+  if (effectiveCategory === 'accessories') return []
 
   const top = scannedSizes.sizing.top
   const bottom = scannedSizes.sizing.bottom
@@ -60,10 +69,11 @@ function getSizeBreakdown(productName: string, scannedSizes: ScannedSizes | null
 
 function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
-  if (category === 'shoes') {
+  const effectiveCategory = detectEffectiveCategory(productName, category)
+  if (effectiveCategory === 'shoes') {
     return scannedSizes.shoeSize ? `נעל: EU ${scannedSizes.shoeSize}` : null
   }
-  if (category === 'accessories') return null
+  if (effectiveCategory === 'accessories') return null
   const top = scannedSizes.sizing.top
   const bottom = scannedSizes.sizing.bottom
   const isSuit = SUIT_KEYWORDS.test(productName)
@@ -92,8 +102,9 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
 
   const imageUrl = normalizeProductImageUrl(product.img)
 
-  const isDeviceAccessory = category === 'accessories' || DEVICE_ACCESSORY_KEYWORDS.test(product.name)
-  const showSizeRecommendation = !isDeviceAccessory && category !== 'accessories'
+  const effectiveCategory = detectEffectiveCategory(product.name, category)
+  const isDeviceAccessory = effectiveCategory === 'accessories'
+  const showSizeRecommendation = !isDeviceAccessory
   const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product.name, scannedSizes, category) : null
   const sizeBreakdown = showSizeRecommendation ? getSizeBreakdown(product.name, scannedSizes, category) : []
 
@@ -138,7 +149,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         {showSizeRecommendation && (
           <View style={cardStyles.matchChip}>
             <Text style={cardStyles.matchChipText}>
-              {category === 'shoes' && scannedSizes?.shoeSize
+              {effectiveCategory === 'shoes' && scannedSizes?.shoeSize
                 ? `✓ מתאים למידה נעל: EU ${scannedSizes.shoeSize}`
                 : scannedSizes
                   ? `✓ מתאים למידה: ${scannedSizes.sizing.top}/${scannedSizes.sizing.bottom} EU`
