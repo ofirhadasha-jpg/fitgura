@@ -67,12 +67,14 @@ export async function logAffiliateClick(product: {
     const { data: { user } } = await supabase.auth.getUser()
 
     const payload = {
-      product_id: String(product.product_id || product.id || product.productId || 'unknown'),
-      product_title: product.title || product.name || 'AliExpress Product',
+      product_id: String(product?.product_id || product?.id || product?.productId || 'unknown-product'),
+      product_title: String(product?.title || product?.name || 'AliExpress Item'),
+      promotion_link: String(product?.promotion_link || product?.url || product?.affiliateUrl || 'https://aliexpress.com'),
       tracking_id: 'fitgura',
-      promotion_link: product.promotion_link || product.url || product.affiliateUrl || 'https://aliexpress.com',
       user_id: user?.id || null,
     }
+
+    console.log('[analytics] Sending click payload to Supabase:', payload)
 
     const { data, error } = await supabase
       .from('affiliate_clicks')

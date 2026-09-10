@@ -3,6 +3,8 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
 
 export const isSupabaseConfigured = true
 
+console.log('[supabase] Initializing with URL:', SUPABASE_URL)
+
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
@@ -11,3 +13,5 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
     flowType: 'pkce',
   },
 })
+
+console.log('[supabase] Client created. URL is:', SUPABASE_URL ? 'defined' : 'UNDEFINED', '| Key is:', SUPABASE_ANON_KEY ? 'defined' : 'UNDEFINED')
