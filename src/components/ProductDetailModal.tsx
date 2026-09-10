@@ -50,41 +50,22 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   async function handleProceedToBuy() {
     setIsRedirecting(true)
 
-    // Open a new tab synchronously during the user gesture so popup blockers allow it.
-    // about:blank is more reliable than an empty string across browsers.
-    let purchaseWindow: Window | null = null
-    try {
-      purchaseWindow = window.open('about:blank', '_blank')
-    } catch {
-      // Popup blocked — will fall back to same-tab navigation below
-    }
-
     let targetUrl = product.promotionLink ?? null
     if (!targetUrl) {
       const sourceUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
-      // Race the affiliate link generation against a 4-second timeout so the user
-      // is never stuck staring at a blank tab if the API is slow or unresponsive.
       const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
       targetUrl = await Promise.race([generateAffiliateLink(sourceUrl), timeoutPromise])
     }
     const finalUrl = targetUrl ?? product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
 
-    // Fire analytics in the background — don't block navigation
     logAffiliateClick({
       product_id: product.aliexpressSku ?? '',
       title: product.name,
       promotion_link: finalUrl,
     }).catch(() => {})
 
-    if (purchaseWindow) {
-      try {
-        purchaseWindow.location.href = finalUrl
-      } catch {
-        // Cross-origin restriction or closed tab — fall back to same-tab
-        window.location.href = finalUrl
-      }
-    } else {
-      // Popup blocker prevented new tab — navigate in same tab
+    const newTab = window.open(finalUrl, '_blank')
+    if (!newTab) {
       window.location.href = finalUrl
     }
     setIsRedirecting(false)
