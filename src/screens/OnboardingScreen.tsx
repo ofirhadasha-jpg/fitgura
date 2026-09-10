@@ -182,28 +182,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       <View style={{ flex: 1, padding: 24, gap: 20 }}>
         {step === 'upload' && (
           <>
-            <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.explainCard}>
-              <View style={obStyles.explainHeader}>
-                <View style={obStyles.explainIcon}><Text style={{ fontSize: 20 }}>🤳</Text></View>
-                <View>
-                  <Text style={obStyles.explainTitle}>Shop With Confidence</Text>
-                  <Text style={obStyles.explainSub}>Upload your photo and let AI find your perfect fit</Text>
-                </View>
-              </View>
-              <View style={{ gap: 7 }}>
-                {[
-                  { icon: '🛍️', text: 'Shop with confidence — no more guessing your size' },
-                  { icon: '↩️', text: 'No more returns — get it right the first time' },
-                  { icon: '👖', text: 'Find the perfect fit for trousers, shirts, and dresses' },
-                  { icon: '👜', text: 'Match accessories that complement your body frame' },
-                ].map(({ icon, text }) => (
-                  <View key={text} style={obStyles.explainRow}>
-                    <Text style={{ fontSize: 14 }}>{icon}</Text>
-                    <Text style={obStyles.explainRowText}>{text}</Text>
-                  </View>
-                ))}
-              </View>
-            </LinearGradient>
+            <BenefitCarousel />
 
             <View style={[obStyles.dropZone, dragOver && obStyles.dropZoneActive]}>
               <View style={obStyles.dropIcon}><Text style={{ fontSize: 32 }}>📸</Text></View>
@@ -271,6 +250,49 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         )}
       </View>
     </View>
+  )
+}
+
+const BENEFIT_SLIDES = [
+  { icon: '🛍️', text: 'לקנות בביטחון' },
+  { icon: '↩️', text: 'אין יותר החזרות' },
+  { icon: '👖', text: 'מתאמים לך מכנסיים' },
+  { icon: '👔', text: 'מתאימים לך חולצה' },
+  { icon: '👗', text: 'מתאימים לך שמלה' },
+  { icon: '👜', text: 'מתאימים לך אביזרים' },
+]
+
+function BenefitCarousel() {
+  const [index, setIndex] = useState(0)
+  const [animKey, setAnimKey] = useState(0)
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setIndex((i) => (i + 1) % BENEFIT_SLIDES.length)
+      setAnimKey((k) => k + 1)
+    }, 2800)
+    return () => clearInterval(t)
+  }, [])
+
+  const slide = BENEFIT_SLIDES[index]
+
+  return (
+    <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.explainCard}>
+      <View style={obStyles.carouselStage} key={animKey} className="fitgura-carousel-enter">
+        <View style={obStyles.carouselIconWrap}>
+          <Text style={obStyles.carouselIcon}>{slide.icon}</Text>
+        </View>
+        <Text style={obStyles.carouselText}>{slide.text}</Text>
+      </View>
+      <View style={obStyles.carouselDots}>
+        {BENEFIT_SLIDES.map((_, i) => (
+          <View
+            key={i}
+            style={[obStyles.carouselDot, i === index && obStyles.carouselDotActive]}
+          />
+        ))}
+      </View>
+    </LinearGradient>
   )
 }
 
@@ -818,6 +840,13 @@ const obStyles = StyleSheet.create({
   explainSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   explainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   explainRowText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', flex: 1, lineHeight: 18, textAlign: 'right', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  carouselStage: { alignItems: 'center', justifyContent: 'center', paddingVertical: 22, gap: 14, minHeight: 130 },
+  carouselIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(46,91,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  carouselIcon: { fontSize: 36 },
+  carouselText: { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  carouselDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingTop: 4 },
+  carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)' },
+  carouselDotActive: { backgroundColor: '#2E5BFF', width: 20 },
   dropZone: { borderWidth: 2, borderColor: '#CBD5E1', borderRadius: 24, padding: 36, alignItems: 'center', gap: 14, backgroundColor: '#fff', minHeight: 200, justifyContent: 'center' },
   dropZoneActive: { borderColor: '#2E5BFF', backgroundColor: '#EEF2FF' },
   dropIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
