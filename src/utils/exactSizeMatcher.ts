@@ -260,7 +260,7 @@ export function calculateRecommendedSize(
 
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
 
-function clampToAvailable(recommended: string, available: string[]): string {
+function clampToAvailable(recommended: string, available: string[]): string | null {
   if (available.length === 0) return recommended
   const normAvailable = available.map(s => s.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL').replace('XXXXL', '4XL'))
   const recNorm = recommended.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL')
@@ -276,5 +276,6 @@ function clampToAvailable(recommended: string, available: string[]): string {
     if (dist < bestDist) { bestDist = dist; bestIdx = idx }
   }
   if (bestIdx === -1) return recommended
+  if (bestDist > 2) return null
   return SIZE_ORDER[bestIdx]
 }
