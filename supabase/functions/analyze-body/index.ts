@@ -39,8 +39,8 @@ OUTPUT REQUIREMENTS:
 - Respond ONLY with a valid clean JSON object.
 - ALL fields in body_metrics MUST have numeric values (never null).
 - Confidence scores should be between 0 and 1.
-- For sizing: XS=86cm chest, S=96, M=104, L=112, XL=120, XXL=128 (approximate).
-- Bottom size: 28=71cm waist, 30=76, 32=81, 34=86, 36=91, 38=97.
+- For sizing (BODY measurements, not garment): XS=82cm chest, S=88, M=94, L=100, XL=106, XXL=112 (approximate).
+- Bottom size (EU): 36=64cm waist, 38=68, 40=72, 42=76, 44=80, 46=84, 48=88, 50=92, 52=96, 54=100.
 
 PERSON BOUNDS:
 - Identify the bounding box of the person in the photo.
@@ -79,7 +79,7 @@ EXPECTED JSON STRUCTURE:
       "shoulder_width_cm": 46
     },
     "recommended_top_size": "XS | S | M | L | XL | XXL",
-    "recommended_bottom_size": "28 | 30 | 32 | 34 | 36 | 38",
+    "recommended_bottom_size": "36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52 | 54",
     "recommended_shoe_size_eu": 42,
     "fit_preference": "Slim | Regular | Loose | Oversized",
     "body_frame_estimate": "Small | Medium | Large | Athletic",

@@ -327,8 +327,7 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
   const st = analysis.style_profile
 
   const top = sp.recommended_top_size ?? 'M'
-  const rawBottom = sp.recommended_bottom_size ?? '38'
-  const bottom = usToEuPants(rawBottom)
+  const bottom = sp.recommended_bottom_size ?? '38'
   const shoeSize = sp.recommended_shoe_size_eu != null ? String(sp.recommended_shoe_size_eu) : null
   const fitMap: Record<string, string> = { 'Slim': 'Slim Fit', 'Regular': 'Regular', 'Loose': 'Relaxed', 'Oversized': 'Relaxed' }
   const fit = fitMap[sp.fit_preference] ?? 'Regular'
