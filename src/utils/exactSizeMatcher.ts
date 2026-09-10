@@ -27,27 +27,26 @@ function detectSubCategory(productName: string, category: string): SubCategory {
   return 'tops'
 }
 
-interface AliSizeEntry {
-  label: string
-  chest?: [number, number]
-  waist?: [number, number]
-}
-
-const ALI_TOPS_SIZES: AliSizeEntry[] = [
-  { label: 'M',   chest: [0, 88] },
-  { label: 'L',   chest: [89, 93] },
-  { label: 'XL',  chest: [94, 98] },
-  { label: '2XL', chest: [99, 103] },
-  { label: '3XL', chest: [104, 109] },
-  { label: '4XL', chest: [110, 999] },
+// AliExpress Asian-size charts use BODY measurements (not garment flat measurements).
+// These ranges represent the wearer's actual body circumference per size label.
+const ALI_TOPS_SIZES: { label: string; chest: [number, number] }[] = [
+  { label: 'S',   chest: [0, 86] },
+  { label: 'M',   chest: [87, 92] },
+  { label: 'L',   chest: [93, 98] },
+  { label: 'XL',  chest: [99, 104] },
+  { label: '2XL', chest: [105, 110] },
+  { label: '3XL', chest: [111, 116] },
+  { label: '4XL', chest: [117, 999] },
 ]
 
-const ALI_PANTS_SIZES: AliSizeEntry[] = [
-  { label: 'M',   waist: [0, 75] },
-  { label: 'L',   waist: [76, 80] },
-  { label: 'XL',  waist: [81, 85] },
-  { label: '2XL', waist: [86, 90] },
-  { label: '3XL', waist: [91, 999] },
+const ALI_PANTS_SIZES: { label: string; waist: [number, number] }[] = [
+  { label: 'S',   waist: [0, 68] },
+  { label: 'M',   waist: [69, 74] },
+  { label: 'L',   waist: [75, 80] },
+  { label: 'XL',  waist: [81, 86] },
+  { label: '2XL', waist: [87, 92] },
+  { label: '3XL', waist: [93, 98] },
+  { label: '4XL', waist: [99, 999] },
 ]
 
 const ALI_SHOE_SIZES: { label: string; footMin: number; footMax: number }[] = [
@@ -69,6 +68,8 @@ function getMetrics(sizes: ScannedSizes | null): BodyMetrics | null {
   return sizes?.sizing?.bodyMetrics ?? null
 }
 
+// EU shoe size → foot length in cm.
+// Formula: foot_cm = EU * 2/3 - 1.5  (Paris point system, minus typical insole allowance)
 function footLengthCm(shoeSizeEu: string | null): number | null {
   if (!shoeSizeEu) return null
   const eu = parseInt(shoeSizeEu, 10)
@@ -80,40 +81,57 @@ function inRange(value: number, range: [number, number]): boolean {
   return value >= range[0] && value <= range[1]
 }
 
+const TOPS_ORDER = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']
+
 function adjustForFit(baseLabel: string, fit: string | undefined): string {
   if (!fit) return baseLabel
   const lower = fit.toLowerCase()
-  const order = ['M', 'L', 'XL', '2XL', '3XL', '4XL']
-  const idx = order.indexOf(baseLabel)
+  const idx = TOPS_ORDER.indexOf(baseLabel)
   if (idx === -1) return baseLabel
   if (lower.includes('slim') || lower.includes('tight') || lower.includes('צמוד')) {
-    return order[Math.max(0, idx - 1)] ?? baseLabel
+    return TOPS_ORDER[Math.max(0, idx - 1)] ?? baseLabel
   }
   if (lower.includes('loose') || lower.includes('relaxed') || lower.includes('oversize') || lower.includes('רחב') || lower.includes('גדול')) {
-    return order[Math.min(order.length - 1, idx + 1)] ?? baseLabel
+    return TOPS_ORDER[Math.min(TOPS_ORDER.length - 1, idx + 1)] ?? baseLabel
   }
   return baseLabel
 }
 
+// Estimate body measurements from the user's scanned top/bottom sizes.
+// These values represent the wearer's BODY circumference (not the garment's flat measurement).
+// Garment measurements are typically 6-10cm larger than body measurements;
+// the previous code used garment values, causing every recommendation to be 1-2 sizes too big.
 function estimateMetrics(sizes: ScannedSizes): BodyMetrics | null {
-  const TOP_CHEST: Record<string, number> = { 'XS': 84, 'S': 92, 'M': 100, 'L': 108, 'XL': 116, 'XXL': 124 }
-  const BOTTOM_WAIST: Record<string, number> = { '36': 68, '38': 72, '40': 76, '42': 80, '44': 84, '46': 88, '48': 92, '50': 96, '52': 100, '54': 104, '56': 108, '58': 112, '60': 116 }
-  const chest = TOP_CHEST[sizes.sizing.top] ?? null
-  const waist = BOTTOM_WAIST[sizes.sizing.bottom] ?? null
+  const TOP_BODY_CHEST: Record<string, number> = {
+    'XS': 82, 'S': 88, 'M': 94, 'L': 100, 'XL': 106, 'XXL': 112,
+  }
+  const BOTTOM_BODY_WAIST: Record<string, number> = {
+    '36': 64, '38': 68, '40': 72, '42': 76, '44': 80, '46': 84,
+    '48': 88, '50': 92, '52': 96, '54': 100, '56': 104, '58': 108, '60': 112,
+  }
+  const chest = TOP_BODY_CHEST[sizes.sizing.top] ?? null
+  const waist = BOTTOM_BODY_WAIST[sizes.sizing.bottom] ?? null
   if (chest == null && waist == null) return null
-  return { estimated_height_cm: null, estimated_weight_kg: null, chest_circumference_cm: chest, waist_circumference_cm: waist, hips_circumference_cm: chest != null ? chest - 4 : null, shoulder_width_cm: null }
+  return {
+    estimated_height_cm: null,
+    estimated_weight_kg: null,
+    chest_circumference_cm: chest,
+    waist_circumference_cm: waist,
+    hips_circumference_cm: chest != null ? chest - 4 : null,
+    shoulder_width_cm: null,
+  }
 }
 
 function matchTops(chest: number, fit: string | undefined): string {
   for (const e of ALI_TOPS_SIZES) {
-    if (e.chest && inRange(chest, e.chest)) return adjustForFit(e.label, fit)
+    if (inRange(chest, e.chest)) return adjustForFit(e.label, fit)
   }
   return 'L'
 }
 
 function matchPants(waist: number, fit: string | undefined): string {
   for (const e of ALI_PANTS_SIZES) {
-    if (e.waist && inRange(waist, e.waist)) return adjustForFit(e.label, fit)
+    if (inRange(waist, e.waist)) return adjustForFit(e.label, fit)
   }
   return 'L'
 }
@@ -139,6 +157,7 @@ export function calculateRecommendedSize(
   const metrics = getMetrics(userSizes)
   const fit = userSizes.sizing.fit
 
+  // Shoes: convert EU shoe size → foot length → match against seller chart or AliExpress table
   if (sub === 'shoes') {
     const foot = footLengthCm(userSizes.shoeSize)
     if (foot != null && sellerMetadata.length > 0) {
@@ -149,6 +168,7 @@ export function calculateRecommendedSize(
     return userSizes.shoeSize ?? null
   }
 
+  // If seller provides a size chart, match body metrics against it
   if (sellerMetadata.length > 0 && metrics) {
     const chest = metrics.chest_circumference_cm
     const waist = metrics.waist_circumference_cm
@@ -173,9 +193,24 @@ export function calculateRecommendedSize(
     if (waist != null) return matchPants(waist, fit)
   }
 
+  // Dresses use chest (bust) as primary measurement
+  if (sub === 'dresses') {
+    const chest = m?.chest_circumference_cm
+    if (chest != null) return matchTops(chest, fit)
+  }
+
+  // Suits use chest as primary measurement
+  if (sub === 'suits') {
+    const chest = m?.chest_circumference_cm
+    if (chest != null) return matchTops(chest, fit)
+  }
+
   const chest = m?.chest_circumference_cm
   if (chest != null) return matchTops(chest, fit)
 
-  const asianMap: Record<string, string> = { 'XS': 'M', 'S': 'L', 'M': 'XL', 'L': '2XL', 'XL': '3XL', 'XXL': '4XL' }
+  // Last-resort: map Western sizes to Asian sizes (AliExpress tends to run 1-2 sizes small)
+  const asianMap: Record<string, string> = {
+    'XS': 'S', 'S': 'M', 'M': 'L', 'L': 'XL', 'XL': '2XL', 'XXL': '3XL',
+  }
   return adjustForFit(asianMap[userSizes.sizing.top] ?? 'L', fit)
 }
