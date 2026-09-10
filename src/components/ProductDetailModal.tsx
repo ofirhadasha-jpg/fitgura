@@ -52,12 +52,16 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
     const fallbackUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
 
-    let targetUrl = product.promotionLink ?? null
-    if (!targetUrl) {
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
-      targetUrl = await Promise.race([generateAffiliateLink(fallbackUrl), timeoutPromise])
+    let finalUrl = product.promotionLink ?? null
+    try {
+      if (!finalUrl) {
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
+        finalUrl = await Promise.race([generateAffiliateLink(fallbackUrl), timeoutPromise])
+      }
+    } catch {
+      // Affiliate link generation failed — fall back to direct product URL
     }
-    const finalUrl = targetUrl ?? fallbackUrl
+    finalUrl = finalUrl ?? fallbackUrl
 
     logAffiliateClick({
       product_id: product.aliexpressSku ?? '',
@@ -68,8 +72,12 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     setIsRedirecting(false)
     onDismiss()
 
-    const newTab = window.open(finalUrl, '_blank')
-    if (!newTab) {
+    try {
+      const newTab = window.open(finalUrl, '_blank')
+      if (!newTab) {
+        window.location.href = finalUrl
+      }
+    } catch {
       window.location.href = finalUrl
     }
   }
