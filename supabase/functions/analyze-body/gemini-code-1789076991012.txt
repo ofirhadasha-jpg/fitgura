@@ -1,0 +1,11 @@
+Please expand the previous implementation to include a fully automated, headless processing pipeline that culminates in a Tailored Purchase Recommendation UI component for the user:
+
+5. HEADLESS PROCESSING & TAILORED BUYING RECOMMENDATION (UI/UX)
+   - AUTOMATED SILENT ENGINE: All measurement extraction, size chart parsing, and stock availability checks must run silently in the background without requiring extra steps from the user.
+   - RECOMMENDATION BADGE (Product Card & Modal):
+     * Display a clean, highly visible recommendation widget on each product card (e.g., "Fitgura Recommended: Size L").
+     * Include a "Fit Confidence Indicator" (e.g., "Perfect Fit", "Runs Slightly Small - Adjusted to XL").
+   - CLEAR FIT EXPLANATION:
+     * Provide a brief 1-line reason on hover/click (e.g., "Calculated using seller's chart: Your 102 cm chest corresponds to Size L for a Regular Fit").
+   - DIRECT ACTION PRESET:
+     * When the user clicks "Buy on AliExpress", pre-select or explicitly highlight the recommended size variant so the user can complete the purchase seamlessly.
