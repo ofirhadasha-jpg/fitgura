@@ -51,13 +51,18 @@ const ALI_PANTS_SIZES: AliSizeEntry[] = [
 ]
 
 const ALI_SHOE_SIZES: { label: string; footMin: number; footMax: number }[] = [
-  { label: '36',      footMin: 0,    footMax: 23.0 },
-  { label: '38',      footMin: 23.1, footMax: 24.0 },
-  { label: '40',      footMin: 24.1, footMax: 25.0 },
-  { label: '42',      footMin: 25.1, footMax: 26.0 },
-  { label: '43',      footMin: 26.1, footMax: 27.0 },
-  { label: '45',      footMin: 27.1, footMax: 28.0 },
-  { label: '46',      footMin: 28.1, footMax: 999 },
+  { label: '35', footMin: 0,    footMax: 22.0 },
+  { label: '36', footMin: 22.1, footMax: 22.7 },
+  { label: '37', footMin: 22.8, footMax: 23.4 },
+  { label: '38', footMin: 23.5, footMax: 24.0 },
+  { label: '39', footMin: 24.1, footMax: 24.7 },
+  { label: '40', footMin: 24.8, footMax: 25.3 },
+  { label: '41', footMin: 25.4, footMax: 26.0 },
+  { label: '42', footMin: 26.1, footMax: 26.7 },
+  { label: '43', footMin: 26.8, footMax: 27.3 },
+  { label: '44', footMin: 27.4, footMax: 28.0 },
+  { label: '45', footMin: 28.1, footMax: 28.7 },
+  { label: '46', footMin: 28.8, footMax: 999 },
 ]
 
 function getMetrics(sizes: ScannedSizes | null): BodyMetrics | null {
@@ -68,7 +73,7 @@ function footLengthCm(shoeSizeEu: string | null): number | null {
   if (!shoeSizeEu) return null
   const eu = parseInt(shoeSizeEu, 10)
   if (isNaN(eu)) return null
-  return Math.round((eu * 0.667 + 1.5) * 10) / 10
+  return Math.round((eu * 0.667 - 1.5) * 10) / 10
 }
 
 function inRange(value: number, range: [number, number]): boolean {
