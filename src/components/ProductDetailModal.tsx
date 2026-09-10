@@ -123,20 +123,34 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
         {recommendedSize && (
           <View style={modalStyles.recommendationBox}>
             <Text style={modalStyles.recommendationHeadline}>
-              🎯 המידה המומלצת עבורך: <Text style={modalStyles.recommendationSize}>{recommendedSize}</Text>
+              🎯 מתאים לך: <Text style={modalStyles.recommendationSize}>{recommendedSize}</Text>
             </Text>
           </View>
         )}
 
         <TouchableOpacity
           onPress={handleProceedToBuy}
-          activeOpacity={0.8}
-          style={modalStyles.confirmBtn}
+          activeOpacity={0.7}
+          style={[
+            modalStyles.confirmBtn,
+            isRedirecting && modalStyles.confirmBtnLoading,
+          ]}
           disabled={isRedirecting}
+          accessibilityRole="button"
+          accessibilityLabel={isRedirecting ? 'מעביר לרכישה, אנא המתן' : 'מתאים לי, המשך לרכישה בעליאקספרס'}
+          accessibilityState={{ disabled: isRedirecting }}
         >
-          <Text style={modalStyles.confirmBtnText}>
-            {isRedirecting ? 'מעביר לרכישה...' : 'המשך לרכישה בעליאקספרס'}
-          </Text>
+          {isRedirecting ? (
+            <View style={modalStyles.btnContentWrap}>
+              <View style={modalStyles.spinner} className="fitgura-spinner" />
+              <Text style={modalStyles.confirmBtnText}>מעביר לרכישה...</Text>
+            </View>
+          ) : (
+            <View style={modalStyles.btnContentWrap}>
+              <Text style={modalStyles.confirmBtnIcon}>🛒</Text>
+              <Text style={modalStyles.confirmBtnText}>מתאים לי</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -159,6 +173,10 @@ const modalStyles = StyleSheet.create({
   recommendationBox: { backgroundColor: '#F0FFF6', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: 'rgba(46,213,115,0.35)' },
   recommendationHeadline: { fontSize: 16, fontWeight: '700', color: '#1E293B', lineHeight: 22, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   recommendationSize: { fontSize: 18, fontWeight: '800', color: '#2E5BFF' },
-  confirmBtn: { width: '100%', backgroundColor: '#FF4747', borderRadius: 14, paddingVertical: 13, paddingHorizontal: 8, alignItems: 'center', marginTop: 4 },
-  confirmBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  confirmBtn: { width: '100%', backgroundColor: '#FF4747', borderRadius: 14, paddingVertical: 16, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', marginTop: 6, minHeight: 52 },
+  confirmBtnLoading: { backgroundColor: '#E03A3A', opacity: 0.85 },
+  btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  confirmBtnIcon: { fontSize: 20 },
+  spinner: { width: 20, height: 20, borderRadius: 10, borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' },
+  confirmBtnText: { fontSize: 16, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

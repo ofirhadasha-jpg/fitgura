@@ -91,7 +91,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         </View>
         {recommendedSize && showSizeRecommendation && (
           <View style={cardStyles.sizeBadge}>
-            <Text style={cardStyles.sizeBadgeText}>מידה מומלצת עבורך: {recommendedSize}</Text>
+            <Text style={cardStyles.sizeBadgeText}>מתאים לך: {recommendedSize}</Text>
           </View>
         )}
       </View>
@@ -99,7 +99,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         {showSizeRecommendation && recommendedSize && (
           <View style={cardStyles.matchChip}>
             <Text style={cardStyles.matchChipText}>
-              ✓ מידה מומלצת: {recommendedSize}
+              ✓ מתאים לך: {recommendedSize}
             </Text>
           </View>
         )}
@@ -114,10 +114,13 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         <View style={cardStyles.buyBtnRow}>
           <TouchableOpacity
             onPress={handleBuy}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
             style={cardStyles.buyBtnAli}
+            accessibilityRole="button"
+            accessibilityLabel={`קניה: ${product.name}`}
           >
-            <Text style={cardStyles.buyBtnText}>🛒 לקניה במחיר הטוב ביותר</Text>
+            <Text style={cardStyles.buyBtnIcon}>🛒</Text>
+            <Text style={cardStyles.buyBtnText}>לקניה במחיר הטוב ביותר</Text>
           </TouchableOpacity>
         </View>
         {toast && (
@@ -155,7 +158,8 @@ const cardStyles = StyleSheet.create({
   productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
   productOriginalPrice: { fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through' },
   buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 10, minHeight: 38 },
-  buyBtnAli: { flex: 1, minHeight: 38, backgroundColor: '#FF4747', borderRadius: 10, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  buyBtnAli: { flex: 1, minHeight: 44, backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
+  buyBtnIcon: { fontSize: 14, marginBottom: 2 },
   buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   toast: { marginTop: 6, backgroundColor: '#0B1437', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
   toastText: { color: '#fff', fontSize: 10, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
