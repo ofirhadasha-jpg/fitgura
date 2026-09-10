@@ -52,6 +52,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     e.preventDefault()
     e.stopPropagation()
     setIsRedirecting(true)
+    const purchaseWindow = window.open('', '_blank', 'noopener,noreferrer')
 
     let targetUrl = product.promotionLink ?? null
     if (!targetUrl) {
@@ -80,7 +81,11 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
       promotion_link: finalUrl,
     })
 
-    window.open(finalUrl, '_blank', 'noopener,noreferrer')
+    if (purchaseWindow) {
+      purchaseWindow.location.href = finalUrl
+    } else {
+      window.open(finalUrl, '_blank', 'noopener,noreferrer')
+    }
     setIsRedirecting(false)
     onDismiss()
   }
