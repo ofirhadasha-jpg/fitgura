@@ -33,9 +33,9 @@ function detectEffectiveCategory(productName: string, category: string): string 
   return 'clothing'
 }
 
-function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes | null, category: string): string | null {
+function getRecommendedSizeLabel(product: Product, scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
-  return calculateRecommendedSize(scannedSizes, [], category, productName, product.availableSizes ?? [])
+  return calculateRecommendedSize(scannedSizes, [], category, product.name, product.availableSizes ?? [])
 }
 
 
@@ -56,7 +56,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const effectiveCategory = detectEffectiveCategory(product.name, category)
   const isDeviceAccessory = effectiveCategory === 'accessories'
   const showSizeRecommendation = !isDeviceAccessory
-  const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product.name, scannedSizes, category) : null
+  const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
 
   function handleBuy() {
     setShowDetailModal(true)

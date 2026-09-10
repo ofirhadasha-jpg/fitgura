@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 
 import { LinearGradient, BottomNav } from '../components'
 import { AddDeviceModal } from '../components/AddDeviceModal'
 import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice, detectDevice } from '../types'
+import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
 import {
   searchProductsByCategory,
   searchDeviceAccessories,
@@ -54,6 +55,16 @@ function sortAccessoriesByDevicePriority(products: Product[], devices: string[])
     const bRank = bPriority === -1 ? deviceModels.length : bPriority
     return aRank - bRank
   })
+}
+
+// Check if a product carries the user's recommended size in its available sizes
+function productCarriesUserSize(product: Product, scannedSizes: ScannedSizes, category: string): boolean {
+  const available = product.availableSizes
+  if (!available || available.length === 0) return true // no size data — don't penalize
+  const recommended = calculateRecommendedSize(scannedSizes, [], category, product.name, available)
+  if (!recommended) return true
+  const recNorm = recommended.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL')
+  return available.some(s => s.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL') === recNorm)
 }
 
 export function FeedScreen({
@@ -413,6 +424,18 @@ export function FeedScreen({
     return matchSearch && matchBudget
   })
 
+  // Size-aware sorting: products that carry the user's recommended size float to the top;
+  // products that don't carry it sink to the bottom. Only applies to clothing/shoes.
+  const sizeSorted = (filter === 'all' || filter === 'clothing' || filter === 'shoes') && scannedSizes
+    ? [...filtered].sort((a, b) => {
+        const aHasSize = productCarriesUserSize(a, scannedSizes, filter)
+        const bHasSize = productCarriesUserSize(b, scannedSizes, filter)
+        if (aHasSize && !bHasSize) return -1
+        if (!aHasSize && bHasSize) return 1
+        return 0
+      })
+    : filtered
+
   console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget)
 
   return (
@@ -519,7 +542,7 @@ export function FeedScreen({
             <Text style={feedStyles.aiMatchSub}>כל הפריטים מסוננים לפי סריקת AI + תקציב</Text>
           </View>
           <View style={feedStyles.aiMatchCount}>
-            <Text style={feedStyles.aiMatchCountText}>{filtered.length} פריטים</Text>
+            <Text style={feedStyles.aiMatchCountText}>{sizeSorted.length} פריטים</Text>
           </View>
         </LinearGradient>
 
@@ -540,7 +563,7 @@ export function FeedScreen({
           </View>
         )}
 
-        {filtered.length === 0 && !isLoadingProducts && !productsError && (
+        {sizeSorted.length === 0 && !isLoadingProducts && !productsError && (
           <View style={feedStyles.emptyState}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
             <Text style={feedStyles.emptyText}>אין פריטים בטווח התקציב הנבחר</Text>
@@ -555,7 +578,7 @@ export function FeedScreen({
         )}
 
         <View style={feedStyles.productGrid}>
-          {filtered.map((product) => {
+          {sizeSorted.map((product) => {
             const globalIdx = catalog.indexOf(product)
             return (
               <ProductCard
