@@ -4,7 +4,7 @@ import type { Product } from '../types'
 export type Gender = 'male' | 'female' | 'unisex'
 export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
 
-const BATCH_SIZE = 500
+const BATCH_SIZE = 120
 const ILS_TO_USD_RATE = 3.7
 
 /**
@@ -201,17 +201,16 @@ async function aggregateBatch(
 
   const collected: Product[] = []
   const seenIds = new Set<string>()
-  const perQuerySize = 40
+  const perQuerySize = 20
   let currentPage = batchNo
   let attempts = 0
-  const maxAttempts = 2
+  const maxAttempts = 1
 
   while (collected.length < BATCH_SIZE && attempts < maxAttempts) {
     attempts++
-    // Rotate through queries in chunks of 4-5 per round
-    const startIdx = (batchNo - 1) * 4 + (attempts - 1) * 4
+    const startIdx = (batchNo - 1) * 3 + (attempts - 1) * 3
     const roundQueries: string[] = []
-    for (let i = 0; i < Math.min(5, allQueries.length); i++) {
+    for (let i = 0; i < Math.min(3, allQueries.length); i++) {
       roundQueries.push(allQueries[(startIdx + i) % allQueries.length])
     }
 
@@ -298,7 +297,7 @@ export async function searchDeviceAccessories(
 
   // Run all 5 query categories in parallel for maximum yield per page
   const parallelResults = await Promise.all(
-    queries.map((q) => fetchAliExpressProducts(q, pageNo, 50, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
+    queries.map((q) => fetchAliExpressProducts(q, pageNo, 30, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
   )
 
   const seenIds = new Set<string>()
@@ -311,9 +310,9 @@ export async function searchDeviceAccessories(
   }
 
   // If first page didn't yield enough, try page pageNo+1 across all queries
-  if (collected.length < 100 && pageNo < 10) {
+  if (collected.length < 50 && pageNo < 10) {
     const moreResults = await Promise.all(
-      queries.map((q) => fetchAliExpressProducts(q, pageNo + 1, 50, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
+      queries.map((q) => fetchAliExpressProducts(q, pageNo + 1, 30, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
     )
     for (const p of moreResults.flat()) {
       const id = p.aliexpressSku

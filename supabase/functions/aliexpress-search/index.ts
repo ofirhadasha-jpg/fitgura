@@ -12,7 +12,7 @@ interface CacheEntry {
   expiresAt: number;
 }
 const responseCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 15 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000;
 
 function buildCacheKey(params: Record<string, unknown>): string {
   const { action, keywords, categoryIds, gender, pageNo, userSizes, registeredDevices } = params;
@@ -382,51 +382,18 @@ Deno.serve(async (req: Request) => {
         (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
           ?.resp_result?.result?.products?.product ?? [];
 
-      // Fallback: if HE-language search returned no results, retry without target_language
+      // Fallback: if HE-language search returned no results, retry without target_language (single retry only)
       if (products.length === 0) {
         console.log("[ALIEXPRESS] No results with target_language=HE, retrying without language filter");
         const noLangParams: RequestParams = {
           page_no: pageNo,
           page_size: pageSize,
           target_currency: "ILS",
+          keywords: genderPrefix + (enrichedKeywords || (isAccessoriesSearch ? "phone case" : isShoesSearch ? "shoes" : "fashion clothing")),
+          sort: sort || "VOLUME_DOWN",
         };
-        if (enrichedKeywords) noLangParams.keywords = enrichedKeywords;
         if (categoryIds) noLangParams.category_ids = categoryIds;
-        noLangParams.sort = sort || "VOLUME_DOWN";
         result = await callAliExpressApi("aliexpress.affiliate.product.query", noLangParams);
-        products =
-          (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
-            ?.resp_result?.result?.products?.product ?? [];
-      }
-
-      // Fallback: if category_ids returned no results, retry with keywords only
-      if (products.length === 0 && categoryIds && enrichedKeywords) {
-        console.log("[ALIEXPRESS] No results with category_ids, retrying with keywords only:", enrichedKeywords);
-        const fallbackParams: RequestParams = {
-          page_no: pageNo,
-          page_size: pageSize,
-          target_currency: "ILS",
-          keywords: enrichedKeywords,
-          sort: sort || "VOLUME_DOWN",
-        };
-        result = await callAliExpressApi("aliexpress.affiliate.product.query", fallbackParams);
-        products =
-          (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
-            ?.resp_result?.result?.products?.product ?? [];
-      }
-
-      // Fallback: if still no results and keywords were used, try a simpler keyword
-      if (products.length === 0 && enrichedKeywords) {
-        const simpleKeyword = isAccessoriesSearch ? "phone case cover" : isShoesSearch ? "shoe" : "fashion clothing";
-        console.log("[ALIEXPRESS] Still no results, retrying with simple keyword:", simpleKeyword);
-        const fallbackParams: RequestParams = {
-          page_no: pageNo,
-          page_size: pageSize,
-          target_currency: "ILS",
-          keywords: genderPrefix + simpleKeyword,
-          sort: sort || "VOLUME_DOWN",
-        };
-        result = await callAliExpressApi("aliexpress.affiliate.product.query", fallbackParams);
         products =
           (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
             ?.resp_result?.result?.products?.product ?? [];
@@ -465,20 +432,7 @@ Deno.serve(async (req: Request) => {
         };
       });
 
-      // Generate affiliate links for ALL products via the official AliExpress Affiliate API
-      const allProductUrls = mapped
-        .filter((p) => p.aliexpressUrl)
-        .map((p) => p.aliexpressUrl);
-
-      if (allProductUrls.length > 0) {
-        console.log("[ALIEXPRESS] Generating affiliate links for", allProductUrls.length, "products");
-        const linkMap = await generateAffiliateLinks(allProductUrls);
-        for (const p of mapped) {
-          if (p.aliexpressUrl && linkMap.has(p.aliexpressUrl)) {
-            p.promotionLink = linkMap.get(p.aliexpressUrl) ?? null;
-          }
-        }
-      }
+      // Affiliate links are generated lazily on click — not during search — to avoid blocking the feed on a slow batch API call
 
       // Server-side filtering with strict gender + category isolation
       const APPAREL_KEYWORDS = /\b(dress|skirt|suit|bra|lingerie|panties|shirt|blouse|jacket|coat|pants|trouser|hoodie|sweater|jeans|shorts|top|t-shirt|שמלה|חצאית|חליפה|חולצה|מעיל|מכנסיים|בגד)\b/i;
@@ -497,7 +451,7 @@ Deno.serve(async (req: Request) => {
           if (APPAREL_KEYWORDS.test(p.name) && !FOOTWEAR_KEYWORDS.test(p.name)) return false;
         }
         if (isAccessoriesSearch && (APPAREL_KEYWORDS.test(p.name) || FOOTWEAR_KEYWORDS.test(p.name))) return false;
-        if ((p.ordersCount ?? 0) === 0 && (p.evaluateRate ?? 0) < 0.9) return false;
+        if ((p.ordersCount ?? 0) === 0 && (p.evaluateRate ?? 0) < 0.5) return false;
         return true;
       });
 
