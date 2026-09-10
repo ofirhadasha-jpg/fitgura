@@ -76,15 +76,14 @@ export async function logAffiliateClick(product: {
 
     console.log('[analytics] Sending click payload to BOLT DATA BASE:', payload)
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('affiliate_clicks')
       .insert([payload])
-      .select()
 
     if (error) {
       console.error('[analytics] Supabase insert error:', error.message, error.details)
     } else {
-      console.log('[analytics] Click successfully logged:', data)
+      console.log('[analytics] Click successfully logged')
     }
   } catch (err) {
     console.error('[analytics] Unexpected click logging error:', err)
