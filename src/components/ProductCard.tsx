@@ -2,8 +2,7 @@ import React, { useState } from 'react'
 import type { GestureResponderEvent } from 'react-native'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
-import { getRecommendedSize } from '../utils/exactSizeMatcher'
-import { formatFullPantsSizeLabel } from '../utils/sizeConverter'
+import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
 import { ProductDetailModal } from './ProductDetailModal'
 
 function formatPrice(price: number, currency?: string): string {
@@ -33,45 +32,9 @@ function detectEffectiveCategory(productName: string, category: string): string 
   return 'clothing'
 }
 
-type SizeBreakdownItem = { label: string; value: string }
-
-function getSizeBreakdown(productName: string, scannedSizes: ScannedSizes | null, category: string): SizeBreakdownItem[] {
-  if (!scannedSizes) return []
-  const effectiveCategory = detectEffectiveCategory(productName, category)
-  if (effectiveCategory === 'shoes') {
-    return scannedSizes.shoeSize ? [{ label: 'נעל', value: `EU ${scannedSizes.shoeSize}` }] : []
-  }
-  if (effectiveCategory === 'accessories') return []
-
-  const top = scannedSizes.sizing.top
-  const bottom = scannedSizes.sizing.bottom
-
-  const isSuit = SUIT_KEYWORDS.test(productName)
-  const isShirt = SHIRT_KEYWORDS.test(productName)
-  const isPants = PANTS_KEYWORDS.test(productName)
-
-  if (isSuit || (isShirt && isPants)) {
-    return [
-      { label: 'חולצה', value: top },
-      { label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) },
-    ]
-  }
-  if (isShirt) {
-    return [{ label: 'חולצה', value: top }]
-  }
-  if (isPants) {
-    return [{ label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) }]
-  }
-  return [
-    { label: 'חולצה', value: top },
-    { label: 'מכנסיים', value: formatFullPantsSizeLabel(bottom) },
-  ]
-}
-
 function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
-  const match = getRecommendedSize(scannedSizes, [], category, productName)
-  return match?.sizeLabel ?? null
+  return calculateRecommendedSize(scannedSizes, [], category, productName)
 }
 
 
@@ -93,7 +56,6 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const isDeviceAccessory = effectiveCategory === 'accessories'
   const showSizeRecommendation = !isDeviceAccessory
   const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product.name, scannedSizes, category) : null
-  const sizeBreakdown = showSizeRecommendation ? getSizeBreakdown(product.name, scannedSizes, category) : []
 
   function handleBuy() {
     setShowDetailModal(true)
@@ -133,14 +95,10 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         )}
       </View>
       <View style={cardStyles.productInfo}>
-        {showSizeRecommendation && (
+        {showSizeRecommendation && recommendedSize && (
           <View style={cardStyles.matchChip}>
             <Text style={cardStyles.matchChipText}>
-              {effectiveCategory === 'shoes' && scannedSizes?.shoeSize
-                ? `✓ מתאים למידה נעל: EU ${scannedSizes.shoeSize}`
-                : scannedSizes
-                  ? `✓ מתאים למידה: ${scannedSizes.sizing.top}/${scannedSizes.sizing.bottom} EU`
-                  : '✓ מתאים למידה שנסרקת'}
+              ✓ מידה מומלצת: {recommendedSize}
             </Text>
           </View>
         )}

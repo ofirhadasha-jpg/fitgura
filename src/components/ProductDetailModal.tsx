@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import type { GestureResponderEvent } from 'react-native'
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
-import { getRecommendedSize, type SellerSizeEntry, type SizeMatchResult } from '../utils/exactSizeMatcher'
+import { calculateRecommendedSize, type SellerSizeEntry } from '../utils/exactSizeMatcher'
 import { supabase } from '../lib/supabase'
 import { logAffiliateClick } from '../services/analyticsService'
 
@@ -20,14 +20,13 @@ function normalizeProductImageUrl(imageUrl: string): string | null {
   return null
 }
 
-const DEVICE_ACCESSORY_KEYWORDS = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
-const FOOTWEAR_KEYWORDS = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
+const FOOTWEAR_RE = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
+const DEVICE_RE = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
 
-function detectEffectiveCategory(productName: string, category: string): string {
-  if (category !== 'all') return category
-  if (FOOTWEAR_KEYWORDS.test(productName)) return 'shoes'
-  if (DEVICE_ACCESSORY_KEYWORDS.test(productName)) return 'accessories'
-  return 'clothing'
+function isAccessory(productName: string, category: string): boolean {
+  if (category === 'accessories') return true
+  if (category === 'shoes' || FOOTWEAR_RE.test(productName)) return false
+  return DEVICE_RE.test(productName)
 }
 
 export interface ProductDetailModalProps {
@@ -46,13 +45,8 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   if (!visible) return null
 
   const imageUrl = normalizeProductImageUrl(product.img)
-  const effectiveCategory = detectEffectiveCategory(product.name, category)
-  const isDeviceAccessory = effectiveCategory === 'accessories'
-  const showSizeRecommendation = !isDeviceAccessory
-
-  const sizeMatch: SizeMatchResult | null = showSizeRecommendation
-    ? getRecommendedSize(scannedSizes, sellerSizeChart, effectiveCategory, product.name)
-    : null
+  const accessory = isAccessory(product.name, category)
+  const recommendedSize = accessory ? null : calculateRecommendedSize(scannedSizes, sellerSizeChart, category, product.name)
 
   async function handleProceedToBuy(e: GestureResponderEvent & { preventDefault: () => void }) {
     e.preventDefault()
@@ -91,8 +85,6 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     onDismiss()
   }
 
-  const recommendedLabel = sizeMatch?.sizeLabel ?? ''
-
   return (
     <View style={modalStyles.overlay}>
       <TouchableOpacity onPress={onDismiss} activeOpacity={1} style={modalStyles.backdrop} />
@@ -101,57 +93,37 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
           <Text style={modalStyles.closeText}>×</Text>
         </TouchableOpacity>
 
-        <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-          <View style={modalStyles.imageWrap}>
-            {imgError || !imageUrl ? (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
-                <Text style={{ fontSize: 48 }}>📦</Text>
-              </View>
-            ) : (
-              <Image
-                source={{ uri: imageUrl }}
-                style={modalStyles.productImage}
-                onError={() => setImgError(true)}
-              />
-            )}
-          </View>
-
-          <Text style={modalStyles.productName} numberOfLines={3}>{product.name}</Text>
-          <Text style={modalStyles.productBrand}>{product.brand}</Text>
-
-          <View style={modalStyles.priceRow}>
-            <Text style={modalStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
-            {product.originalPrice && product.originalPrice > product.price && (
-              <Text style={modalStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
-            )}
-          </View>
-
-          {showSizeRecommendation && sizeMatch && (
-            <View style={modalStyles.recommendationBox}>
-              <Text style={modalStyles.recommendationTitle}>🎯 Fitgura Smart Size</Text>
-              <Text style={modalStyles.recommendationHeadline}>
-                המידה המומלצת עבורך במוצר זה: <Text style={modalStyles.recommendationSize}>{recommendedLabel}</Text>
-              </Text>
-              <Text style={modalStyles.recommendationSource}>
-                {sizeMatch.source === 'seller_chart'
-                  ? '(לפי טבלת המידות של המוכר בס"מ)'
-                  : sizeMatch.source === 'body_metrics'
-                    ? '(הערכה לפי מידות הגוף מסריקת AI)'
-                    : sizeMatch.source === 'asian_conversion'
-                      ? '(המרת מידה אסייתית)'
-                      : '(לפי סריקת AI)'}
-              </Text>
-              <Text style={modalStyles.recommendationReason}>{sizeMatch.reason}</Text>
+        <View style={modalStyles.imageWrap}>
+          {imgError || !imageUrl ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
+              <Text style={{ fontSize: 48 }}>📦</Text>
             </View>
+          ) : (
+            <Image
+              source={{ uri: imageUrl }}
+              style={modalStyles.productImage}
+              onError={() => setImgError(true)}
+            />
           )}
+        </View>
 
-          {!showSizeRecommendation && (
-            <View style={modalStyles.recommendationBox}>
-              <Text style={modalStyles.recommendationTitle}>📱 מוצר אביזר</Text>
-              <Text style={modalStyles.recommendationHeadline}>לא נדרשת התאמת מידה למוצר זה</Text>
-            </View>
+        <Text style={modalStyles.productName} numberOfLines={3}>{product.name}</Text>
+        <Text style={modalStyles.productBrand}>{product.brand}</Text>
+
+        <View style={modalStyles.priceRow}>
+          <Text style={modalStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <Text style={modalStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
           )}
-        </ScrollView>
+        </View>
+
+        {recommendedSize && (
+          <View style={modalStyles.recommendationBox}>
+            <Text style={modalStyles.recommendationHeadline}>
+              🎯 המידה המומלצת עבורך: <Text style={modalStyles.recommendationSize}>{recommendedSize}</Text>
+            </Text>
+          </View>
+        )}
 
         <TouchableOpacity
           onPress={handleProceedToBuy}
@@ -160,11 +132,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
           disabled={isRedirecting}
         >
           <Text style={modalStyles.confirmBtnText}>
-            {isRedirecting
-              ? 'מעביר לרכישה...'
-              : showSizeRecommendation && recommendedLabel
-                ? `המשך לרכישת מידה ${recommendedLabel} בעליאקספרס`
-                : 'המשך לרכישה בעליאקספרס'}
+            {isRedirecting ? 'מעביר לרכישה...' : 'המשך לרכישה בעליאקספרס'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -185,12 +153,9 @@ const modalStyles = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   productPrice: { fontSize: 18, fontWeight: '800', color: '#2E5BFF' },
   productOriginalPrice: { fontSize: 14, color: '#94A3B8', textDecorationLine: 'line-through' },
-  recommendationBox: { backgroundColor: '#F0FFF6', borderRadius: 14, padding: 14, gap: 6, borderWidth: 1.5, borderColor: 'rgba(46,213,115,0.35)' },
-  recommendationTitle: { fontSize: 13, fontWeight: '800', color: '#16A34A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  recommendationHeadline: { fontSize: 15, fontWeight: '700', color: '#1E293B', lineHeight: 21, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  recommendationSize: { fontSize: 17, fontWeight: '800', color: '#2E5BFF' },
-  recommendationSource: { fontSize: 11, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  recommendationReason: { fontSize: 12, color: '#475569', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  recommendationBox: { backgroundColor: '#F0FFF6', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: 'rgba(46,213,115,0.35)' },
+  recommendationHeadline: { fontSize: 16, fontWeight: '700', color: '#1E293B', lineHeight: 22, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  recommendationSize: { fontSize: 18, fontWeight: '800', color: '#2E5BFF' },
   confirmBtn: { width: '100%', backgroundColor: '#FF4747', borderRadius: 14, paddingVertical: 13, paddingHorizontal: 8, alignItems: 'center', marginTop: 4 },
   confirmBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
