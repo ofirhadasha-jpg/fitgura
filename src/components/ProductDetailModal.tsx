@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import type { GestureResponderEvent } from 'react-native'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateRecommendedSize, type SellerSizeEntry } from '../utils/exactSizeMatcher'
@@ -48,9 +47,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   const accessory = isAccessory(product.name, category)
   const recommendedSize = accessory ? null : calculateRecommendedSize(scannedSizes, sellerSizeChart, category, product.name)
 
-  async function handleProceedToBuy(e: GestureResponderEvent & { preventDefault: () => void }) {
-    e.preventDefault()
-    e.stopPropagation()
+  async function handleProceedToBuy() {
     setIsRedirecting(true)
 
     // Open a new tab synchronously during the user gesture so popup blockers allow it.
