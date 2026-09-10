@@ -107,14 +107,27 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
           <View style={cardStyles.matchChip}>
             <Text style={cardStyles.matchChipTitle}>✓ מתאים לך</Text>
             <View style={cardStyles.pillRow}>
-              {recommendedSize.pills.map((pill: SizePill, idx: number) => (
-                <View key={idx} style={[cardStyles.sizePill, pill.isPrimary && cardStyles.sizePillPrimary]}>
-                  <Text style={cardStyles.sizePillRegion}>{pill.region}</Text>
-                  <Text style={[cardStyles.sizePillValue, pill.isPrimary && cardStyles.sizePillValuePrimary]}>
-                    {pill.value}
-                  </Text>
-                </View>
-              ))}
+              {recommendedSize.pills
+                .filter((p: SizePill) => p.isPrimary)
+                .map((pill: SizePill, idx: number) => (
+                  <View key={idx} style={[cardStyles.sizePill, cardStyles.sizePillPrimary]}>
+                    <Text style={cardStyles.sizePillRegion}>{pill.region}</Text>
+                    <Text style={[cardStyles.sizePillValue, cardStyles.sizePillValuePrimary]}>
+                      {pill.value}
+                    </Text>
+                  </View>
+                ))
+              }
+              {recommendedSize.pills
+                .filter((p: SizePill) => !p.isPrimary)
+                .slice(0, 2)
+                .map((pill: SizePill, idx: number) => (
+                  <View key={idx} style={cardStyles.sizePill}>
+                    <Text style={cardStyles.sizePillRegion}>{pill.region}</Text>
+                    <Text style={cardStyles.sizePillValue}>{pill.value}</Text>
+                  </View>
+                ))
+              }
             </View>
           </View>
         )}
@@ -171,9 +184,10 @@ const cardStyles = StyleSheet.create({
   aiBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(11,20,55,0.85)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
   aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#2ED573' },
   aiBadgeText: { fontSize: 9, color: '#fff', fontWeight: '600' },
-  productInfo: { padding: 10, paddingBottom: 14, minHeight: 190 },
+  productInfo: { padding: 10, paddingBottom: 14, minHeight: 190, flexShrink: 1 },
   matchChip: { backgroundColor: '#F0FFF6', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 6, marginBottom: 6, alignSelf: 'flex-start' },
   matchChipTitle: { fontSize: 8, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif", marginBottom: 3 },
+  matchChipText: { fontSize: 9, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
   sizePill: { backgroundColor: '#F8FAFC', borderRadius: 5, paddingVertical: 2, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#E2E8F0' },
   sizePillPrimary: { backgroundColor: '#2E5BFF', borderColor: '#2E5BFF' },

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
@@ -98,52 +98,54 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
           <Text style={modalStyles.closeText}>×</Text>
         </TouchableOpacity>
 
-        <View style={modalStyles.imageWrap}>
-          {imgError || !imageUrl ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
-              <Text style={{ fontSize: 48 }}>📦</Text>
-            </View>
-          ) : (
-            <Image
-              source={{ uri: imageUrl }}
-              style={modalStyles.productImage}
-              onError={() => setImgError(true)}
-            />
-          )}
-        </View>
-
-        <Text style={modalStyles.productName} numberOfLines={3}>{product.name}</Text>
-        <Text style={modalStyles.productBrand}>{product.brand}</Text>
-
-        <View style={modalStyles.priceRow}>
-          <Text style={modalStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <Text style={modalStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
-          )}
-        </View>
-
-        {recommendedSize && (
-          <View style={modalStyles.recommendationBox}>
-            <Text style={modalStyles.recommendationTitle}>🎯 מתאים לך</Text>
-            <View style={modalStyles.pillRow}>
-              {recommendedSize.pills.map((pill: SizePill, idx: number) => (
-                <View key={idx} style={[modalStyles.sizePill, pill.isPrimary && modalStyles.sizePillPrimary]}>
-                  <Text style={modalStyles.sizePillRegion}>{pill.region}</Text>
-                  <Text style={[modalStyles.sizePillValue, pill.isPrimary && modalStyles.sizePillValuePrimary]}>
-                    {pill.value}
-                  </Text>
-                </View>
-              ))}
-            </View>
+        <ScrollView style={modalStyles.scrollArea} contentContainerStyle={modalStyles.scrollContent}>
+          <View style={modalStyles.imageWrap}>
+            {imgError || !imageUrl ? (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
+                <Text style={{ fontSize: 48 }}>📦</Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: imageUrl }}
+                style={modalStyles.productImage}
+                onError={() => setImgError(true)}
+              />
+            )}
           </View>
-        )}
-        {!recommendedSize && !accessory && !hasScanned && (
-          <View style={modalStyles.recommendationBox}>
-            <Text style={modalStyles.recommendationHeadline}>
-              סרוק את עצמך כדי לקבל המלצת מידה מדויקת
-            </Text>
+
+          <Text style={modalStyles.productName} numberOfLines={3}>{product.name}</Text>
+          <Text style={modalStyles.productBrand}>{product.brand}</Text>
+
+          <View style={modalStyles.priceRow}>
+            <Text style={modalStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
+            {product.originalPrice && product.originalPrice > product.price && (
+              <Text style={modalStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
+            )}
           </View>
-        )}
+
+          {recommendedSize && (
+            <View style={modalStyles.recommendationBox}>
+              <Text style={modalStyles.recommendationTitle}>🎯 מתאים לך</Text>
+              <View style={modalStyles.pillRow}>
+                {recommendedSize.pills.map((pill: SizePill, idx: number) => (
+                  <View key={idx} style={[modalStyles.sizePill, pill.isPrimary && modalStyles.sizePillPrimary]}>
+                    <Text style={modalStyles.sizePillRegion}>{pill.region}</Text>
+                    <Text style={[modalStyles.sizePillValue, pill.isPrimary && modalStyles.sizePillValuePrimary]}>
+                      {pill.value}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+          {!recommendedSize && !accessory && !hasScanned && (
+            <View style={modalStyles.recommendationBox}>
+              <Text style={modalStyles.recommendationHeadline}>
+                סרוק את עצמך כדי לקבל המלצת מידה מדויקת
+              </Text>
+            </View>
+          )}
+        </ScrollView>
 
         <TouchableOpacity
           onPress={handleProceedToBuy}
@@ -177,7 +179,9 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 const modalStyles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(11,20,55,0.65)' },
-  sheet: { backgroundColor: '#fff', borderRadius: 22, padding: 18, width: 340, maxWidth: '92%', gap: 12, elevation: 12, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  sheet: { backgroundColor: '#fff', borderRadius: 22, padding: 18, width: 340, maxWidth: '92%', maxHeight: '88%', elevation: 12, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  scrollArea: { flexShrink: 1 },
+  scrollContent: { gap: 12, paddingBottom: 8 },
   closeBtn: { position: 'absolute', top: 8, right: 8, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   closeText: { color: '#94A3B8', fontSize: 24, lineHeight: 24, fontWeight: '500' },
   imageWrap: { width: '100%', height: 200, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F1F5F9' },
@@ -189,13 +193,14 @@ const modalStyles = StyleSheet.create({
   productOriginalPrice: { fontSize: 14, color: '#94A3B8', textDecorationLine: 'line-through' },
   recommendationBox: { backgroundColor: '#F0FFF6', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: 'rgba(46,213,115,0.35)' },
   recommendationTitle: { fontSize: 14, fontWeight: '700', color: '#16A34A', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  recommendationHeadline: { fontSize: 14, fontWeight: '700', color: '#1E293B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   sizePill: { backgroundColor: '#F8FAFC', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#E2E8F0' },
   sizePillPrimary: { backgroundColor: '#2E5BFF', borderColor: '#2E5BFF' },
   sizePillRegion: { fontSize: 10, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
   sizePillValue: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
   sizePillValuePrimary: { color: '#fff' },
-  confirmBtn: { backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 6, alignSelf: 'center' },
+  confirmBtn: { backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, alignSelf: 'center' },
   confirmBtnLoading: { backgroundColor: '#E03A3A', opacity: 0.85 },
   btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   confirmBtnIcon: { fontSize: 15 },
