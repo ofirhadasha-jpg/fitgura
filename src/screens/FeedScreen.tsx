@@ -206,9 +206,6 @@ export function FeedScreen({
       }
       // Shoe size is used for AI matching/recommendation, not as a search keyword —
       // injecting it into the AliExpress search over-narrows results to zero.
-      if (category === 'all' && deviceName) {
-        extraKeywords += ` ${deviceName} accessories`
-      }
       const trimmedExtra = extraKeywords.trim() || undefined
 
       console.log(`[Feed] Fetching: gender=${gender}, category=${category}, page=${page}, devices=${accessoryDevices.length}`)
