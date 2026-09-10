@@ -76,12 +76,15 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     onDismiss()
 
     try {
-      const newTab = window.open(finalUrl, '_blank')
-      if (!newTab) {
-        window.location.href = finalUrl
-      }
+      const a = document.createElement('a')
+      a.href = finalUrl
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
     } catch {
-      window.location.href = finalUrl
+      window.open(finalUrl, '_blank', 'noopener,noreferrer')
     }
   }
 
