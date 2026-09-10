@@ -178,7 +178,26 @@ serve(async (req: Request) => {
     }
 
     const data = await response.json();
-    const analysisResult = JSON.parse(data.choices[0].message.content);
+    const rawContent = data.choices[0].message.content;
+
+    // DeepSeek sometimes wraps JSON in markdown fences or appends extra text.
+    // Extract the first valid JSON object from the response.
+    let analysisResult: unknown;
+    try {
+      analysisResult = JSON.parse(rawContent);
+    } catch {
+      const fenceMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenceMatch) {
+        analysisResult = JSON.parse(fenceMatch[1].trim());
+      } else {
+        const jsonStart = rawContent.indexOf("{");
+        const jsonEnd = rawContent.lastIndexOf("}");
+        if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+          throw new Error("No valid JSON found in AI response");
+        }
+        analysisResult = JSON.parse(rawContent.slice(jsonStart, jsonEnd + 1));
+      }
+    }
 
     return new Response(
       JSON.stringify(analysisResult),
