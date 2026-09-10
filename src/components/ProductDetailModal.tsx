@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateRecommendedSize, type SellerSizeEntry } from '../utils/exactSizeMatcher'
 import { supabase } from '../lib/supabase'
+import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 import { logAffiliateClick } from '../services/analyticsService'
 
 function formatPrice(price: number, currency?: string): string {
@@ -59,15 +60,21 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
       const sourceUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        const invokeHeaders: Record<string, string> = {}
-        if (session?.access_token) {
-          invokeHeaders['Authorization'] = `Bearer ${session.access_token}`
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
+          apikey: EDGE_FUNCTION_ANON_KEY,
         }
-        const { data } = await supabase.functions.invoke('aliexpress-search', {
-          body: { action: 'affiliate-link', sourceUrl },
-          headers: invokeHeaders,
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+        const resp = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/aliexpress-search`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ action: 'affiliate-link', sourceUrl }),
         })
-        const links = (data as Record<string, unknown>)?.links as { promotion_link?: string }[] | undefined
+        const data = await resp.json() as Record<string, unknown> | null
+        const links = data?.links as { promotion_link?: string }[] | undefined
         targetUrl = links?.[0]?.promotion_link ?? null
       } catch {
         targetUrl = null
