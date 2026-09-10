@@ -138,14 +138,14 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
 }
 
 const cardStyles = StyleSheet.create({
-  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden' },
-  productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F1F5F9' },
+  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'visible', minHeight: 390 },
+  productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F1F5F9', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
   productImage: { width: '100%', height: '100%' },
   heartBtn: { position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
   aiBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(11,20,55,0.85)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
   aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#2ED573' },
   aiBadgeText: { fontSize: 9, color: '#fff', fontWeight: '600' },
-  productInfo: { padding: 10 },
+  productInfo: { padding: 10, paddingBottom: 14, minHeight: 190 },
   matchChip: { backgroundColor: '#F0FFF6', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 7, paddingVertical: 3, paddingHorizontal: 7, marginBottom: 6, alignSelf: 'flex-start' },
   matchChipText: { fontSize: 9, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productName: { fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
@@ -153,8 +153,8 @@ const cardStyles = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
   productOriginalPrice: { fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through' },
-  buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
-  buyBtnAli: { flex: 1, backgroundColor: '#FF4747', borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+  buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 10, minHeight: 38 },
+  buyBtnAli: { flex: 1, minHeight: 38, backgroundColor: '#FF4747', borderRadius: 10, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
   buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   toast: { marginTop: 6, backgroundColor: '#0B1437', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
   toastText: { color: '#fff', fontSize: 10, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
