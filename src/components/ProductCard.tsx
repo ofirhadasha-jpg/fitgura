@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import type { GestureResponderEvent } from 'react-native'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
@@ -78,7 +77,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
           />
         )}
         <TouchableOpacity
-          onPress={(e: GestureResponderEvent & { preventDefault: () => void }) => { e.preventDefault(); e.stopPropagation(); onToggleWishlist() }}
+          onPress={() => onToggleWishlist()}
           activeOpacity={0.7}
           style={cardStyles.heartBtn}
         >
