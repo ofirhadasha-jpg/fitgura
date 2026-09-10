@@ -4,12 +4,14 @@ import { type Product, type ScannedSizes } from '../types'
 import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
 import { ProductDetailModal } from './ProductDetailModal'
 
-function formatPrice(price: number, currency?: string): string {
+function formatPrice(price: number | null | undefined, currency?: string): string {
   const symbol = currency ?? '₪'
-  return `${symbol}${price.toLocaleString()}`
+  const safePrice = typeof price === 'number' && !isNaN(price) ? price : 0
+  return `${symbol}${safePrice.toLocaleString()}`
 }
 
-function normalizeProductImageUrl(imageUrl: string): string | null {
+function normalizeProductImageUrl(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) return null
   const value = imageUrl.trim()
   if (!value) return null
   if (value.startsWith('//')) return `https:${value}`

@@ -44,8 +44,8 @@ function sortAccessoriesByDevicePriority(products: Product[], devices: string[])
     return { model, lastPart: parts[parts.length - 1] }
   })
   return [...products].sort((a, b) => {
-    const aTitle = a.name.toLowerCase()
-    const bTitle = b.name.toLowerCase()
+    const aTitle = (a.name ?? '').toLowerCase()
+    const bTitle = (b.name ?? '').toLowerCase()
     // Find the highest-priority device (lowest index) that matches each product
     const aPriority = deviceModels.findIndex((dm) => aTitle.includes(dm.model) || (dm.lastPart.length >= 2 && aTitle.includes(dm.lastPart)))
     const bPriority = deviceModels.findIndex((dm) => bTitle.includes(dm.model) || (dm.lastPart.length >= 2 && bTitle.includes(dm.lastPart)))
@@ -390,21 +390,23 @@ export function FeedScreen({
   const isMaleRender = scannedSizes?.gender === 'male'
 
   const filtered = catalog.filter((p) => {
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase())
+    const name = p.name ?? ''
+    const brand = p.brand ?? ''
+    const matchSearch = !search || name.toLowerCase().includes(search.toLowerCase()) || brand.toLowerCase().includes(search.toLowerCase())
     const matchBudget = filterByPrice(p, budget[0], budget[1])
     // 1. Gender Validation — render-time double-check
-    if (isFemaleRender && MENS_RENDER_REGEX.test(p.name)) return false
-    if (isMaleRender && WOMENS_RENDER_REGEX.test(p.name)) return false
+    if (isFemaleRender && MENS_RENDER_REGEX.test(name)) return false
+    if (isMaleRender && WOMENS_RENDER_REGEX.test(name)) return false
     // 1b. Products mentioning both genders are unisex-only
-    if ((isFemaleRender || isMaleRender) && BOTH_GENDERS_RENDER_REGEX.test(p.name)) return false
+    if ((isFemaleRender || isMaleRender) && BOTH_GENDERS_RENDER_REGEX.test(name)) return false
     // 2. Category Validation — render-time double-check
-    if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(p.name)) return false
+    if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(name)) return false
     if (filter === 'shoes') {
-      if (APPAREL_RENDER_REGEX.test(p.name) && !FOOTWEAR_RENDER_REGEX.test(p.name)) return false
+      if (APPAREL_RENDER_REGEX.test(name) && !FOOTWEAR_RENDER_REGEX.test(name)) return false
     }
     // Accessories tab: exclude clothing items that leaked through, but allow watch accessory terms
     if (filter === 'accessories') {
-      if (CLOTHING_KEYWORDS_REGEX.test(p.name) && !WATCH_ACCESSORY_REGEX.test(p.name)) return false
+      if (CLOTHING_KEYWORDS_REGEX.test(name) && !WATCH_ACCESSORY_REGEX.test(name)) return false
     }
     return matchSearch && matchBudget
   })

@@ -5,12 +5,14 @@ import { calculateRecommendedSize, type SellerSizeEntry } from '../utils/exactSi
 import { generateAffiliateLink } from '../lib/aliexpress'
 import { logAffiliateClick } from '../services/analyticsService'
 
-function formatPrice(price: number, currency?: string): string {
+function formatPrice(price: number | null | undefined, currency?: string): string {
   const symbol = currency ?? '₪'
-  return `${symbol}${price.toLocaleString()}`
+  const safePrice = typeof price === 'number' && !isNaN(price) ? price : 0
+  return `${symbol}${safePrice.toLocaleString()}`
 }
 
-function normalizeProductImageUrl(imageUrl: string): string | null {
+function normalizeProductImageUrl(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) return null
   const value = imageUrl.trim()
   if (!value) return null
   if (value.startsWith('//')) return `https:${value}`
@@ -50,7 +52,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   async function handleProceedToBuy() {
     setIsRedirecting(true)
 
-    const fallbackUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
+    const fallbackUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent((product.brand ?? '') + ' ' + (product.name ?? ''))}`
 
     let finalUrl = product.promotionLink ?? null
     try {
@@ -65,7 +67,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
     logAffiliateClick({
       product_id: product.aliexpressSku ?? '',
-      title: product.name,
+      title: product.name ?? '',
       promotion_link: finalUrl,
     }).catch(() => {})
 

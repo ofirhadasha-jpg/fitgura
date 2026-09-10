@@ -132,13 +132,14 @@ export function filterProducts(
 ): Product[] {
   const rejectRegex = GENDER_REJECT[gender] ?? /$^/
   return products.filter((p) => {
-    if (rejectRegex.test(p.name)) return false
-    if (gender !== 'unisex' && BOTH_GENDERS_REGEX.test(p.name)) return false
-    if (category === 'clothing' && FOOTWEAR_REGEX.test(p.name)) return false
-    if (category === 'shoes' && APPAREL_REGEX.test(p.name) && !FOOTWEAR_REGEX.test(p.name)) return false
+    const name = p.name ?? ''
+    if (rejectRegex.test(name)) return false
+    if (gender !== 'unisex' && BOTH_GENDERS_REGEX.test(name)) return false
+    if (category === 'clothing' && FOOTWEAR_REGEX.test(name)) return false
+    if (category === 'shoes' && APPAREL_REGEX.test(name) && !FOOTWEAR_REGEX.test(name)) return false
     if (category === 'accessories') {
-      if (APPAREL_REGEX.test(p.name)) return false
-      if (FOOTWEAR_REGEX.test(p.name)) return false
+      if (APPAREL_REGEX.test(name)) return false
+      if (FOOTWEAR_REGEX.test(name)) return false
     }
     return true
   })

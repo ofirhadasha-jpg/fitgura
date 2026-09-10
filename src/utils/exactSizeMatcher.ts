@@ -18,12 +18,13 @@ const FOOTWEAR_RE = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal
 const DEVICE_RE = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
 
 function detectSubCategory(productName: string, category: string): SubCategory {
-  if (category === 'shoes' || FOOTWEAR_RE.test(productName)) return 'shoes'
-  if (category === 'accessories' || DEVICE_RE.test(productName)) return 'accessories'
-  if (DRESS_RE.test(productName)) return 'dresses'
-  if (SUIT_RE.test(productName)) return 'suits'
-  if (PANTS_RE.test(productName) && !SHIRT_RE.test(productName)) return 'pants'
-  if (SHIRT_RE.test(productName) && !PANTS_RE.test(productName)) return 'tops'
+  const name = productName ?? ''
+  if (category === 'shoes' || FOOTWEAR_RE.test(name)) return 'shoes'
+  if (category === 'accessories' || DEVICE_RE.test(name)) return 'accessories'
+  if (DRESS_RE.test(name)) return 'dresses'
+  if (SUIT_RE.test(name)) return 'suits'
+  if (PANTS_RE.test(name) && !SHIRT_RE.test(name)) return 'pants'
+  if (SHIRT_RE.test(name) && !PANTS_RE.test(name)) return 'tops'
   return 'tops'
 }
 
@@ -151,7 +152,7 @@ export function calculateRecommendedSize(
 ): string | null {
   if (!userSizes) return null
 
-  const sub = detectSubCategory(productName, category)
+  const sub = detectSubCategory(productName ?? '', category)
   if (sub === 'accessories') return null
 
   const metrics = getMetrics(userSizes)
