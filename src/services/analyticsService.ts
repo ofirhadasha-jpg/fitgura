@@ -74,7 +74,7 @@ export async function logAffiliateClick(product: {
       user_id: user?.id || null,
     }
 
-    console.log('[analytics] Sending click payload to Supabase:', payload)
+    console.log('[analytics] Sending click payload to BOLT DATA BASE:', payload)
 
     const { data, error } = await supabase
       .from('affiliate_clicks')
