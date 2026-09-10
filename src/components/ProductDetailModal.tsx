@@ -3,8 +3,7 @@ import type { GestureResponderEvent } from 'react-native'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateRecommendedSize, type SellerSizeEntry } from '../utils/exactSizeMatcher'
-import { supabase } from '../lib/supabase'
-import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
+import { generateAffiliateLink } from '../lib/aliexpress'
 import { logAffiliateClick } from '../services/analyticsService'
 
 function formatPrice(price: number, currency?: string): string {
@@ -53,32 +52,11 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     e.preventDefault()
     e.stopPropagation()
     setIsRedirecting(true)
-    const purchaseWindow = window.open('about:blank', '_blank')
 
     let targetUrl = product.promotionLink ?? null
     if (!targetUrl) {
       const sourceUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
-          apikey: EDGE_FUNCTION_ANON_KEY,
-        }
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`
-        }
-        const resp = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/aliexpress-search`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ action: 'affiliate-link', sourceUrl }),
-        })
-        const data = await resp.json() as Record<string, unknown> | null
-        const links = data?.links as { promotion_link?: string }[] | undefined
-        targetUrl = links?.[0]?.promotion_link ?? null
-      } catch {
-        targetUrl = null
-      }
+      targetUrl = await generateAffiliateLink(sourceUrl)
     }
     const finalUrl = targetUrl ?? product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
 
@@ -88,11 +66,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
       promotion_link: finalUrl,
     })
 
-    if (purchaseWindow) {
-      purchaseWindow.location.href = finalUrl
-    } else {
-      window.open(finalUrl, '_blank', 'noopener,noreferrer')
-    }
+    window.location.href = finalUrl
     setIsRedirecting(false)
     onDismiss()
   }
