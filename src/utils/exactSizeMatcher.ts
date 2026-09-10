@@ -174,7 +174,7 @@ function matchBodyMetricsToStandard(
   }
 
   // Fallback: use registration sizes with Asian conversion
-  return { ...asianConversionFallback(null, null) }
+  return asianConversionFallback(null, undefined)
 }
 
 // Asian size conversion fallback when no body metrics available

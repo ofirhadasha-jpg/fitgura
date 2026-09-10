@@ -268,7 +268,7 @@ export function FeedScreen({
         setIsLoadingMore(false)
       }
     }
-  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
+  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes?.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
 
   // Refs to avoid effect dependency on loadProducts/filter identity — prevents infinite reload loop
   const loadProductsRef = useRef(loadProducts)

@@ -426,7 +426,7 @@ export default function App() {
     // Logged-in user: persist to Supabase profiles table
     if (scannedSizes) {
       const bm = scannedSizes.sizing.bodyMetrics
-      supabase.from('profiles').upsert({
+      Promise.resolve(supabase.from('profiles').upsert({
         user_id: user.id,
         email: user.email,
         gender: scannedSizes.gender ?? 'unisex',
@@ -452,9 +452,9 @@ export default function App() {
           height_cm: bm?.estimated_height_cm ?? null,
           weight_kg: bm?.estimated_weight_kg ?? null,
         },
-      }).then(({ error }) => {
-        if (error) console.error('[App] Failed to persist profile to Supabase:', error.message)
-      }).catch((err) => {
+      })).then(({ error }: { error: unknown }) => {
+        if (error) console.error('[App] Failed to persist profile to Supabase:', error)
+      }).catch((err: unknown) => {
         console.error('[App] Supabase profile persist failed, keeping local only:', err)
       })
     }

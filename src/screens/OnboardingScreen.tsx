@@ -65,6 +65,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       fit: '',
       gender: 'unisex',
       personBounds: { top: 2, left: 10, width: 80, height: 96 },
+      shoeSize: null,
     })
     setStep('scanning')
     setScanProgress(0)
@@ -350,7 +351,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
   const [styleEditing, setStyleEditing] = useState(false)
   const [primaryStyle, setPrimaryStyle] = useState(sizes.style?.primaryStyle ?? '')
   const [secondaryStyle, setSecondaryStyle] = useState(sizes.style?.secondaryStyle ?? '')
-  const [colors, setColors] = useState<string[]>(sizes.style?.domantColors ?? [])
+  const [colors, setColors] = useState<string[]>(sizes.style?.dominantColors ?? [])
   const COLOR_PALETTE = ['#1E293B', '#475569', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#22C55E', '#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#FFFFFF', '#94A3B8']
   const [gender, setGender] = useState<'male' | 'female' | 'unisex'>(sizes.gender ?? 'unisex')
   const [heightCm, setHeightCm] = useState(sizes.sizing.bodyMetrics?.estimated_height_cm?.toString() ?? '')
