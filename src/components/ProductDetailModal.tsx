@@ -53,6 +53,11 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     e.stopPropagation()
     setIsRedirecting(true)
 
+    const purchaseWindow = window.open('', '_blank')
+    if (purchaseWindow) {
+      purchaseWindow.document.write('<html><head><title>מעביר לרכישה...</title><meta charset="utf-8"></head><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0a1628;color:#fff;font-size:18px;">מעביר לעליאקספרס...</body></html>')
+    }
+
     let targetUrl = product.promotionLink ?? null
     if (!targetUrl) {
       const sourceUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
@@ -66,7 +71,17 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
       promotion_link: finalUrl,
     })
 
-    window.location.href = finalUrl
+    if (purchaseWindow) {
+      purchaseWindow.location.href = finalUrl
+    } else {
+      const a = document.createElement('a')
+      a.href = finalUrl
+      a.target = '_blank'
+      a.rel = 'noopener'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
     setIsRedirecting(false)
     onDismiss()
   }
