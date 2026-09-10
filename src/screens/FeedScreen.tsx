@@ -108,8 +108,9 @@ export function FeedScreen({
       .then((newProducts) => {
         if (cancelled || newProducts.length === 0) return
         const cleaned = newProducts.filter((p) => {
-          if (CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
-          const titleLower = p.name.toLowerCase()
+          const pName = p.name ?? ''
+          if (CLOTHING_KEYWORDS_REGEX.test(pName)) return false
+          const titleLower = pName.toLowerCase()
           const model = latestAddedDevice.replace(/^\w+\s+/, '').trim().toLowerCase() || latestAddedDevice.toLowerCase()
           const parts = model.split(' ')
           const lastPart = parts[parts.length - 1]
@@ -151,7 +152,7 @@ export function FeedScreen({
 
     // Hard-filter out products matching the removed device
     setCatalog((prev) => prev.filter((p) => {
-      const titleLower = p.name.toLowerCase()
+      const titleLower = (p.name ?? '').toLowerCase()
       return !removedDevices.some((d) => {
         const model = d.replace(/^\w+\s+/, '').trim().toLowerCase() || d.toLowerCase()
         const parts = model.split(' ')
@@ -215,8 +216,9 @@ export function FeedScreen({
       // but we run a second pass here for accessories device-name matching
       const cleanedProducts = category === 'accessories' && accessoryDevices.length > 0
         ? remoteProducts.filter((p) => {
-            if (CLOTHING_KEYWORDS_REGEX.test(p.name)) return false
-            const titleLower = p.name.toLowerCase()
+            const pName = p.name ?? ''
+            if (CLOTHING_KEYWORDS_REGEX.test(pName)) return false
+            const titleLower = pName.toLowerCase()
             return accessoryDevices.some((d) => {
               const model = d.replace(/^\w+\s+/, '').trim().toLowerCase() || d.toLowerCase()
               const parts = model.split(' ')

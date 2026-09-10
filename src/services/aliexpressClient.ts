@@ -311,8 +311,9 @@ export async function searchDeviceAccessories(
   }
 
   const filtered = collected.filter((p) => {
-    if (APPAREL_REGEX.test(p.name)) return false
-    if (FOOTWEAR_REGEX.test(p.name)) return false
+    const pName = p.name ?? ''
+    if (APPAREL_REGEX.test(pName)) return false
+    if (FOOTWEAR_REGEX.test(pName)) return false
     return true
   })
   return sortByBestSellers(dedupById(filtered))
