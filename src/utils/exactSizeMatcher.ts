@@ -1,5 +1,5 @@
 import type { ScannedSizes, BodyMetrics } from '../types'
-import { formatFullSizeLabel, formatShortSizeLabel, type SizeType } from './sizeConverter'
+import { formatFullSizeLabel, formatShortSizeLabel, getSizePills, type SizeType, type SizePill } from './sizeConverter'
 
 export interface SellerSizeEntry {
   label: string
@@ -14,6 +14,7 @@ export interface SizeRecommendation {
   type: SizeType
   fullLabel: string
   shortLabel: string
+  pills: SizePill[]
 }
 
 type SubCategory = 'tops' | 'dresses' | 'suits' | 'pants' | 'shoes' | 'accessories'
@@ -293,6 +294,7 @@ export function calculateDetailedRecommendation(
     type: sizeType,
     fullLabel: formatFullSizeLabel(sizeType, size),
     shortLabel: formatShortSizeLabel(sizeType, size),
+    pills: getSizePills(sizeType, size),
   }
 }
 

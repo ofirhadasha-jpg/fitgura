@@ -166,6 +166,12 @@ export function formatFullTopSizeLabel(letterSize: string): string {
 // ─── Unified size label formatter ──────────────────────────────────────
 export type SizeType = 'top' | 'bottom' | 'shoe'
 
+export interface SizePill {
+  region: string   // 'EU', 'US', 'UK', 'IL'
+  value: string    // the size value for that region
+  isPrimary: boolean // true for the main/primary region
+}
+
 export function formatFullSizeLabel(sizeType: SizeType, sizeValue: string): string {
   if (sizeType === 'shoe') return formatFullShoeSizeLabel(sizeValue)
   if (sizeType === 'bottom') return formatFullPantsSizeLabel(sizeValue)
@@ -176,6 +182,36 @@ export function formatShortSizeLabel(sizeType: SizeType, sizeValue: string, pref
   if (sizeType === 'shoe') return formatShoeSizeLabel(sizeValue, preferredRegion)
   if (sizeType === 'bottom') return formatPantsSizeLabel(sizeValue, preferredRegion)
   return formatTopSizeLabel(sizeValue, preferredRegion)
+}
+
+export function getSizePills(sizeType: SizeType, sizeValue: string): SizePill[] {
+  if (sizeType === 'shoe') {
+    const entry = getShoeSizeEntry(sizeValue)
+    if (!entry) return [{ region: 'EU', value: sizeValue, isPrimary: true }]
+    return [
+      { region: 'EU', value: entry.EU, isPrimary: true },
+      { region: 'US', value: entry.US, isPrimary: false },
+      { region: 'UK', value: entry.UK, isPrimary: false },
+      { region: 'IL', value: entry.IL, isPrimary: false },
+    ]
+  }
+  if (sizeType === 'bottom') {
+    const entry = getPantsSizeEntry(sizeValue)
+    if (!entry) return [{ region: 'EU', value: sizeValue, isPrimary: true }]
+    return [
+      { region: 'EU', value: entry.EU, isPrimary: true },
+      { region: 'IL', value: entry.IL, isPrimary: false },
+      { region: 'US', value: entry.US, isPrimary: false },
+    ]
+  }
+  // tops
+  const entry = getTopSizeEntry(sizeValue)
+  if (!entry) return [{ region: 'EU', value: sizeValue, isPrimary: true }]
+  return [
+    { region: 'EU', value: entry.letter, isPrimary: true },
+    { region: 'US', value: entry.US, isPrimary: false },
+    { region: 'IL', value: entry.IL, isPrimary: false },
+  ]
 }
 
 export const SIZE_REGION_LABELS: Record<SizeRegion, string> = {

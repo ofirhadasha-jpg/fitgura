@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateDetailedRecommendation, type SizeRecommendation } from '../utils/exactSizeMatcher'
+import { type SizePill } from '../utils/sizeConverter'
 import { ProductDetailModal } from './ProductDetailModal'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
@@ -92,7 +93,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         </View>
         {recommendedSize && showSizeRecommendation && (
           <View style={cardStyles.sizeBadge}>
-            <Text style={cardStyles.sizeBadgeText}>מתאים לך: {recommendedSize.shortLabel}</Text>
+            <Text style={cardStyles.sizeBadgeText}>מידה: {recommendedSize.pills.find(p => p.isPrimary)?.value ?? recommendedSize.size}</Text>
           </View>
         )}
         {!recommendedSize && showSizeRecommendation && !hasScanned && (
@@ -104,9 +105,17 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
       <View style={cardStyles.productInfo}>
         {showSizeRecommendation && recommendedSize && (
           <View style={cardStyles.matchChip}>
-            <Text style={cardStyles.matchChipText}>
-              ✓ מתאים לך: {recommendedSize.fullLabel}
-            </Text>
+            <Text style={cardStyles.matchChipTitle}>✓ מתאים לך</Text>
+            <View style={cardStyles.pillRow}>
+              {recommendedSize.pills.map((pill: SizePill, idx: number) => (
+                <View key={idx} style={[cardStyles.sizePill, pill.isPrimary && cardStyles.sizePillPrimary]}>
+                  <Text style={cardStyles.sizePillRegion}>{pill.region}</Text>
+                  <Text style={[cardStyles.sizePillValue, pill.isPrimary && cardStyles.sizePillValuePrimary]}>
+                    {pill.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
         {showSizeRecommendation && !recommendedSize && !hasScanned && (
@@ -163,8 +172,14 @@ const cardStyles = StyleSheet.create({
   aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#2ED573' },
   aiBadgeText: { fontSize: 9, color: '#fff', fontWeight: '600' },
   productInfo: { padding: 10, paddingBottom: 14, minHeight: 190 },
-  matchChip: { backgroundColor: '#F0FFF6', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 7, paddingVertical: 3, paddingHorizontal: 7, marginBottom: 6, alignSelf: 'flex-start' },
-  matchChipText: { fontSize: 9, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  matchChip: { backgroundColor: '#F0FFF6', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 6, marginBottom: 6, alignSelf: 'flex-start' },
+  matchChipTitle: { fontSize: 8, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif", marginBottom: 3 },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
+  sizePill: { backgroundColor: '#F8FAFC', borderRadius: 5, paddingVertical: 2, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#E2E8F0' },
+  sizePillPrimary: { backgroundColor: '#2E5BFF', borderColor: '#2E5BFF' },
+  sizePillRegion: { fontSize: 7, fontWeight: '700', color: '#64748B', letterSpacing: 0.3 },
+  sizePillValue: { fontSize: 9, fontWeight: '700', color: '#1E293B' },
+  sizePillValuePrimary: { color: '#fff' },
   productName: { fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   productBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },

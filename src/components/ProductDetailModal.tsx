@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecommendation } from '../utils/exactSizeMatcher'
+import { type SizePill } from '../utils/sizeConverter'
 import { generateAffiliateLink } from '../lib/aliexpress'
 import { logAffiliateClick } from '../services/analyticsService'
 
@@ -123,9 +124,17 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
         {recommendedSize && (
           <View style={modalStyles.recommendationBox}>
-            <Text style={modalStyles.recommendationHeadline}>
-              🎯 מתאים לך: <Text style={modalStyles.recommendationSize}>{recommendedSize.fullLabel}</Text>
-            </Text>
+            <Text style={modalStyles.recommendationTitle}>🎯 מתאים לך</Text>
+            <View style={modalStyles.pillRow}>
+              {recommendedSize.pills.map((pill: SizePill, idx: number) => (
+                <View key={idx} style={[modalStyles.sizePill, pill.isPrimary && modalStyles.sizePillPrimary]}>
+                  <Text style={modalStyles.sizePillRegion}>{pill.region}</Text>
+                  <Text style={[modalStyles.sizePillValue, pill.isPrimary && modalStyles.sizePillValuePrimary]}>
+                    {pill.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
         {!recommendedSize && !accessory && !hasScanned && (
@@ -179,8 +188,13 @@ const modalStyles = StyleSheet.create({
   productPrice: { fontSize: 18, fontWeight: '800', color: '#2E5BFF' },
   productOriginalPrice: { fontSize: 14, color: '#94A3B8', textDecorationLine: 'line-through' },
   recommendationBox: { backgroundColor: '#F0FFF6', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: 'rgba(46,213,115,0.35)' },
-  recommendationHeadline: { fontSize: 16, fontWeight: '700', color: '#1E293B', lineHeight: 22, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  recommendationSize: { fontSize: 18, fontWeight: '800', color: '#2E5BFF' },
+  recommendationTitle: { fontSize: 14, fontWeight: '700', color: '#16A34A', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  sizePill: { backgroundColor: '#F8FAFC', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#E2E8F0' },
+  sizePillPrimary: { backgroundColor: '#2E5BFF', borderColor: '#2E5BFF' },
+  sizePillRegion: { fontSize: 10, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
+  sizePillValue: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
+  sizePillValuePrimary: { color: '#fff' },
   confirmBtn: { backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 6, alignSelf: 'center' },
   confirmBtnLoading: { backgroundColor: '#E03A3A', opacity: 0.85 },
   btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
