@@ -36,8 +36,7 @@ const ALI_TOPS_SIZES: { label: string; chest: [number, number] }[] = [
   { label: 'L',   chest: [93, 98] },
   { label: 'XL',  chest: [99, 104] },
   { label: '2XL', chest: [105, 110] },
-  { label: '3XL', chest: [111, 116] },
-  { label: '4XL', chest: [117, 999] },
+  { label: '3XL', chest: [111, 999] },
 ]
 
 const ALI_PANTS_SIZES: { label: string; waist: [number, number] }[] = [
@@ -46,8 +45,7 @@ const ALI_PANTS_SIZES: { label: string; waist: [number, number] }[] = [
   { label: 'L',   waist: [75, 80] },
   { label: 'XL',  waist: [81, 86] },
   { label: '2XL', waist: [87, 92] },
-  { label: '3XL', waist: [93, 98] },
-  { label: '4XL', waist: [99, 999] },
+  { label: '3XL', waist: [93, 999] },
 ]
 
 const ALI_SHOE_SIZES: { label: string; footMin: number; footMax: number }[] = [
@@ -82,7 +80,7 @@ function inRange(value: number, range: [number, number]): boolean {
   return value >= range[0] && value <= range[1]
 }
 
-const TOPS_ORDER = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']
+const TOPS_ORDER = ['S', 'M', 'L', 'XL', '2XL', '3XL']
 
 function adjustForFit(baseLabel: string, fit: string | undefined): string {
   if (!fit) return baseLabel
@@ -134,7 +132,7 @@ function matchTopsByWesternSize(westernSize: string, fit: string | undefined): s
 function matchPantsByEuSize(euSize: string, fit: string | undefined): string | null {
   const EU_TO_ASIAN: Record<string, string> = {
     '36': 'S', '38': 'M', '40': 'L', '42': 'XL', '44': '2XL',
-    '46': '3XL', '48': '4XL', '50': '5XL', '52': '5XL',
+    '46': '3XL', '48': '3XL', '50': '3XL', '52': '3XL',
   }
   const label = EU_TO_ASIAN[euSize]
   return label ? adjustForFit(label, fit) : null
