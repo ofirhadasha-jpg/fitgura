@@ -47,7 +47,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   const imageUrl = normalizeProductImageUrl(product.img)
   const accessory = isAccessory(product.name, category)
-  const recommendedSize = accessory ? null : calculateRecommendedSize(scannedSizes, sellerSizeChart, category, product.name)
+  const recommendedSize = accessory ? null : calculateRecommendedSize(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
 
   async function handleProceedToBuy() {
     setIsRedirecting(true)

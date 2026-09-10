@@ -211,6 +211,34 @@ interface AliExpressProduct {
   promotion_link?: string;
 }
 
+const SIZE_KEYWORDS = /\b(XS|S|M|L|XL|2XL|3XL|4XL|5XL|XXL|XXXL|XXXXL)\b/gi;
+const SIZE_COLON_RE = /size[s]?\s*[:：]\s*([A-Z0-9XL\s,，、\-]{2,60})/i;
+const SIZE_RANGE_RE = /\b(XS|S|M|L|XL|2XL|3XL|4XL|5XL|XXL|XXXL)\b/gi;
+
+function extractAvailableSizes(title: string): string[] {
+  const normalized = title.replace(/2XL/gi, "2XL").replace(/3XL/gi, "3XL")
+    .replace(/4XL/gi, "4XL").replace(/5XL/gi, "5XL")
+    .replace(/XXL/gi, "2XL").replace(/XXXL/gi, "3XL").replace(/XXXXL/gi, "4XL");
+
+  let matchArea = normalized;
+  const colonMatch = SIZE_COLON_RE.exec(normalized);
+  if (colonMatch) {
+    matchArea = colonMatch[1];
+  }
+
+  const found = new Set<string>();
+  let m: RegExpExecArray | null;
+  const re = new RegExp(SIZE_RANGE_RE.source, "gi");
+  while ((m = re.exec(matchArea)) !== null) {
+    const raw = m[1].toUpperCase();
+    const normalized2 = raw.replace("XXL", "2XL").replace("XXXL", "3XL").replace("XXXXL", "4XL");
+    found.add(normalized2);
+  }
+
+  if (found.size === 0) return [];
+  return Array.from(found);
+}
+
 async function generateAffiliateLinks(sourceValues: string[]): Promise<Map<string, string>> {
   const linkMap = new Map<string, string>();
   if (sourceValues.length === 0) return linkMap;
@@ -446,6 +474,7 @@ Deno.serve(async (req: Request) => {
           ordersCount: volume,
           volume: volume,
           evaluateRate: evaluateRate,
+          availableSizes: extractAvailableSizes(p.product_title ?? ""),
         };
       });
 

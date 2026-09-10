@@ -35,7 +35,7 @@ function detectEffectiveCategory(productName: string, category: string): string 
 
 function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
-  return calculateRecommendedSize(scannedSizes, [], category, productName)
+  return calculateRecommendedSize(scannedSizes, [], category, productName, product.availableSizes ?? [])
 }
 
 

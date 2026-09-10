@@ -781,6 +781,7 @@ export interface Product {
   ordersCount?: number
   volume?: number
   evaluateRate?: number
+  availableSizes?: string[]
 }
 
 export interface UserDevice {

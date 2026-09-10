@@ -150,6 +150,7 @@ export function calculateRecommendedSize(
   sellerMetadata: SellerSizeEntry[] = [],
   category: string = 'clothing',
   productName: string = '',
+  availableSizes: string[] = [],
 ): string | null {
   if (!userSizes) return null
 
@@ -158,20 +159,21 @@ export function calculateRecommendedSize(
 
   const fit = userSizes.sizing.fit
 
+  let result: string | null = null
+
   // Shoes: convert EU shoe size → foot length → match against seller chart or AliExpress table
   if (sub === 'shoes') {
     const foot = footLengthCm(userSizes.shoeSize)
     if (foot != null && sellerMetadata.length > 0) {
       const m = sellerMetadata.find((e) => e.foot_length_cm && inRange(foot, e.foot_length_cm))
-      if (m) return m.label
+      if (m) result = m.label
     }
-    if (foot != null) return matchShoes(foot)
-    return userSizes.shoeSize ?? null
+    if (!result && foot != null) result = matchShoes(foot)
+    if (!result) result = userSizes.shoeSize ?? null
+    return result ? clampToAvailable(result, availableSizes) : null
   }
 
   // Always derive body measurements from the scanned size labels.
-  // The AI's raw circumference estimates are unreliable (often garment-level, not body-level),
-  // which causes the matcher to jump 2-3 sizes too big.
   const metrics = estimateMetrics(userSizes)
 
   // If seller provides a size chart, match body metrics against it
@@ -189,59 +191,90 @@ export function calculateRecommendedSize(
       if (checks === 0) continue
       if (score / checks > bestScore) { bestScore = score / checks; best = e }
     }
-    if (best && bestScore > 0) return adjustForFit(best.label, fit)
+    if (best && bestScore > 0) result = adjustForFit(best.label, fit)
   }
 
   const m = metrics
 
-  if (sub === 'pants') {
+  if (!result && sub === 'pants') {
     const direct = matchPantsByEuSize(userSizes.sizing.bottom, fit)
-    if (direct) return direct
-    const waist = m?.waist_circumference_cm
-    if (waist != null) {
-      for (const e of ALI_PANTS_SIZES) {
-        if (inRange(waist, e.waist)) return adjustForFit(e.label, fit)
+    if (direct) result = direct
+    else {
+      const waist = m?.waist_circumference_cm
+      if (waist != null) {
+        for (const e of ALI_PANTS_SIZES) {
+          if (inRange(waist, e.waist)) { result = adjustForFit(e.label, fit); break }
+        }
       }
     }
   }
 
-  // Dresses use chest (bust) as primary measurement
-  if (sub === 'dresses') {
+  if (!result && sub === 'dresses') {
     const direct = matchTopsByWesternSize(userSizes.sizing.top, fit)
-    if (direct) return direct
-    const chest = m?.chest_circumference_cm
-    if (chest != null) {
-      for (const e of ALI_TOPS_SIZES) {
-        if (inRange(chest, e.chest)) return adjustForFit(e.label, fit)
+    if (direct) result = direct
+    else {
+      const chest = m?.chest_circumference_cm
+      if (chest != null) {
+        for (const e of ALI_TOPS_SIZES) {
+          if (inRange(chest, e.chest)) { result = adjustForFit(e.label, fit); break }
+        }
       }
     }
   }
 
-  // Suits use chest as primary measurement
-  if (sub === 'suits') {
+  if (!result && sub === 'suits') {
     const direct = matchTopsByWesternSize(userSizes.sizing.top, fit)
-    if (direct) return direct
-    const chest = m?.chest_circumference_cm
-    if (chest != null) {
-      for (const e of ALI_TOPS_SIZES) {
-        if (inRange(chest, e.chest)) return adjustForFit(e.label, fit)
+    if (direct) result = direct
+    else {
+      const chest = m?.chest_circumference_cm
+      if (chest != null) {
+        for (const e of ALI_TOPS_SIZES) {
+          if (inRange(chest, e.chest)) { result = adjustForFit(e.label, fit); break }
+        }
       }
     }
   }
 
-  // Default tops path: direct Western→Asian mapping first, then chest-based fallback
-  const directTop = matchTopsByWesternSize(userSizes.sizing.top, fit)
-  if (directTop) return directTop
-  const chest = m?.chest_circumference_cm
-  if (chest != null) {
-    for (const e of ALI_TOPS_SIZES) {
-      if (inRange(chest, e.chest)) return adjustForFit(e.label, fit)
+  if (!result) {
+    const directTop = matchTopsByWesternSize(userSizes.sizing.top, fit)
+    if (directTop) result = directTop
+    else {
+      const chest = m?.chest_circumference_cm
+      if (chest != null) {
+        for (const e of ALI_TOPS_SIZES) {
+          if (inRange(chest, e.chest)) { result = adjustForFit(e.label, fit); break }
+        }
+      }
     }
   }
 
-  // Last-resort: map Western sizes to Asian sizes (AliExpress tends to run 1-2 sizes small)
-  const asianMap: Record<string, string> = {
-    'XS': 'S', 'S': 'M', 'M': 'L', 'L': 'XL', 'XL': '2XL', 'XXL': '3XL',
+  if (!result) {
+    const asianMap: Record<string, string> = {
+      'XS': 'S', 'S': 'M', 'M': 'L', 'L': 'XL', 'XL': '2XL', 'XXL': '3XL',
+    }
+    result = adjustForFit(asianMap[userSizes.sizing.top] ?? 'L', fit)
   }
-  return adjustForFit(asianMap[userSizes.sizing.top] ?? 'L', fit)
+
+  return clampToAvailable(result, availableSizes)
+}
+
+const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
+
+function clampToAvailable(recommended: string, available: string[]): string {
+  if (available.length === 0) return recommended
+  const normAvailable = available.map(s => s.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL').replace('XXXXL', '4XL'))
+  const recNorm = recommended.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL')
+  if (normAvailable.includes(recNorm)) return recommended
+  const recIdx = SIZE_ORDER.indexOf(recNorm)
+  if (recIdx === -1) return recommended
+  let bestIdx = -1
+  let bestDist = 999
+  for (const s of normAvailable) {
+    const idx = SIZE_ORDER.indexOf(s)
+    if (idx === -1) continue
+    const dist = Math.abs(idx - recIdx)
+    if (dist < bestDist) { bestDist = dist; bestIdx = idx }
+  }
+  if (bestIdx === -1) return recommended
+  return SIZE_ORDER[bestIdx]
 }
