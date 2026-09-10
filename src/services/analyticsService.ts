@@ -53,25 +53,38 @@ export async function getTopProducts(): Promise<TopProduct[]> {
   return (data ?? []) as TopProduct[]
 }
 
-export function logAffiliateClick(product: {
-  product_id: string;
+export async function logAffiliateClick(product: {
+  product_id?: string;
+  id?: string;
+  productId?: string;
   title?: string;
-  promotion_link: string;
-}): void {
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    const userId = session?.user?.id ?? null
-    return supabase.from('affiliate_clicks').insert([
-      {
-        user_id: userId,
-        product_id: String(product.product_id),
-        product_title: product.title || 'AliExpress Product',
-        tracking_id: 'fitgura',
-        promotion_link: product.promotion_link,
-      },
-    ])
-  }).then(({ error }) => {
-    if (error) console.error('[analytics] insert failed:', error.message)
-  }).catch((err) => {
-    console.error('[analytics] logAffiliateClick failed:', err)
-  })
+  name?: string;
+  promotion_link?: string;
+  url?: string;
+  affiliateUrl?: string;
+}): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const payload = {
+      product_id: String(product.product_id || product.id || product.productId || 'unknown'),
+      product_title: product.title || product.name || 'AliExpress Product',
+      tracking_id: 'fitgura',
+      promotion_link: product.promotion_link || product.url || product.affiliateUrl || 'https://aliexpress.com',
+      user_id: user?.id || null,
+    }
+
+    const { data, error } = await supabase
+      .from('affiliate_clicks')
+      .insert([payload])
+      .select()
+
+    if (error) {
+      console.error('[analytics] Supabase insert error:', error.message, error.details)
+    } else {
+      console.log('[analytics] Click successfully logged:', data)
+    }
+  } catch (err) {
+    console.error('[analytics] Unexpected click logging error:', err)
+  }
 }
