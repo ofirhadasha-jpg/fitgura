@@ -53,7 +53,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     e.preventDefault()
     e.stopPropagation()
     setIsRedirecting(true)
-    const purchaseWindow = window.open('', '_blank', 'noopener,noreferrer')
+    const purchaseWindow = window.open('about:blank', '_blank')
 
     let targetUrl = product.promotionLink ?? null
     if (!targetUrl) {
