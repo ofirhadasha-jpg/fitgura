@@ -868,16 +868,17 @@ export function computeDelta(prev: SizingProfile, curr: SizingProfile): Record<s
 export const SCAN_NO_NEW_MESSAGE = 'לא נסרקו תמונות חדשות; אין שינוי במידות'
 
 const TOP_SIZE_METRICS: Record<string, { chest: number; waist: number; hips: number; shoulder: number }> = {
-  'XS': { chest: 86, waist: 71, hips: 90, shoulder: 38 },
-  'S':  { chest: 96, waist: 76, hips: 94, shoulder: 42 },
-  'M':  { chest: 104, waist: 81, hips: 98, shoulder: 46 },
-  'L':  { chest: 112, waist: 86, hips: 102, shoulder: 48 },
-  'XL': { chest: 120, waist: 91, hips: 106, shoulder: 50 },
-  'XXL': { chest: 128, waist: 97, hips: 110, shoulder: 52 },
+  'XS': { chest: 82, waist: 67, hips: 86, shoulder: 38 },
+  'S':  { chest: 88, waist: 72, hips: 92, shoulder: 40 },
+  'M':  { chest: 94, waist: 77, hips: 96, shoulder: 42 },
+  'L':  { chest: 100, waist: 82, hips: 100, shoulder: 44 },
+  'XL': { chest: 106, waist: 87, hips: 104, shoulder: 46 },
+  'XXL': { chest: 112, waist: 93, hips: 108, shoulder: 48 },
 }
 
 const BOTTOM_SIZE_WAIST: Record<string, number> = {
-  '44': 71, '46': 76, '48': 81, '50': 86, '52': 91, '54': 97,
+  '36': 64, '38': 68, '40': 72, '42': 76, '44': 80, '46': 84,
+  '48': 88, '50': 92, '52': 96, '54': 100, '56': 104, '58': 108, '60': 112,
 }
 
 export function computeBodyMetricsFromSizes(top: string, bottom: string, existing: BodyMetrics | null): BodyMetrics {
