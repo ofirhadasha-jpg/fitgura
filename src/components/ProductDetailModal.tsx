@@ -134,10 +134,12 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
               </Text>
               <Text style={modalStyles.recommendationSource}>
                 {sizeMatch.source === 'seller_chart'
-                  ? '(לפי טבלת המוכר בס"מ)'
-                  : sizeMatch.source === 'asian_conversion'
-                    ? '(המרת מידה אסייתית)'
-                    : '(לפי סריקת AI)'}
+                  ? '(לפי טבלת המידות של המוכר בס"מ)'
+                  : sizeMatch.source === 'body_metrics'
+                    ? '(הערכה לפי מידות הגוף מסריקת AI)'
+                    : sizeMatch.source === 'asian_conversion'
+                      ? '(המרת מידה אסייתית)'
+                      : '(לפי סריקת AI)'}
               </Text>
               <Text style={modalStyles.recommendationReason}>{sizeMatch.reason}</Text>
             </View>
