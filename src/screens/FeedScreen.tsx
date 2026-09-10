@@ -640,7 +640,8 @@ function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudg
           style={{
             ...feedStyles.budgetRangeInput,
             left: 0,
-            right: '50%',
+            right: 0,
+            pointerEvents: budget[0] >= budget[1] - STEP ? 'auto' : 'none',
           }}
         />
         <input
@@ -653,8 +654,9 @@ function BudgetSlider({ budget, setBudget }: { budget: [number, number]; setBudg
           onChange={(e) => setHigh(Number(e.target.value))}
           style={{
             ...feedStyles.budgetRangeInput,
-            left: '50%',
+            left: 0,
             right: 0,
+            pointerEvents: 'auto',
           }}
         />
       </View>
