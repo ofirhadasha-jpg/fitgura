@@ -256,7 +256,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
 const BENEFIT_SLIDES = [
   { icon: '🛍️', text: 'לקנות בביטחון' },
   { icon: '↩️', text: 'אין יותר החזרות' },
-  { icon: '👖', text: 'מתאמים לך מכנסיים' },
+  { icon: '👖', text: 'מתאימים לך מכנסיים' },
   { icon: '👔', text: 'מתאימים לך חולצה' },
   { icon: '👗', text: 'מתאימים לך שמלה' },
   { icon: '👜', text: 'מתאימים לך אביזרים' },
