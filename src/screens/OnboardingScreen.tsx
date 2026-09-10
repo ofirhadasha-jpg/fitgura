@@ -186,15 +186,16 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
               <View style={obStyles.explainHeader}>
                 <View style={obStyles.explainIcon}><Text style={{ fontSize: 20 }}>🤳</Text></View>
                 <View>
-                  <Text style={obStyles.explainTitle}>העלאת תמונה שלך הכוללת פנים וגוף</Text>
-                  <Text style={obStyles.explainSub}>כדי שנוכל להתאים מוצרים בדיוק למידות שלך</Text>
+                  <Text style={obStyles.explainTitle}>Shop With Confidence</Text>
+                  <Text style={obStyles.explainSub}>Upload your photo and let AI find your perfect fit</Text>
                 </View>
               </View>
               <View style={{ gap: 7 }}>
                 {[
-                  { icon: '📐', text: 'פיטגורה תנתח את המידות שלך ותתאים מוצרים בדיוק לגזרה שלך' },
-                  { icon: '🔄', text: 'המערכת תסרוק את הגלריה שלך כל שבוע ותעדכן את המידות אוטומטית' },
-                  { icon: '🎯', text: 'העלאת תמונות נוספות לסריקה משפרת את התוצאות' },
+                  { icon: '🛍️', text: 'Shop with confidence — no more guessing your size' },
+                  { icon: '↩️', text: 'No more returns — get it right the first time' },
+                  { icon: '👖', text: 'Find the perfect fit for trousers, shirts, and dresses' },
+                  { icon: '👜', text: 'Match accessories that complement your body frame' },
                 ].map(({ icon, text }) => (
                   <View key={text} style={obStyles.explainRow}>
                     <Text style={{ fontSize: 14 }}>{icon}</Text>
@@ -206,7 +207,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
 
             <View style={[obStyles.dropZone, dragOver && obStyles.dropZoneActive]}>
               <View style={obStyles.dropIcon}><Text style={{ fontSize: 32 }}>📸</Text></View>
-              <Text style={obStyles.dropTitle}>העלאת תמונה שלך הכוללת פנים וגוף</Text>
+              <Text style={obStyles.dropTitle}>Upload Your Photo</Text>
               <Text style={obStyles.dropSub}>גרור לכאן, או בחר אחת מהכפתורים למטה</Text>
               <View style={obStyles.tipBox}>
                 <Text style={{ fontSize: 16 }}>💡</Text>
