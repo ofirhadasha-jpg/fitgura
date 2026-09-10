@@ -16,6 +16,7 @@ import {
   formatNextScanDate, formatLastScanDate,
 } from '../types'
 import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type SizeRegion } from '../utils/sizeConverter'
+import { supabase } from '../lib/supabase'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
@@ -52,6 +53,91 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       if (scannedSizes.shoeSize) setProfShoe(scannedSizes.shoeSize)
     }
   }, [scannedSizes?.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.sizing.fit, scannedSizes?.shoeSize])
+
+  // Profile photo management
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(scannedSizes?.preview ?? null)
+  const [photoLoading, setPhotoLoading] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const [photoToast, setPhotoToast] = useState<string | null>(null)
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
+  const photoUploadRef = useRef<HTMLInputElement>(null)
+
+  // Load saved avatar_url from profiles table on mount
+  useEffect(() => {
+    if (!user) return
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (error) throw error
+        if (data?.avatar_url) {
+          setProfilePhotoUrl(data.avatar_url)
+        }
+      } catch (err) {
+        console.error('[ProfileScreen] Failed to load profile photo URL:', err)
+      }
+    })()
+  }, [user?.id])
+
+  function showPhotoToast(msg: string) {
+    setPhotoToast(msg)
+    setTimeout(() => setPhotoToast(null), 3200)
+  }
+
+  async function handleReplacePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    e.target.value = ''
+    setPhotoError(null)
+    setPhotoLoading(true)
+    try {
+      const filePath = `${user.id}/avatar.jpg`
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(filePath, file, { upsert: true, contentType: file.type })
+      if (uploadError) throw uploadError
+      const { data: urlData } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(filePath)
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('user_id', user.id)
+      if (dbError) throw dbError
+      setProfilePhotoUrl(publicUrl)
+      showPhotoToast('התמונה עודכנה בהצלחה')
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'העלאה נכשלה')
+    } finally {
+      setPhotoLoading(false)
+    }
+  }
+
+  async function handleRemovePhoto() {
+    if (!user) return
+    setShowRemoveConfirm(false)
+    setPhotoError(null)
+    setPhotoLoading(true)
+    try {
+      const filePath = `${user.id}/avatar.jpg`
+      await supabase.storage.from('profile-photos').remove([filePath])
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('user_id', user.id)
+      if (dbError) throw dbError
+      setProfilePhotoUrl(null)
+      showPhotoToast('התמונה הוסרה')
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'הסרה נכשלה')
+    } finally {
+      setPhotoLoading(false)
+    }
+  }
 
   const [devices, setDevices] = useState<UserDevice[]>(() => {
     if (detectedDevice) {
@@ -440,6 +526,88 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       </LinearGradient>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 14 }}>
+        {/* Profile photo management */}
+        <View style={profStyles.card}>
+          <Text style={profStyles.sizesTitle}>📸 תמונת פרופיל / סריקת גוף</Text>
+          <Text style={profStyles.regionSub}>התמונה שהועלתה בתהליך ההרשמה</Text>
+          <input ref={photoUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleReplacePhoto} />
+
+          {/* Photo display area */}
+          <View style={profStyles.photoDisplayArea}>
+            {photoLoading ? (
+              <View style={profStyles.photoPlaceholder}>
+                <Text style={{ fontSize: 28 }}>⏳</Text>
+                <Text style={profStyles.photoPlaceholderText}>טוען...</Text>
+              </View>
+            ) : profilePhotoUrl ? (
+              <Image source={{ uri: profilePhotoUrl }} style={profStyles.photoPreview} />
+            ) : (
+              <View style={profStyles.photoPlaceholder}>
+                <Text style={{ fontSize: 36 }}>👤</Text>
+                <Text style={profStyles.photoPlaceholderText}>אין תמונה</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Action buttons */}
+          <View style={profStyles.photoActionsRow}>
+            <TouchableOpacity
+              onPress={() => photoUploadRef.current?.click()}
+              disabled={photoLoading || !user}
+              activeOpacity={0.8}
+              style={[profStyles.photoBtn, profStyles.photoBtnPrimary, (!user || photoLoading) && profStyles.photoBtnDisabled]}
+            >
+              <Text style={{ fontSize: 16 }}>🔄</Text>
+              <Text style={profStyles.photoBtnPrimaryText}>החלף תמונה</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowRemoveConfirm(true)}
+              disabled={photoLoading || !profilePhotoUrl || !user}
+              activeOpacity={0.8}
+              style={[profStyles.photoBtn, profStyles.photoBtnDanger, (!profilePhotoUrl || !user || photoLoading) && profStyles.photoBtnDisabled]}
+            >
+              <Text style={{ fontSize: 16 }}>🗑️</Text>
+              <Text style={profStyles.photoBtnDangerText}>הסר תמונה</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!user && (
+            <Text style={profStyles.photoLoginHint}>התחבר כדי לנהל את תמונת הפרופיל</Text>
+          )}
+
+          {photoError && (
+            <View style={profStyles.photoErrorBox}>
+              <Text style={profStyles.photoErrorText}>⚠️ {photoError}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Toast */}
+        {photoToast && (
+          <View style={profStyles.photoToast}>
+            <Text style={profStyles.photoToastText}>✓ {photoToast}</Text>
+          </View>
+        )}
+
+        {/* Remove confirmation modal */}
+        {showRemoveConfirm && (
+          <View style={profStyles.sheetOverlay}>
+            <TouchableOpacity onPress={() => setShowRemoveConfirm(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
+            <View style={profStyles.confirmSheet}>
+              <Text style={profStyles.confirmTitle}>הסרת תמונה</Text>
+              <Text style={profStyles.confirmDesc}>האם אתה בטוח שברצונך להסיר את תמונת הפרופיל? ניתן להעלות תמונה חדשה בכל עת.</Text>
+              <View style={profStyles.confirmActionsRow}>
+                <TouchableOpacity onPress={() => setShowRemoveConfirm(false)} activeOpacity={0.7} style={profStyles.confirmCancelBtn}>
+                  <Text style={profStyles.confirmCancelBtnText}>ביטול</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleRemovePhoto} activeOpacity={0.8} style={profStyles.confirmDeleteBtn}>
+                  <Text style={profStyles.confirmDeleteBtnText}>כן, הסר</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Auto-update toggle */}
         <View style={profStyles.card}>
           <View style={profStyles.toggleRow}>
@@ -1198,4 +1366,28 @@ const profStyles = StyleSheet.create({
   bodyMetricLabel: { flexShrink: 1, fontSize: 11, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   hiddenAdminTrigger: { alignSelf: 'center', marginTop: 16, marginBottom: 8, opacity: 0.3 },
   versionLabel: { fontSize: 10, color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  photoDisplayArea: { width: '100%', height: 200, borderRadius: 16, overflow: 'hidden', marginBottom: 12, backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  photoPreview: { width: '100%', height: '100%', resizeMode: 'cover' },
+  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  photoPlaceholderText: { fontSize: 13, color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  photoActionsRow: { flexDirection: 'row', gap: 10 },
+  photoBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14 },
+  photoBtnPrimary: { backgroundColor: '#2E5BFF' },
+  photoBtnDanger: { backgroundColor: '#FFF0F0', borderWidth: 1.5, borderColor: '#FECACA' },
+  photoBtnDisabled: { opacity: 0.5 },
+  photoBtnPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  photoBtnDangerText: { color: '#DC2626', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  photoLoginHint: { fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  photoErrorBox: { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1.5, borderColor: '#FECACA' },
+  photoErrorText: { fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  photoToast: { position: 'absolute', bottom: 90, left: 20, right: 20, backgroundColor: '#16A34A', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', zIndex: 300, elevation: 5 },
+  photoToastText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  confirmSheet: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, gap: 16 },
+  confirmTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  confirmDesc: { fontSize: 14, color: '#64748B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  confirmActionsRow: { flexDirection: 'row', gap: 10 },
+  confirmCancelBtn: { flex: 1, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC', alignItems: 'center' },
+  confirmCancelBtnText: { color: '#475569', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  confirmDeleteBtn: { flex: 1, padding: 14, borderRadius: 14, backgroundColor: '#DC2626', alignItems: 'center' },
+  confirmDeleteBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
