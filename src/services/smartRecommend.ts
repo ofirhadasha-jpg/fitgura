@@ -20,13 +20,13 @@ export interface FitRecommendation {
   price: string
 }
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/config'
+import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
 
-const API_URL = `${SUPABASE_URL}/functions/v1/smart-recommend`
+const API_URL = `${EDGE_FUNCTION_URL}/functions/v1/smart-recommend`
 
 const HEADERS = {
   'Content-Type': 'application/json',
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
 } as const
 
 export async function getSmartProductRecommendation(

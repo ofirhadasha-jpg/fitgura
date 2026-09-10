@@ -8,12 +8,12 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const SUPABASE_URL = 'https://uriauhpbzbiowmdwgokw.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyaWF1aHBiemJpb3dtZHdnb2t3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzYyNDAsImV4cCI6MjEwNDYxMjI0MH0.88N-2lhaWJ7H4EUoQmw9UZgCQHGfjsfBPDq3bhynZ2Q'
+const EDGE_FUNCTION_URL = 'https://alvpdkxuvnavoodsltyc.supabase.co'
+const EDGE_FUNCTION_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsdnBka3h1dm5hdm9vZHNsdHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjQyMzAsImV4cCI6MjEwMzQwMDIzMH0.LY2Cq7CaPaF3bHmQZrOGWt3gc3zYkOTgDEWzxHkV990'
 
 const HEADERS = {
   'Content-Type': 'application/json',
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
 } as const
 
 interface FitRecommendation {
@@ -47,7 +47,7 @@ function log(stage: string, message: string, data?: unknown): void {
 async function testEnvAudit(): Promise<EnvAuditResult> {
   log('STEP 1', 'Testing environment variables and AliExpress connectivity...')
 
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/aliexpress-search`, {
+  const response = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/aliexpress-search`, {
     method: 'POST',
     headers: HEADERS,
     body: JSON.stringify({ action: 'test', keywords: 'men jacket' }),
@@ -78,7 +78,7 @@ async function testSmartRecommendation(): Promise<FitRecommendation[]> {
 
   log('STEP 2', `Search query: "${searchQuery}"`, userMetrics)
 
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/smart-recommend`, {
+  const response = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/smart-recommend`, {
     method: 'POST',
     headers: HEADERS,
     body: JSON.stringify({ searchQuery, userMetrics }),

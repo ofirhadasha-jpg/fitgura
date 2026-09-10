@@ -1,5 +1,5 @@
 import { usToEuPants, euToUsPants } from './utils/sizeConverter'
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/config'
+import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
 
 export type Screen = 'splash' | 'onboarding' | 'device' | 'feed' | 'events' | 'profile' | 'wishlist' | 'admin'
 
@@ -119,12 +119,12 @@ export interface DeviceIdentificationResult {
 export async function identifyDevice(file: File): Promise<DeviceIdentificationResult> {
   const base64Image = await fileToCompressedBase64(file)
 
-  const apiUrl = `${SUPABASE_URL}/functions/v1/identify-device`
+  const apiUrl = `${EDGE_FUNCTION_URL}/functions/v1/identify-device`
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
     },
     body: JSON.stringify({ image: base64Image }),
   })
@@ -294,12 +294,12 @@ export async function fileToCompressedBase64(file: File, maxDim: number = 512, q
 export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAnalysis; preview: string }> {
   const base64Image = await fileToCompressedBase64(file, 768, 0.85)
 
-  const apiUrl = `${SUPABASE_URL}/functions/v1/analyze-body`
+  const apiUrl = `${EDGE_FUNCTION_URL}/functions/v1/analyze-body`
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
     },
     body: JSON.stringify({
       image: base64Image,

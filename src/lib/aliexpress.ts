@@ -1,29 +1,31 @@
 import type { Product } from '../types'
+import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from './config'
 import { supabase } from './supabase'
 
-/**
- * Invokes the aliexpress-search edge function with JWT authentication.
- * The edge function requires a valid Bearer token from a logged-in user.
- * Returns null for unauthenticated requests so callers can handle gracefully.
- */
 async function invokeEdgeFunction(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   const { data: { session } } = await supabase.auth.getSession()
 
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
+    apikey: EDGE_FUNCTION_ANON_KEY,
+  }
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`
   }
 
-  const { data, error } = await supabase.functions.invoke('aliexpress-search', {
-    body,
+  const response = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/aliexpress-search`, {
+    method: 'POST',
     headers,
+    body: JSON.stringify(body),
   })
 
-  if (error) {
-    throw new Error(error.message || 'AliExpress request failed')
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '')
+    throw new Error(`AliExpress request failed (${response.status}): ${errText.slice(0, 200)}`)
   }
 
-  const result = data as Record<string, unknown> | null
+  const result = await response.json() as Record<string, unknown> | null
   if (result?.error) {
     throw new Error(String(result.error))
   }

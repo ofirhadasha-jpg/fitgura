@@ -1,2 +1,7 @@
+// Database (tables, RLS, auth) lives on this project
 export const SUPABASE_URL = 'https://uriauhpbzbiowmdwgokw.supabase.co'
 export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyaWF1aHBiemJpb3dtZHdnb2t3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzYyNDAsImV4cCI6MjEwNDYxMjI0MH0.88N-2lhaWJ7H4EUoQmw9UZgCQHGfjsfBPDq3bhynZ2Q'
+
+// Edge functions are deployed on Bolt's internal project
+export const EDGE_FUNCTION_URL = 'https://alvpdkxuvnavoodsltyc.supabase.co'
+export const EDGE_FUNCTION_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsdnBka3h1dm5hdm9vZHNsdHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjQyMzAsImV4cCI6MjEwMzQwMDIzMH0.LY2Cq7CaPaF3bHmQZrOGWt3gc3zYkOTgDEWzxHkV990'
