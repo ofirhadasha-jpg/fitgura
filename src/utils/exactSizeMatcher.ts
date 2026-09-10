@@ -1,4 +1,5 @@
 import type { ScannedSizes, BodyMetrics } from '../types'
+import { formatFullSizeLabel, formatShortSizeLabel, type SizeType } from './sizeConverter'
 
 export interface SellerSizeEntry {
   label: string
@@ -6,6 +7,13 @@ export interface SellerSizeEntry {
   waist_cm?: [number, number]
   hips_cm?: [number, number]
   foot_length_cm?: [number, number]
+}
+
+export interface SizeRecommendation {
+  size: string
+  type: SizeType
+  fullLabel: string
+  shortLabel: string
 }
 
 type SubCategory = 'tops' | 'dresses' | 'suits' | 'pants' | 'shoes' | 'accessories'
@@ -256,6 +264,36 @@ export function calculateRecommendedSize(
   }
 
   return clampToAvailable(result, availableSizes)
+}
+
+function subCategoryToSizeType(sub: SubCategory): SizeType {
+  if (sub === 'shoes') return 'shoe'
+  if (sub === 'pants') return 'bottom'
+  return 'top'
+}
+
+export function calculateDetailedRecommendation(
+  userSize: ScannedSizes | null,
+  sellerMetadata: SellerSizeEntry[] = [],
+  category: string = 'clothing',
+  productName: string = '',
+  availableSizes: string[] = [],
+): SizeRecommendation | null {
+  if (!userSize) return null
+
+  const sub = detectSubCategory(productName ?? '', category)
+  if (sub === 'accessories') return null
+
+  const size = calculateRecommendedSize(userSize, sellerMetadata, category, productName, availableSizes)
+  if (!size) return null
+
+  const sizeType = subCategoryToSizeType(sub)
+  return {
+    size,
+    type: sizeType,
+    fullLabel: formatFullSizeLabel(sizeType, size),
+    shortLabel: formatShortSizeLabel(sizeType, size),
+  }
 }
 
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']

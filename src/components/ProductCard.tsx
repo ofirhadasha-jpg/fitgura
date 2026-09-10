@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
-import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
+import { calculateDetailedRecommendation, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { ProductDetailModal } from './ProductDetailModal'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
@@ -33,9 +33,9 @@ function detectEffectiveCategory(productName: string, category: string): string 
   return 'clothing'
 }
 
-function getRecommendedSizeLabel(product: Product, scannedSizes: ScannedSizes | null, category: string): string | null {
+function getRecommendedSizeLabel(product: Product, scannedSizes: ScannedSizes | null, category: string): SizeRecommendation | null {
   if (!scannedSizes) return null
-  return calculateRecommendedSize(scannedSizes, [], category, product.name, product.availableSizes ?? [])
+  return calculateDetailedRecommendation(scannedSizes, [], category, product.name, product.availableSizes ?? [])
 }
 
 
@@ -91,7 +91,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         </View>
         {recommendedSize && showSizeRecommendation && (
           <View style={cardStyles.sizeBadge}>
-            <Text style={cardStyles.sizeBadgeText}>מתאים לך: {recommendedSize}</Text>
+            <Text style={cardStyles.sizeBadgeText}>מתאים לך: {recommendedSize.shortLabel}</Text>
           </View>
         )}
       </View>
@@ -99,7 +99,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         {showSizeRecommendation && recommendedSize && (
           <View style={cardStyles.matchChip}>
             <Text style={cardStyles.matchChipText}>
-              ✓ מתאים לך: {recommendedSize}
+              ✓ מתאים לך: {recommendedSize.fullLabel}
             </Text>
           </View>
         )}

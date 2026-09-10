@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
-import { calculateRecommendedSize, type SellerSizeEntry } from '../utils/exactSizeMatcher'
+import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { generateAffiliateLink } from '../lib/aliexpress'
 import { logAffiliateClick } from '../services/analyticsService'
 
@@ -47,7 +47,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   const imageUrl = normalizeProductImageUrl(product.img)
   const accessory = isAccessory(product.name, category)
-  const recommendedSize = accessory ? null : calculateRecommendedSize(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
+  const recommendedSize: SizeRecommendation | null = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
 
   async function handleProceedToBuy() {
     setIsRedirecting(true)
@@ -123,7 +123,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
         {recommendedSize && (
           <View style={modalStyles.recommendationBox}>
             <Text style={modalStyles.recommendationHeadline}>
-              🎯 מתאים לך: <Text style={modalStyles.recommendationSize}>{recommendedSize}</Text>
+              🎯 מתאים לך: <Text style={modalStyles.recommendationSize}>{recommendedSize.fullLabel}</Text>
             </Text>
           </View>
         )}

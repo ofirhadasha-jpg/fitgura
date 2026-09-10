@@ -328,7 +328,18 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
 
   const top = sp.recommended_top_size ?? 'M'
   const bottom = sp.recommended_bottom_size ?? '38'
-  const shoeSize = sp.recommended_shoe_size_eu != null ? String(sp.recommended_shoe_size_eu) : null
+
+  // Validate shoe size — AI sometimes confuses pants EU sizes (36-54) with shoe EU sizes (35-48).
+  // If the returned value is outside the valid shoe range, it's almost certainly a pants size leak.
+  let shoeSize: string | null = null
+  if (sp.recommended_shoe_size_eu != null) {
+    const eu = typeof sp.recommended_shoe_size_eu === 'number'
+      ? sp.recommended_shoe_size_eu
+      : parseInt(String(sp.recommended_shoe_size_eu), 10)
+    if (!isNaN(eu) && eu >= 35 && eu <= 48) {
+      shoeSize = String(eu)
+    }
+  }
   const fitMap: Record<string, string> = { 'Slim': 'Slim Fit', 'Regular': 'Regular', 'Loose': 'Relaxed', 'Oversized': 'Relaxed' }
   const fit = fitMap[sp.fit_preference] ?? 'Regular'
   const bodyFrame = sp.body_frame_estimate ?? 'Medium'

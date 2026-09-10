@@ -33,7 +33,9 @@ SHOE SIZE DETECTION:
 - Estimate the person's EU shoe size based on their height, body frame, and proportions.
 - Typical adult male EU shoe size: 40-46. Typical adult female EU shoe size: 36-42.
 - Use height as the primary factor: taller individuals generally have larger feet.
-- Set "recommended_shoe_size_eu" to an integer EU shoe size. If truly undeterminable, use null.
+- Set "recommended_shoe_size_eu" to an integer EU shoe size between 35 and 48 ONLY.
+- NEVER use a value above 48 for shoe size — those are pants sizes, not shoe sizes.
+- If truly undeterminable, use null.
 
 OUTPUT REQUIREMENTS:
 - Respond ONLY with a valid clean JSON object.
