@@ -89,26 +89,31 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
   async function handleReplacePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !user) return
+    if (!file) return
     e.target.value = ''
     setPhotoError(null)
     setPhotoLoading(true)
     try {
-      const filePath = `${user.id}/avatar.jpg`
-      const { error: uploadError } = await supabase.storage
-        .from('profile-photos')
-        .upload(filePath, file, { upsert: true, contentType: file.type })
-      if (uploadError) throw uploadError
-      const { data: urlData } = supabase.storage
-        .from('profile-photos')
-        .getPublicUrl(filePath)
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
-      const { error: dbError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('user_id', user.id)
-      if (dbError) throw dbError
-      setProfilePhotoUrl(publicUrl)
+      if (user) {
+        const filePath = `${user.id}/avatar.jpg`
+        const { error: uploadError } = await supabase.storage
+          .from('profile-photos')
+          .upload(filePath, file, { upsert: true, contentType: file.type })
+        if (uploadError) throw uploadError
+        const { data: urlData } = supabase.storage
+          .from('profile-photos')
+          .getPublicUrl(filePath)
+        const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
+        const { error: dbError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: publicUrl })
+          .eq('user_id', user.id)
+        if (dbError) throw dbError
+        setProfilePhotoUrl(publicUrl)
+      } else {
+        const preview = URL.createObjectURL(file)
+        setProfilePhotoUrl(preview)
+      }
       showPhotoToast('התמונה עודכנה בהצלחה')
     } catch (err) {
       setPhotoError(err instanceof Error ? err.message : 'העלאה נכשלה')
@@ -118,18 +123,19 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   }
 
   async function handleRemovePhoto() {
-    if (!user) return
     setShowRemoveConfirm(false)
     setPhotoError(null)
     setPhotoLoading(true)
     try {
-      const filePath = `${user.id}/avatar.jpg`
-      await supabase.storage.from('profile-photos').remove([filePath])
-      const { error: dbError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: null })
-        .eq('user_id', user.id)
-      if (dbError) throw dbError
+      if (user) {
+        const filePath = `${user.id}/avatar.jpg`
+        await supabase.storage.from('profile-photos').remove([filePath])
+        const { error: dbError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: null })
+          .eq('user_id', user.id)
+        if (dbError) throw dbError
+      }
       setProfilePhotoUrl(null)
       showPhotoToast('התמונה הוסרה')
     } catch (err) {
@@ -137,6 +143,11 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     } finally {
       setPhotoLoading(false)
     }
+  }
+
+  function handleRemoveScanPhoto(scanId: number) {
+    setScanGallery((prev) => prev.filter((s) => s.id !== scanId))
+    showPhotoToast('התמונה הוסרה מהגלריה')
   }
 
   const [devices, setDevices] = useState<UserDevice[]>(() => {
@@ -553,27 +564,25 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.photoActionsRow}>
             <TouchableOpacity
               onPress={() => photoUploadRef.current?.click()}
-              disabled={photoLoading || !user}
+              disabled={photoLoading}
               activeOpacity={0.8}
-              style={[profStyles.photoBtn, profStyles.photoBtnPrimary, (!user || photoLoading) && profStyles.photoBtnDisabled]}
+              style={[profStyles.photoBtn, profStyles.photoBtnPrimary, photoLoading && profStyles.photoBtnDisabled]}
             >
               <Text style={{ fontSize: 16 }}>🔄</Text>
               <Text style={profStyles.photoBtnPrimaryText}>החלף תמונה</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowRemoveConfirm(true)}
-              disabled={photoLoading || !profilePhotoUrl || !user}
+              disabled={photoLoading || !profilePhotoUrl}
               activeOpacity={0.8}
-              style={[profStyles.photoBtn, profStyles.photoBtnDanger, (!profilePhotoUrl || !user || photoLoading) && profStyles.photoBtnDisabled]}
+              style={[profStyles.photoBtn, profStyles.photoBtnDanger, (!profilePhotoUrl || photoLoading) && profStyles.photoBtnDisabled]}
             >
               <Text style={{ fontSize: 16 }}>🗑️</Text>
               <Text style={profStyles.photoBtnDangerText}>הסר תמונה</Text>
             </TouchableOpacity>
           </View>
 
-          {!user && (
-            <Text style={profStyles.photoLoginHint}>התחבר כדי לנהל את תמונת הפרופיל</Text>
-          )}
+
 
           {photoError && (
             <View style={profStyles.photoErrorBox}>
@@ -969,6 +978,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                       <View style={profStyles.scanConfBar}>
                         <View style={[profStyles.scanConfBarFill, { width: `${scan.confidence}%`, backgroundColor: i === 0 ? '#2ED573' : '#94A3B8' }]} />
                       </View>
+                      <TouchableOpacity onPress={() => handleRemoveScanPhoto(scan.id)} activeOpacity={0.7} style={profStyles.scanDeleteBtn}>
+                        <Text style={{ fontSize: 13 }}>🗑️</Text>
+                        <Text style={profStyles.scanDeleteBtnText}>הסר</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 ))}
@@ -1282,6 +1295,8 @@ const profStyles = StyleSheet.create({
   scanDeltaText: { fontSize: 10, fontWeight: '700', color: '#2E5BFF' },
   scanConfBar: { marginTop: 7, height: 3, backgroundColor: '#E2E8F0', borderRadius: 2, overflow: 'hidden' },
   scanConfBarFill: { height: '100%', borderRadius: 2 },
+  scanDeleteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#FFF0F0', borderWidth: 1.5, borderColor: '#FECACA', alignSelf: 'flex-start' },
+  scanDeleteBtnText: { fontSize: 11, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryNote: { fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   combinedStrip: { flexDirection: 'row', gap: 8, marginBottom: 6 },
   combinedThumbWrap: { flex: 1, borderRadius: 14, overflow: 'hidden', position: 'relative' },
