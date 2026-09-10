@@ -155,7 +155,6 @@ export function calculateRecommendedSize(
   const sub = detectSubCategory(productName ?? '', category)
   if (sub === 'accessories') return null
 
-  const metrics = getMetrics(userSizes)
   const fit = userSizes.sizing.fit
 
   // Shoes: convert EU shoe size → foot length → match against seller chart or AliExpress table
@@ -168,6 +167,11 @@ export function calculateRecommendedSize(
     if (foot != null) return matchShoes(foot)
     return userSizes.shoeSize ?? null
   }
+
+  // Always derive body measurements from the scanned size labels.
+  // The AI's raw circumference estimates are unreliable (often garment-level, not body-level),
+  // which causes the matcher to jump 2-3 sizes too big.
+  const metrics = estimateMetrics(userSizes)
 
   // If seller provides a size chart, match body metrics against it
   if (sellerMetadata.length > 0 && metrics) {
@@ -187,7 +191,7 @@ export function calculateRecommendedSize(
     if (best && bestScore > 0) return adjustForFit(best.label, fit)
   }
 
-  const m = metrics ?? estimateMetrics(userSizes)
+  const m = metrics
 
   if (sub === 'pants') {
     const waist = m?.waist_circumference_cm
