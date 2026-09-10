@@ -53,34 +53,42 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     e.stopPropagation()
     setIsRedirecting(true)
 
-    const purchaseWindow = window.open('', '_blank')
-    if (purchaseWindow) {
-      purchaseWindow.document.write('<html><head><title>מעביר לרכישה...</title><meta charset="utf-8"></head><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0a1628;color:#fff;font-size:18px;">מעביר לעליאקספרס...</body></html>')
+    // Open a new tab synchronously during the user gesture so popup blockers allow it.
+    // about:blank is more reliable than an empty string across browsers.
+    let purchaseWindow: Window | null = null
+    try {
+      purchaseWindow = window.open('about:blank', '_blank')
+    } catch {
+      // Popup blocked — will fall back to same-tab navigation below
     }
 
     let targetUrl = product.promotionLink ?? null
     if (!targetUrl) {
       const sourceUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
-      targetUrl = await generateAffiliateLink(sourceUrl)
+      // Race the affiliate link generation against a 4-second timeout so the user
+      // is never stuck staring at a blank tab if the API is slow or unresponsive.
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
+      targetUrl = await Promise.race([generateAffiliateLink(sourceUrl), timeoutPromise])
     }
     const finalUrl = targetUrl ?? product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
 
-    await logAffiliateClick({
+    // Fire analytics in the background — don't block navigation
+    logAffiliateClick({
       product_id: product.aliexpressSku ?? '',
       title: product.name,
       promotion_link: finalUrl,
-    })
+    }).catch(() => {})
 
     if (purchaseWindow) {
-      purchaseWindow.location.href = finalUrl
+      try {
+        purchaseWindow.location.href = finalUrl
+      } catch {
+        // Cross-origin restriction or closed tab — fall back to same-tab
+        window.location.href = finalUrl
+      }
     } else {
-      const a = document.createElement('a')
-      a.href = finalUrl
-      a.target = '_blank'
-      a.rel = 'noopener'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
+      // Popup blocker prevented new tab — navigate in same tab
+      window.location.href = finalUrl
     }
     setIsRedirecting(false)
     onDismiss()
