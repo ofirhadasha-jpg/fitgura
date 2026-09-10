@@ -52,9 +52,10 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   async function handleProceedToBuy() {
     setIsRedirecting(true)
 
-    const fallbackUrl = product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent((product.brand ?? '') + ' ' + (product.name ?? ''))}`
+    const fallbackUrl = product.aliexpressUrl?.trim()
+      || `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent((product.brand ?? '') + ' ' + (product.name ?? ''))}`
 
-    let finalUrl = product.promotionLink ?? null
+    let finalUrl = product.promotionLink?.trim() || null
     try {
       if (!finalUrl) {
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
