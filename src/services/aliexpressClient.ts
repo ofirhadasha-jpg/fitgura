@@ -4,7 +4,7 @@ import type { Product } from '../types'
 export type Gender = 'male' | 'female' | 'unisex'
 export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
 
-const BATCH_SIZE = 120
+const BATCH_SIZE = 200
 const ILS_TO_USD_RATE = 3.7
 
 /**
@@ -201,16 +201,16 @@ async function aggregateBatch(
 
   const collected: Product[] = []
   const seenIds = new Set<string>()
-  const perQuerySize = 20
+  const perQuerySize = 40
   let currentPage = batchNo
   let attempts = 0
-  const maxAttempts = 1
+  const maxAttempts = 2
 
   while (collected.length < BATCH_SIZE && attempts < maxAttempts) {
     attempts++
-    const startIdx = (batchNo - 1) * 3 + (attempts - 1) * 3
+    const startIdx = (batchNo - 1) * 4 + (attempts - 1) * 4
     const roundQueries: string[] = []
-    for (let i = 0; i < Math.min(3, allQueries.length); i++) {
+    for (let i = 0; i < Math.min(4, allQueries.length); i++) {
       roundQueries.push(allQueries[(startIdx + i) % allQueries.length])
     }
 

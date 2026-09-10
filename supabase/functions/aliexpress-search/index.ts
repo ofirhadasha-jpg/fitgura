@@ -385,15 +385,32 @@ Deno.serve(async (req: Request) => {
       // Fallback: if HE-language search returned no results, retry without target_language (single retry only)
       if (products.length === 0) {
         console.log("[ALIEXPRESS] No results with target_language=HE, retrying without language filter");
+        const fallbackKeyword = enrichedKeywords || (genderPrefix + (isAccessoriesSearch ? "phone case" : isShoesSearch ? "shoes" : "fashion clothing"));
         const noLangParams: RequestParams = {
           page_no: pageNo,
           page_size: pageSize,
           target_currency: "ILS",
-          keywords: genderPrefix + (enrichedKeywords || (isAccessoriesSearch ? "phone case" : isShoesSearch ? "shoes" : "fashion clothing")),
+          keywords: fallbackKeyword,
           sort: sort || "VOLUME_DOWN",
         };
         if (categoryIds) noLangParams.category_ids = categoryIds;
         result = await callAliExpressApi("aliexpress.affiliate.product.query", noLangParams);
+        products =
+          (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
+            ?.resp_result?.result?.products?.product ?? [];
+      }
+
+      // Final fallback: if still no results with category_ids, try keywords only (drop category restriction)
+      if (products.length === 0 && categoryIds && enrichedKeywords) {
+        console.log("[ALIEXPRESS] No results with category_ids, retrying with keywords only:", enrichedKeywords);
+        const fallbackParams: RequestParams = {
+          page_no: pageNo,
+          page_size: pageSize,
+          target_currency: "ILS",
+          keywords: enrichedKeywords,
+          sort: sort || "VOLUME_DOWN",
+        };
+        result = await callAliExpressApi("aliexpress.affiliate.product.query", fallbackParams);
         products =
           (result as Record<string, unknown>)?.aliexpress_affiliate_product_query_response
             ?.resp_result?.result?.products?.product ?? [];
