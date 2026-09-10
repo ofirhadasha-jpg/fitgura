@@ -74,7 +74,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     }
     const finalUrl = targetUrl ?? product.aliexpressUrl ?? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.brand + ' ' + product.name)}`
 
-    await logAffiliateClick({
+    logAffiliateClick({
       product_id: product.aliexpressSku ?? '',
       title: product.name,
       promotion_link: finalUrl,
