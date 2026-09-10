@@ -163,14 +163,9 @@ async function fetchBatch(
   categoryIds: string | undefined,
   page: number,
   perQuerySize: number,
-  extraKeywords?: string,
 ): Promise<Product[]> {
   const results = await Promise.all(
-    queries.map((q) => {
-      let kw = q
-      if (extraKeywords) kw += ` ${extraKeywords}`
-      return fetchAliExpressProducts(kw, page, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')
-    }),
+    queries.map((q) => fetchAliExpressProducts(q, page, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')),
   )
   return results.flat()
 }
@@ -179,7 +174,6 @@ async function aggregateBatch(
   category: FeedCategory,
   gender: Gender,
   batchNo: number,
-  extraKeywords?: string,
 ): Promise<Product[]> {
   const categoryIds = CATEGORY_IDS[category]
   const { clothing: clothingPool, shoes: shoePool } = getQueryPool(category, gender)
@@ -214,7 +208,7 @@ async function aggregateBatch(
       roundQueries.push(allQueries[(startIdx + i) % allQueries.length])
     }
 
-    const raw = await fetchBatch(roundQueries, gender, categoryIds, currentPage, perQuerySize, extraKeywords)
+    const raw = await fetchBatch(roundQueries, gender, categoryIds, currentPage, perQuerySize)
 
     // Dedup against already-collected
     for (const p of raw) {
@@ -239,10 +233,10 @@ export async function searchProductsByCategory(
   gender: Gender,
   pageNo: number,
   _pageSize: number,
-  extraKeywords?: string,
+  _extraKeywords?: string,
 ): Promise<Product[]> {
   console.log('[aliexpressClient] searchProductsByCategory:', { category, gender, pageNo, batchSize: BATCH_SIZE })
-  return aggregateBatch(category, gender, pageNo, extraKeywords)
+  return aggregateBatch(category, gender, pageNo)
 }
 
 // ── Smartwatch / Wearable detection ──────────────────────────────────────────
