@@ -8,15 +8,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const envFile = readFileSync(resolve(process.cwd(), '.env'), 'utf-8')
-const envVars: Record<string, string> = {}
-for (const line of envFile.split('\n')) {
-  const match = line.match(/^([^#=]+)=(.*)$/)
-  if (match) envVars[match[1].trim()] = match[2].trim()
-}
-
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || envVars.VITE_SUPABASE_URL || ''
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || envVars.VITE_SUPABASE_ANON_KEY || ''
+const SUPABASE_URL = 'https://uriauhpbzbiowmdwgokw.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyaWF1aHBiemJpb3dtZHdnb2t3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzYyNDAsImV4cCI6MjEwNDYxMjI0MH0.88N-2lhaWJ7H4EUoQmw9UZgCQHGfjsfBPDq3bhynZ2Q'
 
 const HEADERS = {
   'Content-Type': 'application/json',

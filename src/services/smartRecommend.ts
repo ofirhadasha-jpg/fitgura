@@ -20,11 +20,13 @@ export interface FitRecommendation {
   price: string
 }
 
-const API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-recommend`
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/config'
+
+const API_URL = `${SUPABASE_URL}/functions/v1/smart-recommend`
 
 const HEADERS = {
   'Content-Type': 'application/json',
-  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
 } as const
 
 export async function getSmartProductRecommendation(
