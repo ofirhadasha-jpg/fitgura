@@ -15,49 +15,69 @@ export interface SizeMatchResult {
   source: 'seller_chart' | 'body_metrics' | 'asian_conversion' | 'fallback'
 }
 
-// ── Standard garment size charts (cm) ────────────────────────────────────
-// These represent typical industry measurements for each size label.
-// Used when the seller doesn't provide a size chart — we match the user's
-// body measurements against these standard ranges.
+// ── AliExpress sub-category detection ─────────────────────────────────────
+// AliExpress Asian sizes run 1-2 sizes smaller than Western sizes.
+// We detect the sub-category from the product name to apply the right chart.
 
-interface StandardSizeEntry {
-  label: string
-  chest: [number, number]
-  waist: [number, number]
-  hips: [number, number]
+export type SubCategory = 'tops' | 'dresses' | 'suits' | 'pants' | 'shoes' | 'accessories'
+
+const SUIT_RE = /\b(suit|blazer set|two.?piece|tracksuit|set|חליפה|סט|סט חליפה)\b/i
+const SHIRT_RE = /\b(shirt|t-?shirt|hoodie|sweater|jacket|coat|polo|tank|top|blouse|חולצה|ג'?קט|מעיל|סוודר|בגד עליון)\b/i
+const PANTS_RE = /\b(pants|jeans|trousers|shorts|leggings|jogger|מכנסיים|מכנס)\b/i
+const DRESS_RE = /\b(dress|gown|frock|שמלה|שמלות)\b/i
+const FOOTWEAR_RE = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
+const DEVICE_RE = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
+
+export function detectSubCategory(productName: string, category: string): SubCategory {
+  if (category === 'shoes' || FOOTWEAR_RE.test(productName)) return 'shoes'
+  if (category === 'accessories' || DEVICE_RE.test(productName)) return 'accessories'
+  if (DRESS_RE.test(productName)) return 'dresses'
+  if (SUIT_RE.test(productName)) return 'suits'
+  if (PANTS_RE.test(productName) && !SHIRT_RE.test(productName)) return 'pants'
+  if (SHIRT_RE.test(productName) && !PANTS_RE.test(productName)) return 'tops'
+  // Default: treat as tops for size recommendation
+  return 'tops'
 }
 
-const STANDARD_CLOTHING_SIZES: StandardSizeEntry[] = [
-  { label: 'XS',  chest: [80, 86],  waist: [64, 70],  hips: [86, 92] },
-  { label: 'S',   chest: [86, 94],  waist: [70, 78],  hips: [92, 98] },
-  { label: 'M',   chest: [94, 102], waist: [78, 86],  hips: [98, 106] },
-  { label: 'L',   chest: [102, 110], waist: [86, 94], hips: [106, 114] },
-  { label: 'XL',  chest: [110, 118], waist: [94, 102], hips: [114, 122] },
-  { label: 'XXL', chest: [118, 128], waist: [102, 110], hips: [122, 130] },
-  { label: '3XL', chest: [128, 138], waist: [110, 120], hips: [130, 140] },
-  { label: '4XL', chest: [138, 148], waist: [120, 130], hips: [140, 150] },
+// ── AliExpress fallback size charts (cm) ──────────────────────────────────
+// These ranges are specifically calibrated for AliExpress Asian sizing,
+// which runs 1-2 sizes smaller than Western/European sizes.
+
+interface AliSizeEntry {
+  label: string
+  chest?: [number, number]
+  waist?: [number, number]
+  hips?: [number, number]
+}
+
+// Tops / suits / dresses — matched by chest circumference
+const ALI_TOPS_SIZES: AliSizeEntry[] = [
+  { label: 'M',   chest: [0, 88] },
+  { label: 'L',   chest: [89, 93] },
+  { label: 'XL',  chest: [94, 98] },
+  { label: '2XL', chest: [99, 103] },
+  { label: '3XL', chest: [104, 109] },
+  { label: '4XL', chest: [110, 999] },
 ]
 
-// Asian sizes run ~1 size smaller than Western — a Western S fits like an Asian M
-const ASIAN_SIZE_MAP: Record<string, string> = {
-  'XS': 'M', 'S': 'L', 'M': 'XL', 'L': 'XXL', 'XL': '3XL', 'XXL': '4XL',
-}
+// Pants / jeans — matched by waist circumference
+const ALI_PANTS_SIZES: AliSizeEntry[] = [
+  { label: 'M (29-30)',   waist: [0, 75] },
+  { label: 'L (31-32)',   waist: [76, 80] },
+  { label: 'XL (33-34)',  waist: [81, 85] },
+  { label: '2XL (35-36)', waist: [86, 90] },
+  { label: '3XL (37+)',   waist: [91, 999] },
+]
 
-// ── Standard shoe size chart (foot length cm → EU size) ─────────────────────
-const SHOE_SIZE_TABLE: { eu: number; footLengthMin: number; footLengthMax: number }[] = [
-  { eu: 35, footLengthMin: 21.6, footLengthMax: 22.3 },
-  { eu: 36, footLengthMin: 22.3, footLengthMax: 23.0 },
-  { eu: 37, footLengthMin: 23.0, footLengthMax: 23.7 },
-  { eu: 38, footLengthMin: 23.7, footLengthMax: 24.4 },
-  { eu: 39, footLengthMin: 24.4, footLengthMax: 25.1 },
-  { eu: 40, footLengthMin: 25.1, footLengthMax: 25.8 },
-  { eu: 41, footLengthMin: 25.8, footLengthMax: 26.5 },
-  { eu: 42, footLengthMin: 26.5, footLengthMax: 27.2 },
-  { eu: 43, footLengthMin: 27.2, footLengthMax: 27.9 },
-  { eu: 44, footLengthMin: 27.9, footLengthMax: 28.6 },
-  { eu: 45, footLengthMin: 28.6, footLengthMax: 29.3 },
-  { eu: 46, footLengthMin: 29.3, footLengthMax: 30.0 },
-  { eu: 47, footLengthMin: 30.0, footLengthMax: 30.7 },
+// Shoes — matched by foot length cm
+const ALI_SHOE_SIZES: { label: string; footMin: number; footMax: number }[] = [
+  { label: '36 (230)',     footMin: 0,    footMax: 23.0 },
+  { label: '38 (240)',     footMin: 23.1, footMax: 24.0 },
+  { label: '39/40 (250)',  footMin: 24.1, footMax: 25.0 },
+  { label: '41/42 (260)',  footMin: 25.1, footMax: 26.0 },
+  { label: '43 (270)',     footMin: 26.1, footMax: 27.0 },
+  { label: '44/45 (280)',  footMin: 27.1, footMax: 28.0 },
+  { label: '46+ (290)',    footMin: 28.1, footMax: 999 },
 ]
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -81,148 +101,112 @@ function formatRange(range: [number, number]): string {
   return `${range[0]}-${range[1]}`
 }
 
-// Fit preference adjustments: slim fit → pick smaller size, loose → pick larger
+// Fit preference adjustments: slim → smaller, loose → larger
 function adjustForFit(baseLabel: string, fitPreference: string | undefined): string {
   if (!fitPreference) return baseLabel
-  const labels = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL']
-  const idx = labels.indexOf(baseLabel)
-  if (idx === -1) return baseLabel
-
   const lower = fitPreference.toLowerCase()
   if (lower.includes('slim') || lower.includes('tight') || lower.includes('צמוד')) {
-    return labels[Math.max(0, idx - 1)] ?? baseLabel
+    // Go one size down — e.g. "XL" → "L", "2XL (35-36)" → "XL (33-34)"
+    if (baseLabel.startsWith('4XL')) return '3XL'
+    if (baseLabel.startsWith('3XL')) return '2XL'
+    if (baseLabel.startsWith('2XL')) return 'XL'
+    if (baseLabel.startsWith('XL')) return 'L'
+    if (baseLabel === 'L') return 'M'
+    // For pants with sizes like "L (31-32)", strip the label part
+    const pantsMatch = baseLabel.match(/^([A-Z]+)\s*\(/)
+    if (pantsMatch) {
+      const sz = pantsMatch[1]
+      const downMap: Record<string, string> = { '3XL': '2XL', '2XL': 'XL', 'XL': 'L', 'L': 'M' }
+      return downMap[sz] ? `${downMap[sz]} (...)` : baseLabel
+    }
   }
-  if (lower.includes('loose') || lower.includes('oversize') || lower.includes('רחב') || lower.includes('גדול')) {
-    return labels[Math.min(labels.length - 1, idx + 1)] ?? baseLabel
+  if (lower.includes('loose') || lower.includes('relaxed') || lower.includes('oversize') || lower.includes('רחב') || lower.includes('גדול')) {
+    if (baseLabel === 'M') return 'L'
+    if (baseLabel === 'L') return 'XL'
+    if (baseLabel.startsWith('XL') && !baseLabel.startsWith('2XL') && !baseLabel.startsWith('3XL')) return '2XL'
+    if (baseLabel.startsWith('2XL')) return '3XL'
+    if (baseLabel.startsWith('3XL')) return '4XL'
   }
   return baseLabel
 }
 
-// Match body metrics against standard size chart, scoring by how many measurements fall in range
-function matchBodyMetricsToStandard(
-  metrics: BodyMetrics,
-  fitPreference: string | undefined,
-): SizeMatchResult {
-  const chest = metrics.chest_circumference_cm
-  const waist = metrics.waist_circumference_cm
-  const hips = metrics.hips_circumference_cm
+// Estimate body metrics from registration sizes when AI scan metrics are missing
+function estimateMetricsFromSizes(sizes: ScannedSizes): BodyMetrics | null {
+  const top = sizes.sizing.top
+  const bottom = sizes.sizing.bottom
+  if (!top && !bottom) return null
 
-  let bestEntry: StandardSizeEntry | null = null
-  let bestScore = -1
-  let bestReason = ''
-
-  for (const entry of STANDARD_CLOTHING_SIZES) {
-    let score = 0
-    let totalChecks = 0
-    const reasons: string[] = []
-
-    if (chest != null) {
-      totalChecks++
-      if (inRange(chest, entry.chest)) {
-        score++
-        reasons.push(`היקף חזה ${chest} ס"מ מתאים למידה ${entry.label} (${formatRange(entry.chest)} ס"מ)`)
-      }
-    }
-    if (waist != null) {
-      totalChecks++
-      if (inRange(waist, entry.waist)) {
-        score++
-        if (reasons.length === 0) reasons.push(`היקף מותן ${waist} ס"מ מתאים למידה ${entry.label} (${formatRange(entry.waist)} ס"מ)`)
-      }
-    }
-    if (hips != null) {
-      totalChecks++
-      if (inRange(hips, entry.hips)) {
-        score++
-        if (reasons.length === 0) reasons.push(`היקף ירכיים ${hips} ס"מ מתאים למידה ${entry.label} (${formatRange(entry.hips)} ס"מ)`)
-      }
-    }
-
-    if (totalChecks === 0) continue
-
-    // Bonus: if measurement is close to range boundary (within 2cm), give partial credit
-    let partialBonus = 0
-    if (chest != null && !inRange(chest, entry.chest)) {
-      const dist = Math.min(Math.abs(chest - entry.chest[0]), Math.abs(chest - entry.chest[1]))
-      if (dist <= 2) partialBonus += 0.5
-    }
-    if (waist != null && !inRange(waist, entry.waist)) {
-      const dist = Math.min(Math.abs(waist - entry.waist[0]), Math.abs(waist - entry.waist[1]))
-      if (dist <= 2) partialBonus += 0.5
-    }
-
-    const ratio = (score + partialBonus) / totalChecks
-    if (ratio > bestScore) {
-      bestScore = ratio
-      bestEntry = entry
-      bestReason = reasons[0] ?? ''
-    }
+  // Rough chest estimate from top size
+  const TOP_CHEST: Record<string, number> = {
+    'XS': 84, 'S': 92, 'M': 100, 'L': 108, 'XL': 116, 'XXL': 124,
+  }
+  // Rough waist estimate from EU pants size
+  const BOTTOM_WAIST: Record<string, number> = {
+    '36': 68, '38': 72, '40': 76, '42': 80, '44': 84, '46': 88,
+    '48': 92, '50': 96, '52': 100, '54': 104, '56': 108, '58': 112, '60': 116,
   }
 
-  if (bestEntry && bestScore > 0) {
-    // Apply fit preference adjustment
-    const adjustedLabel = adjustForFit(bestEntry.label, fitPreference)
-    const fitNote = adjustedLabel !== bestEntry.label
-      ? ` (מותאם להעדפת פיט ${fitPreference}: ${adjustedLabel})`
-      : ''
-    return {
-      sizeLabel: adjustedLabel,
-      reason: bestReason + fitNote,
-      confidence: Math.min(0.9, 0.55 + bestScore * 0.35),
-      source: 'body_metrics',
-    }
-  }
+  const chest = TOP_CHEST[top] ?? null
+  const waist = BOTTOM_WAIST[bottom] ?? null
 
-  // Fallback: use registration sizes with Asian conversion
-  return asianConversionFallback(null, undefined)
-}
+  if (chest == null && waist == null) return null
 
-// Asian size conversion fallback when no body metrics available
-function asianConversionFallback(
-  userSizes: ScannedSizes | null,
-  fitPreference: string | undefined,
-): SizeMatchResult {
-  if (!userSizes) {
-    return {
-      sizeLabel: 'M',
-      reason: 'לא נמצאו מידות גוף — מומלץ מידה M כברירת מחדל',
-      confidence: 0.3,
-      source: 'fallback',
-    }
-  }
-  const userTop = userSizes.sizing.top
-  const asianSize = ASIAN_SIZE_MAP[userTop] ?? userTop
-  const adjusted = adjustForFit(asianSize, fitPreference)
   return {
-    sizeLabel: adjusted,
-    reason: `אין טבלת מידות בס"מ מהמוכר — הומר מידה ${userTop} למידה אסייתית ${adjusted}`,
-    confidence: 0.65,
-    source: 'asian_conversion',
+    estimated_height_cm: null,
+    estimated_weight_kg: null,
+    chest_circumference_cm: chest,
+    waist_circumference_cm: waist,
+    hips_circumference_cm: chest != null ? chest - 4 : null,
+    shoulder_width_cm: null,
   }
 }
 
-// Match foot length against standard shoe size chart
-function matchShoeSizeByFootLength(footLengthCm: number | null, shoeSizeEu: string | null): SizeMatchResult | null {
-  if (footLengthCm != null) {
-    const match = SHOE_SIZE_TABLE.find((e) => footLengthCm >= e.footLengthMin && footLengthCm < e.footLengthMax)
-    if (match) {
+// ── AliExpress fallback: match body metrics against AliExpress chart ──────
+
+function matchAliTops(chest: number, fitPreference: string | undefined): SizeMatchResult {
+  for (const entry of ALI_TOPS_SIZES) {
+    if (entry.chest && inRange(chest, entry.chest)) {
+      const adjusted = adjustForFit(entry.label, fitPreference)
+      const fitNote = adjusted !== entry.label ? ` (מותאם להעדפת פיט ${fitPreference}: ${adjusted})` : ''
       return {
-        sizeLabel: `EU ${match.eu}`,
-        reason: `אורך כף רגל ${footLengthCm} ס"מ מתאים למידה EU ${match.eu} לפי טבלת מידות סטנדרטית`,
+        sizeLabel: adjusted,
+        reason: `היקף חזה ${chest} ס"מ — מומלץ מידה ${entry.label} ב-AliExpress${fitNote}`,
+        confidence: 0.78,
+        source: 'body_metrics',
+      }
+    }
+  }
+  return { sizeLabel: 'L', reason: `היקף חזה ${chest} ס"מ — מומלץ מידה L כברירת מחדל`, confidence: 0.5, source: 'fallback' }
+}
+
+function matchAliPants(waist: number, fitPreference: string | undefined): SizeMatchResult {
+  for (const entry of ALI_PANTS_SIZES) {
+    if (entry.waist && inRange(waist, entry.waist)) {
+      const adjusted = adjustForFit(entry.label, fitPreference)
+      const fitNote = adjusted !== entry.label ? ` (מותאם להעדפת פיט ${fitPreference}: ${adjusted})` : ''
+      return {
+        sizeLabel: adjusted,
+        reason: `היקף מותניים ${waist} ס"מ — מומלץ מידה ${entry.label} ב-AliExpress${fitNote}`,
+        confidence: 0.78,
+        source: 'body_metrics',
+      }
+    }
+  }
+  return { sizeLabel: 'L (31-32)', reason: `היקף מותניים ${waist} ס"מ — מומלץ מידה L כברירת מחדל`, confidence: 0.5, source: 'fallback' }
+}
+
+function matchAliShoes(footLength: number): SizeMatchResult {
+  for (const entry of ALI_SHOE_SIZES) {
+    if (footLength >= entry.footMin && footLength <= entry.footMax) {
+      return {
+        sizeLabel: entry.label,
+        reason: `אורך כף רגל ${footLength} ס"מ — מומלץ מידה ${entry.label} ב-AliExpress`,
         confidence: 0.82,
         source: 'body_metrics',
       }
     }
   }
-  if (shoeSizeEu) {
-    return {
-      sizeLabel: `EU ${shoeSizeEu}`,
-      reason: `מידת נעל מומלצת EU ${shoeSizeEu} לפי סריקת AI`,
-      confidence: 0.8,
-      source: 'fallback',
-    }
-  }
-  return null
+  return { sizeLabel: '41/42 (260)', reason: `אורך כף רגל ${footLength} ס"מ — מומלץ מידה 41/42 כברירת מחדל`, confidence: 0.5, source: 'fallback' }
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -231,15 +215,18 @@ export function getRecommendedSize(
   userSizes: ScannedSizes | null,
   sellerSizeChart: SellerSizeEntry[],
   category: string = 'clothing',
+  productName: string = '',
 ): SizeMatchResult | null {
   if (!userSizes) return null
-  if (category === 'accessories') return null
+
+  const subCategory = detectSubCategory(productName, category)
+  if (subCategory === 'accessories') return null
 
   const metrics = getUserMetrics(userSizes)
   const fitPreference = userSizes.sizing.fit
 
   // ── Shoes ─────────────────────────────────────────────────────────────────
-  if (category === 'shoes') {
+  if (subCategory === 'shoes') {
     const footLength = getFootLengthCm(userSizes.shoeSize)
 
     // 1. Try seller's size chart with foot length
@@ -255,14 +242,24 @@ export function getRecommendedSize(
       }
     }
 
-    // 2. Try standard shoe size chart with foot length
-    const standardMatch = matchShoeSizeByFootLength(footLength, userSizes.shoeSize)
-    if (standardMatch) return standardMatch
+    // 2. AliExpress shoe fallback by foot length
+    if (footLength != null) {
+      return matchAliShoes(footLength)
+    }
 
+    // 3. Just return the EU shoe size from scan
+    if (userSizes.shoeSize) {
+      return {
+        sizeLabel: `EU ${userSizes.shoeSize}`,
+        reason: `מידת נעל מומלצת EU ${userSizes.shoeSize} לפי סריקת AI`,
+        confidence: 0.7,
+        source: 'fallback',
+      }
+    }
     return null
   }
 
-  // ── Clothing ──────────────────────────────────────────────────────────────
+  // ── Clothing (tops, pants, dresses, suits) ────────────────────────────────
 
   // 1. Try seller's size chart with body metrics
   if (sellerSizeChart.length > 0 && metrics) {
@@ -324,11 +321,28 @@ export function getRecommendedSize(
     }
   }
 
-  // 2. No seller chart — use body metrics against standard size chart
-  if (metrics) {
-    return matchBodyMetricsToStandard(metrics, fitPreference)
+  // 2. No seller chart — use AliExpress fallback matrix with body metrics
+  //    If no AI body metrics, estimate from registration sizes
+  const effectiveMetrics = metrics ?? estimateMetricsFromSizes(userSizes)
+
+  if (subCategory === 'pants') {
+    const waist = effectiveMetrics?.waist_circumference_cm
+    if (waist != null) return matchAliPants(waist, fitPreference)
   }
 
-  // 3. No body metrics — use registration sizes with Asian conversion
-  return asianConversionFallback(userSizes, fitPreference)
+  // tops, dresses, suits — all matched by chest
+  const chest = effectiveMetrics?.chest_circumference_cm
+  if (chest != null) return matchAliTops(chest, fitPreference)
+
+  // 3. No metrics at all — use registration top size with Asian upsize
+  const userTop = userSizes.sizing.top
+  const asianMap: Record<string, string> = { 'XS': 'M', 'S': 'L', 'M': 'XL', 'L': '2XL', 'XL': '3XL', 'XXL': '4XL' }
+  const asianSize = asianMap[userTop] ?? 'L'
+  const adjusted = adjustForFit(asianSize, fitPreference)
+  return {
+    sizeLabel: adjusted,
+    reason: `אין טבלת מידות מהמוכר — הומר מידה ${userTop} למידה אסייתית ${adjusted} (מידות AliExpress קטנות ב-1-2 מידות)`,
+    confidence: 0.65,
+    source: 'asian_conversion',
+  }
 }

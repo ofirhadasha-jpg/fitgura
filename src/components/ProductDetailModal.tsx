@@ -51,7 +51,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   const showSizeRecommendation = !isDeviceAccessory
 
   const sizeMatch: SizeMatchResult | null = showSizeRecommendation
-    ? getRecommendedSize(scannedSizes, sellerSizeChart, effectiveCategory)
+    ? getRecommendedSize(scannedSizes, sellerSizeChart, effectiveCategory, product.name)
     : null
 
   async function handleProceedToBuy(e: GestureResponderEvent & { preventDefault: () => void }) {

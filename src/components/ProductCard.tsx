@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import type { GestureResponderEvent } from 'react-native'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
+import { getRecommendedSize } from '../utils/exactSizeMatcher'
 import { formatFullPantsSizeLabel } from '../utils/sizeConverter'
 import { ProductDetailModal } from './ProductDetailModal'
 
@@ -69,22 +70,8 @@ function getSizeBreakdown(productName: string, scannedSizes: ScannedSizes | null
 
 function getRecommendedSizeLabel(productName: string, scannedSizes: ScannedSizes | null, category: string): string | null {
   if (!scannedSizes) return null
-  const effectiveCategory = detectEffectiveCategory(productName, category)
-  if (effectiveCategory === 'shoes') {
-    return scannedSizes.shoeSize ? `נעל: EU ${scannedSizes.shoeSize}` : null
-  }
-  if (effectiveCategory === 'accessories') return null
-  const top = scannedSizes.sizing.top
-  const bottom = scannedSizes.sizing.bottom
-  const isSuit = SUIT_KEYWORDS.test(productName)
-  const isShirt = SHIRT_KEYWORDS.test(productName)
-  const isPants = PANTS_KEYWORDS.test(productName)
-  if (isSuit || (isShirt && isPants)) {
-    return `חולצה: ${top}  |  מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
-  }
-  if (isShirt && !isPants) return `חולצה: ${top}`
-  if (isPants && !isShirt) return `מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
-  return `חולצה: ${top}  |  מכנסיים: ${formatFullPantsSizeLabel(bottom)}`
+  const match = getRecommendedSize(scannedSizes, [], category, productName)
+  return match?.sizeLabel ?? null
 }
 
 
