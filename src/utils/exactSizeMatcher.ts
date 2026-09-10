@@ -104,11 +104,11 @@ function adjustForFit(baseLabel: string, fit: string | undefined): string {
 // the previous code used garment values, causing every recommendation to be 1-2 sizes too big.
 function estimateMetrics(sizes: ScannedSizes): BodyMetrics | null {
   const TOP_BODY_CHEST: Record<string, number> = {
-    'XS': 82, 'S': 88, 'M': 94, 'L': 100, 'XL': 106, 'XXL': 112,
+    'XS': 82, 'S': 85, 'M': 89, 'L': 95, 'XL': 101, 'XXL': 107,
   }
   const BOTTOM_BODY_WAIST: Record<string, number> = {
-    '36': 64, '38': 68, '40': 72, '42': 76, '44': 80, '46': 84,
-    '48': 88, '50': 92, '52': 96, '54': 100, '56': 104, '58': 108, '60': 112,
+    '36': 64, '38': 67, '40': 71, '42': 74, '44': 78, '46': 82,
+    '48': 85, '50': 89, '52': 93, '54': 97, '56': 101, '58': 105, '60': 109,
   }
   const chest = TOP_BODY_CHEST[sizes.sizing.top] ?? null
   const waist = BOTTOM_BODY_WAIST[sizes.sizing.bottom] ?? null
@@ -123,18 +123,21 @@ function estimateMetrics(sizes: ScannedSizes): BodyMetrics | null {
   }
 }
 
-function matchTops(chest: number, fit: string | undefined): string {
-  for (const e of ALI_TOPS_SIZES) {
-    if (inRange(chest, e.chest)) return adjustForFit(e.label, fit)
+function matchTopsByWesternSize(westernSize: string, fit: string | undefined): string | null {
+  const WESTERN_TO_ASIAN: Record<string, string> = {
+    'XS': 'S', 'S': 'M', 'M': 'L', 'L': 'XL', 'XL': '2XL', 'XXL': '3XL',
   }
-  return 'L'
+  const label = WESTERN_TO_ASIAN[westernSize]
+  return label ? adjustForFit(label, fit) : null
 }
 
-function matchPants(waist: number, fit: string | undefined): string {
-  for (const e of ALI_PANTS_SIZES) {
-    if (inRange(waist, e.waist)) return adjustForFit(e.label, fit)
+function matchPantsByEuSize(euSize: string, fit: string | undefined): string | null {
+  const EU_TO_ASIAN: Record<string, string> = {
+    '36': 'S', '38': 'M', '40': 'L', '42': 'XL', '44': '2XL',
+    '46': '3XL', '48': '4XL', '50': '5XL', '52': '5XL',
   }
-  return 'L'
+  const label = EU_TO_ASIAN[euSize]
+  return label ? adjustForFit(label, fit) : null
 }
 
 function matchShoes(footLength: number): string {
@@ -194,24 +197,49 @@ export function calculateRecommendedSize(
   const m = metrics
 
   if (sub === 'pants') {
+    const direct = matchPantsByEuSize(userSizes.sizing.bottom, fit)
+    if (direct) return direct
     const waist = m?.waist_circumference_cm
-    if (waist != null) return matchPants(waist, fit)
+    if (waist != null) {
+      for (const e of ALI_PANTS_SIZES) {
+        if (inRange(waist, e.waist)) return adjustForFit(e.label, fit)
+      }
+    }
   }
 
   // Dresses use chest (bust) as primary measurement
   if (sub === 'dresses') {
+    const direct = matchTopsByWesternSize(userSizes.sizing.top, fit)
+    if (direct) return direct
     const chest = m?.chest_circumference_cm
-    if (chest != null) return matchTops(chest, fit)
+    if (chest != null) {
+      for (const e of ALI_TOPS_SIZES) {
+        if (inRange(chest, e.chest)) return adjustForFit(e.label, fit)
+      }
+    }
   }
 
   // Suits use chest as primary measurement
   if (sub === 'suits') {
+    const direct = matchTopsByWesternSize(userSizes.sizing.top, fit)
+    if (direct) return direct
     const chest = m?.chest_circumference_cm
-    if (chest != null) return matchTops(chest, fit)
+    if (chest != null) {
+      for (const e of ALI_TOPS_SIZES) {
+        if (inRange(chest, e.chest)) return adjustForFit(e.label, fit)
+      }
+    }
   }
 
+  // Default tops path: direct Western→Asian mapping first, then chest-based fallback
+  const directTop = matchTopsByWesternSize(userSizes.sizing.top, fit)
+  if (directTop) return directTop
   const chest = m?.chest_circumference_cm
-  if (chest != null) return matchTops(chest, fit)
+  if (chest != null) {
+    for (const e of ALI_TOPS_SIZES) {
+      if (inRange(chest, e.chest)) return adjustForFit(e.label, fit)
+    }
+  }
 
   // Last-resort: map Western sizes to Asian sizes (AliExpress tends to run 1-2 sizes small)
   const asianMap: Record<string, string> = {
