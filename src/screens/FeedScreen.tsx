@@ -12,7 +12,6 @@ import {
   type FeedCategory,
   type Gender,
 } from '../services/aliexpressClient'
-import { euToUsPants } from '../utils/sizeConverter'
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
 
@@ -191,23 +190,6 @@ export function FeedScreen({
         ? (selectedDeviceRef.current ? [selectedDeviceRef.current] : Array.from(new Set(registeredDevices)))
         : []
 
-      // Build extra keywords from style/size for clothing & shoes
-      let extraKeywords = ''
-      if (scannedSizes?.style?.aestheticTags?.length) {
-        extraKeywords += ` ${scannedSizes.style.aestheticTags.slice(0, 2).join(' ')}`
-      }
-      if (scannedSizes?.style?.primaryStyle) {
-        extraKeywords += ` ${scannedSizes.style.primaryStyle}`
-      }
-      if (category === 'clothing' && scannedSizes?.sizing?.bottom) {
-        const euSize = scannedSizes.sizing.bottom
-        const usSize = euToUsPants(euSize)
-        extraKeywords += ` size ${euSize} EU ${usSize} US`
-      }
-      // Shoe size is used for AI matching/recommendation, not as a search keyword —
-      // injecting it into the AliExpress search over-narrows results to zero.
-      const trimmedExtra = extraKeywords.trim() || undefined
-
       console.log(`[Feed] Fetching: gender=${gender}, category=${category}, page=${page}, devices=${accessoryDevices.length}`)
 
       let remoteProducts: Product[]
@@ -222,7 +204,7 @@ export function FeedScreen({
           remoteProducts = deviceResults.flat()
         }
       } else {
-        remoteProducts = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE, trimmedExtra)
+        remoteProducts = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE)
       }
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)

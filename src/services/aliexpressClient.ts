@@ -42,25 +42,25 @@ const BOTH_GENDERS_REGEX = /\b(men|men's|mens|male|boy|boys|man|man's|for him)\b
 export const TOP_ALIEXPRESS_QUERIES = {
   female: {
     clothing: [
-      'women dress', 'women tops blouses', 'women pants jeans',
-      'women skirts', 'women sweaters hoodies', 'women coats jackets',
-      'women suits sets', 'women lingerie underwear', 'women activewear leggings',
+      'women dress best seller', 'women tops blouses best seller', 'women pants jeans best seller',
+      'women skirts popular', 'women sweaters hoodies popular', 'women coats jackets best seller',
+      'women suits sets popular', 'women lingerie underwear top rated', 'women activewear leggings best seller',
     ],
     shoes: [
-      'women sneakers', 'women boots', 'women sandals',
-      'women heels pumps', 'women casual shoes', 'women loafers flats',
-      'women running shoes',
+      'women sneakers best seller', 'women boots popular', 'women sandals best seller',
+      'women heels pumps top rated', 'women casual shoes best seller', 'women loafers flats popular',
+      'women running shoes best seller',
     ],
   },
   male: {
     clothing: [
-      'men t shirts', 'men pants jeans', 'men hoodies sweatshirts',
-      'men jackets coats', 'men shirts', 'men shorts',
-      'men suits blazers', 'men sportswear tracksuit',
+      'men t shirts best seller', 'men pants jeans popular', 'men hoodies sweatshirts best seller',
+      'men jackets coats top rated', 'men shirts best seller', 'men shorts popular',
+      'men suits blazers best seller', 'men sportswear tracksuit popular',
     ],
     shoes: [
-      'men sneakers', 'men casual shoes', 'men running shoes',
-      'men boots', 'men sandals slippers', 'men dress shoes loafers',
+      'men sneakers best seller', 'men casual shoes popular', 'men running shoes best seller',
+      'men boots top rated', 'men sandals slippers best seller', 'men dress shoes loafers popular',
     ],
   },
 } as const
@@ -74,6 +74,9 @@ const SHOES_SUBQUERIES_UNISEX = [
   ...TOP_ALIEXPRESS_QUERIES.female.shoes,
   ...TOP_ALIEXPRESS_QUERIES.male.shoes,
 ]
+
+const CATEGORY_IDS_CLOTHING = '200000783,200000782'
+const CATEGORY_IDS_SHOES = '200000835,200000832,200000831'
 
 // ── Hard-exclusion keyword lists ───────────────────────────────────────────
 
@@ -95,9 +98,9 @@ const FOOTWEAR_REGEX = new RegExp(`\\b(${FOOTWEAR_TERMS.join('|')})\\b`, 'i')
 const APPAREL_REGEX = new RegExp(`\\b(${APPAREL_TERMS.join('|')})\\b`, 'i')
 
 const CATEGORY_IDS: Record<FeedCategory, string | undefined> = {
-  all: '200000783,200000782,200000835,200000832,200000831',
-  clothing: '200000783,200000782',
-  shoes: '200000835,200000832,200000831',
+  all: undefined,
+  clothing: CATEGORY_IDS_CLOTHING,
+  shoes: CATEGORY_IDS_SHOES,
   accessories: '5090301,509',
 }
 
@@ -155,42 +158,25 @@ function getQueryPool(category: FeedCategory, gender: Gender): { clothing: reado
   return { clothing, shoes }
 }
 
-// ── 500-Product Batch Aggregator ───────────────────────────────────────────
-
-async function fetchBatch(
-  queries: string[],
-  gender: Gender,
-  categoryIds: string | undefined,
-  page: number,
-  perQuerySize: number,
-): Promise<Product[]> {
-  const results = await Promise.all(
-    queries.map((q) => fetchAliExpressProducts(q, page, perQuerySize, gender, categoryIds, 'VOLUME_DOWN')),
-  )
-  return results.flat()
-}
+// ── 200-Product Batch Aggregator ───────────────────────────────────────────
 
 async function aggregateBatch(
   category: FeedCategory,
   gender: Gender,
   batchNo: number,
 ): Promise<Product[]> {
-  const categoryIds = CATEGORY_IDS[category]
   const { clothing: clothingPool, shoes: shoePool } = getQueryPool(category, gender)
 
-  const isClothing = category === 'clothing' || category === 'all'
-  const isShoes = category === 'shoes' || category === 'all'
-
-  // Build the full set of queries for this category
-  let allQueries: string[]
-  if (isClothing && isShoes) {
-    allQueries = [...clothingPool, ...shoePool]
-  } else if (isClothing) {
-    allQueries = [...clothingPool]
-  } else if (isShoes) {
-    allQueries = [...shoePool]
-  } else {
-    allQueries = [extraKeywords ?? 'phone case cover']
+  // For "all": run clothing and shoes as separate batches with their own category IDs
+  // so the edge function applies gender + category filtering correctly for each.
+  // For specific categories: use the single matching pool + category IDs.
+  type SubBatch = { queries: readonly string[]; categoryIds: string }
+  const subBatches: SubBatch[] = []
+  if (category === 'all' || category === 'clothing') {
+    subBatches.push({ queries: clothingPool, categoryIds: CATEGORY_IDS_CLOTHING })
+  }
+  if (category === 'all' || category === 'shoes') {
+    subBatches.push({ queries: shoePool, categoryIds: CATEGORY_IDS_SHOES })
   }
 
   const collected: Product[] = []
@@ -202,16 +188,23 @@ async function aggregateBatch(
 
   while (collected.length < BATCH_SIZE && attempts < maxAttempts) {
     attempts++
-    const startIdx = (batchNo - 1) * 4 + (attempts - 1) * 4
-    const roundQueries: string[] = []
-    for (let i = 0; i < Math.min(4, allQueries.length); i++) {
-      roundQueries.push(allQueries[(startIdx + i) % allQueries.length])
+    // Gather 4 queries round-robin from each sub-batch
+    const roundQueries: { q: string; categoryIds: string }[] = []
+    for (const sb of subBatches) {
+      const startIdx = (batchNo - 1) * 4 + (attempts - 1) * 4
+      for (let i = 0; i < Math.min(4, sb.queries.length); i++) {
+        roundQueries.push({ q: sb.queries[(startIdx + i) % sb.queries.length], categoryIds: sb.categoryIds })
+      }
     }
 
-    const raw = await fetchBatch(roundQueries, gender, categoryIds, currentPage, perQuerySize)
+    const raw = await Promise.all(
+      roundQueries.map(({ q, categoryIds }) =>
+        fetchAliExpressProducts(q, currentPage, perQuerySize, gender, categoryIds, 'VOLUME_DOWN'),
+      ),
+    )
 
     // Dedup against already-collected
-    for (const p of raw) {
+    for (const p of raw.flat()) {
       const id = p.aliexpressSku
       if (id && seenIds.has(id)) continue
       if (id) seenIds.add(id)
