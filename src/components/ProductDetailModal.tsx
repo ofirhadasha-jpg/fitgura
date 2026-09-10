@@ -48,6 +48,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   const imageUrl = normalizeProductImageUrl(product.img)
   const accessory = isAccessory(product.name, category)
   const recommendedSize: SizeRecommendation | null = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
+  const hasScanned = scannedSizes != null
 
   async function handleProceedToBuy() {
     setIsRedirecting(true)
@@ -124,6 +125,13 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
           <View style={modalStyles.recommendationBox}>
             <Text style={modalStyles.recommendationHeadline}>
               🎯 מתאים לך: <Text style={modalStyles.recommendationSize}>{recommendedSize.fullLabel}</Text>
+            </Text>
+          </View>
+        )}
+        {!recommendedSize && !accessory && !hasScanned && (
+          <View style={modalStyles.recommendationBox}>
+            <Text style={modalStyles.recommendationHeadline}>
+              סרוק את עצמך כדי לקבל המלצת מידה מדויקת
             </Text>
           </View>
         )}

@@ -314,6 +314,6 @@ function clampToAvailable(recommended: string, available: string[]): string | nu
     if (dist < bestDist) { bestDist = dist; bestIdx = idx }
   }
   if (bestIdx === -1) return recommended
-  if (bestDist > 2) return null
+  if (bestDist > 2) return recommended
   return SIZE_ORDER[bestIdx]
 }

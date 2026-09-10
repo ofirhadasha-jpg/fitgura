@@ -57,6 +57,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const isDeviceAccessory = effectiveCategory === 'accessories'
   const showSizeRecommendation = !isDeviceAccessory
   const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
+  const hasScanned = scannedSizes != null
 
   function handleBuy() {
     setShowDetailModal(true)
@@ -94,12 +95,24 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
             <Text style={cardStyles.sizeBadgeText}>מתאים לך: {recommendedSize.shortLabel}</Text>
           </View>
         )}
+        {!recommendedSize && showSizeRecommendation && !hasScanned && (
+          <View style={cardStyles.sizeBadge}>
+            <Text style={cardStyles.sizeBadgeText}>סרוק להמלצת מידה</Text>
+          </View>
+        )}
       </View>
       <View style={cardStyles.productInfo}>
         {showSizeRecommendation && recommendedSize && (
           <View style={cardStyles.matchChip}>
             <Text style={cardStyles.matchChipText}>
               ✓ מתאים לך: {recommendedSize.fullLabel}
+            </Text>
+          </View>
+        )}
+        {showSizeRecommendation && !recommendedSize && !hasScanned && (
+          <View style={cardStyles.matchChip}>
+            <Text style={cardStyles.matchChipText}>
+              סרוק להמלצת מידה
             </Text>
           </View>
         )}
