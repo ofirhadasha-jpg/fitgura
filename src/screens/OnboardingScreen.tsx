@@ -64,6 +64,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       bottom: '',
       fit: '',
       gender: 'unisex',
+      ageGroup: 'adult',
       personBounds: { top: 2, left: 10, width: 80, height: 96 },
       shoeSize: null,
     })

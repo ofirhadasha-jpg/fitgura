@@ -12,6 +12,7 @@ import {
   isSmartwatch,
   type FeedCategory,
   type Gender,
+  type AgeGroupFilter,
 } from '../services/aliexpressClient'
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
@@ -196,6 +197,7 @@ export function FeedScreen({
     setProductsError(null)
     try {
       const gender: Gender = (scannedSizes?.gender as Gender) ?? 'unisex'
+      const ageGroup: AgeGroupFilter = (scannedSizes?.ageGroup as AgeGroupFilter) ?? 'adult'
       const feedCategory = category as FeedCategory
       const deviceName = detectedDevice ? `${detectedDevice.brand} ${detectedDevice.model}`.trim() : ''
       const accessoryDevices = category === 'accessories'
@@ -216,7 +218,7 @@ export function FeedScreen({
           remoteProducts = deviceResults.flat()
         }
       } else {
-        remoteProducts = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE)
+        remoteProducts = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE, undefined, ageGroup)
       }
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)
@@ -281,7 +283,7 @@ export function FeedScreen({
         setIsLoadingMore(false)
       }
     }
-  }, [scannedSizes?.gender, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes?.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
+  }, [scannedSizes?.gender, scannedSizes?.ageGroup, scannedSizes?.style?.aestheticTags, scannedSizes?.style?.primaryStyle, scannedSizes?.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.shoeSize, detectedDevice, registeredDevices])
 
   // Refs to avoid effect dependency on loadProducts/filter identity — prevents infinite reload loop
   const loadProductsRef = useRef(loadProducts)

@@ -1,8 +1,9 @@
 import { fetchAliExpressProducts, fetchProductDetails, generateAffiliateLink as fetchAffiliateLink } from '../lib/aliexpress'
-import type { Product } from '../types'
+import type { Product, AgeGroup } from '../types'
 
 export type Gender = 'male' | 'female' | 'unisex'
 export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
+export type AgeGroupFilter = AgeGroup | 'adult'
 
 const BATCH_SIZE = 200
 const ILS_TO_USD_RATE = 3.7
@@ -65,15 +66,81 @@ export const TOP_ALIEXPRESS_QUERIES = {
   },
 } as const
 
-const CLOTHING_SUBQUERIES_UNISEX = [
-  ...TOP_ALIEXPRESS_QUERIES.female.clothing,
-  ...TOP_ALIEXPRESS_QUERIES.male.clothing,
-]
+// ── Baby & children queries (gender-agnostic) ─────────────────────────────
 
-const SHOES_SUBQUERIES_UNISEX = [
-  ...TOP_ALIEXPRESS_QUERIES.female.shoes,
-  ...TOP_ALIEXPRESS_QUERIES.male.shoes,
-]
+const BABY_QUERIES = {
+  clothing: [
+    'baby boy clothes set best seller', 'baby girl clothes set best seller',
+    'baby onesie bodysuit popular', 'baby romper jumpsuit best seller',
+    'baby sleepwear pajamas popular', 'baby outfit set top rated',
+    'infant baby clothes 0-24 months best seller', 'baby t-shirt pants set popular',
+  ],
+  shoes: [
+    'baby shoes soft sole best seller', 'baby sneakers popular',
+    'baby booties top rated', 'infant first walker shoes best seller',
+    'baby sandals popular', 'baby crib shoes top rated',
+  ],
+}
+
+const TODDLER_QUERIES = {
+  clothing: [
+    'toddler boy clothes set best seller', 'toddler girl clothes set best seller',
+    'toddler t-shirt shorts popular', 'toddler dress best seller',
+    'toddler pajamas sleepwear popular', 'toddler outfit set top rated',
+    'toddler jacket hoodie best seller', 'toddler pants leggings popular',
+  ],
+  shoes: [
+    'toddler sneakers best seller', 'toddler shoes popular',
+    'toddler boots top rated', 'toddler sandals best seller',
+    'toddler casual shoes popular', 'first walker toddler shoes top rated',
+  ],
+}
+
+const CHILD_QUERIES = {
+  clothing: [
+    'kids boy clothes set best seller', 'kids girl clothes set best seller',
+    'children t-shirt popular', 'kids dress best seller',
+    'kids jacket coat popular', 'kids pants jeans best seller',
+    'kids hoodie sweatshirt popular', 'kids outfit set top rated',
+  ],
+  shoes: [
+    'kids sneakers best seller', 'kids shoes popular',
+    'children boots top rated', 'kids sandals best seller',
+    'kids running shoes popular', 'kids casual shoes top rated',
+  ],
+}
+
+const TEEN_QUERIES = {
+  clothing: [
+    'teen boy clothes best seller', 'teen girl clothes popular',
+    'youth t-shirt hoodie best seller', 'teen jeans pants popular',
+    'teen dress skirt top rated', 'teen jacket coat best seller',
+    'teen outfit set popular', 'youth activewear best seller',
+  ],
+  shoes: [
+    'teen sneakers best seller', 'youth shoes popular',
+    'teen boots top rated', 'teen sandals best seller',
+    'teen running shoes popular', 'teen casual shoes top rated',
+  ],
+}
+
+function getAgeQueryPool(ageGroup: AgeGroupFilter): { clothing: readonly string[]; shoes: readonly string[] } | null {
+  switch (ageGroup) {
+    case 'baby': return BABY_QUERIES
+    case 'toddler': return TODDLER_QUERIES
+    case 'child': return CHILD_QUERIES
+    case 'teen': return TEEN_QUERIES
+    default: return null
+  }
+}
+
+// Age-group keywords for filtering out adult products from baby/children results
+const AGE_REJECT_KEYWORDS: Record<string, RegExp> = {
+  baby: /\b(men|women|adult|plus size|maternity)\b/i,
+  toddler: /\b(men|women|adult|plus size|maternity)\b/i,
+  child: /\b(men|women|adult|plus size|maternity|sexy|lingerie)\b/i,
+  teen: /\b(plus size|maternity|baby|infant|toddler)\b/i,
+}
 
 const CATEGORY_IDS_CLOTHING = '200000783,200000782'
 const CATEGORY_IDS_SHOES = '200000835,200000832,200000831'
@@ -129,12 +196,15 @@ export function filterProducts(
   products: Product[],
   category: FeedCategory,
   gender: Gender,
+  ageGroup: AgeGroupFilter = 'adult',
 ): Product[] {
   const rejectRegex = GENDER_REJECT[gender] ?? /$^/
+  const ageReject = AGE_REJECT_KEYWORDS[ageGroup]
   return products.filter((p) => {
     const name = p.name ?? ''
     if (rejectRegex.test(name)) return false
     if (gender !== 'unisex' && BOTH_GENDERS_REGEX.test(name)) return false
+    if (ageReject && ageReject.test(name)) return false
     if (category === 'clothing' && FOOTWEAR_REGEX.test(name)) return false
     if (category === 'shoes' && APPAREL_REGEX.test(name) && !FOOTWEAR_REGEX.test(name)) return false
     if (category === 'accessories') {
@@ -145,7 +215,9 @@ export function filterProducts(
   })
 }
 
-function getQueryPool(category: FeedCategory, gender: Gender): { clothing: readonly string[]; shoes: readonly string[] } {
+function getQueryPool(category: FeedCategory, gender: Gender, ageGroup: AgeGroupFilter = 'adult'): { clothing: readonly string[]; shoes: readonly string[] } {
+  const agePool = getAgeQueryPool(ageGroup)
+  if (agePool) return agePool
   const clothing = gender === 'female'
     ? TOP_ALIEXPRESS_QUERIES.female.clothing
     : gender === 'male'
@@ -165,8 +237,9 @@ async function aggregateBatch(
   category: FeedCategory,
   gender: Gender,
   batchNo: number,
+  ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
-  const { clothing: clothingPool, shoes: shoePool } = getQueryPool(category, gender)
+  const { clothing: clothingPool, shoes: shoePool } = getQueryPool(category, gender, ageGroup)
 
   // For "all": run clothing and shoes as separate batches with their own category IDs
   // so the edge function applies gender + category filtering correctly for each.
@@ -216,7 +289,7 @@ async function aggregateBatch(
   }
 
   const deduped = dedupById(collected)
-  const filtered = filterProducts(deduped, category, gender)
+  const filtered = filterProducts(deduped, category, gender, ageGroup)
   return sortByBestSellers(filtered)
 }
 
@@ -228,9 +301,10 @@ export async function searchProductsByCategory(
   pageNo: number,
   _pageSize: number,
   _extraKeywords?: string,
+  ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
-  console.log('[aliexpressClient] searchProductsByCategory:', { category, gender, pageNo, batchSize: BATCH_SIZE })
-  return aggregateBatch(category, gender, pageNo)
+  console.log('[aliexpressClient] searchProductsByCategory:', { category, gender, pageNo, batchSize: BATCH_SIZE, ageGroup })
+  return aggregateBatch(category, gender, pageNo, ageGroup)
 }
 
 // ── Smartwatch / Wearable detection ──────────────────────────────────────────

@@ -162,6 +162,8 @@ export async function identifyDevice(file: File): Promise<DeviceIdentificationRe
   }
 }
 
+export type AgeGroup = 'baby' | 'toddler' | 'child' | 'teen' | 'adult'
+
 export interface ScannedSizes {
   sizing: SizingProfile
   style: StyleProfile
@@ -171,6 +173,7 @@ export interface ScannedSizes {
   bottom: string
   fit: string
   gender: 'male' | 'female' | 'unisex'
+  ageGroup: AgeGroup
   personBounds: PersonBounds
   shoeSize: string | null
 }
@@ -184,6 +187,7 @@ export interface PersonBounds {
 
 export interface AIBodyAnalysis {
   face_detected?: boolean
+  age_group?: AgeGroup
   gender?: 'male' | 'female' | 'unisex'
   device_profile: {
     detected_brand: string
@@ -345,6 +349,7 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
   const bodyFrame = sp.body_frame_estimate ?? 'Medium'
   const confidence = Math.round((sp.confidence_score ?? 0.85) * 100)
   const gender = analysis.gender ?? 'unisex'
+  const ageGroup: AgeGroup = analysis.age_group ?? 'adult'
 
   const sizing: SizingProfile = {
     top,
@@ -377,6 +382,7 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
     bottom,
     fit,
     gender,
+    ageGroup,
     personBounds,
     shoeSize,
   }
@@ -520,6 +526,7 @@ export function deriveScannedSizes(file: File): ScannedSizes {
     bottom: sizing.bottom,
     fit: sizing.fit,
     gender,
+    ageGroup: 'adult',
     personBounds: { top: 2, left: 10, width: 80, height: 96 },
     shoeSize,
   }
