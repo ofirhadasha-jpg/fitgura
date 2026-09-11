@@ -124,11 +124,10 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) {
-      try {
-        const base64 = await fileToCompressedBase64(file)
-        sessionStorage.setItem(PENDING_SCAN_KEY, base64)
-      } catch { /* ignore compression errors */ }
       await startScan(file)
+      fileToCompressedBase64(file)
+        .then((base64) => sessionStorage.setItem(PENDING_SCAN_KEY, base64))
+        .catch(() => {})
     }
     e.target.value = ''
   }
@@ -177,7 +176,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
 
       {/* Hidden file inputs — use opacity:0 + absolute positioning instead of display:none so .click() works on mobile browsers */}
       <input ref={galleryRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleFile} />
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleFile} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleFile} />
 
       <View style={{ flex: 1, padding: 24, gap: 20 }}>
         {step === 'upload' && (
