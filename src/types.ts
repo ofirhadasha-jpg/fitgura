@@ -333,23 +333,29 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
   const top = sp.recommended_top_size ?? 'M'
   const bottom = sp.recommended_bottom_size ?? '38'
 
-  // Validate shoe size — AI sometimes confuses pants EU sizes (36-54) with shoe EU sizes (35-48).
-  // If the returned value is outside the valid shoe range, it's almost certainly a pants size leak.
+  const gender = analysis.gender ?? 'unisex'
+  const ageGroup: AgeGroup = analysis.age_group ?? 'adult'
+
+  // Validate shoe size — valid range depends on age group.
+  // Baby: 16-22, Toddler: 23-26, Child: 27-35, Teen/Adult: 36-48.
+  // AI sometimes confuses pants EU sizes (36-54) with shoe EU sizes.
+  const shoeRangeByAge: Record<AgeGroup, [number, number]> = {
+    baby: [16, 22],
+    toddler: [23, 26],
+    child: [27, 35],
+    teen: [36, 48],
+    adult: [36, 48],
+  }
+  const [minShoe, maxShoe] = shoeRangeByAge[ageGroup]
   let shoeSize: string | null = null
   if (sp.recommended_shoe_size_eu != null) {
     const eu = typeof sp.recommended_shoe_size_eu === 'number'
       ? sp.recommended_shoe_size_eu
       : parseInt(String(sp.recommended_shoe_size_eu), 10)
-    if (!isNaN(eu) && eu >= 35 && eu <= 48) {
+    if (!isNaN(eu) && eu >= minShoe && eu <= maxShoe) {
       shoeSize = String(eu)
     }
   }
-  const fitMap: Record<string, string> = { 'Slim': 'Slim Fit', 'Regular': 'Regular', 'Loose': 'Relaxed', 'Oversized': 'Relaxed' }
-  const fit = fitMap[sp.fit_preference] ?? 'Regular'
-  const bodyFrame = sp.body_frame_estimate ?? 'Medium'
-  const confidence = Math.round((sp.confidence_score ?? 0.85) * 100)
-  const gender = analysis.gender ?? 'unisex'
-  const ageGroup: AgeGroup = analysis.age_group ?? 'adult'
 
   const sizing: SizingProfile = {
     top,
