@@ -403,17 +403,18 @@ export function FeedScreen({
 
   const isFemaleRender = scannedSizes?.gender === 'female'
   const isMaleRender = scannedSizes?.gender === 'male'
+  const isBabyOrChild = scannedSizes?.ageGroup === 'baby' || scannedSizes?.ageGroup === 'toddler' || scannedSizes?.ageGroup === 'child'
 
   const filtered = catalog.filter((p) => {
     const name = p.name ?? ''
     const brand = p.brand ?? ''
     const matchSearch = !search || name.toLowerCase().includes(search.toLowerCase()) || brand.toLowerCase().includes(search.toLowerCase())
     const matchBudget = filterByPrice(p, budget[0], budget[1])
-    // 1. Gender Validation — render-time double-check
-    if (isFemaleRender && MENS_RENDER_REGEX.test(name)) return false
-    if (isMaleRender && WOMENS_RENDER_REGEX.test(name)) return false
-    // 1b. Products mentioning both genders are unisex-only
-    if ((isFemaleRender || isMaleRender) && BOTH_GENDERS_RENDER_REGEX.test(name)) return false
+    // 1. Gender Validation — render-time double-check (skip for baby/child, gender is unreliable)
+    if (!isBabyOrChild && isFemaleRender && MENS_RENDER_REGEX.test(name)) return false
+    if (!isBabyOrChild && isMaleRender && WOMENS_RENDER_REGEX.test(name)) return false
+    // 1b. Products mentioning both genders are unisex-only (skip for baby/child)
+    if (!isBabyOrChild && (isFemaleRender || isMaleRender) && BOTH_GENDERS_RENDER_REGEX.test(name)) return false
     // 2. Category Validation — render-time double-check
     if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(name)) return false
     if (filter === 'shoes') {

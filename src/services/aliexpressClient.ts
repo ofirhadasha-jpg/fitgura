@@ -74,11 +74,16 @@ const BABY_QUERIES = {
     'baby onesie bodysuit popular', 'baby romper jumpsuit best seller',
     'baby sleepwear pajamas popular', 'baby outfit set top rated',
     'infant baby clothes 0-24 months best seller', 'baby t-shirt pants set popular',
+    'baby bodysuit 3-pack best seller', 'baby jumpsuit coverall popular',
+    'baby winter clothes coat best seller', 'baby summer outfit top rated',
+    'newborn baby clothes set popular', 'baby leggings pants best seller',
   ],
   shoes: [
     'baby shoes soft sole best seller', 'baby sneakers popular',
     'baby booties top rated', 'infant first walker shoes best seller',
     'baby sandals popular', 'baby crib shoes top rated',
+    'baby socks shoes non-slip best seller', 'baby leather shoes popular',
+    'baby winter boots top rated', 'baby moccasins best seller',
   ],
 }
 
@@ -88,11 +93,16 @@ const TODDLER_QUERIES = {
     'toddler t-shirt shorts popular', 'toddler dress best seller',
     'toddler pajamas sleepwear popular', 'toddler outfit set top rated',
     'toddler jacket hoodie best seller', 'toddler pants leggings popular',
+    'toddler winter coat top rated', 'toddler summer clothes best seller',
+    'toddler sweatshirt popular', 'toddler jeans top rated',
+    'toddler polo shirt best seller', 'toddler leggings set popular',
   ],
   shoes: [
     'toddler sneakers best seller', 'toddler shoes popular',
     'toddler boots top rated', 'toddler sandals best seller',
     'toddler casual shoes popular', 'first walker toddler shoes top rated',
+    'toddler running shoes best seller', 'toddler slippers popular',
+    'toddler winter boots top rated', 'toddler loafers best seller',
   ],
 }
 
@@ -102,11 +112,16 @@ const CHILD_QUERIES = {
     'children t-shirt popular', 'kids dress best seller',
     'kids jacket coat popular', 'kids pants jeans best seller',
     'kids hoodie sweatshirt popular', 'kids outfit set top rated',
+    'kids sweater best seller', 'kids shorts popular',
+    'kids school uniform top rated', 'kids activewear best seller',
+    'kids winter jacket coat popular', 'kids leggings top rated',
   ],
   shoes: [
     'kids sneakers best seller', 'kids shoes popular',
     'children boots top rated', 'kids sandals best seller',
     'kids running shoes popular', 'kids casual shoes top rated',
+    'kids dress shoes best seller', 'kids slippers popular',
+    'kids winter boots top rated', 'kids loafers best seller',
   ],
 }
 
@@ -116,11 +131,16 @@ const TEEN_QUERIES = {
     'youth t-shirt hoodie best seller', 'teen jeans pants popular',
     'teen dress skirt top rated', 'teen jacket coat best seller',
     'teen outfit set popular', 'youth activewear best seller',
+    'teen sweatshirt popular', 'teen shorts top rated',
+    'teen sweater best seller', 'teen leggings popular',
+    'youth jacket top rated', 'teen school clothes best seller',
   ],
   shoes: [
     'teen sneakers best seller', 'youth shoes popular',
     'teen boots top rated', 'teen sandals best seller',
     'teen running shoes popular', 'teen casual shoes top rated',
+    'teen dress shoes best seller', 'teen slippers popular',
+    'teen winter boots top rated', 'teen skate shoes best seller',
   ],
 }
 
@@ -135,10 +155,11 @@ function getAgeQueryPool(ageGroup: AgeGroupFilter): { clothing: readonly string[
 }
 
 // Age-group keywords for filtering out adult products from baby/children results
+// Only reject clearly adult-only terms, not "women" which may appear in baby product descriptions
 const AGE_REJECT_KEYWORDS: Record<string, RegExp> = {
-  baby: /\b(men|women|adult|plus size|maternity)\b/i,
-  toddler: /\b(men|women|adult|plus size|maternity)\b/i,
-  child: /\b(men|women|adult|plus size|maternity|sexy|lingerie)\b/i,
+  baby: /\b(plus size|maternity|adult|sexy|lingerie|men'?s|women'?s)\b/i,
+  toddler: /\b(plus size|maternity|adult|sexy|lingerie|men'?s|women'?s)\b/i,
+  child: /\b(plus size|maternity|sexy|lingerie)\b/i,
   teen: /\b(plus size|maternity|baby|infant|toddler)\b/i,
 }
 
@@ -258,15 +279,18 @@ async function aggregateBatch(
   const perQuerySize = 40
   let currentPage = batchNo
   let attempts = 0
-  const maxAttempts = 2
+  // For smaller age-group pools, run more attempts to gather enough products
+  const totalQueries = subBatches.reduce((sum, sb) => sum + sb.queries.length, 0)
+  const maxAttempts = totalQueries <= 16 ? 4 : 2
 
   while (collected.length < BATCH_SIZE && attempts < maxAttempts) {
     attempts++
-    // Gather 4 queries round-robin from each sub-batch
+    // Gather queries round-robin from each sub-batch — use all available queries for small pools
+    const queriesPerRound = Math.min(6, Math.max(4, Math.ceil(totalQueries / 2)))
     const roundQueries: { q: string; categoryIds: string }[] = []
     for (const sb of subBatches) {
-      const startIdx = (batchNo - 1) * 4 + (attempts - 1) * 4
-      for (let i = 0; i < Math.min(4, sb.queries.length); i++) {
+      const startIdx = (batchNo - 1) * queriesPerRound + (attempts - 1) * queriesPerRound
+      for (let i = 0; i < Math.min(queriesPerRound, sb.queries.length); i++) {
         roundQueries.push({ q: sb.queries[(startIdx + i) % sb.queries.length], categoryIds: sb.categoryIds })
       }
     }
