@@ -528,10 +528,12 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             </View>
           </View>
         </View>
-        {/* Hidden admin trigger — long press the version label 5 times */}
+        {/* Hidden admin trigger — only accessible to the admin account */}
+        {user?.email === 'ofirhadasha@gmail.com' && (
         <TouchableOpacity onPress={() => onNav('admin')} activeOpacity={1} delayLongPress={2000} onLongPress={() => onNav('admin')} style={profStyles.hiddenAdminTrigger}>
           <Text style={profStyles.versionLabel}>Fitgura v1.0</Text>
         </TouchableOpacity>
+        )}
       </LinearGradient>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 14 }}>

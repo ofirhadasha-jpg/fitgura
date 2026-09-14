@@ -33,6 +33,7 @@ import { supabase } from '../lib/supabase'
 type Tab = 'overview' | 'users' | 'clicks' | 'products' | 'events' | 'broadcast'
 
 export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
+  const [verified, setVerified] = useState(false)
   const [tab, setTab] = useState<Tab>('overview')
   const [summary, setSummary] = useState<EnhancedSummaryStats | null>(null)
   const [daily, setDaily] = useState<DailyAnalytics[]>([])
@@ -74,11 +75,15 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
     }
   }, [])
 
-  useEffect(() => { void fetchData() }, [fetchData])
+  useEffect(() => { if (verified) void fetchData() }, [fetchData, verified])
 
   const maxDailyClicks = Math.max(...daily.map((d) => d.click_count), 1)
 
-  if (loading) {
+  if (!verified) {
+    return <PasswordGate onNav={onNav} onVerified={() => setVerified(true)} />
+  }
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingWrap}>
@@ -290,6 +295,64 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
       </ScrollView>
       <BottomNav current="profile" onNav={onNav} />
       {selectedUser && <UserDrawer userId={selectedUser} onClose={() => setSelectedUser(null)} />}
+    </View>
+  )
+}
+
+function PasswordGate({ onNav, onVerified }: { onNav: (s: Screen) => void; onVerified: () => void }) {
+  const [password, setPassword] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleCheck() {
+    if (!password.trim()) return
+    setChecking(true)
+    setError(null)
+    try {
+      const { data, error: rpcError } = await supabase.rpc('verify_admin_password', {
+        p_password: password.trim(),
+      })
+      if (rpcError) {
+        setError('שגיאה באימות')
+      } else if (data === true) {
+        onVerified()
+      } else {
+        setError('סיסמה שגויה')
+      }
+    } catch {
+      setError('שגיאה באימות')
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.gateWrap}>
+        <TouchableOpacity onPress={() => onNav('profile')} style={styles.iconBtn} activeOpacity={0.7}>
+          <Text style={styles.backArrow}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.gateCard}>
+          <Text style={styles.gateLockIcon}>🔐</Text>
+          <Text style={styles.gateTitle}>כניסה למערכת הניהול</Text>
+          <Text style={styles.gateSub}>נא להזין סיסמת מנהל</Text>
+          <TextInput
+            style={styles.gateInput}
+            placeholder="סיסמה"
+            placeholderTextColor="#94A3B8"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            onSubmitEditing={handleCheck}
+            autoFocus
+          />
+          {error && <Text style={styles.gateError}>{error}</Text>}
+          <TouchableOpacity onPress={handleCheck} disabled={checking || !password.trim()} activeOpacity={0.7} style={[styles.gateBtn, (checking || !password.trim()) && styles.gateBtnDisabled]}>
+            <Text style={styles.gateBtnText}>{checking ? 'בודק...' : 'כניסה'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <BottomNav current="profile" onNav={onNav} />
     </View>
   )
 }
@@ -711,4 +774,14 @@ const styles = StyleSheet.create({
   toggleBtn: { backgroundColor: '#F1F5F9', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 20 },
   toggleBtnActive: { backgroundColor: '#FEF3C7' },
   toggleBtnText: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingTop: 52 },
+  gateCard: { backgroundColor: '#fff', borderRadius: 24, padding: 32, alignItems: 'center', width: '100%', maxWidth: 360, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, elevation: 4 },
+  gateLockIcon: { fontSize: 48, marginBottom: 16 },
+  gateTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gateSub: { fontSize: 14, color: '#64748B', marginBottom: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gateInput: { width: '100%', backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif", color: '#1E293B' },
+  gateError: { fontSize: 13, color: '#EF4444', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gateBtn: { width: '100%', backgroundColor: '#0EA5E9', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  gateBtnDisabled: { opacity: 0.5 },
+  gateBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })
