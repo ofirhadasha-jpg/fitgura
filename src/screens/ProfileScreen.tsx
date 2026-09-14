@@ -106,8 +106,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
         const { error: dbError } = await supabase
           .from('profiles')
-          .update({ avatar_url: publicUrl })
-          .eq('user_id', user.id)
+          .upsert({ user_id: user.id, avatar_url: publicUrl }, { onConflict: 'user_id' })
         if (dbError) throw dbError
         setProfilePhotoUrl(publicUrl)
       } else {
@@ -132,8 +131,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         await supabase.storage.from('profile-photos').remove([filePath])
         const { error: dbError } = await supabase
           .from('profiles')
-          .update({ avatar_url: null })
-          .eq('user_id', user.id)
+          .upsert({ user_id: user.id, avatar_url: null }, { onConflict: 'user_id' })
         if (dbError) throw dbError
       }
       setProfilePhotoUrl(null)

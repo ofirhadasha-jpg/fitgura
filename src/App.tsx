@@ -168,7 +168,7 @@ async function migrateGuestData(userId: string) {
         preferred_region: guestProfile.preferredRegion ?? 'EU',
         registered_device: deviceName,
         registered_devices: deviceName ? [deviceName] : [],
-      })
+      }, { onConflict: 'user_id' })
       if (error) throw error
     } else if (guestDevice) {
       const deviceName = `${guestDevice.brand} ${guestDevice.model}`
@@ -176,7 +176,7 @@ async function migrateGuestData(userId: string) {
         user_id: userId,
         registered_device: deviceName,
         registered_devices: [deviceName],
-      })
+      }, { onConflict: 'user_id' })
       if (error) throw error
     }
   } catch (err) {
@@ -377,11 +377,11 @@ export default function App() {
     try {
       if (!isSupabaseConfigured) throw new Error('Supabase not configured')
       if (isAdding) {
-        const { error } = await supabase.from('favorites').insert({
+        const { error } = await supabase.from('favorites').upsert({
           user_id: user.id,
           product_id: String(idx),
           product_name: productName,
-        })
+        }, { onConflict: 'user_id,product_id' })
         if (error) throw error
       } else {
         const { error } = await supabase.from('favorites')
@@ -426,7 +426,11 @@ export default function App() {
     // Logged-in user: persist to Supabase profiles table
     if (scannedSizes) {
       const bm = scannedSizes.sizing.bodyMetrics
-      Promise.resolve(supabase.from('profiles').upsert({
+      if (!user.id) {
+        console.error('[App] Cannot persist profile: user.id is missing')
+        return
+      }
+      supabase.from('profiles').upsert({
         user_id: user.id,
         email: user.email,
         gender: scannedSizes.gender ?? 'unisex',
@@ -452,8 +456,8 @@ export default function App() {
           height_cm: bm?.estimated_height_cm ?? null,
           weight_kg: bm?.estimated_weight_kg ?? null,
         },
-      })).then(({ error }: { error: unknown }) => {
-        if (error) console.error('[App] Failed to persist profile to Supabase:', error)
+      }, { onConflict: 'user_id' }).then(({ error }: { error: { code: string; message: string } | null }) => {
+        if (error) console.error('[App] Failed to persist profile to Supabase:', error.code, error.message)
       }).catch((err: unknown) => {
         console.error('[App] Supabase profile persist failed, keeping local only:', err)
       })
@@ -477,11 +481,12 @@ export default function App() {
     setLatestAddedDevice(trimmed)
     if (user && isSupabaseConfigured) {
       try {
-        const { data: row } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
+        const { data: row, error: selectError } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
+        if (selectError) console.error('[App] Failed to load registered_devices:', selectError.code, selectError.message)
         const current: string[] = Array.isArray(row?.registered_devices) ? row.registered_devices : []
         const next = current.includes(trimmed) ? current : [trimmed, ...current]
-        const { error } = await supabase.from('profiles').update({ registered_devices: next }).eq('user_id', user.id)
-        if (error) console.error('[App] Failed to persist device to Supabase:', error.message)
+        const { error } = await supabase.from('profiles').upsert({ user_id: user.id, registered_devices: next }, { onConflict: 'user_id' })
+        if (error) console.error('[App] Failed to persist device to Supabase:', error.code, error.message)
       } catch (err) {
         console.error('[App] Device add failed:', err)
       }
@@ -498,11 +503,12 @@ export default function App() {
     setLatestAddedDevice((prev) => prev === deviceName ? null : prev)
     if (user && isSupabaseConfigured) {
       try {
-        const { data: row } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
+        const { data: row, error: selectError } = await supabase.from('profiles').select('registered_devices').eq('user_id', user.id).maybeSingle()
+        if (selectError) console.error('[App] Failed to load registered_devices:', selectError.code, selectError.message)
         const current: string[] = Array.isArray(row?.registered_devices) ? row.registered_devices : []
         const next = current.filter((d) => d !== deviceName)
-        const { error } = await supabase.from('profiles').update({ registered_devices: next }).eq('user_id', user.id)
-        if (error) console.error('[App] Failed to remove device from Supabase:', error.message)
+        const { error } = await supabase.from('profiles').upsert({ user_id: user.id, registered_devices: next }, { onConflict: 'user_id' })
+        if (error) console.error('[App] Failed to remove device from Supabase:', error.code, error.message)
       } catch (err) {
         console.error('[App] Device remove failed:', err)
       }
