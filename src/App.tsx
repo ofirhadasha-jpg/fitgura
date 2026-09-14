@@ -276,14 +276,16 @@ export default function App() {
   useEffect(() => {
     // Check for existing session on mount — critical for Google OAuth redirects
     // where the SIGNED_IN event fires before the listener is attached
-    void supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) return
       const u = session.user
+      const { data: profileRow } = await supabase.from('profiles').select('is_admin').eq('user_id', u.id).maybeSingle()
       setUser({
         id: u.id,
         name: u.user_metadata?.full_name ?? u.email?.split('@')[0] ?? 'משתמש',
         email: u.email ?? '',
         avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
+        is_admin: profileRow?.is_admin === true,
       })
       setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
     })
@@ -296,11 +298,20 @@ export default function App() {
         }
 
         const u = session.user
+
+        // Fetch is_admin from profiles so the admin button appears immediately
+        let isAdmin = false
+        try {
+          const { data: profileRow } = await supabase.from('profiles').select('is_admin').eq('user_id', u.id).maybeSingle()
+          isAdmin = profileRow?.is_admin === true
+        } catch { /* keep default false */ }
+
         setUser({
           id: u.id,
           name: u.user_metadata?.full_name ?? u.email?.split('@')[0] ?? 'משתמש',
           email: u.email ?? '',
           avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
+          is_admin: isAdmin,
         })
 
         // Navigate to feed on SIGNED_IN or INITIAL_SESSION (covers Google OAuth redirect)
@@ -597,10 +608,10 @@ export default function App() {
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={handleDeviceDetected} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
 
-        {screen === 'events' && <EventsScreen onNav={changeScreen} />}
+        {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} />}
         {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} />}
         {screen === 'wishlist' && (
-          <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} catalog={feedCatalog} />
+          <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} catalog={feedCatalog} isAdmin={user?.is_admin === true} />
         )}
 
         {screen === 'admin' && <AdminDashboard onNav={changeScreen} />}

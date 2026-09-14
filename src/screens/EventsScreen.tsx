@@ -7,7 +7,7 @@ import {
   daysUntil, formatDate, nextEventId,
 } from '../types'
 
-export function EventsScreen({ onNav }: { onNav: (s: Screen) => void }) {
+export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; isAdmin?: boolean }) {
   const yr = new Date().getFullYear()
   const mo = (n: number) => String(new Date().getMonth() + n).padStart(2, '0')
 
@@ -283,7 +283,7 @@ export function EventsScreen({ onNav }: { onNav: (s: Screen) => void }) {
         </View>
       )}
 
-      <BottomNav current="events" onNav={onNav} />
+      <BottomNav current="events" onNav={onNav} isAdmin={isAdmin} />
     </View>
   )
 }

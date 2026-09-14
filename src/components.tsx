@@ -28,11 +28,12 @@ export function LinearGradient({ colors, start, end, style, children }: {
 
 /* ─── BOTTOM NAV ─────────────────────────────────────────────────────────── */
 
-export function BottomNav({ current, onNav }: { current: Screen; onNav: (s: Screen) => void }) {
+export function BottomNav({ current, onNav, isAdmin }: { current: Screen; onNav: (s: Screen) => void; isAdmin?: boolean }) {
   const items: { screen: Screen; icon: string; label: string }[] = [
     { screen: 'feed', icon: '🏠', label: 'פיד' },
     { screen: 'events', icon: '🗓️', label: 'אירועים' },
     { screen: 'wishlist', icon: '❤️', label: 'שמורים' },
+    ...(isAdmin ? [{ screen: 'admin' as Screen, icon: '⚙️', label: 'ניהול' }] : []),
     { screen: 'profile', icon: '🤖', label: 'פרופיל' },
   ]
 

@@ -528,8 +528,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             </View>
           </View>
         </View>
-        {/* Hidden admin trigger — only accessible to the admin account */}
-        {user?.email === 'ofirhadasha@gmail.com' && (
+        {/* Hidden admin trigger — only visible to admin users */}
+        {user?.is_admin && (
         <TouchableOpacity onPress={() => onNav('admin')} activeOpacity={1} delayLongPress={2000} onLongPress={() => onNav('admin')} style={profStyles.hiddenAdminTrigger}>
           <Text style={profStyles.versionLabel}>Fitgura v1.0</Text>
         </TouchableOpacity>
@@ -1187,7 +1187,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         </View>
       )}
 
-      <BottomNav current="profile" onNav={onNav} />
+      <BottomNav current="profile" onNav={onNav} isAdmin={user?.is_admin === true} />
     </View>
   )
 }

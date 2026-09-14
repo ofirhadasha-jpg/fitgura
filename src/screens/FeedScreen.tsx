@@ -617,7 +617,7 @@ export function FeedScreen({
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      <BottomNav current="feed" onNav={onNav} />
+      <BottomNav current="feed" onNav={onNav} isAdmin={user?.is_admin === true} />
 
       <AddDeviceModal
         visible={showDeviceModal}
