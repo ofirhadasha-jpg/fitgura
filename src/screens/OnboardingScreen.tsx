@@ -10,7 +10,6 @@ import {
   PRIMARY_STYLES, SEC_STYLES,
   analyzeBodyImage,
   aiAnalysisToScannedSizes,
-  deriveScannedSizes,
   computeBodyMetricsFromSizes,
   computeBodyMetricsFromHeightWeight,
   fileToCompressedBase64,
@@ -106,14 +105,12 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       }
       onGalleryAdd([baselineEntry])
     } catch (err) {
-      const fallbackSizes = deriveScannedSizes(file)
       if (previewUrlRef.current?.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
-      previewUrlRef.current = fallbackSizes.preview
-      setSizes(fallbackSizes)
-      onScanned(fallbackSizes)
+      previewUrlRef.current = null
+      setSizes(null)
       setScanError(err instanceof Error && err.message === 'AI_TIMEOUT'
-        ? 'ניתוח AI לא הספיק, מציג הערכה מהירה'
-        : err instanceof Error ? err.message : 'AI analysis unavailable, using fallback')
+        ? 'ניתוח AI לא הספיק. נסה שוב.'
+        : err instanceof Error ? err.message : 'ניתוח AI נכשל. נסה שוב.')
     } finally {
       clearInterval(progressInterval)
       sessionStorage.removeItem(PENDING_SCAN_KEY)
