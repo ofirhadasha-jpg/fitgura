@@ -92,8 +92,8 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   return (
     <View style={modalStyles.overlay}>
-      <TouchableOpacity onPress={onDismiss} activeOpacity={1} style={modalStyles.backdrop} />
-      <View style={modalStyles.sheet}>
+      <TouchableOpacity onPress={onDismiss} activeOpacity={1} style={[modalStyles.backdrop, 'fitgura-backdrop-in']} />
+      <View style={[modalStyles.sheet, 'fitgura-fade-up']}>
         <TouchableOpacity onPress={onDismiss} activeOpacity={0.7} style={modalStyles.closeBtn}>
           <Text style={modalStyles.closeText}>×</Text>
         </TouchableOpacity>
@@ -200,7 +200,7 @@ const modalStyles = StyleSheet.create({
   sizePillRegion: { fontSize: 10, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
   sizePillValue: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
   sizePillValuePrimary: { color: '#fff' },
-  confirmBtn: { backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, alignSelf: 'center' },
+  confirmBtn: { backgroundColor: '#FF4747', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, alignSelf: 'center', shadowColor: '#FF4747', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5, transitionProperty: 'transform', transitionDuration: '0.15s' } as React.CSSProperties,
   confirmBtnLoading: { backgroundColor: '#E03A3A', opacity: 0.85 },
   btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   confirmBtnIcon: { fontSize: 15 },

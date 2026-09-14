@@ -24,8 +24,37 @@ html, body, #root {
 
 body {
   font-family: 'Outfit', 'Noto Sans Hebrew', sans-serif;
-  background: #F8FAFC;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(46,91,255,0.12), transparent 28rem),
+    radial-gradient(circle at 88% 92%, rgba(46,213,115,0.08), transparent 24rem),
+    #071226;
   direction: rtl;
+  color: #1E293B;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(46,91,255,0.35);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(46,91,255,0.2);
 }
 
 ::-webkit-scrollbar {
@@ -91,7 +120,43 @@ body {
 }
 
 .fitgura-carousel-enter {
-  animation: fitgura-carousel-enter 0.5s ease-out both;
+  animation: fitgura-carousel-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fitgura-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fitgura-fade-up {
+  animation: fitgura-fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fitgura-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.fitgura-pulse-soft {
+  animation: fitgura-pulse-soft 2s ease-in-out infinite;
+}
+
+@keyframes fitgura-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.fitgura-sheet-in {
+  animation: fitgura-sheet-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fitgura-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fitgura-backdrop-in {
+  animation: fitgura-backdrop-in 0.25s ease-out both;
 }
 
 @media (max-width: 480px) {

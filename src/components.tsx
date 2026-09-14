@@ -39,25 +39,29 @@ export function BottomNav({ current, onNav, isAdmin }: { current: Screen; onNav:
 
   return (
     <View style={styles.bottomNav}>
-      {items.map(({ screen, icon, label }) => (
-        <TouchableOpacity
-          key={screen}
-          onPress={() => onNav(screen)}
-          style={styles.navItem}
-          activeOpacity={0.7}
-        >
-          <View style={[
-            styles.navIconWrap,
-            current === screen && styles.navIconActive,
-          ]}>
-            <Text style={{ fontSize: 20 }}>{icon}</Text>
-          </View>
-          <Text style={[
-            styles.navLabel,
-            current === screen && styles.navLabelActive,
-          ]}>{label}</Text>
-        </TouchableOpacity>
-      ))}
+      {items.map(({ screen, icon, label }) => {
+        const active = current === screen
+        return (
+          <TouchableOpacity
+            key={screen}
+            onPress={() => onNav(screen)}
+            style={styles.navItem}
+            activeOpacity={0.6}
+          >
+            <View style={[
+              styles.navIconWrap,
+              active && styles.navIconActive,
+            ]}>
+              <Text style={{ fontSize: 20, opacity: active ? 1 : 0.6 }}>{icon}</Text>
+              {active && <View style={styles.navActiveDot} />}
+            </View>
+            <Text style={[
+              styles.navLabel,
+              active && styles.navLabelActive,
+            ]}>{label}</Text>
+          </TouchableOpacity>
+        )
+      })}
     </View>
   )
 }
@@ -65,9 +69,9 @@ export function BottomNav({ current, onNav, isAdmin }: { current: Screen; onNav:
 const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row-reverse',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.97)',
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: 'rgba(241,245,249,0.8)',
     paddingTop: 10,
     paddingBottom: 28,
     position: 'fixed',
@@ -76,6 +80,10 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 50,
     elevation: 50,
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
   } as React.CSSProperties,
   navItem: {
     flex: 1,
@@ -83,14 +91,25 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   navIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
+    position: 'relative',
+    transitionProperty: 'background-color, transform',
+    transitionDuration: '0.2s',
+  } as React.CSSProperties,
   navIconActive: {
     backgroundColor: '#EEF2FF',
+  },
+  navActiveDot: {
+    position: 'absolute',
+    bottom: -2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#2E5BFF',
   },
   navLabel: {
     fontSize: 10,
@@ -98,7 +117,9 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 4,
     fontFamily: "'Noto Sans Hebrew', sans-serif",
-  },
+    transitionProperty: 'color, font-weight',
+    transitionDuration: '0.2s',
+  } as React.CSSProperties,
   navLabelActive: {
     fontWeight: '700',
     color: '#2E5BFF',
@@ -163,9 +184,9 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
       <TouchableOpacity
         onPress={onDismiss}
         activeOpacity={1}
-        style={authStyles.backdrop}
+        style={[authStyles.backdrop, 'fitgura-backdrop-in']}
       />
-      <View style={authStyles.sheet}>
+      <View style={[authStyles.sheet, 'fitgura-sheet-in']}>
         <LinearGradient colors={['#2E5BFF', '#1A3399']} style={authStyles.header}>
           <View style={authStyles.headerOrb1} />
           <View style={authStyles.headerOrb2} />

@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet, ScrollView, Image } from 'react-native'
-import { BottomNav } from '../components'
+import { LinearGradient, BottomNav } from '../components'
 import { type Screen, type Product } from '../types'
 
 export function WishlistScreen({ onNav, wishlistItems, budget, catalog, isAdmin }: { onNav: (s: Screen) => void; wishlistItems: number[]; budget: [number, number]; catalog: Product[]; isAdmin?: boolean }) {
@@ -9,13 +9,17 @@ export function WishlistScreen({ onNav, wishlistItems, budget, catalog, isAdmin 
   const outBudget = saved.filter((p) => p.price < budget[0] || p.price > budget[1])
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={wlStyles.header}>
-        <Text style={wlStyles.headerTitle}>רשימת המשאלות שלי</Text>
-        <Text style={wlStyles.headerSub}>
-          {saved.length} פריטים שמורים • {inBudget.length} בטווח התקציב
-        </Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <LinearGradient colors={['#0B1437', '#1A2F7A']} style={wlStyles.header}>
+        <View style={wlStyles.headerOrb1} />
+        <View style={wlStyles.headerOrb2} />
+        <View style={{ position: 'relative', zIndex: 1 }}>
+          <Text style={wlStyles.headerTitle}>רשימת המשאלות שלי</Text>
+          <Text style={wlStyles.headerSub}>
+            {saved.length} פריטים שמורים • {inBudget.length} בטווח התקציב
+          </Text>
+        </View>
+      </LinearGradient>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 10 }}>
         {saved.length === 0 && (
@@ -79,16 +83,18 @@ function WishlistRow({ product, inBudget }: { product: Product; inBudget: boolea
 }
 
 const wlStyles = StyleSheet.create({
-  header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  headerSub: { fontSize: 13, color: '#94A3B8', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20, position: 'relative', overflow: 'hidden' },
+  headerOrb1: { position: 'absolute', top: -40, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(46,91,255,0.12)' },
+  headerOrb2: { position: 'absolute', bottom: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,107,107,0.1)' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   emptyState: { alignItems: 'center', paddingTop: 80 },
   emptyText: { color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sectionLine: { flex: 1, height: 1, backgroundColor: '#F1F5F9' },
   sectionBudget: { fontSize: 12, color: '#16A34A', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12, shadowColor: '#1E293B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, transitionProperty: 'transform', transitionDuration: '0.2s' } as React.CSSProperties,
   rowImage: { width: 58, height: 58, borderRadius: 12 },
   rowName: { fontWeight: '600', fontSize: 14, color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   rowBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },

@@ -183,8 +183,8 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
 
       {showAdd && (
         <View style={evStyles.sheetOverlay}>
-          <TouchableOpacity onPress={() => setShowAdd(false)} activeOpacity={1} style={evStyles.sheetBackdrop} />
-          <View style={evStyles.sheet}>
+          <TouchableOpacity onPress={() => setShowAdd(false)} activeOpacity={1} style={[evStyles.sheetBackdrop, 'fitgura-backdrop-in']} />
+          <View style={[evStyles.sheet, 'fitgura-sheet-in']}>
             <LinearGradient colors={['#2E5BFF', '#1a38c8']} style={evStyles.sheetHeader}>
               <View style={evStyles.sheetHeaderRow}>
                 <Text style={evStyles.sheetTitle}>הוסף אירוע חדש</Text>

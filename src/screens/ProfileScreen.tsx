@@ -509,6 +509,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#0B1437', '#1A2F7A']} style={profStyles.header}>
         <View style={profStyles.headerOrb} />
+        <View style={profStyles.headerOrb2} />
         <View style={profStyles.headerContent}>
           <View style={profStyles.avatarBox}>
             <Text style={profStyles.avatarText}>{user ? user.name[0] : '👤'}</Text>
@@ -1194,7 +1195,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
 const profStyles = StyleSheet.create({
   header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 24, position: 'relative', overflow: 'hidden' },
-  headerOrb: { position: 'absolute', top: -40, left: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(46,91,255,0.1)' },
+  headerOrb: { position: 'absolute', top: -40, left: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(46,91,255,0.12)' },
+  headerOrb2: { position: 'absolute', bottom: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,107,107,0.1)' },
   headerContent: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatarBox: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FF6B6B', alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.25)' },
   avatarText: { fontSize: 24, fontWeight: '700', color: '#fff' },
