@@ -1,6 +1,6 @@
 // Database (tables, RLS, auth) lives on this project
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+export const SUPABASE_URL = 'https://uriauhpbzbiowmdwgokw.supabase.co'
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cmlhdWhwYnpiaW93bWR3Z29rdyIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg5MDM2MjQwLCJleHAiOjIxMDQ2MTIyNDB9.88N-2lhaI7H4EUoQmw9UZgCQHGfjsfBPDq3bhynZ2Q'
 
 // Edge functions are deployed on Bolt's internal project
 export const EDGE_FUNCTION_URL = 'https://alvpdkxuvnavoodsltyc.supabase.co'
