@@ -357,6 +357,11 @@ export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: stri
     }
   }
 
+  const fitMap: Record<string, string> = { 'Slim': 'Slim Fit', 'Regular': 'Regular', 'Loose': 'Relaxed', 'Oversized': 'Relaxed' }
+  const fit = fitMap[sp.fit_preference] ?? 'Regular'
+  const bodyFrame = sp.body_frame_estimate ?? 'Medium'
+  const confidence = Math.round((sp.confidence_score ?? 0.85) * 100)
+
   const sizing: SizingProfile = {
     top,
     bottom,
