@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Modal, TextInput } from 'react-native'
 import type { Screen } from '../types'
 import { BottomNav } from '../components'
 import {
@@ -8,14 +8,29 @@ import {
   getTopProducts,
   getAdminUserList,
   getAdminRecentClicks,
+  getAdminUserDetails,
+  getAdminUserSessions,
+  getAdminUserSearches,
+  getAdminUserEvents,
+  getAdminAllEvents,
+  getAdminRecentActivity,
+  adminUpdateUserStatus,
   type EnhancedSummaryStats,
   type DailyAnalytics,
   type TopProduct,
   type AdminUserRow,
   type AdminClickRow,
+  type AdminUserDetails,
+  type AdminUserSession,
+  type AdminUserSearch,
+  type AdminUserEvent,
+  type AdminAllEvent,
+  type AdminActivityRow,
 } from '../services/analyticsService'
+import { sendBroadcast, sendToUser } from '../services/notificationService'
+import { supabase } from '../lib/supabase'
 
-type Tab = 'overview' | 'users' | 'clicks' | 'products'
+type Tab = 'overview' | 'users' | 'clicks' | 'products' | 'events' | 'broadcast'
 
 export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
   const [tab, setTab] = useState<Tab>('overview')
@@ -24,26 +39,33 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
   const [products, setProducts] = useState<TopProduct[]>([])
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [clicks, setClicks] = useState<AdminClickRow[]>([])
+  const [allEvents, setAllEvents] = useState<AdminAllEvent[]>([])
+  const [activity, setActivity] = useState<AdminActivityRow[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedUser, setSelectedUser] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setRefreshing(true)
     setError(null)
     try {
-      const [s, d, p, u, c] = await Promise.all([
+      const [s, d, p, u, c, e, a] = await Promise.all([
         getEnhancedSummary(),
         getDailyAnalytics(),
         getTopProducts(),
         getAdminUserList(),
         getAdminRecentClicks(50),
+        getAdminAllEvents(),
+        getAdminRecentActivity(30),
       ])
       setSummary(s)
       setDaily(d)
       setProducts(p)
       setUsers(u)
       setClicks(c)
+      setAllEvents(e)
+      setActivity(a)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה בטעינת נתונים')
     } finally {
@@ -91,12 +113,16 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
           </View>
         ) : (
           <>
-            <View style={styles.tabBar}>
-              <TabBtn label="סקירה" active={tab === 'overview'} onPress={() => setTab('overview')} />
-              <TabBtn label="משתמשים" active={tab === 'users'} onPress={() => setTab('users')} />
-              <TabBtn label="קליקים" active={tab === 'clicks'} onPress={() => setTab('clicks')} />
-              <TabBtn label="מוצרים" active={tab === 'products'} onPress={() => setTab('products')} />
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll}>
+              <View style={styles.tabBar}>
+                <TabBtn label="סקירה" active={tab === 'overview'} onPress={() => setTab('overview')} />
+                <TabBtn label="משתמשים" active={tab === 'users'} onPress={() => setTab('users')} />
+                <TabBtn label="קליקים" active={tab === 'clicks'} onPress={() => setTab('clicks')} />
+                <TabBtn label="מוצרים" active={tab === 'products'} onPress={() => setTab('products')} />
+                <TabBtn label="אירועים" active={tab === 'events'} onPress={() => setTab('events')} />
+                <TabBtn label="שידור" active={tab === 'broadcast'} onPress={() => setTab('broadcast')} />
+              </View>
+            </ScrollView>
 
             {tab === 'overview' && (
               <>
@@ -128,6 +154,23 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
                     ))
                   )}
                 </View>
+
+                <Text style={styles.sectionLabel}>פעילות אחרונה</Text>
+                <View style={styles.card}>
+                  {activity.length === 0 ? (
+                    <Text style={styles.emptyText}>אין פעילות עדיין</Text>
+                  ) : (
+                    activity.map((a, i) => (
+                      <View key={i} style={[styles.activityRow, i % 2 === 1 && styles.tableRowAlt]}>
+                        <Text style={styles.activityIcon}>{activityIcon(a.activity_type)}</Text>
+                        <View style={styles.activityContent}>
+                          <Text style={styles.activityDesc} numberOfLines={1}>{a.description}</Text>
+                          <Text style={styles.activityMeta}>{a.user_email ?? 'אורח'} · {formatDateTime(a.created_at)}</Text>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
               </>
             )}
 
@@ -142,14 +185,18 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
                       <View style={styles.tableHeader}>
                         <Text style={[styles.tableCell, styles.tableHeaderCell, { flex: 2 }]}>אימייל</Text>
                         <Text style={[styles.tableCell, styles.tableHeaderCell, { flex: 1 }]}>מידות</Text>
+                        <Text style={[styles.tableCell, styles.tableHeaderCell, { flex: 1 }]}>סטטוס</Text>
                         <Text style={[styles.tableCell, styles.tableHeaderCell, { flex: 1 }]}>הצטרף</Text>
                       </View>
                       {users.map((u, i) => (
-                        <View key={u.user_id} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
+                        <TouchableOpacity key={u.user_id} onPress={() => setSelectedUser(u.user_id)} activeOpacity={0.7} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
                           <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>{u.email ?? '—'}</Text>
                           <Text style={[styles.tableCell, { flex: 1 }]}>{u.top_size ?? '—'} / {u.bottom_size ?? '—'}</Text>
+                          <Text style={[styles.tableCell, { flex: 1 }, u.is_active === false && styles.inactiveText]}>
+                            {u.is_active === false ? 'מושהה' : 'פעיל'}
+                          </Text>
                           <Text style={[styles.tableCell, { flex: 1 }]}>{formatShortDate(u.created_at)}</Text>
-                        </View>
+                        </TouchableOpacity>
                       ))}
                     </View>
                   )}
@@ -208,11 +255,286 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
                 </View>
               </>
             )}
+
+            {tab === 'events' && (
+              <>
+                <Text style={styles.sectionLabel}>אירועי משתמשים ({allEvents.length})</Text>
+                <View style={styles.card}>
+                  {allEvents.length === 0 ? (
+                    <Text style={styles.emptyText}>אין אירועים עדיין</Text>
+                  ) : (
+                    <View>
+                      <View style={styles.tableHeader}>
+                        <Text style={[styles.tableCell, styles.tableHeaderCell, { flex: 1 }]}>סמל</Text>
+                        <Text style={[styles.tableCell, styles.tableHeaderCell, { flex: 2 }]}>אירוע</Text>
+                        <Text style={[styles.tableCell, styles.tableHeaderCell, { flex: 2 }]}>משתמש</Text>
+                        <Text style={[styles.tableCell, styles.tableHeaderCell, { flex: 1 }]}>תאריך</Text>
+                      </View>
+                      {allEvents.map((e, i) => (
+                        <View key={e.id} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
+                          <Text style={[styles.tableCell, { flex: 1 }]}>{e.emoji}</Text>
+                          <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>{e.event_name}</Text>
+                          <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>{e.user_email ?? '—'}</Text>
+                          <Text style={[styles.tableCell, { flex: 1 }]}>{formatShortDate(e.event_date)}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+
+            {tab === 'broadcast' && <BroadcastPanel />}
           </>
         )}
       </ScrollView>
       <BottomNav current="profile" onNav={onNav} />
+      {selectedUser && <UserDrawer userId={selectedUser} onClose={() => setSelectedUser(null)} />}
     </View>
+  )
+}
+
+function BroadcastPanel() {
+  const [mode, setMode] = useState<'all' | 'user'>('all')
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [type, setType] = useState('info')
+  const [targetEmail, setTargetEmail] = useState('')
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  async function handleSend() {
+    if (!title.trim() || !body.trim()) return
+    setSending(true)
+    setResult(null)
+    try {
+      if (mode === 'all') {
+        const ok = await sendBroadcast(title.trim(), body.trim(), type)
+        setResult(ok ? 'השידור נשלח בהצלחה' : 'שליחה נכשלה')
+      } else {
+        if (!targetEmail.trim()) {
+          setResult('נא להזין אימייל נמען')
+          setSending(false)
+          return
+        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('email', targetEmail.trim())
+          .maybeSingle()
+        if (!profile?.user_id) {
+          setResult('משתמש לא נמצא')
+          setSending(false)
+          return
+        }
+        const ok = await sendToUser(profile.user_id, title.trim(), body.trim(), type)
+        setResult(ok ? 'ההודעה נשלחה' : 'שליחה נכשלה')
+      }
+      setTitle('')
+      setBody('')
+      setTargetEmail('')
+    } catch (err) {
+      setResult('שגיאה בשליחה')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <>
+      <Text style={styles.sectionLabel}>שידור הודעות</Text>
+      <View style={styles.card}>
+        <View style={styles.broadcastModeRow}>
+          <TouchableOpacity onPress={() => setMode('all')} activeOpacity={0.7} style={[styles.modeBtn, mode === 'all' && styles.modeBtnActive]}>
+            <Text style={[styles.modeBtnText, mode === 'all' && styles.modeBtnTextActive]}>לכולם</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMode('user')} activeOpacity={0.7} style={[styles.modeBtn, mode === 'user' && styles.modeBtnActive]}>
+            <Text style={[styles.modeBtnText, mode === 'user' && styles.modeBtnTextActive]}>למשתמש ספציפי</Text>
+          </TouchableOpacity>
+        </View>
+
+        {mode === 'user' && (
+          <TextInput
+            style={styles.input}
+            placeholder="אימייל נמען"
+            placeholderTextColor="#94A3B8"
+            value={targetEmail}
+            onChangeText={setTargetEmail}
+            autoCapitalize="none"
+          />
+        )}
+
+        <TextInput
+          style={styles.input}
+          placeholder="כותרת"
+          placeholderTextColor="#94A3B8"
+          value={title}
+          onChangeText={setTitle}
+        />
+        <TextInput
+          style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+          placeholder="תוכן"
+          placeholderTextColor="#94A3B8"
+          value={body}
+          onChangeText={setBody}
+          multiline
+        />
+
+        <View style={styles.typeRow}>
+          {(['info', 'promo', 'update', 'alert'] as const).map((t) => (
+            <TouchableOpacity key={t} onPress={() => setType(t)} activeOpacity={0.7} style={[styles.typeBtn, type === t && styles.typeBtnActive(t)]}>
+              <Text style={[styles.typeBtnText, type === t && styles.typeBtnTextActive]}>{typeLabel(t)}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity onPress={handleSend} disabled={sending || !title.trim() || !body.trim()} activeOpacity={0.7} style={[styles.sendBtn, (sending || !title.trim() || !body.trim()) && styles.sendBtnDisabled]}>
+          <Text style={styles.sendBtnText}>{sending ? 'שולח...' : 'שלח הודעה'}</Text>
+        </TouchableOpacity>
+
+        {result && <Text style={styles.resultText}>{result}</Text>}
+      </View>
+    </>
+  )
+}
+
+function UserDrawer({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const [details, setDetails] = useState<AdminUserDetails | null>(null)
+  const [sessions, setSessions] = useState<AdminUserSession[]>([])
+  const [searches, setSearches] = useState<AdminUserSearch[]>([])
+  const [events, setEvents] = useState<AdminUserEvent[]>([])
+  const [loading, setLoading] = useState(true)
+  const [section, setSection] = useState<'info' | 'sessions' | 'searches' | 'events'>('info')
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true)
+      try {
+        const [d, s, se, ev] = await Promise.all([
+          getAdminUserDetails(userId),
+          getAdminUserSessions(userId, 10),
+          getAdminUserSearches(userId, 10),
+          getAdminUserEvents(userId),
+        ])
+        setDetails(d)
+        setSessions(s)
+        setSearches(se)
+        setEvents(ev)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [userId])
+
+  async function toggleActive() {
+    if (!details) return
+    const newActive = !details.is_active
+    const ok = await adminUpdateUserStatus(userId, newActive)
+    if (ok) setDetails({ ...details, is_active: newActive })
+  }
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.drawerOverlay}>
+        <View style={styles.drawer}>
+          <View style={styles.drawerHeader}>
+            <Text style={styles.drawerTitle}>פרופיל משתמש</Text>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.drawerCloseBtn}>
+              <Text style={styles.drawerCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View style={styles.drawerLoading}>
+              <ActivityIndicator size="large" color="#0EA5E9" />
+            </View>
+          ) : details ? (
+            <ScrollView style={styles.drawerScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.drawerAvatar}>
+                <Text style={styles.drawerAvatarText}>{details.email?.[0]?.toUpperCase() ?? '?'}</Text>
+              </View>
+              <Text style={styles.drawerEmail}>{details.email ?? '—'}</Text>
+
+              <View style={styles.drawerSubTabs}>
+                <SubTab label="מידע" active={section === 'info'} onPress={() => setSection('info')} />
+                <SubTab label="סשנים" active={section === 'sessions'} onPress={() => setSection('sessions')} />
+                <SubTab label="חיפושים" active={section === 'searches'} onPress={() => setSection('searches')} />
+                <SubTab label="אירועים" active={section === 'events'} onPress={() => setSection('events')} />
+              </View>
+
+              {section === 'info' && (
+                <>
+                  <View style={styles.drawerStats}>
+                    <DrawerStat label="קליקים" value={details.total_clicks} />
+                    <DrawerStat label="מועדפים" value={details.total_favorites} />
+                    <DrawerStat label="סשנים" value={details.session_count} />
+                    <DrawerStat label="חיפושים" value={details.total_searches} />
+                  </View>
+                  <View style={styles.drawerInfoCard}>
+                    <InfoRow label="מגדר" value={details.gender ?? '—'} />
+                    <InfoRow label="חולצה" value={details.top_size ?? '—'} />
+                    <InfoRow label="מכנסיים" value={details.bottom_size ?? '—'} />
+                    <InfoRow label="נעליים" value={details.shoe_size ?? '—'} />
+                    <InfoRow label="גזרה" value={details.fit ?? '—'} />
+                    <InfoRow label="אזור" value={details.preferred_region ?? '—'} />
+                    <InfoRow label="מידה סופית חולצה" value={details.final_top_size ?? '—'} />
+                    <InfoRow label="מידה סופית מכנסיים" value={details.final_bottom_size ?? '—'} />
+                    <InfoRow label="מידה סופית נעליים" value={details.final_shoe_size ?? '—'} />
+                    <InfoRow label="נרשם" value={formatDateTime(details.created_at)} />
+                    <InfoRow label="עדכון אחרון" value={details.updated_at ? formatDateTime(details.updated_at) : '—'} />
+                    <InfoRow label="נראה לאחרונה" value={details.last_seen_at ? formatDateTime(details.last_seen_at) : '—'} />
+                  </View>
+                  <TouchableOpacity onPress={toggleActive} activeOpacity={0.7} style={[styles.toggleBtn, details.is_active === false && styles.toggleBtnActive]}>
+                    <Text style={styles.toggleBtnText}>{details.is_active === false ? 'הפעל משתמש' : 'השהה משתמש'}</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {section === 'sessions' && (
+                <View style={styles.drawerInfoCard}>
+                  {sessions.length === 0 ? (
+                    <Text style={styles.emptyText}>אין סשנים</Text>
+                  ) : sessions.map((s, i) => (
+                    <View key={s.id} style={[styles.drawerItem, i % 2 === 1 && styles.tableRowAlt]}>
+                      <Text style={styles.drawerItemText}>{formatDateTime(s.session_start)}</Text>
+                      <Text style={styles.drawerItemMeta}>{s.duration_seconds ? `${s.duration_seconds}s` : 'פעיל'}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {section === 'searches' && (
+                <View style={styles.drawerInfoCard}>
+                  {searches.length === 0 ? (
+                    <Text style={styles.emptyText}>אין חיפושים</Text>
+                  ) : searches.map((s, i) => (
+                    <View key={s.id} style={[styles.drawerItem, i % 2 === 1 && styles.tableRowAlt]}>
+                      <Text style={styles.drawerItemText}>{s.search_query}</Text>
+                      <Text style={styles.drawerItemMeta}>{s.search_type} · {s.results_count} תוצאות</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {section === 'events' && (
+                <View style={styles.drawerInfoCard}>
+                  {events.length === 0 ? (
+                    <Text style={styles.emptyText}>אין אירועים</Text>
+                  ) : events.map((e, i) => (
+                    <View key={e.id} style={[styles.drawerItem, i % 2 === 1 && styles.tableRowAlt]}>
+                      <Text style={styles.drawerItemText}>{e.emoji} {e.event_name}</Text>
+                      <Text style={styles.drawerItemMeta}>{formatShortDate(e.event_date)} · {e.event_type}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          ) : (
+            <Text style={styles.emptyText}>משתמש לא נמצא</Text>
+          )}
+        </View>
+      </View>
+    </Modal>
   )
 }
 
@@ -220,6 +542,14 @@ function TabBtn({ label, active, onPress }: { label: string; active: boolean; on
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[styles.tab, active && styles.tabActive]}>
       <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  )
+}
+
+function SubTab({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[styles.subTab, active && styles.subTabActive]}>
+      <Text style={[styles.subTabText, active && styles.subTabTextActive]}>{label}</Text>
     </TouchableOpacity>
   )
 }
@@ -232,6 +562,44 @@ function KpiCard({ label, value, icon, color }: { label: string; value: number; 
       <Text style={styles.kpiLabel}>{label}</Text>
     </View>
   )
+}
+
+function DrawerStat({ label, value }: { label: string; value: number }) {
+  return (
+    <View style={styles.drawerStat}>
+      <Text style={styles.drawerStatValue}>{value}</Text>
+      <Text style={styles.drawerStatLabel}>{label}</Text>
+    </View>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  )
+}
+
+function activityIcon(type: string): string {
+  switch (type) {
+    case 'click': return '🖱️'
+    case 'session': return '📱'
+    case 'search': return '🔍'
+    case 'signup': return '🎉'
+    default: return '•'
+  }
+}
+
+function typeLabel(t: string): string {
+  switch (t) {
+    case 'info': return 'מידע'
+    case 'promo': return 'פרומו'
+    case 'update': return 'עדכון'
+    case 'alert': return 'התראה'
+    default: return t
+  }
 }
 
 function formatDate(dateStr: string): string {
@@ -266,8 +634,9 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 14, color: '#64748B', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9' },
   retryText: { color: '#fff', fontWeight: '600', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  tabBar: { flexDirection: 'row', gap: 6, marginBottom: 4 },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  tabScroll: { marginBottom: 4 },
+  tabBar: { flexDirection: 'row', gap: 6 },
+  tab: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
   tabActive: { backgroundColor: '#0EA5E9' },
   tabText: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   tabTextActive: { color: '#fff' },
@@ -289,4 +658,57 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   tableRowAlt: { backgroundColor: '#F8FAFC', borderRadius: 6 },
   tableCell: { fontSize: 12, color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  inactiveText: { color: '#EF4444' },
+  activityRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  activityIcon: { fontSize: 18 },
+  activityContent: { flex: 1 },
+  activityDesc: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  activityMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  broadcastModeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center' },
+  modeBtnActive: { backgroundColor: '#0EA5E9' },
+  modeBtnText: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  modeBtnTextActive: { color: '#fff' },
+  input: { backgroundColor: '#F8FAFC', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0', fontFamily: "'Noto Sans Hebrew', sans-serif", color: '#1E293B' },
+  typeRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  typeBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center' },
+  typeBtnActive: (t: string) => ({
+    backgroundColor: t === 'alert' ? '#EF4444' : t === 'promo' ? '#F59E0B' : t === 'update' ? '#10B981' : '#0EA5E9',
+  }),
+  typeBtnText: { fontSize: 12, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  typeBtnTextActive: { color: '#fff' },
+  sendBtn: { backgroundColor: '#0EA5E9', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  sendBtnDisabled: { opacity: 0.5 },
+  sendBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  resultText: { fontSize: 13, color: '#10B981', textAlign: 'center', marginTop: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  drawer: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
+  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  drawerTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  drawerCloseText: { fontSize: 16, color: '#64748B' },
+  drawerLoading: { paddingVertical: 60, alignItems: 'center' },
+  drawerScroll: { padding: 16 },
+  drawerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#0EA5E9', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 8 },
+  drawerAvatarText: { fontSize: 28, fontWeight: '800', color: '#fff' },
+  drawerEmail: { fontSize: 15, fontWeight: '600', color: '#1E293B', textAlign: 'center', marginBottom: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerSubTabs: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  subTab: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center' },
+  subTabActive: { backgroundColor: '#0EA5E9' },
+  subTabText: { fontSize: 12, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  subTabTextActive: { color: '#fff' },
+  drawerStats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  drawerStat: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, alignItems: 'center' },
+  drawerStatValue: { fontSize: 20, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerStatLabel: { fontSize: 11, color: '#64748B', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerInfoCard: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, marginBottom: 12 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  infoLabel: { fontSize: 13, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  infoValue: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  drawerItemText: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerItemMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  toggleBtn: { backgroundColor: '#F1F5F9', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 20 },
+  toggleBtnActive: { backgroundColor: '#FEF3C7' },
+  toggleBtnText: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

@@ -12,6 +12,8 @@ import { EventsScreen } from './screens/EventsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { WishlistScreen } from './screens/WishlistScreen'
 import { AdminDashboard } from './pages/AdminDashboard'
+import { startSession, endSession, updateLastSeen } from './services/trackingService'
+import { getUnreadCount } from './services/notificationService'
 
 const GUEST_PROFILE_KEY = 'fitgura_guest_profile'
 const GUEST_FAVORITES_KEY = 'fitgura_favorites'
@@ -257,6 +259,19 @@ export default function App() {
   })
   const [registeredDevices, setRegisteredDevices] = useState<string[]>(() => loadGuestDevices())
   const [latestAddedDevice, setLatestAddedDevice] = useState<string | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (!user) return
+    void startSession(user.id)
+    void updateLastSeen(user.id)
+    void getUnreadCount().then(setUnreadCount)
+    const interval = setInterval(() => void getUnreadCount().then(setUnreadCount), 30000)
+    return () => {
+      clearInterval(interval)
+      void endSession()
+    }
+  }, [user])
 
   useEffect(() => {
     // Check for existing session on mount — critical for Google OAuth redirects
