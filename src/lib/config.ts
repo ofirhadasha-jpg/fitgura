@@ -1,7 +1,7 @@
-// Database (tables, RLS, auth) lives on this project
-export const SUPABASE_URL = 'https://uriauhpbzbiowmdwgokw.supabase.co'
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cmlhdWhwYnpiaW93bWR3Z29rdyIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg5MDM2MjQwLCJleHAiOjIxMDQ2MTIyNDB9.88N-2lhaI7H4EUoQmw9UZgCQHGfjsfBPDq3bhynZ2Q'
+// Database, auth, and edge functions all live on the same Supabase project
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Edge functions are deployed on Bolt's internal project
-export const EDGE_FUNCTION_URL = 'https://alvpdkxuvnavoodsltyc.supabase.co'
-export const EDGE_FUNCTION_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsdnBka3h1dm5hdm9vZHNsdHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjQyMzAsImV4cCI6MjEwMzQwMDIzMH0.LY2Cq7CaPaF3bHmQZrOGWt3gc3zYkOTgDEWzxHkV990'
+// Edge functions are on the same project
+export const EDGE_FUNCTION_URL = SUPABASE_URL
+export const EDGE_FUNCTION_ANON_KEY = SUPABASE_ANON_KEY
