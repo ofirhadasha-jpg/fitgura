@@ -12,9 +12,9 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
   const mo = (n: number) => String(new Date().getMonth() + n).padStart(2, '0')
 
   const [events, setEvents] = useState<FitEvent[]>([
-    { id: 1, name: 'יום האהבה', emoji: '💝', date: `${yr}-02-14`, platforms: ['Amazon', 'Shein'], color: '#E84B35', bgColor: '#FFF5F0' },
-    { id: 2, name: 'יום הולדת — מיכל', emoji: '🎂', date: `${yr}-${mo(2)}-18`, platforms: ['AliExpress', 'ZARA'], color: '#1A1A1A', bgColor: '#FAF7F0' },
-    { id: 3, name: 'יום נישואין', emoji: '💍', date: `${yr + 1}-12-25`, platforms: ['AliExpress', 'Amazon', 'ASOS'], color: '#E84B35', bgColor: '#FFF5F0' },
+    { id: 1, name: 'יום האהבה', emoji: '💝', date: `${yr}-02-14`, platforms: ['Amazon', 'Shein'], color: '#FF6B6B', bgColor: '#FFF0F0' },
+    { id: 2, name: 'יום הולדת — מיכל', emoji: '🎂', date: `${yr}-${mo(2)}-18`, platforms: ['AliExpress', 'ZARA'], color: '#2E5BFF', bgColor: '#EEF2FF' },
+    { id: 3, name: 'יום נישואין', emoji: '💍', date: `${yr + 1}-12-25`, platforms: ['AliExpress', 'Amazon', 'ASOS'], color: '#FF6B6B', bgColor: '#FFF5F0' },
   ])
 
   const [showAdd, setShowAdd] = useState(false)
@@ -22,8 +22,8 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
   const [newDate, setNewDate] = useState('')
   const [newPlatforms, setNewPlatforms] = useState<string[]>([])
   const [newEmoji, setNewEmoji] = useState('🎉')
-  const [newColor, setNewColor] = useState('#1A1A1A')
-  const [newBg, setNewBg] = useState('#FAF7F0')
+  const [newColor, setNewColor] = useState('#2E5BFF')
+  const [newBg, setNewBg] = useState('#EEF2FF')
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -54,7 +54,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
       { id: nextEventId(), name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bgColor: newBg },
     ])
     setShowAdd(false)
-    setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#1A1A1A'); setNewBg('#FAF7F0')
+    setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#2E5BFF'); setNewBg('#EEF2FF')
   }
 
   function removeEvent(id: number) {
@@ -66,8 +66,8 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F0E6' }}>
-      <LinearGradient colors={['#1A1A1A', '#2A2520']} style={evStyles.header}>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <LinearGradient colors={['#0B1437', '#1A2F7A']} style={evStyles.header}>
         <View style={evStyles.headerOrb1} />
         <View style={evStyles.headerOrb2} />
         <View style={{ position: 'relative', zIndex: 1 }}>
@@ -105,7 +105,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
 
           return (
             <View key={ev.id} style={[evStyles.eventCard, { opacity: deletingId === ev.id ? 0 : past ? 0.55 : 1 }]}>
-              <View style={[evStyles.eventColorBar, { backgroundColor: past ? '#E8E2D5' : ev.color }]} />
+              <View style={[evStyles.eventColorBar, { backgroundColor: past ? '#E2E8F0' : ev.color }]} />
               <View style={{ padding: 14 }}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <View style={[evStyles.eventEmojiBox, { backgroundColor: ev.bgColor }]}>
@@ -118,7 +118,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                         <Text style={evStyles.eventDate}>{formatDate(ev.date)}</Text>
                       </View>
                       <TouchableOpacity onPress={() => removeEvent(ev.id)} activeOpacity={0.7}>
-                        <Text style={{ color: '#D4C9B5', fontSize: 16 }}>✕</Text>
+                        <Text style={{ color: '#CBD5E1', fontSize: 16 }}>✕</Text>
                       </TouchableOpacity>
                     </View>
                     <View style={evStyles.eventBadges}>
@@ -133,9 +133,9 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                           </View>
                           {evPlatforms.map((plat) => {
                             const orderBy = dLeft - plat.daysIL
-                            const chipBg = orderBy <= 0 ? '#FFF5F0' : orderBy <= 3 ? '#FFFBEB' : '#E8F5EF'
-                            const chipBorder = orderBy <= 0 ? '#FECACA' : orderBy <= 3 ? '#FFF8DB' : 'rgba(92,200,168,0.3)'
-                            const chipColor = orderBy <= 0 ? '#DC2626' : orderBy <= 3 ? '#6B6155' : '#3A8B5E'
+                            const chipBg = orderBy <= 0 ? '#FFF0F0' : orderBy <= 3 ? '#FFFBEB' : '#F0FFF6'
+                            const chipBorder = orderBy <= 0 ? '#FECACA' : orderBy <= 3 ? '#FDE68A' : 'rgba(46,213,115,0.3)'
+                            const chipColor = orderBy <= 0 ? '#DC2626' : orderBy <= 3 ? '#D97706' : '#15803D'
                             const label = orderBy <= 0
                               ? `⚠️ הזמן עכשיו! — ${plat.name}`
                               : orderBy <= 3
@@ -163,7 +163,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                     <View style={evStyles.timelineBar}>
                       <View style={[evStyles.timelineFill, {
                         width: `${Math.min(100, Math.max(0, (1 - minOrderBy / Math.max(dLeft, 1)) * 100))}%`,
-                        backgroundColor: minOrderBy <= 0 ? '#FECACA' : minOrderBy <= 3 ? '#FFF8DB' : ev.color,
+                        backgroundColor: minOrderBy <= 0 ? '#FECACA' : minOrderBy <= 3 ? '#FDE68A' : ev.color,
                       }]} />
                     </View>
                   </View>
@@ -183,9 +183,9 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
 
       {showAdd && (
         <View style={evStyles.sheetOverlay}>
-          <TouchableOpacity onPress={() => setShowAdd(false)} activeOpacity={1} style={[evStyles.sheetBackdrop, 'fitgura-backdrop-in']} />
-          <View style={[evStyles.sheet, 'fitgura-sheet-in']}>
-            <LinearGradient colors={['#1A1A1A', '#1A1A1A']} style={evStyles.sheetHeader}>
+          <TouchableOpacity onPress={() => setShowAdd(false)} activeOpacity={1} style={evStyles.sheetBackdrop} />
+          <View style={evStyles.sheet}>
+            <LinearGradient colors={['#2E5BFF', '#1a38c8']} style={evStyles.sheetHeader}>
               <View style={evStyles.sheetHeaderRow}>
                 <Text style={evStyles.sheetTitle}>הוסף אירוע חדש</Text>
                 <TouchableOpacity onPress={() => setShowAdd(false)} activeOpacity={0.7} style={evStyles.sheetCloseBtn}>
@@ -203,10 +203,10 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                       key={i}
                       onPress={() => selectPreset(i)}
                       activeOpacity={0.7}
-                      style={[evStyles.presetBtn, { borderColor: selectedPreset === i ? p.color : '#E8E2D5', backgroundColor: selectedPreset === i ? p.bgColor : '#F5F0E6' }]}
+                      style={[evStyles.presetBtn, { borderColor: selectedPreset === i ? p.color : '#E2E8F0', backgroundColor: selectedPreset === i ? p.bgColor : '#F8FAFC' }]}
                     >
                       <Text style={{ fontSize: 14 }}>{p.emoji}</Text>
-                      <Text style={[evStyles.presetBtnText, { color: selectedPreset === i ? p.color : '#4A4035' }]}>{p.name}</Text>
+                      <Text style={[evStyles.presetBtnText, { color: selectedPreset === i ? p.color : '#475569' }]}>{p.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -241,7 +241,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
               <View>
                 <View style={evStyles.platformHeader}>
                   <Text style={evStyles.inputLabel}>פלטפורמות הזמנה — עד 3</Text>
-                  <Text style={[evStyles.platformCount, { color: newPlatforms.length >= 3 ? '#DC2626' : '#8B8175' }]}>{newPlatforms.length}/3</Text>
+                  <Text style={[evStyles.platformCount, { color: newPlatforms.length >= 3 ? '#DC2626' : '#94A3B8' }]}>{newPlatforms.length}/3</Text>
                 </View>
                 <View style={evStyles.platformGrid}>
                   {PLATFORMS.map((p) => {
@@ -253,11 +253,11 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                         onPress={() => toggleNewPlatform(p.name)}
                         disabled={disabled}
                         activeOpacity={0.7}
-                        style={[evStyles.platformBtn, { borderColor: isSel ? p.color : '#E8E2D5', backgroundColor: isSel ? `${p.color}15` : '#F5F0E6', opacity: disabled ? 0.4 : 1 }]}
+                        style={[evStyles.platformBtn, { borderColor: isSel ? p.color : '#E2E8F0', backgroundColor: isSel ? `${p.color}15` : '#F8FAFC', opacity: disabled ? 0.4 : 1 }]}
                       >
                         <Text style={{ fontSize: 14 }}>{p.logo}</Text>
-                        <Text style={[evStyles.platformBtnText, { color: isSel ? p.color : '#4A4035' }]}>{p.name}</Text>
-                        <Text style={{ fontSize: 10, color: isSel ? p.color : '#8B8175' }}>{p.daysIL}ד׳</Text>
+                        <Text style={[evStyles.platformBtnText, { color: isSel ? p.color : '#475569' }]}>{p.name}</Text>
+                        <Text style={{ fontSize: 10, color: isSel ? p.color : '#94A3B8' }}>{p.daysIL}ד׳</Text>
                         {isSel && <Text style={{ fontSize: 10, color: p.color }}>✓</Text>}
                       </TouchableOpacity>
                     )
@@ -290,61 +290,61 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
 
 const evStyles = StyleSheet.create({
   header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20, position: 'relative', overflow: 'hidden' },
-  headerOrb1: { position: 'absolute', top: -40, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(92,200,168,0.12)' },
+  headerOrb1: { position: 'absolute', top: -40, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(46,91,255,0.12)' },
   headerOrb2: { position: 'absolute', bottom: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,107,107,0.1)' },
   headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', fontFamily: "'Heebo', sans-serif" },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontFamily: "'Heebo', sans-serif" },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   addEventBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 14, paddingVertical: 9, paddingHorizontal: 16 },
-  addEventBtnText: { color: '#fff', fontWeight: '700', fontSize: 13, fontFamily: "'Heebo', sans-serif" },
+  addEventBtnText: { color: '#fff', fontWeight: '700', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   summaryRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  summaryChip: { backgroundColor: 'rgba(92,200,168,0.2)', borderRadius: 10, paddingVertical: 5, paddingHorizontal: 12 },
-  summaryChipText: { fontSize: 12, fontWeight: '700', color: '#5CC8A8', fontFamily: "'Heebo', sans-serif" },
+  summaryChip: { backgroundColor: 'rgba(46,91,255,0.2)', borderRadius: 10, paddingVertical: 5, paddingHorizontal: 12 },
+  summaryChipText: { fontSize: 12, fontWeight: '700', color: '#93C5FD', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   summaryChipUrgent: { backgroundColor: 'rgba(255,107,107,0.2)', borderRadius: 10, paddingVertical: 5, paddingHorizontal: 12 },
-  summaryChipUrgentText: { fontSize: 12, fontWeight: '700', color: '#FCA5A5', fontFamily: "'Heebo', sans-serif" },
+  summaryChipUrgentText: { fontSize: 12, fontWeight: '700', color: '#FCA5A5', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyText: { color: '#8B8175', fontFamily: "'Heebo', sans-serif" },
+  emptyText: { color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   eventCard: { backgroundColor: '#fff', borderRadius: 22, overflow: 'hidden', borderWidth: 1.5, borderColor: 'transparent' },
   eventColorBar: { height: 4 },
   eventEmojiBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  eventName: { fontWeight: '700', fontSize: 15, color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  eventDate: { fontSize: 12, color: '#8B8175', marginTop: 3, fontFamily: "'Heebo', sans-serif" },
+  eventName: { fontWeight: '700', fontSize: 15, color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  eventDate: { fontSize: 12, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   eventBadges: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  pastBadge: { backgroundColor: '#F5F0E6', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
-  pastBadgeText: { fontSize: 11, color: '#8B8175', fontWeight: '600', fontFamily: "'Heebo', sans-serif" },
+  pastBadge: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
+  pastBadgeText: { fontSize: 11, color: '#94A3B8', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   daysBadge: { borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1 },
   daysBadgeText: { fontSize: 12, fontWeight: '700' },
   platformChip: { borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  platformChipText: { fontSize: 11, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
+  platformChipText: { fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   timelineLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  timelineLabel: { fontSize: 10, color: '#8B8175', fontFamily: "'Heebo', sans-serif" },
-  timelineBar: { height: 6, backgroundColor: '#F5F0E6', borderRadius: 3, overflow: 'hidden' },
+  timelineLabel: { fontSize: 10, color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  timelineBar: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
   timelineFill: { height: '100%', borderRadius: 3 },
-  tipBox: { backgroundColor: '#FAF7F0', borderRadius: 18, padding: 14, flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 4 },
-  tipText: { fontSize: 12, color: '#1A1A1A', lineHeight: 19, flex: 1, fontFamily: "'Heebo', sans-serif" },
+  tipBox: { backgroundColor: '#EEF2FF', borderRadius: 18, padding: 14, flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 4 },
+  tipText: { fontSize: 12, color: '#4F6EFF', lineHeight: 19, flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, justifyContent: 'flex-end' },
-  sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
+  sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(11,20,55,0.55)' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden', maxHeight: '88%' },
   sheetHeader: { padding: 24, flexShrink: 0 },
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { fontSize: 18, fontWeight: '800', color: '#fff', fontFamily: "'Heebo', sans-serif" },
+  sheetTitle: { fontSize: 18, fontWeight: '800', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sheetCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  presetLabel: { fontSize: 13, fontWeight: '700', color: '#6B6155', marginBottom: 10, fontFamily: "'Heebo', sans-serif" },
+  presetLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   presetBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5 },
-  presetBtnText: { fontSize: 12, fontWeight: '600', fontFamily: "'Heebo', sans-serif" },
+  presetBtnText: { fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#F5F0E6' },
-  dividerText: { fontSize: 11, color: '#D4C9B5', fontFamily: "'Heebo', sans-serif" },
-  inputLabel: { fontSize: 12, fontWeight: '700', color: '#6B6155', marginBottom: 6, fontFamily: "'Heebo', sans-serif" },
-  textInput: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1.5, borderColor: '#E8E2D5', fontSize: 14, backgroundColor: '#F5F0E6', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#F1F5F9' },
+  dividerText: { fontSize: 11, color: '#CBD5E1', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  inputLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  textInput: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0', fontSize: 14, backgroundColor: '#F8FAFC', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   platformHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   platformCount: { fontSize: 11, fontWeight: '600' },
   platformGrid: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   platformBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5 },
   platformBtnText: { fontSize: 12, fontWeight: '600' },
-  platformNote: { fontSize: 11, color: '#6B6155', marginTop: 8, fontFamily: "'Heebo', sans-serif" },
-  addEventConfirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#1A1A1A', alignItems: 'center', marginBottom: 8 },
-  addEventConfirmBtnDisabled: { backgroundColor: '#E8E2D5' },
-  addEventConfirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
+  platformNote: { fontSize: 11, color: '#64748B', marginTop: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  addEventConfirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#2E5BFF', alignItems: 'center', marginBottom: 8 },
+  addEventConfirmBtnDisabled: { backgroundColor: '#E2E8F0' },
+  addEventConfirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

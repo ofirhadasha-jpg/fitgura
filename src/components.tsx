@@ -39,29 +39,25 @@ export function BottomNav({ current, onNav, isAdmin }: { current: Screen; onNav:
 
   return (
     <View style={styles.bottomNav}>
-      {items.map(({ screen, icon, label }) => {
-        const active = current === screen
-        return (
-          <TouchableOpacity
-            key={screen}
-            onPress={() => onNav(screen)}
-            style={styles.navItem}
-            activeOpacity={0.6}
-          >
-            <View style={[
-              styles.navIconWrap,
-              active && styles.navIconActive,
-            ]}>
-              <Text style={{ fontSize: 20, opacity: active ? 1 : 0.6 }}>{icon}</Text>
-              {active && <View style={styles.navActiveDot} />}
-            </View>
-            <Text style={[
-              styles.navLabel,
-              active && styles.navLabelActive,
-            ]}>{label}</Text>
-          </TouchableOpacity>
-        )
-      })}
+      {items.map(({ screen, icon, label }) => (
+        <TouchableOpacity
+          key={screen}
+          onPress={() => onNav(screen)}
+          style={styles.navItem}
+          activeOpacity={0.7}
+        >
+          <View style={[
+            styles.navIconWrap,
+            current === screen && styles.navIconActive,
+          ]}>
+            <Text style={{ fontSize: 20 }}>{icon}</Text>
+          </View>
+          <Text style={[
+            styles.navLabel,
+            current === screen && styles.navLabelActive,
+          ]}>{label}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
   )
 }
@@ -69,9 +65,9 @@ export function BottomNav({ current, onNav, isAdmin }: { current: Screen; onNav:
 const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row-reverse',
-    backgroundColor: 'rgba(255,255,255,0.97)',
+    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(232,226,213,0.8)',
+    borderTopColor: '#F1F5F9',
     paddingTop: 10,
     paddingBottom: 28,
     position: 'fixed',
@@ -80,10 +76,6 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 50,
     elevation: 50,
-    shadowColor: '#1A1A1A',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
   } as React.CSSProperties,
   navItem: {
     flex: 1,
@@ -91,34 +83,25 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   navIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-  } as React.CSSProperties,
-  navIconActive: {
-    backgroundColor: '#FAF7F0',
   },
-  navActiveDot: {
-    position: 'absolute',
-    bottom: -2,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#1A1A1A',
+  navIconActive: {
+    backgroundColor: '#EEF2FF',
   },
   navLabel: {
     fontSize: 10,
     fontWeight: '400',
-    color: '#8B8175',
+    color: '#94A3B8',
     marginTop: 4,
-    fontFamily: "'Heebo', sans-serif",
-  } as React.CSSProperties,
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
+  },
   navLabelActive: {
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#2E5BFF',
   },
 })
 
@@ -180,10 +163,10 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
       <TouchableOpacity
         onPress={onDismiss}
         activeOpacity={1}
-        style={[authStyles.backdrop, 'fitgura-backdrop-in']}
+        style={authStyles.backdrop}
       />
-      <View style={[authStyles.sheet, 'fitgura-sheet-in']}>
-        <LinearGradient colors={['#1A1A1A', '#2A2520']} style={authStyles.header}>
+      <View style={authStyles.sheet}>
+        <LinearGradient colors={['#2E5BFF', '#1A3399']} style={authStyles.header}>
           <View style={authStyles.headerOrb1} />
           <View style={authStyles.headerOrb2} />
           <TouchableOpacity onPress={onDismiss} style={authStyles.closeBtn} activeOpacity={0.7}>
@@ -206,7 +189,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
 
           {authError && (
             <View style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#FECACA' }}>
-              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Heebo', sans-serif" }}>
+              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
                 ⚠️ {authError}
               </Text>
             </View>
@@ -295,7 +278,7 @@ const authStyles = StyleSheet.create({
   backdrop: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(26,26,26,0.6)',
+    backgroundColor: 'rgba(11,20,55,0.6)',
   },
   sheet: {
     backgroundColor: '#fff',
@@ -322,7 +305,7 @@ const authStyles = StyleSheet.create({
     bottom: -20, right: -20,
     width: 80, height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(232,75,53,0.15)',
+    backgroundColor: 'rgba(255,107,107,0.15)',
   },
   closeBtn: {
     position: 'absolute',
@@ -354,7 +337,7 @@ const authStyles = StyleSheet.create({
     color: '#fff',
     lineHeight: 22,
     flexShrink: 1,
-    fontFamily: "'Heebo', sans-serif",
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
   body: {
     paddingHorizontal: 24,
@@ -363,10 +346,10 @@ const authStyles = StyleSheet.create({
   },
   bodyDesc: {
     fontSize: 13,
-    color: '#6B6155',
+    color: '#64748B',
     lineHeight: 21,
     marginBottom: 20,
-    fontFamily: "'Heebo', sans-serif",
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
   googleBtn: {
     flexDirection: 'row',
@@ -377,14 +360,14 @@ const authStyles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: '#E8E2D5',
+    borderColor: '#E2E8F0',
     backgroundColor: '#fff',
   },
   googleText: {
     fontWeight: '700',
     fontSize: 15,
-    color: '#1A1A1A',
-    fontFamily: "'Heebo', sans-serif",
+    color: '#1E293B',
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
   emailBtn: {
     flexDirection: 'row',
@@ -394,49 +377,49 @@ const authStyles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: 18,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#2E5BFF',
   },
   emailBtnText: {
     fontWeight: '700',
     fontSize: 15,
     color: '#fff',
-    fontFamily: "'Heebo', sans-serif",
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
   emailInput: {
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#E8E2D5',
+    borderColor: '#E2E8F0',
     fontSize: 15,
-    color: '#1A1A1A',
-    backgroundColor: '#F5F0E6',
+    color: '#1E293B',
+    backgroundColor: '#F8FAFC',
   },
   emailSubmit: {
     paddingVertical: 15,
     borderRadius: 18,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#2E5BFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   emailSubmitDisabled: {
-    backgroundColor: '#E8E2D5',
+    backgroundColor: '#E2E8F0',
   },
   emailSubmitText: {
     fontWeight: '700',
     fontSize: 15,
     color: '#fff',
-    fontFamily: "'Heebo', sans-serif",
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
   emailBtnDisabled: {
-    backgroundColor: '#E8E2D5',
+    backgroundColor: '#E2E8F0',
   },
   spinner: {
     width: 20, height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#E8E2D5',
-    borderTopColor: '#1A1A1A',
+    borderColor: '#E2E8F0',
+    borderTopColor: '#2E5BFF',
   },
   spinnerWhite: {
     width: 18, height: 18,
@@ -446,10 +429,10 @@ const authStyles = StyleSheet.create({
     borderTopColor: '#fff',
   },
   backText: {
-    color: '#8B8175',
+    color: '#94A3B8',
     fontSize: 13,
     textAlign: 'center',
-    fontFamily: "'Heebo', sans-serif",
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
   guestBtn: {
     paddingVertical: 14,
@@ -458,9 +441,9 @@ const authStyles = StyleSheet.create({
     alignItems: 'center',
   },
   guestText: {
-    color: '#D4C9B5',
+    color: '#CBD5E1',
     fontSize: 13,
     textDecorationLine: 'underline',
-    fontFamily: "'Heebo', sans-serif",
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
 })

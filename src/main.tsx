@@ -29,10 +29,10 @@ class StartupErrorBoundary extends Component<{ children: ReactNode }, { hasError
     if (!this.state.hasError) return this.props.children
 
     return (
-      <View style={{ flex: 1, minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#F5F0E6' }}>
-        <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 }}>משהו השתבש</Text>
-        <Text style={{ fontSize: 14, color: '#6B6155', textAlign: 'center', marginBottom: 20 }}>אירעה שגיאה בטעינת האפליקציה.</Text>
-        <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}>
+      <View style={{ flex: 1, minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#F8FAFC' }}>
+        <Text style={{ fontSize: 22, fontWeight: '700', color: '#1E293B', marginBottom: 8 }}>משהו השתבש</Text>
+        <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 20 }}>אירעה שגיאה בטעינת האפליקציה.</Text>
+        <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}>
           <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>נסה שוב</Text>
         </TouchableOpacity>
       </View>

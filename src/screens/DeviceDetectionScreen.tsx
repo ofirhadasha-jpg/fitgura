@@ -82,11 +82,11 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
   }, [phase])
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F0E6' }}>
-      <LinearGradient colors={['#1A1A1A', '#2A2520']} style={devStyles.header}>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <LinearGradient colors={['#0B1437', '#1A2F7A']} style={devStyles.header}>
         <View style={devStyles.progressRow}>
           {[0, 1, 2].map((i) => (
-            <View key={i} style={[devStyles.progressBar, { backgroundColor: i < 2 ? '#5CC8A8' : (phase === 'confirmed' ? '#5CC8A8' : '#1A1A1A') }]} />
+            <View key={i} style={[devStyles.progressBar, { backgroundColor: i < 2 ? '#2ED573' : (phase === 'confirmed' ? '#2ED573' : '#2E5BFF') }]} />
           ))}
         </View>
         <Text style={devStyles.headerTitle}>
@@ -126,11 +126,11 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
                 { label: 'זיהוי יצרן ודגם', done: scanPct > 50 },
                 { label: 'התאמת אביזרים', done: scanPct > 80 },
               ].map(({ label, done }) => (
-                <View key={label} style={[devStyles.signalRow, { borderColor: done ? 'rgba(92,200,168,0.4)' : '#F5F0E6' }]}>
-                  <View style={[devStyles.signalDot, { backgroundColor: done ? '#5CC8A8' : '#E8E2D5' }]}>
+                <View key={label} style={[devStyles.signalRow, { borderColor: done ? 'rgba(46,213,115,0.4)' : '#F1F5F9' }]}>
+                  <View style={[devStyles.signalDot, { backgroundColor: done ? '#2ED573' : '#E2E8F0' }]}>
                     {done && <Text style={{ fontSize: 11, color: '#fff' }}>✓</Text>}
                   </View>
-                  <Text style={[devStyles.signalText, { color: done ? '#3A8B5E' : '#8B8175', fontWeight: done ? '600' : '400' }]}>{label}</Text>
+                  <Text style={[devStyles.signalText, { color: done ? '#15803D' : '#94A3B8', fontWeight: done ? '600' : '400' }]}>{label}</Text>
                 </View>
               ))}
             </View>
@@ -139,7 +139,7 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
 
         {phase === 'confirmed' && !changing && detected && (
           <View style={{ gap: 20 }}>
-            <LinearGradient colors={['#1A1A1A', '#4A4035']} style={devStyles.deviceCard}>
+            <LinearGradient colors={['#0B1437', '#1E3A8A']} style={devStyles.deviceCard}>
               <View style={devStyles.deviceCardOrb1} />
               <View style={devStyles.deviceCardOrb2} />
               <View style={devStyles.deviceCardContent}>
@@ -248,13 +248,13 @@ export function DeviceDetectionScreen({ onNext, onDetected }: { onNext: () => vo
                         key={realIdx}
                         onPress={() => { setSelected(realIdx); setCustomMode(false) }}
                         activeOpacity={0.7}
-                        style={[devStyles.deviceListItem, { borderColor: selected === realIdx ? '#1A1A1A' : '#E8E2D5', backgroundColor: selected === realIdx ? '#FAF7F0' : '#fff' }]}
+                        style={[devStyles.deviceListItem, { borderColor: selected === realIdx ? '#2E5BFF' : '#E2E8F0', backgroundColor: selected === realIdx ? '#EEF2FF' : '#fff' }]}
                       >
                         <View>
-                          <Text style={[devStyles.deviceListItemName, { color: selected === realIdx ? '#1A1A1A' : '#1A1A1A' }]}>{d.name}</Text>
+                          <Text style={[devStyles.deviceListItemName, { color: selected === realIdx ? '#2E5BFF' : '#1E293B' }]}>{d.name}</Text>
                           <Text style={devStyles.deviceListItemSub}>{d.brand} · {d.chip} · {d.year}</Text>
                         </View>
-                        <View style={[devStyles.deviceListRadio, { borderColor: selected === realIdx ? '#1A1A1A' : '#D4C9B5', backgroundColor: selected === realIdx ? '#1A1A1A' : 'transparent' }]}>
+                        <View style={[devStyles.deviceListRadio, { borderColor: selected === realIdx ? '#2E5BFF' : '#CBD5E1', backgroundColor: selected === realIdx ? '#2E5BFF' : 'transparent' }]}>
                           {selected === realIdx && <Text style={{ color: '#fff', fontSize: 10 }}>✓</Text>}
                         </View>
                       </TouchableOpacity>
@@ -296,68 +296,68 @@ const devStyles = StyleSheet.create({
   header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 24 },
   progressRow: { flexDirection: 'row', gap: 6, marginBottom: 18 },
   progressBar: { flex: 1, height: 3, borderRadius: 2 },
-  headerTitle: { color: '#fff', fontSize: 21, fontWeight: '700', marginBottom: 6, fontFamily: "'Heebo', sans-serif" },
-  headerSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Heebo', sans-serif" },
+  headerTitle: { color: '#fff', fontSize: 21, fontWeight: '700', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  headerSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   phoneWrap: { width: 140, height: 240, position: 'relative' },
-  phoneBody: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#1A1A1A', borderRadius: 28, borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14 },
-  phoneProgressBorder: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 30, borderWidth: 2, borderColor: '#1A1A1A', opacity: 0.5 },
-  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#5CC8A8', shadowColor: '#5CC8A8', shadowRadius: 16, shadowOpacity: 0.6 },
-  phoneLabel: { fontSize: 10, color: 'rgba(92,200,168,0.8)', fontWeight: '600' },
+  phoneBody: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0F172A', borderRadius: 28, borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14 },
+  phoneProgressBorder: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 30, borderWidth: 2, borderColor: '#2E5BFF', opacity: 0.5 },
+  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#2ED573', shadowColor: '#2ED573', shadowRadius: 16, shadowOpacity: 0.6 },
+  phoneLabel: { fontSize: 10, color: 'rgba(46,213,115,0.8)', fontWeight: '600' },
   progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressLabel: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  progressPct: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
-  progressTrack: { height: 8, backgroundColor: '#E8E2D5', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#1A1A1A', borderRadius: 4 },
+  progressLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  progressPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
+  progressTrack: { height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
   signalRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1.5 },
   signalDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  signalText: { fontSize: 13, fontFamily: "'Heebo', sans-serif" },
+  signalText: { fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deviceCard: { borderRadius: 28, padding: 28, position: 'relative', overflow: 'hidden' },
-  deviceCardOrb1: { position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(92,200,168,0.2)' },
-  deviceCardOrb2: { position: 'absolute', bottom: -30, left: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(92,200,168,0.3)' },
+  deviceCardOrb1: { position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(46,213,115,0.2)' },
+  deviceCardOrb2: { position: 'absolute', bottom: -30, left: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(46,91,255,0.3)' },
   deviceCardContent: { flexDirection: 'row', gap: 18, alignItems: 'center' },
-  phoneIconBox: { width: 80, height: 130, backgroundColor: '#1A1A1A', borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 10, position: 'relative' },
+  phoneIconBox: { width: 80, height: 130, backgroundColor: '#0F172A', borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 10, position: 'relative' },
   phoneIconText: { fontSize: 9, color: 'rgba(255,255,255,0.4)', marginBottom: 4 },
-  phoneCheck: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#5CC8A8', alignItems: 'center', justifyContent: 'center' },
-  detectedBadge: { backgroundColor: 'rgba(92,200,168,0.15)', borderWidth: 1, borderColor: 'rgba(92,200,168,0.35)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, alignSelf: 'flex-start', marginBottom: 10 },
-  detectedBadgeText: { fontSize: 11, fontWeight: '700', color: '#5CC8A8' },
+  phoneCheck: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#2ED573', alignItems: 'center', justifyContent: 'center' },
+  detectedBadge: { backgroundColor: 'rgba(46,213,115,0.15)', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, alignSelf: 'flex-start', marginBottom: 10 },
+  detectedBadgeText: { fontSize: 11, fontWeight: '700', color: '#2ED573' },
   deviceName: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 4 },
   deviceChip: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 12 },
   deviceTags: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   deviceTag: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 7, paddingVertical: 4, paddingHorizontal: 9 },
-  deviceTagText: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontFamily: "'Heebo', sans-serif" },
-  matchBadge: { backgroundColor: '#E8F5EF', borderWidth: 1.5, borderColor: 'rgba(92,200,168,0.4)', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  matchIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#5CC8A8', alignItems: 'center', justifyContent: 'center' },
-  matchTitle: { fontWeight: '700', fontSize: 14, color: '#3A8B5E', fontFamily: "'Heebo', sans-serif" },
-  matchSub: { fontSize: 12, color: '#4CAF7D', marginTop: 3, fontFamily: "'Heebo', sans-serif" },
+  deviceTagText: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  matchBadge: { backgroundColor: '#F0FFF6', borderWidth: 1.5, borderColor: 'rgba(46,213,115,0.4)', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  matchIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#2ED573', alignItems: 'center', justifyContent: 'center' },
+  matchTitle: { fontWeight: '700', fontSize: 14, color: '#15803D', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  matchSub: { fontSize: 12, color: '#16A34A', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   accessoryCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
-  accessoryTitle: { fontSize: 13, fontWeight: '700', color: '#6B6155', marginBottom: 12, fontFamily: "'Heebo', sans-serif" },
+  accessoryTitle: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   accessoryList: { gap: 10 },
-  accessoryItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F5F0E6', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#E8E2D5' },
-  accessoryIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E8E2D5' },
-  accessoryItemLabel: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  accessoryItemExamples: { fontSize: 10, color: '#8B8175', marginTop: 2, fontFamily: "'Heebo', sans-serif" },
-  accessoryCountBadge: { backgroundColor: '#1A1A1A', borderRadius: 10, paddingVertical: 4, paddingHorizontal: 10, minWidth: 32, alignItems: 'center' },
+  accessoryItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F8FAFC', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#E2E8F0' },
+  accessoryIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  accessoryItemLabel: { fontSize: 13, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  accessoryItemExamples: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  accessoryCountBadge: { backgroundColor: '#2E5BFF', borderRadius: 10, paddingVertical: 4, paddingHorizontal: 10, minWidth: 32, alignItems: 'center' },
   accessoryCountText: { fontSize: 13, fontWeight: '800', color: '#fff' },
-  accessoryLoading: { fontSize: 13, color: '#8B8175', textAlign: 'center', paddingVertical: 16, fontFamily: "'Heebo', sans-serif" },
-  continueBtn: { padding: 18, borderRadius: 20, backgroundColor: '#1A1A1A', alignItems: 'center' },
-  continueBtnText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
-  changeBtnText: { color: '#8B8175', fontSize: 14, fontWeight: '600', textAlign: 'center', textDecorationLine: 'underline', fontFamily: "'Heebo', sans-serif" },
-  manualTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F0E6', borderRadius: 14, borderWidth: 1.5, borderColor: '#E8E2D5', paddingVertical: 12, paddingHorizontal: 14 },
-  searchInput: { flex: 1, fontSize: 14, color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  customForm: { gap: 12, backgroundColor: '#FAF7F0', borderRadius: 18, padding: 18, borderWidth: 2, borderColor: '#1A1A1A' },
-  customFormTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  customInput: { paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E8E2D5', fontSize: 14, backgroundColor: '#fff', color: '#1A1A1A' },
-  customBackText: { color: '#1A1A1A', fontSize: 13, fontFamily: "'Heebo', sans-serif", textDecorationLine: 'underline' },
-  noResults: { textAlign: 'center', paddingVertical: 24, color: '#8B8175', fontFamily: "'Heebo', sans-serif", fontSize: 13 },
+  accessoryLoading: { fontSize: 13, color: '#94A3B8', textAlign: 'center', paddingVertical: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  continueBtn: { padding: 18, borderRadius: 20, backgroundColor: '#2E5BFF', alignItems: 'center' },
+  continueBtnText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  changeBtnText: { color: '#94A3B8', fontSize: 14, fontWeight: '600', textAlign: 'center', textDecorationLine: 'underline', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  manualTitle: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0', paddingVertical: 12, paddingHorizontal: 14 },
+  searchInput: { flex: 1, fontSize: 14, color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  customForm: { gap: 12, backgroundColor: '#EEF2FF', borderRadius: 18, padding: 18, borderWidth: 2, borderColor: '#2E5BFF' },
+  customFormTitle: { fontSize: 13, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  customInput: { paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#C7D2FE', fontSize: 14, backgroundColor: '#fff', color: '#1E293B' },
+  customBackText: { color: '#2E5BFF', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif", textDecorationLine: 'underline' },
+  noResults: { textAlign: 'center', paddingVertical: 24, color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif", fontSize: 13 },
   deviceListItem: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, borderWidth: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   deviceListItemName: { fontWeight: '600', fontSize: 13 },
-  deviceListItemSub: { fontSize: 11, color: '#8B8175', marginTop: 2 },
+  deviceListItemSub: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
   deviceListRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  notFoundBtn: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, borderWidth: 2, borderStyle: 'dashed', borderColor: '#D4C9B5', backgroundColor: '#F5F0E6', flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
-  notFoundTitle: { fontWeight: '700', color: '#4A4035', fontSize: 13, fontFamily: "'Heebo', sans-serif" },
-  notFoundSub: { fontSize: 11, color: '#8B8175', marginTop: 2, fontFamily: "'Heebo', sans-serif" },
-  confirmDeviceBtn: { padding: 18, borderRadius: 20, backgroundColor: '#1A1A1A', alignItems: 'center' },
-  confirmDeviceBtnDisabled: { backgroundColor: '#E8E2D5' },
-  confirmDeviceBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
+  notFoundBtn: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, borderWidth: 2, borderStyle: 'dashed', borderColor: '#CBD5E1', backgroundColor: '#F8FAFC', flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  notFoundTitle: { fontWeight: '700', color: '#475569', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  notFoundSub: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  confirmDeviceBtn: { padding: 18, borderRadius: 20, backgroundColor: '#2E5BFF', alignItems: 'center' },
+  confirmDeviceBtnDisabled: { backgroundColor: '#E2E8F0' },
+  confirmDeviceBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

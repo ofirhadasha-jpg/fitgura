@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet, ScrollView, Image } from 'react-native'
-import { LinearGradient, BottomNav } from '../components'
+import { BottomNav } from '../components'
 import { type Screen, type Product } from '../types'
 
 export function WishlistScreen({ onNav, wishlistItems, budget, catalog, isAdmin }: { onNav: (s: Screen) => void; wishlistItems: number[]; budget: [number, number]; catalog: Product[]; isAdmin?: boolean }) {
@@ -9,17 +9,13 @@ export function WishlistScreen({ onNav, wishlistItems, budget, catalog, isAdmin 
   const outBudget = saved.filter((p) => p.price < budget[0] || p.price > budget[1])
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F0E6' }}>
-      <LinearGradient colors={['#1A1A1A', '#2A2520']} style={wlStyles.header}>
-        <View style={wlStyles.headerOrb1} />
-        <View style={wlStyles.headerOrb2} />
-        <View style={{ position: 'relative', zIndex: 1 }}>
-          <Text style={wlStyles.headerTitle}>רשימת המשאלות שלי</Text>
-          <Text style={wlStyles.headerSub}>
-            {saved.length} פריטים שמורים • {inBudget.length} בטווח התקציב
-          </Text>
-        </View>
-      </LinearGradient>
+    <View style={{ flex: 1 }}>
+      <View style={wlStyles.header}>
+        <Text style={wlStyles.headerTitle}>רשימת המשאלות שלי</Text>
+        <Text style={wlStyles.headerSub}>
+          {saved.length} פריטים שמורים • {inBudget.length} בטווח התקציב
+        </Text>
+      </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 10 }}>
         {saved.length === 0 && (
@@ -47,7 +43,7 @@ export function WishlistScreen({ onNav, wishlistItems, budget, catalog, isAdmin 
           <>
             <View style={wlStyles.sectionHeader}>
               <Text style={{ fontSize: 14 }}>💸</Text>
-              <Text style={[wlStyles.sectionTitle, { color: '#8B8175' }]}>מחוץ לתקציב</Text>
+              <Text style={[wlStyles.sectionTitle, { color: '#94A3B8' }]}>מחוץ לתקציב</Text>
               <View style={wlStyles.sectionLine} />
             </View>
             <View style={{ gap: 10 }}>
@@ -73,7 +69,7 @@ function WishlistRow({ product, inBudget }: { product: Product; inBudget: boolea
         <Text style={wlStyles.rowName}>{product.name}</Text>
         <Text style={wlStyles.rowBrand}>{product.brand}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={[wlStyles.rowPrice, { color: inBudget ? '#1A1A1A' : '#8B8175' }]}>₪{product.price}</Text>
+          <Text style={[wlStyles.rowPrice, { color: inBudget ? '#2E5BFF' : '#94A3B8' }]}>₪{product.price}</Text>
           <View style={wlStyles.rowAiBadge}><Text style={wlStyles.rowAiBadgeText}>AI ✓</Text></View>
         </View>
       </View>
@@ -83,22 +79,20 @@ function WishlistRow({ product, inBudget }: { product: Product; inBudget: boolea
 }
 
 const wlStyles = StyleSheet.create({
-  header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20, position: 'relative', overflow: 'hidden' },
-  headerOrb1: { position: 'absolute', top: -40, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(92,200,168,0.12)' },
-  headerOrb2: { position: 'absolute', bottom: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,107,107,0.1)' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', fontFamily: "'Heebo', sans-serif" },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontFamily: "'Heebo', sans-serif" },
+  header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  headerSub: { fontSize: 13, color: '#94A3B8', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   emptyState: { alignItems: 'center', paddingTop: 80 },
-  emptyText: { color: '#8B8175', fontFamily: "'Heebo', sans-serif" },
+  emptyText: { color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  sectionTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 14, fontFamily: "'Heebo', sans-serif" },
-  sectionLine: { flex: 1, height: 1, backgroundColor: '#F5F0E6' },
-  sectionBudget: { fontSize: 12, color: '#4CAF7D', fontWeight: '600', fontFamily: "'Heebo', sans-serif" },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12, shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 } as React.CSSProperties,
+  sectionTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sectionLine: { flex: 1, height: 1, backgroundColor: '#F1F5F9' },
+  sectionBudget: { fontSize: 12, color: '#16A34A', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12 },
   rowImage: { width: 58, height: 58, borderRadius: 12 },
-  rowName: { fontWeight: '600', fontSize: 14, color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  rowBrand: { fontSize: 11, color: '#8B8175', marginTop: 2 },
+  rowName: { fontWeight: '600', fontSize: 14, color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  rowBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
   rowPrice: { fontSize: 14, fontWeight: '700' },
-  rowAiBadge: { backgroundColor: '#E8F5EF', paddingVertical: 2, paddingHorizontal: 6, borderRadius: 5 },
-  rowAiBadgeText: { fontSize: 10, fontWeight: '700', color: '#4CAF7D', fontFamily: "'Heebo', sans-serif" },
+  rowAiBadge: { backgroundColor: '#F0FFF6', paddingVertical: 2, paddingHorizontal: 6, borderRadius: 5 },
+  rowAiBadgeText: { fontSize: 10, fontWeight: '700', color: '#16A34A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

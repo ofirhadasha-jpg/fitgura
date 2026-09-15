@@ -18,13 +18,6 @@ import {
 
 const PENDING_SCAN_KEY = 'fitgura_pending_scan'
 
-const BODY_FRAME_LABELS: Record<string, { label: string; emoji: string }> = {
-  Small: { label: 'עדינה כמו ציפור', emoji: '🐦' },
-  Medium: { label: 'ממוצעת / השקר הגדול של כולנו', emoji: '🙈' },
-  Athletic: { label: 'ספורטיבית אמיתית', emoji: '💪' },
-  Large: { label: 'מלכותית וגאה', emoji: '👑' },
-}
-
 type OnboardStep = 'upload' | 'scanning' | 'result' | 'gallery-access'
 
 export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAccess }: { onNext: () => void; onScanned: (s: ScannedSizes) => void; onGalleryAdd: (g: ScanEntry[]) => void; onGalleryAccess: (granted: boolean) => void }) {
@@ -160,22 +153,22 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   }, [])
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F0E6' }}>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       {/* Header */}
-      <LinearGradient colors={['#1A1A1A', '#2A2520']} style={obStyles.header}>
+      <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.header}>
         <View style={obStyles.progressRow}>
           {(['upload', 'scanning', 'result', 'gallery-access'] as OnboardStep[]).map((_s, i) => {
             const stepOrder = ['upload', 'scanning', 'result', 'gallery-access']
             const currentIdx = stepOrder.indexOf(step)
-            const barColor = i <= currentIdx ? (step === 'gallery-access' && i === currentIdx ? '#1A1A1A' : i < currentIdx ? '#5CC8A8' : '#1A1A1A') : 'rgba(255,255,255,0.2)'
+            const barColor = i <= currentIdx ? (step === 'gallery-access' && i === currentIdx ? '#2E5BFF' : i < currentIdx ? '#2ED573' : '#2E5BFF') : 'rgba(255,255,255,0.2)'
             return <View key={i} style={[obStyles.progressBar, { backgroundColor: barColor }]} />
           })}
         </View>
         <Text style={obStyles.headerTitle}>
-          {step === 'upload' ? 'בואי נמדוד אותך' : step === 'scanning' ? 'סורק מידות...' : step === 'result' ? 'המידות שלך מוכנות ✨' : 'גישה לגלריה'}
+          {step === 'upload' ? 'סריקת AI אישית' : step === 'scanning' ? 'סורק מידות...' : step === 'result' ? 'סריקה הושלמה ✓' : 'גישה לגלריה'}
         </Text>
         <Text style={obStyles.headerSub}>
-          {step === 'upload' ? '(בלי שאף אחד יראה 🤫) — ה-AI צריך את זה כדי לדייק' : step === 'scanning' ? 'קחי נשימה, אנחנו לא מגלים לאף אחד.' : step === 'result' ? 'אישור מידות ופרופיל מוכן' : 'אישור גישה לגלריה לעדכון אוטומטי של מידות'}
+          {step === 'upload' ? 'העלה תמונה וה-AI ימצא את המידה המדויקת שלך' : step === 'scanning' ? 'בינה מלאכותית מנתחת את מבנה הגוף שלך' : step === 'result' ? 'אישור מידות ופרופיל מוכן' : 'אישור גישה לגלריה לעדכון אוטומטי של מידות'}
         </Text>
       </LinearGradient>
 
@@ -188,51 +181,36 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
           <>
             <BenefitCarousel />
 
-            <View
-              style={[obStyles.uploadCard, dragOver && obStyles.uploadCardActive]}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault(); setDragOver(false)
-                const file = e.dataTransfer.files?.[0]
-                if (file) void startScan(file)
-              }}
-            >
-              <View style={obStyles.scanCircle}>
-                <View style={obStyles.scanCircleInner}>
-                  <Text style={obStyles.scanCircleEmoji}>📸</Text>
-                </View>
-                <View style={obStyles.scanRing1} />
-                <View style={obStyles.scanRing2} />
+            <View style={[obStyles.dropZone, dragOver && obStyles.dropZoneActive]}>
+              <View style={obStyles.dropIcon}><Text style={{ fontSize: 32 }}>📸</Text></View>
+              <Text style={obStyles.dropTitle}>Upload Your Photo</Text>
+              <Text style={obStyles.dropSub}>גרור לכאן, או בחר אחת מהכפתורים למטה</Text>
+              <View style={obStyles.tipBox}>
+                <Text style={{ fontSize: 16 }}>💡</Text>
+                <Text style={obStyles.tipText}>לתוצאה מדויקת — העלה תמונה של <Text style={{ fontWeight: '700' }}>כל הגוף</Text> מהראש עד הרגליים, עמידה ישרה, על רקע בהיר.</Text>
               </View>
-              <Text style={obStyles.uploadTitle}>בואי נמדוד אותך</Text>
-              <Text style={obStyles.uploadSub}>גרור לכאן, או בחר אחת מהכפתורים למטה 📸</Text>
-              <View style={obStyles.uploadTipRow}>
-                <Text style={obStyles.uploadTipEmoji}>💡</Text>
-                <Text style={obStyles.uploadTipText}>לתוצאה מדויקת — העלה תמונה של <Text style={{ fontWeight: '700' }}>כל הגוף</Text> מהראש עד הרגליים, עמידה ישרה, על רקע בהיר. (אנחנו כבר לא מספרים לאף אחד 🙈)</Text>
-              </View>
-              <View style={obStyles.uploadBtnRow}>
+              <View style={obStyles.btnRow}>
                 <TouchableOpacity
                   onPress={() => cameraRef.current?.click()}
-                  style={obStyles.uploadPrimaryBtn}
-                  activeOpacity={0.85}
+                  style={obStyles.cameraBtn}
+                  activeOpacity={0.8}
                 >
                   <Text style={{ fontSize: 16 }}>📷</Text>
-                  <Text style={obStyles.uploadPrimaryBtnText}>צלם עכשיו</Text>
+                  <Text style={obStyles.cameraBtnText}>צלם עכשיו</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => galleryRef.current?.click()}
-                  style={obStyles.uploadSecondaryBtn}
-                  activeOpacity={0.85}
+                  style={obStyles.galleryBtn}
+                  activeOpacity={0.8}
                 >
                   <Text style={{ fontSize: 16 }}>🖼️</Text>
-                  <Text style={obStyles.uploadSecondaryBtnText}>מגלריה</Text>
+                  <Text style={obStyles.galleryBtnText}>מגלריה</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={obStyles.scanInfoCard}>
-              <Text style={obStyles.scanInfoTitle}>מה פיטגורה בודקת (ולא מספרת לאף אחד):</Text>
+              <Text style={obStyles.scanInfoTitle}>מה פיטגורה בודקת:</Text>
               <View style={obStyles.scanInfoGrid}>
                 {[
                   { icon: '📐', label: 'מידות גוף' },
@@ -254,10 +232,10 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         {step === 'result' && sizes && <ResultView onNext={() => setStep('gallery-access')} onScanned={onScanned} sizes={sizes} setSizes={setSizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Heebo', sans-serif" }}>שגיאה בסריקה</Text>
-            <Text style={{ fontSize: 13, color: '#6B6155', fontFamily: "'Heebo', sans-serif", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
-            <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}>
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Heebo', sans-serif" }}>נסה שוב</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
+            <Text style={{ fontSize: 13, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
+            <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}>
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>נסה שוב</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -289,14 +267,14 @@ function BenefitCarousel() {
     const t = setInterval(() => {
       setIndex((i) => (i + 1) % BENEFIT_SLIDES.length)
       setAnimKey((k) => k + 1)
-    }, 2200)
+    }, 2800)
     return () => clearInterval(t)
   }, [])
 
   const slide = BENEFIT_SLIDES[index]
 
   return (
-    <LinearGradient colors={['#1A1A1A', '#2A2520']} style={obStyles.explainCard}>
+    <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.explainCard}>
       <View style={obStyles.carouselStage} key={animKey} className="fitgura-carousel-enter">
         <View style={obStyles.carouselIconWrap}>
           <Text style={obStyles.carouselIcon}>{slide.icon}</Text>
@@ -348,7 +326,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
               style={[
                 obStyles.cornerBracket,
                 c,
-                { borderColor: '#5CC8A8', width: 26, height: 26, marginLeft: isLeft ? -13 : -13, marginTop: isTop ? -13 : -13 },
+                { borderColor: '#2ED573', width: 26, height: 26, marginLeft: isLeft ? -13 : -13, marginTop: isTop ? -13 : -13 },
               ]}
             />
           )
@@ -357,7 +335,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
 
       <View style={{ width: '100%' }}>
         <View style={obStyles.progressLabelRow}>
-          <Text style={obStyles.progressLabel}>סורק ולא מספר לאף אחד...</Text>
+          <Text style={obStyles.progressLabel}>מנתח מידות גוף...</Text>
           <Text style={obStyles.progressPct}>{Math.round(progress)}%</Text>
         </View>
         <View style={obStyles.progressTrack}>
@@ -372,8 +350,8 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
           { label: 'style_profile', sub: 'סגנון', value: '...', done: progress > 70 },
           { label: 'fit_preference', sub: 'גזרה', value: '...', done: progress > 88 },
         ].map(({ label, sub, value, done }) => (
-          <View key={label} style={[obStyles.metricCard, { borderColor: done ? 'rgba(92,200,168,0.4)' : '#E8E2D5', backgroundColor: done ? '#E8F5EF' : '#F5F0E6' }]}>
-            <Text style={[obStyles.metricValue, { color: done ? '#4CAF7D' : '#8B8175' }]}>{value}</Text>
+          <View key={label} style={[obStyles.metricCard, { borderColor: done ? 'rgba(46,213,115,0.4)' : '#E2E8F0', backgroundColor: done ? '#F0FFF6' : '#F8FAFC' }]}>
+            <Text style={[obStyles.metricValue, { color: done ? '#16A34A' : '#94A3B8' }]}>{value}</Text>
             <Text style={obStyles.metricLabel}>{label}</Text>
             <Text style={obStyles.metricSub}>{sub}</Text>
           </View>
@@ -394,7 +372,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
   const [primaryStyle, setPrimaryStyle] = useState(sizes.style?.primaryStyle ?? '')
   const [secondaryStyle, setSecondaryStyle] = useState(sizes.style?.secondaryStyle ?? '')
   const [colors, setColors] = useState<string[]>(sizes.style?.dominantColors ?? [])
-  const COLOR_PALETTE = ['#1A1A1A', '#4A4035', '#EF4444', '#F5D547', '#F5D547', '#F5D547', '#4CAF7D', '#5CC8A8', '#5CC8A8', '#1A1A1A', '#1A1A1A', '#1A1A1A', '#E84B35', '#E84B35', '#FFFFFF', '#8B8175']
+  const COLOR_PALETTE = ['#1E293B', '#475569', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#22C55E', '#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#FFFFFF', '#94A3B8']
   const [gender, setGender] = useState<'male' | 'female' | 'unisex'>(sizes.gender ?? 'unisex')
   const [heightCm, setHeightCm] = useState(sizes.sizing.bodyMetrics?.estimated_height_cm?.toString() ?? '')
   const [weightKg, setWeightKg] = useState(sizes.sizing.bodyMetrics?.estimated_weight_kg?.toString() ?? '')
@@ -502,7 +480,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
         </View>
       )}
 
-      <View style={[obStyles.resultBanner, { backgroundColor: sizes.sizing.baselineMatched ? '#FAF7F0' : '#E8F5EF', borderColor: sizes.sizing.baselineMatched ? 'rgba(92,200,168,0.3)' : 'rgba(92,200,168,0.4)' }]}>
+      <View style={[obStyles.resultBanner, { backgroundColor: sizes.sizing.baselineMatched ? '#EEF2FF' : '#F0FFF6', borderColor: sizes.sizing.baselineMatched ? 'rgba(46,91,255,0.3)' : 'rgba(46,213,115,0.4)' }]}>
         {sizes.preview && (
           <Image source={{ uri: sizes.preview }} style={obStyles.resultPhoto} />
         )}
@@ -513,7 +491,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
           {sizes.sizing.isWeeklyUpdate && <Text style={obStyles.weeklyBadge}>WEEKLY UPDATE</Text>}
         </View>
         <Text style={obStyles.resultTitle}>ניתוח AI הושלם ✓</Text>
-        <Text style={obStyles.resultSub}>דיוק {sizes.sizing.confidence}% · 🪞 {BODY_FRAME_LABELS[sizes.sizing.bodyFrame]?.label ?? sizes.sizing.bodyFrame} {BODY_FRAME_LABELS[sizes.sizing.bodyFrame]?.emoji ?? ''}</Text>
+        <Text style={obStyles.resultSub}>דיוק {sizes.sizing.confidence}% · מסגרת גוף: {sizes.sizing.bodyFrame}</Text>
       </View>
 
       {sizes.sizing.measurementDelta && (
@@ -539,7 +517,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
       {sizes.sizing.bodyMetrics && (
         <View style={obStyles.bodyMetricsCard}>
           <View style={obStyles.bodyMetricsHeader}>
-            <Text style={obStyles.bodyMetricsTitle}>📏 החלק שבו כולנו משקרים קצת, אבל בשביל שהבגד ישב בול — עדיף שלא 😬</Text>
+            <Text style={obStyles.bodyMetricsTitle}>📏 מידות גוף מדויקות (ס"מ)</Text>
             <TouchableOpacity
               onPress={() => setMetricsEditing(!metricsEditing)}
               style={[obStyles.editBtn, metricsEditing && obStyles.editBtnActive]}
@@ -582,8 +560,8 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
 
           <View style={obStyles.bodyMetricsGrid}>
             {[
-              { label: '📏 גובה', value: heightCm, unit: 'ס"מ', set: handleHeightChange },
-              { label: '⚖️ משקל', value: weightKg, unit: 'ק"ג', set: handleWeightChange },
+              { label: 'גובה', value: heightCm, unit: 'ס"מ', set: handleHeightChange },
+              { label: 'משקל', value: weightKg, unit: 'ק"ג', set: handleWeightChange },
               { label: 'חזה', value: chestCm, unit: 'ס"מ', set: setChestCm },
               { label: 'מותן', value: waistCm, unit: 'ס"מ', set: setWaistCm },
               { label: 'ירכיים', value: hipsCm, unit: 'ס"מ', set: setHipsCm },
@@ -620,10 +598,10 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
 
       {scanError && (
         <View style={{ backgroundColor: '#FEF2F2', borderRadius: 14, padding: 12, borderWidth: 1.5, borderColor: '#FECACA' }}>
-          <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Heebo', sans-serif" }}>
+          <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
             ⚠️ AI: {scanError}
           </Text>
-          <Text style={{ fontSize: 11, color: '#991B1B', marginTop: 4, fontFamily: "'Heebo', sans-serif" }}>
+          <Text style={{ fontSize: 11, color: '#991B1B', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
             מציג תוצאות מהמערכת המקומית כגיבוי
           </Text>
         </View>
@@ -647,7 +625,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
             { label: 'גזרה', value: fitType, options: FIT_TYPES, set: setFitType },
             { label: 'נעליים', value: shoeSize, options: SHOE_SIZES_EU, set: setShoeSize },
           ].map(({ label, value, options, set }) => (
-            <View key={label} style={[obStyles.sizeBox, { borderColor: editing ? '#1A1A1A' : '#E8E2D5', borderWidth: editing ? 2 : 1.5 }]}>
+            <View key={label} style={[obStyles.sizeBox, { borderColor: editing ? '#2E5BFF' : '#E2E8F0', borderWidth: editing ? 2 : 1.5 }]}>
               {editing ? (
                 <View>
                   {options.map((o) => (
@@ -763,10 +741,10 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
 
       <View style={{ gap: 10 }}>
         <TouchableOpacity onPress={handleConfirm} activeOpacity={0.8} style={obStyles.confirmBtn}>
-          <Text style={obStyles.confirmBtnText}>קחו אותי למראות! ✨</Text>
+          <Text style={obStyles.confirmBtnText}>אשר פרופיל והמשך</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onRetake} activeOpacity={0.7}>
-          <Text style={{ color: '#6B6155', fontSize: 14, fontWeight: '600', textAlign: 'center', fontFamily: "'Heebo', sans-serif" }}>תעשו לי קסם בלי לשנות כלום 🪄</Text>
+          <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>סרוק תמונה חדשה</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -798,7 +776,7 @@ function GalleryAccessView({ onGranted, onSkip }: { onGranted: () => void; onSki
         <View style={obStyles.galleryAccessIcon}>
           <Text style={{ fontSize: 36 }}>🖼️</Text>
         </View>
-        <Text style={obStyles.galleryAccessTitle}>גישה לגלריית התמונות 📸</Text>
+        <Text style={obStyles.galleryAccessTitle}>גישה לגלריית התמונות</Text>
         <Text style={obStyles.galleryAccessDesc}>
           כדי שה-AI יוכל לעדכן את המידות שלך אוטומטית, אנחנו צריכים גישה לגלריה שלך. המערכת תסרוק כל שבוע את התמונות האחרונות שצילמת, תזהה את הפנים שלך, ותמדוד שינויים במידות הגוף — ללא כל פעולה מצידך.
         </Text>
@@ -850,159 +828,154 @@ const obStyles = StyleSheet.create({
   header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 24 },
   progressRow: { flexDirection: 'row', gap: 6, marginBottom: 18 },
   progressBar: { flex: 1, height: 3, borderRadius: 2 },
-  headerTitle: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 6, fontFamily: "'Heebo', sans-serif" },
-  headerSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Heebo', sans-serif" },
+  headerTitle: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  headerSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   explainCard: { borderRadius: 20, padding: 18, gap: 12 },
   explainHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  explainIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(92,200,168,0.3)', alignItems: 'center', justifyContent: 'center' },
-  explainTitle: { fontWeight: '800', fontSize: 15, color: '#fff', fontFamily: "'Heebo', sans-serif" },
-  explainSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontFamily: "'Heebo', sans-serif" },
+  explainIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(46,91,255,0.3)', alignItems: 'center', justifyContent: 'center' },
+  explainTitle: { fontWeight: '800', fontSize: 15, color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  explainSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   explainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  explainRowText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', flex: 1, lineHeight: 18, textAlign: 'right', fontFamily: "'Heebo', sans-serif" },
+  explainRowText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', flex: 1, lineHeight: 18, textAlign: 'right', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   carouselStage: { alignItems: 'center', justifyContent: 'center', paddingVertical: 22, gap: 14, minHeight: 130 },
-  carouselIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(196,168,109,0.25)', alignItems: 'center', justifyContent: 'center' },
+  carouselIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(46,91,255,0.25)', alignItems: 'center', justifyContent: 'center' },
   carouselIcon: { fontSize: 36 },
-  carouselText: { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Heebo', sans-serif" },
+  carouselText: { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   carouselDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingTop: 4 },
   carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)' },
-  carouselDotActive: { backgroundColor: '#C4A86D', width: 20 },
-  uploadCard: { backgroundColor: '#FFFFFF', borderRadius: 32, padding: 28, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#E8E2D5', minHeight: 280, justifyContent: 'center', shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4 } as React.CSSProperties,
-  uploadCardActive: { borderColor: '#C4A86D', backgroundColor: '#FAF7F0' },
-  scanCircle: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  scanCircleInner: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F5F0E6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#D4C9B5' },
-  scanCircleEmoji: { fontSize: 32 },
-  scanRing1: { position: 'absolute', width: 96, height: 96, borderRadius: 48, borderWidth: 1.5, borderColor: 'rgba(196,168,109,0.3)' },
-  scanRing2: { position: 'absolute', width: 110, height: 110, borderRadius: 55, borderWidth: 1, borderColor: 'rgba(196,168,109,0.15)' },
-  uploadTitle: { fontWeight: '800', color: '#1A1A1A', fontSize: 17, fontFamily: "'Heebo', sans-serif" },
-  uploadSub: { color: '#8B8175', fontSize: 13, marginTop: 4, fontFamily: "'Heebo', sans-serif" },
-  uploadTipRow: { flexDirection: 'row', gap: 8, width: '100%', backgroundColor: '#FAF7F0', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#E8E2D5', marginTop: 4 },
-  uploadTipEmoji: { fontSize: 16 },
-  uploadTipText: { fontSize: 12, color: '#6B6155', lineHeight: 18, flex: 1, fontFamily: "'Heebo', sans-serif" },
-  uploadBtnRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
-  uploadPrimaryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1A1A1A', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 22 },
-  uploadPrimaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
-  uploadSecondaryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F5F0E6', borderWidth: 1.5, borderColor: '#D4C9B5', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 22 },
-  uploadSecondaryBtnText: { color: '#4A4035', fontSize: 14, fontWeight: '600', fontFamily: "'Heebo', sans-serif" },
-  scanInfoCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, borderWidth: 1.5, borderColor: '#E8E2D5' },
-  scanInfoTitle: { fontSize: 13, fontWeight: '700', color: '#4A4035', marginBottom: 12, fontFamily: "'Heebo', sans-serif" },
+  carouselDotActive: { backgroundColor: '#2E5BFF', width: 20 },
+  dropZone: { borderWidth: 2, borderColor: '#CBD5E1', borderRadius: 24, padding: 36, alignItems: 'center', gap: 14, backgroundColor: '#fff', minHeight: 200, justifyContent: 'center' },
+  dropZoneActive: { borderColor: '#2E5BFF', backgroundColor: '#EEF2FF' },
+  dropIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+  dropTitle: { fontWeight: '700', color: '#1E293B', fontSize: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  dropSub: { color: '#94A3B8', fontSize: 13, marginTop: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  tipBox: { backgroundColor: '#FFFBEB', borderRadius: 14, padding: 10, flexDirection: 'row', gap: 8, width: '100%', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)' },
+  tipText: { fontSize: 12, color: '#92400E', lineHeight: 18, flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  btnRow: { flexDirection: 'row', gap: 10 },
+  cameraBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 18 },
+  cameraBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F1F5F9', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 18 },
+  galleryBtnText: { color: '#475569', fontSize: 13, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  scanInfoCard: { backgroundColor: '#fff', borderRadius: 20, padding: 18 },
+  scanInfoTitle: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   scanInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  scanInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FAF7F0', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, width: '48%' },
-  scanInfoLabel: { fontSize: 13, color: '#4A4035', fontWeight: '500', fontFamily: "'Heebo', sans-serif" },
-  scanFrame: { width: '100%', height: 280, borderRadius: 24, backgroundColor: '#2A2520', overflow: 'hidden', position: 'relative' },
+  scanInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, width: '48%' },
+  scanInfoLabel: { fontSize: 13, color: '#475569', fontWeight: '500', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  scanFrame: { width: '100%', height: 280, borderRadius: 24, backgroundColor: '#1a2f7a', overflow: 'hidden', position: 'relative' },
   scanPhoto: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.55 },
   scanGrid: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3 },
-  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#5CC8A8', shadowColor: '#5CC8A8', shadowRadius: 16, shadowOpacity: 0.6 },
+  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#2ED573', shadowColor: '#2ED573', shadowRadius: 16, shadowOpacity: 0.6 },
   cornerBracket: { position: 'absolute', width: 24, height: 24 },
   progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressLabel: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  progressPct: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
-  progressTrack: { height: 8, backgroundColor: '#E8E2D5', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#1A1A1A', borderRadius: 4 },
+  progressLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  progressPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
+  progressTrack: { height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, width: '100%' },
   metricCard: { width: '48%', borderRadius: 14, padding: 10, alignItems: 'center', borderWidth: 1.5 },
   metricValue: { fontSize: 13, fontWeight: '700' },
-  metricLabel: { fontSize: 9, color: '#8B8175', marginTop: 2, letterSpacing: 0.5 },
-  metricSub: { fontSize: 10, color: '#6B6155', marginTop: 1, fontFamily: "'Heebo', sans-serif" },
+  metricLabel: { fontSize: 9, color: '#94A3B8', marginTop: 2, letterSpacing: 0.5 },
+  metricSub: { fontSize: 10, color: '#64748B', marginTop: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   resultBanner: { borderRadius: 20, padding: 18, borderWidth: 1.5, alignItems: 'center' },
   resultPhoto: { width: 60, height: 60, borderRadius: 30, marginBottom: 10 },
   resultBadges: { flexDirection: 'row', gap: 8, marginBottom: 6 },
-  resultBadge: { backgroundColor: '#1A1A1A', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
-  weeklyBadge: { backgroundColor: '#1A1A1A', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
-  resultTitle: { fontWeight: '800', fontSize: 17, color: '#3A8B5E', marginBottom: 4, fontFamily: "'Heebo', sans-serif" },
-  resultSub: { fontSize: 12, color: '#4CAF7D', fontFamily: "'Heebo', sans-serif" },
-  deltaCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, borderWidth: 1.5, borderColor: '#FAF7F0' },
-  deltaTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 13, marginBottom: 10, fontFamily: "'Heebo', sans-serif" },
-  deltaSummary: { fontSize: 12, color: '#4A4035', marginBottom: 8, lineHeight: 18, fontFamily: "'Heebo', sans-serif" },
+  resultBadge: { backgroundColor: '#2E5BFF', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
+  weeklyBadge: { backgroundColor: '#7C3AED', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
+  resultTitle: { fontWeight: '800', fontSize: 17, color: '#15803D', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  resultSub: { fontSize: 12, color: '#16A34A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deltaCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, borderWidth: 1.5, borderColor: '#E0E7FF' },
+  deltaTitle: { fontWeight: '700', color: '#1E293B', fontSize: 13, marginBottom: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deltaSummary: { fontSize: 12, color: '#475569', marginBottom: 8, lineHeight: 18, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deltaChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  deltaChip: { backgroundColor: '#FAF7F0', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center' },
-  deltaChipLabel: { fontSize: 10, color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
-  deltaChipVal: { fontSize: 11, fontWeight: '700', color: '#1A1A1A' },
-  bodyMetricsCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#FAF7F0' },
+  deltaChip: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center' },
+  deltaChipLabel: { fontSize: 10, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deltaChipVal: { fontSize: 11, fontWeight: '700', color: '#2E5BFF' },
+  bodyMetricsCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#DBEAFE' },
   bodyMetricsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  bodyMetricsTitle: { fontWeight: '700', color: '#4A4035', fontSize: 14, fontFamily: "'Heebo', sans-serif" },
+  bodyMetricsTitle: { fontWeight: '700', color: '#1E40AF', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   bodyMetricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  bodyMetricItem: { width: '31%', backgroundColor: '#FAF7F0', borderRadius: 12, padding: 8, alignItems: 'center' },
-  bodyMetricValue: { fontSize: 16, fontWeight: '800', color: '#4A4035' },
-  bodyMetricUnit: { fontSize: 9, color: '#1A1A1A', marginTop: 1 },
-  bodyMetricLabel: { fontSize: 11, color: '#6B6155', marginTop: 3, fontFamily: "'Heebo', sans-serif" },
-  bodyMetricItemEditing: { borderColor: '#1A1A1A', borderWidth: 2, backgroundColor: '#FAF7F0', padding: 6 },
-  bodyMetricInput: { fontSize: 14, fontWeight: '700', color: '#4A4035', textAlign: 'center', paddingVertical: 4, paddingHorizontal: 2, width: '100%', maxWidth: 60, borderWidth: 1, borderColor: '#E8E2D5', borderRadius: 8, backgroundColor: '#fff' },
+  bodyMetricItem: { width: '31%', backgroundColor: '#EFF6FF', borderRadius: 12, padding: 8, alignItems: 'center' },
+  bodyMetricValue: { fontSize: 16, fontWeight: '800', color: '#1E40AF' },
+  bodyMetricUnit: { fontSize: 9, color: '#3B82F6', marginTop: 1 },
+  bodyMetricLabel: { fontSize: 11, color: '#64748B', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricItemEditing: { borderColor: '#2E5BFF', borderWidth: 2, backgroundColor: '#EFF6FF', padding: 6 },
+  bodyMetricInput: { fontSize: 14, fontWeight: '700', color: '#1E40AF', textAlign: 'center', paddingVertical: 4, paddingHorizontal: 2, width: '100%', maxWidth: 60, borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 8, backgroundColor: '#fff' },
   sizingCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
   sizingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sizingTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 14, fontFamily: "'Heebo', sans-serif" },
-  editBtn: { backgroundColor: '#FAF7F0', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12 },
-  editBtnActive: { backgroundColor: '#1A1A1A' },
-  editBtnText: { color: '#1A1A1A', fontSize: 12, fontWeight: '600', fontFamily: "'Heebo', sans-serif" },
+  sizingTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  editBtn: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12 },
+  editBtnActive: { backgroundColor: '#2E5BFF' },
+  editBtnText: { color: '#2E5BFF', fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   editBtnTextActive: { color: '#fff' },
   sizingGrid: { flexDirection: 'row', gap: 8 },
-  sizeBox: { flex: 1, backgroundColor: '#F5F0E6', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5 },
-  sizeValue: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
-  sizeLabel: { fontSize: 10, color: '#8B8175', marginTop: 3, fontFamily: "'Heebo', sans-serif" },
-  sizeOption: { fontSize: 14, fontWeight: '700', color: '#4A4035', paddingVertical: 2 },
-  sizeOptionActive: { color: '#1A1A1A' },
+  sizeBox: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5 },
+  sizeValue: { fontSize: 16, fontWeight: '700', color: '#2E5BFF' },
+  sizeLabel: { fontSize: 10, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeOption: { fontSize: 14, fontWeight: '700', color: '#475569', paddingVertical: 2 },
+  sizeOptionActive: { color: '#2E5BFF' },
   styleCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
   styleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  styleTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 14, fontFamily: "'Heebo', sans-serif" },
-  stylePickerLabel: { fontSize: 11, fontWeight: '600', color: '#6B6155', marginBottom: 8, fontFamily: "'Heebo', sans-serif" },
+  styleTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  stylePickerLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   stylePickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  styleChip: { backgroundColor: '#F5F0E6', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1.5, borderColor: 'transparent' },
-  styleChipActive: { backgroundColor: '#FAF7F0', borderColor: '#1A1A1A' },
-  styleChipText: { fontSize: 12, fontWeight: '600', color: '#4A4035' },
-  styleChipTextActive: { color: '#1A1A1A' },
+  styleChip: { backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1.5, borderColor: 'transparent' },
+  styleChipActive: { backgroundColor: '#EEF2FF', borderColor: '#2E5BFF' },
+  styleChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  styleChipTextActive: { color: '#2E5BFF' },
   styleRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  stylePrimary: { flex: 1, backgroundColor: '#FAF7F0', borderRadius: 12, padding: 10, alignItems: 'center' },
-  stylePrimaryText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A' },
-  stylePrimaryLabel: { fontSize: 10, color: '#6B6155', marginTop: 2, fontFamily: "'Heebo', sans-serif" },
-  styleSecondary: { flex: 1, backgroundColor: '#F5F0E6', borderRadius: 12, padding: 10, alignItems: 'center' },
-  styleSecondaryText: { fontSize: 13, fontWeight: '700', color: '#4A4035' },
-  styleSecondaryLabel: { fontSize: 10, color: '#8B8175', marginTop: 2, fontFamily: "'Heebo', sans-serif" },
+  stylePrimary: { flex: 1, backgroundColor: '#EEF2FF', borderRadius: 12, padding: 10, alignItems: 'center' },
+  stylePrimaryText: { fontSize: 13, fontWeight: '700', color: '#2E5BFF' },
+  stylePrimaryLabel: { fontSize: 10, color: '#64748B', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  styleSecondary: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, alignItems: 'center' },
+  styleSecondaryText: { fontSize: 13, fontWeight: '700', color: '#475569' },
+  styleSecondaryLabel: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   colorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  colorLabel: { fontSize: 11, color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
+  colorLabel: { fontSize: 11, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   colorDots: { flexDirection: 'row', gap: 6 },
   colorDot: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
   colorDotsEditable: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   colorDotRemove: { color: '#fff', fontSize: 14, fontWeight: '700', textAlign: 'center', lineHeight: 18 },
-  colorAddLabel: { fontSize: 11, fontWeight: '600', color: '#6B6155', marginBottom: 6, fontFamily: "'Heebo', sans-serif" },
+  colorAddLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   colorPalette: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   colorPaletteDot: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
-  colorPaletteDotActive: { borderColor: '#1A1A1A', borderWidth: 3 },
-  patternText: { fontSize: 11, color: '#8B8175' },
+  colorPaletteDotActive: { borderColor: '#2E5BFF', borderWidth: 3 },
+  patternText: { fontSize: 11, color: '#94A3B8' },
   tagsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  tag: { backgroundColor: '#F5F0E6', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
-  tagText: { fontSize: 11, fontWeight: '600', color: '#4A4035' },
-  confirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#1A1A1A', alignItems: 'center' },
-  confirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
+  tag: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
+  tagText: { fontSize: 11, fontWeight: '600', color: '#475569' },
+  confirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#2E5BFF', alignItems: 'center' },
+  confirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   faceMissingCard: { backgroundColor: '#FEF2F2', borderRadius: 18, padding: 18, borderWidth: 2, borderColor: '#FECACA', gap: 10 },
   faceMissingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  faceMissingTitle: { fontSize: 15, fontWeight: '700', color: '#DC2626', fontFamily: "'Heebo', sans-serif" },
-  faceMissingText: { fontSize: 13, color: '#991B1B', lineHeight: 20, fontFamily: "'Heebo', sans-serif" },
+  faceMissingTitle: { fontSize: 15, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  faceMissingText: { fontSize: 13, color: '#991B1B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   faceMissingBtn: { backgroundColor: '#DC2626', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', marginTop: 4 },
-  faceMissingBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
-  galleryAccessCard: { backgroundColor: '#fff', borderRadius: 24, padding: 24, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#FAF7F0' },
-  galleryAccessIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FAF7F0', alignItems: 'center', justifyContent: 'center' },
-  galleryAccessTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  galleryAccessDesc: { fontSize: 13, color: '#6B6155', lineHeight: 20, textAlign: 'center', fontFamily: "'Heebo', sans-serif" },
+  faceMissingBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessCard: { backgroundColor: '#fff', borderRadius: 24, padding: 24, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#DBEAFE' },
+  galleryAccessIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+  galleryAccessTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessDesc: { fontSize: 13, color: '#64748B', lineHeight: 20, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryAccessFeatures: { gap: 10, width: '100%', marginTop: 6 },
-  galleryAccessFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F5F0E6', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
-  galleryAccessFeatureText: { fontSize: 12, color: '#4A4035', flex: 1, fontFamily: "'Heebo', sans-serif" },
-  galleryGrantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#1A1A1A', borderRadius: 18, paddingVertical: 16 },
-  galleryGrantBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
-  gallerySkipText: { color: '#8B8175', fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 8, fontFamily: "'Heebo', sans-serif" },
+  galleryAccessFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
+  galleryAccessFeatureText: { fontSize: 12, color: '#475569', flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryGrantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2E5BFF', borderRadius: 18, paddingVertical: 16 },
+  galleryGrantBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gallerySkipText: { color: '#94A3B8', fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryScanBox: { alignItems: 'center', gap: 14, paddingVertical: 20 },
-  galleryScanTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#E8E2D5', borderRadius: 4, overflow: 'hidden' },
-  galleryScanBarFill: { height: '100%', backgroundColor: '#1A1A1A', borderRadius: 4 },
-  galleryScanPct: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
+  galleryScanTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
+  galleryScanBarFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
+  galleryScanPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   genderRow: { marginBottom: 12 },
-  genderLabel: { fontSize: 12, fontWeight: '600', color: '#6B6155', marginBottom: 8, fontFamily: "'Heebo', sans-serif" },
+  genderLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   genderSelector: { flexDirection: 'row', gap: 8 },
-  genderOption: { flex: 1, backgroundColor: '#F5F0E6', borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
-  genderOptionActive: { backgroundColor: '#FAF7F0', borderColor: '#1A1A1A' },
-  genderOptionText: { fontSize: 13, fontWeight: '600', color: '#4A4035', fontFamily: "'Heebo', sans-serif" },
-  genderOptionTextActive: { color: '#1A1A1A' },
+  genderOption: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
+  genderOptionActive: { backgroundColor: '#EEF2FF', borderColor: '#2E5BFF' },
+  genderOptionText: { fontSize: 13, fontWeight: '600', color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderOptionTextActive: { color: '#2E5BFF' },
   genderDisplayRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
-  genderDisplayLabel: { fontSize: 13, fontWeight: '600', color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
-  genderDisplayValue: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  updateResultsBtn: { marginTop: 12, backgroundColor: '#1A1A1A', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
-  updateResultsBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
+  genderDisplayLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderDisplayValue: { fontSize: 13, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  updateResultsBtn: { marginTop: 12, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
+  updateResultsBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateDetailedRecommendation, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
-
+import { ProductDetailModal } from './ProductDetailModal'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
   const symbol = currency ?? '₪'
@@ -41,34 +41,28 @@ function getRecommendedSizeLabel(product: Product, scannedSizes: ScannedSizes | 
 
 
 
-export default function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category, onBuy }: {
+export default function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: {
   product: Product;
   inWishlist: boolean;
   onToggleWishlist: () => void;
   scannedSizes: ScannedSizes | null;
   category: string;
-  onBuy: () => void;
 }) {
   const [toast, setToast] = useState<string | null>(null)
+  const [showDetailModal, setShowDetailModal] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  const imageUrl = normalizeProductImageUrl(product?.img)
-  const safeName = product?.name ?? ''
-  const safeBrand = product?.brand ?? ''
-  const safePrice = typeof product?.price === 'number' && !isNaN(product.price) ? product.price : 0
+  const imageUrl = normalizeProductImageUrl(product.img)
 
-  const effectiveCategory = detectEffectiveCategory(safeName, category)
+  const effectiveCategory = detectEffectiveCategory(product.name, category)
   const isDeviceAccessory = effectiveCategory === 'accessories'
   const showSizeRecommendation = !isDeviceAccessory
-  let recommendedSize: SizeRecommendation | null = null
-  try {
-    recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
-  } catch {
-    recommendedSize = null
-  }
+  const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
   const hasScanned = scannedSizes != null
 
-
+  function handleBuy() {
+    setShowDetailModal(true)
+  }
 
 
 
@@ -76,7 +70,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
     <View style={cardStyles.productCard} className="product-card">
       <View style={cardStyles.productImageWrap}>
         {imgError || !imageUrl ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E6' }}>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
             <Text style={{ fontSize: 36 }}>📦</Text>
           </View>
         ) : (
@@ -144,21 +138,21 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
             </Text>
           </View>
         )}
-        <Text style={cardStyles.productName}>{safeName}</Text>
-        <Text style={cardStyles.productBrand}>{safeBrand}</Text>
+        <Text style={cardStyles.productName}>{product.name}</Text>
+        <Text style={cardStyles.productBrand}>{product.brand}</Text>
         <View style={cardStyles.priceRow}>
-          <Text style={cardStyles.productPrice}>{formatPrice(safePrice, product?.currency)}</Text>
-          {product?.originalPrice && product.originalPrice > safePrice && (
-            <Text style={cardStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product?.currency)}</Text>
+          <Text style={cardStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <Text style={cardStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
           )}
         </View>
         <View style={cardStyles.buyBtnRow}>
           <TouchableOpacity
-            onPress={onBuy}
+            onPress={handleBuy}
             activeOpacity={0.7}
             style={cardStyles.buyBtnAli}
             accessibilityRole="button"
-            accessibilityLabel={`קניה: ${safeName}`}
+            accessibilityLabel={`קניה: ${product.name}`}
           >
             <Text style={cardStyles.buyBtnIcon}>🛒</Text>
             <Text style={cardStyles.buyBtnText}>לקניה במחיר הטוב ביותר</Text>
@@ -171,39 +165,46 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         )}
       </View>
 
+      <ProductDetailModal
+        product={product}
+        scannedSizes={scannedSizes}
+        category={category}
+        visible={showDetailModal}
+        onDismiss={() => setShowDetailModal(false)}
+      />
     </View>
   )
 }
 
 const cardStyles = StyleSheet.create({
-  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'visible', minHeight: 390, shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 } as React.CSSProperties,
-  productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F5F0E6', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'visible', minHeight: 390 },
+  productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F1F5F9', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
   productImage: { width: '100%', height: '100%' },
   heartBtn: { position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
-  aiBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(26,26,26,0.85)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#5CC8A8' },
+  aiBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(11,20,55,0.85)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#2ED573' },
   aiBadgeText: { fontSize: 9, color: '#fff', fontWeight: '600' },
   productInfo: { padding: 10, paddingBottom: 14, minHeight: 190, flexShrink: 1 },
-  matchChip: { backgroundColor: '#E8F5EF', borderWidth: 1, borderColor: 'rgba(92,200,168,0.35)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 6, marginBottom: 6, alignSelf: 'flex-start' },
-  matchChipTitle: { fontSize: 8, fontWeight: '700', color: '#4CAF7D', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Heebo', sans-serif", marginBottom: 3 },
-  matchChipText: { fontSize: 9, fontWeight: '700', color: '#4CAF7D', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Heebo', sans-serif" },
+  matchChip: { backgroundColor: '#F0FFF6', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 6, marginBottom: 6, alignSelf: 'flex-start' },
+  matchChipTitle: { fontSize: 8, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif", marginBottom: 3 },
+  matchChipText: { fontSize: 9, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
-  sizePill: { backgroundColor: '#F5F0E6', borderRadius: 5, paddingVertical: 2, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#E8E2D5' },
-  sizePillPrimary: { backgroundColor: '#1A1A1A', borderColor: '#1A1A1A' },
-  sizePillRegion: { fontSize: 7, fontWeight: '700', color: '#6B6155', letterSpacing: 0.3 },
-  sizePillValue: { fontSize: 9, fontWeight: '700', color: '#1A1A1A' },
+  sizePill: { backgroundColor: '#F8FAFC', borderRadius: 5, paddingVertical: 2, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#E2E8F0' },
+  sizePillPrimary: { backgroundColor: '#2E5BFF', borderColor: '#2E5BFF' },
+  sizePillRegion: { fontSize: 7, fontWeight: '700', color: '#64748B', letterSpacing: 0.3 },
+  sizePillValue: { fontSize: 9, fontWeight: '700', color: '#1E293B' },
   sizePillValuePrimary: { color: '#fff' },
-  productName: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', lineHeight: 17, fontFamily: "'Heebo', sans-serif" },
-  productBrand: { fontSize: 11, color: '#8B8175', marginTop: 2 },
+  productName: { fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  productBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  productPrice: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
-  productOriginalPrice: { fontSize: 12, color: '#8B8175', textDecorationLine: 'line-through' },
+  productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
+  productOriginalPrice: { fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through' },
   buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 10, minHeight: 38 },
-  buyBtnAli: { flex: 1, minHeight: 44, backgroundColor: '#E84B35', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', shadowColor: '#E84B35', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 } as React.CSSProperties,
+  buyBtnAli: { flex: 1, minHeight: 44, backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
   buyBtnIcon: { fontSize: 14, marginBottom: 2 },
-  buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
-  toast: { marginTop: 6, backgroundColor: '#1A1A1A', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
-  toastText: { color: '#fff', fontSize: 10, fontWeight: '600', fontFamily: "'Heebo', sans-serif" },
-  sizeBadge: { position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: '#1A1A1A', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 },
-  sizeBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Heebo', sans-serif" },
+  buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  toast: { marginTop: 6, backgroundColor: '#0B1437', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
+  toastText: { color: '#fff', fontSize: 10, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeBadge: { position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: '#2E5BFF', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 },
+  sizeBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   })

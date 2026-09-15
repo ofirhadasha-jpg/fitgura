@@ -87,7 +87,7 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#5CC8A8" />
+          <ActivityIndicator size="large" color="#0EA5E9" />
           <Text style={styles.loadingText}>טוען נתונים...</Text>
         </View>
         <BottomNav current="profile" onNav={onNav} />
@@ -133,14 +133,14 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
               <>
                 <Text style={styles.sectionLabel}>מדדי ביצוע</Text>
                 <View style={styles.kpiGrid}>
-                  <KpiCard label="סה״כ קליקים" value={summary?.total_clicks ?? 0} icon="📊" color="#5CC8A8" />
-                  <KpiCard label="קליקים היום" value={summary?.clicks_today ?? 0} icon="📅" color="#5CC8A8" />
-                  <KpiCard label="קליקים החודש" value={summary?.clicks_this_month ?? 0} icon="📆" color="#F5D547" />
-                  <KpiCard label="קליקרים ייחודיים" value={summary?.unique_active_clickers ?? 0} icon="👥" color="#1A1A1A" />
-                  <KpiCard label="סה״כ משתמשים" value={summary?.total_users ?? 0} icon="👤" color="#1A1A1A" />
-                  <KpiCard label="משתמשים חדשים" value={summary?.new_users_today ?? 0} icon="✨" color="#E84B35" />
-                  <KpiCard label="סה״כ מועדפים" value={summary?.total_favorites ?? 0} icon="💚" color="#5CC8A8" />
-                  <KpiCard label="מוצרים פעילים" value={products.length} icon="🏷️" color="#F5D547" />
+                  <KpiCard label="סה״כ קליקים" value={summary?.total_clicks ?? 0} icon="📊" color="#0EA5E9" />
+                  <KpiCard label="קליקים היום" value={summary?.clicks_today ?? 0} icon="📅" color="#10B981" />
+                  <KpiCard label="קליקים החודש" value={summary?.clicks_this_month ?? 0} icon="📆" color="#F59E0B" />
+                  <KpiCard label="קליקרים ייחודיים" value={summary?.unique_active_clickers ?? 0} icon="👥" color="#8B5CF6" />
+                  <KpiCard label="סה״כ משתמשים" value={summary?.total_users ?? 0} icon="👤" color="#3B82F6" />
+                  <KpiCard label="משתמשים חדשים" value={summary?.new_users_today ?? 0} icon="✨" color="#EC4899" />
+                  <KpiCard label="סה״כ מועדפים" value={summary?.total_favorites ?? 0} icon="💚" color="#14B8A6" />
+                  <KpiCard label="מוצרים פעילים" value={products.length} icon="🏷️" color="#F97316" />
                 </View>
 
                 <Text style={styles.sectionLabel}>תנועה יומית</Text>
@@ -339,7 +339,7 @@ function PasswordGate({ onNav, onVerified }: { onNav: (s: Screen) => void; onVer
           <TextInput
             style={styles.gateInput}
             placeholder="סיסמה"
-            placeholderTextColor="#8B8175"
+            placeholderTextColor="#94A3B8"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -420,7 +420,7 @@ function BroadcastPanel() {
           <TextInput
             style={styles.input}
             placeholder="אימייל נמען"
-            placeholderTextColor="#8B8175"
+            placeholderTextColor="#94A3B8"
             value={targetEmail}
             onChangeText={setTargetEmail}
             autoCapitalize="none"
@@ -430,14 +430,14 @@ function BroadcastPanel() {
         <TextInput
           style={styles.input}
           placeholder="כותרת"
-          placeholderTextColor="#8B8175"
+          placeholderTextColor="#94A3B8"
           value={title}
           onChangeText={setTitle}
         />
         <TextInput
           style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
           placeholder="תוכן"
-          placeholderTextColor="#8B8175"
+          placeholderTextColor="#94A3B8"
           value={body}
           onChangeText={setBody}
           multiline
@@ -509,7 +509,7 @@ function UserDrawer({ userId, onClose }: { userId: string; onClose: () => void }
 
           {loading ? (
             <View style={styles.drawerLoading}>
-              <ActivityIndicator size="large" color="#5CC8A8" />
+              <ActivityIndicator size="large" color="#0EA5E9" />
             </View>
           ) : details ? (
             <ScrollView style={styles.drawerScroll} showsVerticalScrollIndicator={false}>
@@ -681,107 +681,107 @@ function formatDateTime(dateStr: string): string {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F0E6' },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 52, paddingBottom: 100, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  backArrow: { fontSize: 22, color: '#1A1A1A' },
-  title: { fontSize: 22, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  refreshIcon: { fontSize: 22, color: '#5CC8A8' },
+  backArrow: { fontSize: 22, color: '#1E293B' },
+  title: { fontSize: 22, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  refreshIcon: { fontSize: 22, color: '#0EA5E9' },
   spin: { opacity: 0.5 },
   loadingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 16 },
-  loadingText: { fontSize: 14, color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
+  loadingText: { fontSize: 14, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   errorWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
   errorIcon: { fontSize: 40, color: '#EF4444' },
-  errorText: { fontSize: 14, color: '#6B6155', textAlign: 'center', fontFamily: "'Heebo', sans-serif" },
-  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: '#5CC8A8' },
-  retryText: { color: '#fff', fontWeight: '600', fontSize: 14, fontFamily: "'Heebo', sans-serif" },
+  errorText: { fontSize: 14, color: '#64748B', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9' },
+  retryText: { color: '#fff', fontWeight: '600', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   tabScroll: { marginBottom: 4 },
   tabBar: { flexDirection: 'row', gap: 6 },
   tab: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  tabActive: { backgroundColor: '#5CC8A8' },
-  tabText: { fontSize: 13, fontWeight: '600', color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
+  tabActive: { backgroundColor: '#0EA5E9' },
+  tabText: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   tabTextActive: { color: '#fff' },
-  sectionLabel: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 4, fontFamily: "'Heebo', sans-serif" },
+  sectionLabel: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   kpiCard: { width: '47%', flexGrow: 1, backgroundColor: '#fff', borderRadius: 16, padding: 16, borderTopWidth: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   kpiIcon: { fontSize: 24, marginBottom: 8 },
-  kpiValue: { fontSize: 28, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  kpiLabel: { fontSize: 13, color: '#6B6155', marginTop: 4, fontFamily: "'Heebo', sans-serif" },
+  kpiValue: { fontSize: 28, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  kpiLabel: { fontSize: 13, color: '#64748B', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  emptyText: { fontSize: 14, color: '#8B8175', textAlign: 'center', paddingVertical: 24, fontFamily: "'Heebo', sans-serif" },
+  emptyText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', paddingVertical: 24, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   dailyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  dailyDate: { width: 50, fontSize: 12, color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
-  dailyBarBg: { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#F5F0E6', overflow: 'hidden' },
-  dailyBar: { height: '100%', borderRadius: 5, backgroundColor: '#5CC8A8' },
-  dailyCount: { width: 30, fontSize: 13, fontWeight: '600', color: '#1A1A1A', textAlign: 'left', fontFamily: "'Heebo', sans-serif" },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E8E2D5', paddingBottom: 8, marginBottom: 4 },
-  tableHeaderCell: { fontWeight: '700', color: '#1A1A1A', fontSize: 12, fontFamily: "'Heebo', sans-serif" },
-  tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F5F0E6' },
-  tableRowAlt: { backgroundColor: '#F5F0E6', borderRadius: 6 },
-  tableCell: { fontSize: 12, color: '#4A4035', fontFamily: "'Heebo', sans-serif" },
+  dailyDate: { width: 50, fontSize: 12, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  dailyBarBg: { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#F1F5F9', overflow: 'hidden' },
+  dailyBar: { height: '100%', borderRadius: 5, backgroundColor: '#0EA5E9' },
+  dailyCount: { width: 30, fontSize: 13, fontWeight: '600', color: '#1E293B', textAlign: 'left', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 8, marginBottom: 4 },
+  tableHeaderCell: { fontWeight: '700', color: '#1E293B', fontSize: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  tableRowAlt: { backgroundColor: '#F8FAFC', borderRadius: 6 },
+  tableCell: { fontSize: 12, color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   inactiveText: { color: '#EF4444' },
-  activityRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F5F0E6' },
+  activityRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   activityIcon: { fontSize: 18 },
   activityContent: { flex: 1 },
-  activityDesc: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  activityMeta: { fontSize: 11, color: '#8B8175', marginTop: 2, fontFamily: "'Heebo', sans-serif" },
+  activityDesc: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  activityMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   broadcastModeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F5F0E6', alignItems: 'center' },
-  modeBtnActive: { backgroundColor: '#5CC8A8' },
-  modeBtnText: { fontSize: 13, fontWeight: '600', color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
+  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center' },
+  modeBtnActive: { backgroundColor: '#0EA5E9' },
+  modeBtnText: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   modeBtnTextActive: { color: '#fff' },
-  input: { backgroundColor: '#F5F0E6', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E8E2D5', fontFamily: "'Heebo', sans-serif", color: '#1A1A1A' },
+  input: { backgroundColor: '#F8FAFC', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0', fontFamily: "'Noto Sans Hebrew', sans-serif", color: '#1E293B' },
   typeRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
-  typeBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F5F0E6', alignItems: 'center' },
+  typeBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center' },
   typeBtnActive: (t: string) => ({
-    backgroundColor: t === 'alert' ? '#EF4444' : t === 'promo' ? '#F5D547' : t === 'update' ? '#5CC8A8' : '#5CC8A8',
+    backgroundColor: t === 'alert' ? '#EF4444' : t === 'promo' ? '#F59E0B' : t === 'update' ? '#10B981' : '#0EA5E9',
   }),
-  typeBtnText: { fontSize: 12, fontWeight: '600', color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
+  typeBtnText: { fontSize: 12, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   typeBtnTextActive: { color: '#fff' },
-  sendBtn: { backgroundColor: '#5CC8A8', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  sendBtn: { backgroundColor: '#0EA5E9', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   sendBtnDisabled: { opacity: 0.5 },
-  sendBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
-  resultText: { fontSize: 13, color: '#5CC8A8', textAlign: 'center', marginTop: 10, fontFamily: "'Heebo', sans-serif" },
+  sendBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  resultText: { fontSize: 13, color: '#10B981', textAlign: 'center', marginTop: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   drawer: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
-  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E8E2D5' },
-  drawerTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  drawerCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F0E6', alignItems: 'center', justifyContent: 'center' },
-  drawerCloseText: { fontSize: 16, color: '#6B6155' },
+  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  drawerTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  drawerCloseText: { fontSize: 16, color: '#64748B' },
   drawerLoading: { paddingVertical: 60, alignItems: 'center' },
   drawerScroll: { padding: 16 },
-  drawerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#5CC8A8', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 8 },
+  drawerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#0EA5E9', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 8 },
   drawerAvatarText: { fontSize: 28, fontWeight: '800', color: '#fff' },
-  drawerEmail: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', textAlign: 'center', marginBottom: 16, fontFamily: "'Heebo', sans-serif" },
+  drawerEmail: { fontSize: 15, fontWeight: '600', color: '#1E293B', textAlign: 'center', marginBottom: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   drawerSubTabs: { flexDirection: 'row', gap: 6, marginBottom: 12 },
-  subTab: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F5F0E6', alignItems: 'center' },
-  subTabActive: { backgroundColor: '#5CC8A8' },
-  subTabText: { fontSize: 12, fontWeight: '600', color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
+  subTab: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center' },
+  subTabActive: { backgroundColor: '#0EA5E9' },
+  subTabText: { fontSize: 12, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   subTabTextActive: { color: '#fff' },
   drawerStats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  drawerStat: { flex: 1, backgroundColor: '#F5F0E6', borderRadius: 10, padding: 10, alignItems: 'center' },
-  drawerStatValue: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  drawerStatLabel: { fontSize: 11, color: '#6B6155', marginTop: 2, fontFamily: "'Heebo', sans-serif" },
-  drawerInfoCard: { backgroundColor: '#F5F0E6', borderRadius: 12, padding: 12, marginBottom: 12 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#E8E2D5' },
-  infoLabel: { fontSize: 13, color: '#6B6155', fontFamily: "'Heebo', sans-serif" },
-  infoValue: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  drawerItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E8E2D5' },
-  drawerItemText: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
-  drawerItemMeta: { fontSize: 11, color: '#8B8175', marginTop: 2, fontFamily: "'Heebo', sans-serif" },
-  toggleBtn: { backgroundColor: '#F5F0E6', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 20 },
-  toggleBtnActive: { backgroundColor: '#FFF8DB' },
-  toggleBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
+  drawerStat: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, alignItems: 'center' },
+  drawerStatValue: { fontSize: 20, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerStatLabel: { fontSize: 11, color: '#64748B', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerInfoCard: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, marginBottom: 12 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  infoLabel: { fontSize: 13, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  infoValue: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  drawerItemText: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerItemMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  toggleBtn: { backgroundColor: '#F1F5F9', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 20 },
+  toggleBtnActive: { backgroundColor: '#FEF3C7' },
+  toggleBtnText: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   gateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingTop: 52 },
   gateCard: { backgroundColor: '#fff', borderRadius: 24, padding: 32, alignItems: 'center', width: '100%', maxWidth: 360, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, elevation: 4 },
   gateLockIcon: { fontSize: 48, marginBottom: 16 },
-  gateTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 4, fontFamily: "'Heebo', sans-serif" },
-  gateSub: { fontSize: 14, color: '#6B6155', marginBottom: 20, fontFamily: "'Heebo', sans-serif" },
-  gateInput: { width: '100%', backgroundColor: '#F5F0E6', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, fontSize: 16, borderWidth: 1, borderColor: '#E8E2D5', marginBottom: 12, fontFamily: "'Heebo', sans-serif", color: '#1A1A1A' },
-  gateError: { fontSize: 13, color: '#EF4444', marginBottom: 8, fontFamily: "'Heebo', sans-serif" },
-  gateBtn: { width: '100%', backgroundColor: '#5CC8A8', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  gateTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gateSub: { fontSize: 14, color: '#64748B', marginBottom: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gateInput: { width: '100%', backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif", color: '#1E293B' },
+  gateError: { fontSize: 13, color: '#EF4444', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gateBtn: { width: '100%', backgroundColor: '#0EA5E9', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   gateBtnDisabled: { opacity: 0.5 },
-  gateBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
+  gateBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

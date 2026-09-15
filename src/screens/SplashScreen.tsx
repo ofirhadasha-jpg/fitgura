@@ -1,27 +1,71 @@
-import React from 'react'
-import { Text, TouchableOpacity, View, StyleSheet } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { LinearGradient } from '../components'
 
 export function SplashScreen({ onNext }: { onNext: () => void }) {
+  const [pulse, setPulse] = useState(false)
+
+  useEffect(() => {
+    const t = setInterval(() => setPulse((p) => !p), 1200)
+    return () => clearInterval(t)
+  }, [])
+
   return (
     <TouchableOpacity
       onPress={onNext}
-      activeOpacity={0.96}
-      accessibilityRole="button"
-      accessibilityLabel="הקש להתחלה"
-      style={splashStyles.container}
+      activeOpacity={1}
+      style={{ flex: 1 }}
     >
-      <View style={splashStyles.orbTop} />
-      <View style={splashStyles.content}>
-        <View style={splashStyles.logoMark}>
-          <View style={splashStyles.logoLineShort} />
-          <View style={splashStyles.logoLineLong} />
+      <LinearGradient
+        colors={['#0B1437', '#1A2F7A', '#0B1437']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={splashStyles.container}
+      >
+        {/* ambient orbs */}
+        <View style={[splashStyles.orb, { top: '8%', right: '-15%', width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(46,91,255,0.25)' }]} />
+        <View style={[splashStyles.orb, { bottom: '12%', left: '-10%', width: 240, height: 240, borderRadius: 120, backgroundColor: 'rgba(255,107,107,0.18)' }]} />
+        <View style={[splashStyles.orb, { top: '38%', left: '10%', width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(46,213,115,0.15)' }]} />
+
+        <View style={splashStyles.logoWrap}>
+          <View style={splashStyles.logoContainer}>
+            <View style={[
+              splashStyles.pulseRing,
+              { borderColor: pulse ? 'rgba(46,91,255,0.5)' : 'rgba(46,91,255,0.15)' },
+            ]} />
+            <LinearGradient
+              colors={['#2E5BFF', '#1a38c8']}
+              style={splashStyles.logoBox}
+            >
+              <Text style={splashStyles.logoText}>F</Text>
+            </LinearGradient>
+            <View style={[
+              splashStyles.aiDot,
+              { shadowColor: '#2ED573', shadowOpacity: pulse ? 0.9 : 0.4 },
+            ]} />
+          </View>
+
+          <View style={splashStyles.titleWrap}>
+            <Text style={splashStyles.title}>Fitgura</Text>
+            <View style={splashStyles.subtitleRow}>
+              <View style={splashStyles.subtitleLine} />
+              <Text style={splashStyles.subtitle}>AI POWERED</Text>
+              <View style={splashStyles.subtitleLine} />
+            </View>
+            <Text style={splashStyles.tagline}>בדיוק מה שחיפשת</Text>
+          </View>
+
+          <View style={splashStyles.scanBadge}>
+            <View style={[
+              splashStyles.scanDot,
+              { shadowColor: '#2ED573', shadowOpacity: pulse ? 1 : 0.3 },
+            ]} />
+            <Text style={splashStyles.scanText}>AI Fit Engine Active</Text>
+          </View>
         </View>
-        <Text style={splashStyles.wordmark}>FITGURA</Text>
-        <Text style={splashStyles.tagline}>הסטייל שלך. המידה שלך.</Text>
-        <View style={splashStyles.divider} />
-        <Text style={splashStyles.instruction}>הקש כדי להתחיל</Text>
-      </View>
-      <View style={splashStyles.orbBottom} />
+
+        <Text style={splashStyles.tapHint}>הקש להתחיל</Text>
+      </LinearGradient>
     </TouchableOpacity>
   )
 }
@@ -31,85 +75,111 @@ const splashStyles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F0E6',
+    position: 'relative',
     overflow: 'hidden',
   },
-  content: {
+  orb: {
+    position: 'absolute',
+  },
+  logoWrap: {
+    alignItems: 'center',
+    gap: 28,
+  },
+  logoContainer: {
+    position: 'relative',
+  },
+  pulseRing: {
+    position: 'absolute',
+    top: -16, left: -16, right: -16, bottom: -16,
+    borderRadius: 36,
+    borderWidth: 2,
+  },
+  logoBox: {
+    width: 100, height: 100,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1,
   },
-  logoMark: {
-    width: 74,
-    height: 74,
-    borderRadius: 24,
-    backgroundColor: '#1A1A1A',
+  logoText: {
+    fontSize: 46,
+    fontWeight: '800',
+    color: '#fff',
+    lineHeight: 46,
+  },
+  aiDot: {
+    position: 'absolute',
+    bottom: -6, right: -6,
+    width: 22, height: 22,
+    borderRadius: 11,
+    backgroundColor: '#2ED573',
+    borderWidth: 3,
+    borderColor: '#0B1437',
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 5,
+  },
+  titleWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '-8deg' }],
-    marginBottom: 22,
   },
-  logoLineShort: {
-    width: 28,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#5CC8A8',
-    transform: [{ rotate: '-35deg' }],
-    marginLeft: -10,
-    marginBottom: 8,
+  title: {
+    fontSize: 44,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 6,
   },
-  logoLineLong: {
-    width: 42,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#F5D547',
-    transform: [{ rotate: '-35deg' }],
-    marginLeft: 5,
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
   },
-  wordmark: {
-    color: '#1A1A1A',
-    fontSize: 34,
-    fontWeight: '900',
-    letterSpacing: 4,
-    fontFamily: "'Outfit', sans-serif",
+  subtitleLine: {
+    width: 30,
+    height: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  subtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 3,
   },
   tagline: {
-    color: '#6B6155',
-    fontSize: 16,
+    fontSize: 19,
     fontWeight: '500',
-    marginTop: 10,
-    fontFamily: "'Heebo', sans-serif",
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
-  divider: {
-    width: 44,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#E84B35',
-    marginTop: 34,
-    marginBottom: 18,
+  scanBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(46,213,115,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(46,213,115,0.3)',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
-  instruction: {
-    color: '#8B8175',
-    fontSize: 13,
+  scanDot: {
+    width: 8, height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2ED573',
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  scanText: {
+    fontSize: 12,
+    color: '#2ED573',
     fontWeight: '600',
-    fontFamily: "'Heebo', sans-serif",
+    letterSpacing: 0.5,
   },
-  orbTop: {
+  tapHint: {
     position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(92, 200, 168, 0.16)',
-    top: -110,
-    right: -90,
-  },
-  orbBottom: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(232, 75, 53, 0.08)',
-    bottom: -150,
-    left: -130,
+    bottom: 44,
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 12,
+    fontFamily: "'Noto Sans Hebrew', sans-serif",
   },
 })

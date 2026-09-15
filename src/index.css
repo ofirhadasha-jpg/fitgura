@@ -1,19 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
-  --color-primary: #1A1A1A;
-  --color-coral: #E84B35;
-  --color-mint: #5CC8A8;
-  --color-yellow: #F5D547;
-  --color-cream: #F5F0E6;
-  --color-cream-dark: #E8E2D5;
-  --color-warm-gray: #6B6155;
-  --color-warm-gray-light: #8B8175;
-  --color-tan: #D4C9B5;
-  --color-coral-light: #FFF5F0;
-  --color-mint-light: #E8F5EF;
-  --color-yellow-light: #FFF8DB;
+  --color-royal-blue: #2E5BFF;
+  --color-coral: #FF6B6B;
+  --color-emerald: #2ED573;
+  --color-cream: #F8FAFC;
+  --color-navy: #1A3399;
+  --color-coral-light: #FFF0F0;
+  --color-emerald-light: #F0FFF6;
+  --color-blue-light: #EEF2FF;
 }
 
 * {
@@ -27,38 +23,9 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Heebo', 'Outfit', sans-serif;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(92,200,168,0.10), transparent 28rem),
-    radial-gradient(circle at 88% 92%, rgba(245,213,71,0.06), transparent 24rem),
-    #F5F0E6;
+  font-family: 'Outfit', 'Noto Sans Hebrew', sans-serif;
+  background: #F8FAFC;
   direction: rtl;
-  color: #1A1A1A;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  -webkit-tap-highlight-color: transparent;
-}
-
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: 3px solid rgba(92,200,168,0.45);
-  outline-offset: 2px;
-}
-
-::selection {
-  background: rgba(92,200,168,0.25);
 }
 
 ::-webkit-scrollbar {
@@ -82,7 +49,7 @@ select:focus-visible {
   height: 22px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid #1A1A1A;
+  border: 3px solid #2E5BFF;
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
@@ -92,7 +59,7 @@ select:focus-visible {
   height: 22px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid #1A1A1A;
+  border: 3px solid #2E5BFF;
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
@@ -124,43 +91,7 @@ select:focus-visible {
 }
 
 .fitgura-carousel-enter {
-  animation: fitgura-carousel-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes fitgura-fade-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.fitgura-fade-up {
-  animation: fitgura-fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes fitgura-pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
-}
-
-.fitgura-pulse-soft {
-  animation: fitgura-pulse-soft 2s ease-in-out infinite;
-}
-
-@keyframes fitgura-sheet-in {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.fitgura-sheet-in {
-  animation: fitgura-sheet-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes fitgura-backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.fitgura-backdrop-in {
-  animation: fitgura-backdrop-in 0.25s ease-out both;
+  animation: fitgura-carousel-enter 0.5s ease-out both;
 }
 
 @media (max-width: 480px) {

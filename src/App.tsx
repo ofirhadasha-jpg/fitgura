@@ -209,12 +209,12 @@ async function migrateGuestData(userId: string) {
   }
 }
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
-  state = { hasError: false, error: '' }
-  static getDerivedStateFromError(err: unknown) { return { hasError: true, error: err instanceof Error ? err.message : String(err) } }
-  componentDidCatch(err: unknown, info: unknown) { console.error('App crash caught:', err, info) }
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(err: unknown) { console.error('App crash caught:', err) }
   handleRecover = () => {
-    this.setState({ hasError: false, error: '' })
+    this.setState({ hasError: false })
     sessionStorage.removeItem('fitgura_screen')
     sessionStorage.removeItem('fitgura_pending_scan')
   }
@@ -222,10 +222,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
     if (this.state.hasError) {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>משהו השתבש</Text>
-          <Text style={{ fontSize: 14, color: '#6B6155', textAlign: 'center' }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
-          <Text style={{ fontSize: 11, color: '#8B8175', textAlign: 'center', marginTop: 4, fontFamily: "'Heebo', sans-serif" }}>{this.state.error}</Text>
-          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8 }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B' }}>משהו השתבש</Text>
+          <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center' }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
+          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8 }}>
             <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>חזור להתחלה</Text>
           </TouchableOpacity>
         </View>
@@ -288,9 +287,7 @@ export default function App() {
         avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
         is_admin: profileRow?.is_admin === true,
       })
-      if (session?.user) {
-        setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
-      }
+      setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -318,7 +315,6 @@ export default function App() {
         })
 
         // Navigate to feed on SIGNED_IN or INITIAL_SESSION (covers Google OAuth redirect)
-        // but never skip the splash screen — user must tap to advance past it
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
         }
@@ -607,7 +603,7 @@ export default function App() {
     <ErrorBoundary>
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
-        {screen === 'splash' && <SplashScreen onNext={() => changeScreen(user ? 'feed' : 'onboarding')} />}
+        {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={handleDeviceDetected} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
@@ -644,41 +640,31 @@ const styles = StyleSheet.create({
     minHeight: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: '#0a1628',
     paddingVertical: 24,
     paddingHorizontal: 16,
   },
   phoneFrame: {
     width: 390,
     minHeight: 844,
-    backgroundColor: '#F5F0E6',
+    backgroundColor: '#F8FAFC',
     borderRadius: 48,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.5,
-    shadowRadius: 64,
-    elevation: 24,
-  } as React.CSSProperties,
+  },
   toast: {
     position: 'absolute',
     bottom: 100,
     left: 16,
     right: 16,
-    borderRadius: 18,
+    borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     zIndex: 200,
-    backgroundColor: '#4CAF7D',
-    shadowColor: '#4CAF7D',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
-  } as React.CSSProperties,
+    backgroundColor: '#16A34A',
+  },
   toastEmoji: { fontSize: 20 },
-  toastText: { fontWeight: '700', fontSize: 14, color: '#fff', fontFamily: "'Heebo', sans-serif" },
+  toastText: { fontWeight: '700', fontSize: 14, color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

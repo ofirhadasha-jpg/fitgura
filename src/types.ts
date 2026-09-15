@@ -31,24 +31,24 @@ export interface User {
 
 export const PLATFORMS: Platform[] = [
   { name: 'AliExpress', daysIL: 60, logo: '🟠', color: '#E84B35', note: '60 יום לישראל' },
-  { name: 'Temu',       daysIL: 45, logo: '🔵', color: '#1A1A1A', note: '45 יום לישראל' },
-  { name: 'Shein',      daysIL: 30, logo: '⬛', color: '#1A1A1A', note: '30 יום לישראל' },
-  { name: 'Amazon',     daysIL: 7,  logo: '📦', color: '#F5D547', note: '7 ימים לישראל' },
-  { name: 'ASOS',       daysIL: 14, logo: '🛍️', color: '#1A1A1A', note: '14 יום לישראל' },
-  { name: 'ZARA',       daysIL: 5,  logo: '🟫', color: '#8B8175', note: '5 ימים לישראל' },
+  { name: 'Temu',       daysIL: 45, logo: '🔵', color: '#2563EB', note: '45 יום לישראל' },
+  { name: 'Shein',      daysIL: 30, logo: '⬛', color: '#111827', note: '30 יום לישראל' },
+  { name: 'Amazon',     daysIL: 7,  logo: '📦', color: '#F59E0B', note: '7 ימים לישראל' },
+  { name: 'ASOS',       daysIL: 14, logo: '🛍️', color: '#7C3AED', note: '14 יום לישראל' },
+  { name: 'ZARA',       daysIL: 5,  logo: '🟫', color: '#78716C', note: '5 ימים לישראל' },
   { name: 'H&M',        daysIL: 7,  logo: '🔴', color: '#DC2626', note: '7 ימים לישראל' },
-  { name: 'Nike',       daysIL: 10, logo: '✔️', color: '#4A4035', note: '10 ימים לישראל' },
+  { name: 'Nike',       daysIL: 10, logo: '✔️', color: '#374151', note: '10 ימים לישראל' },
 ]
 
 export const PRESET_EVENTS = [
-  { name: 'יום האהבה', emoji: '💝', month: '02', day: '14', color: '#E84B35', bgColor: '#FFF5F0' },
-  { name: 'יום הולדת', emoji: '🎂', month: '', day: '', color: '#1A1A1A', bgColor: '#FAF7F0' },
-  { name: 'יום נישואין', emoji: '💍', month: '', day: '', color: '#E84B35', bgColor: '#FFF5F0' },
-  { name: 'ראש השנה', emoji: '🍎', month: '09', day: '22', color: '#5CC8A8', bgColor: '#E8F5EF' },
-  { name: 'חנוכה', emoji: '🕎', month: '12', day: '25', color: '#1A1A1A', bgColor: '#FAF7F0' },
-  { name: 'פסח', emoji: '✡️', month: '04', day: '12', color: '#F5D547', bgColor: '#FFFBEB' },
-  { name: 'יום האב', emoji: '👨', month: '06', day: '16', color: '#1A1A1A', bgColor: '#FAF7F0' },
-  { name: 'יום האם', emoji: '💐', month: '05', day: '11', color: '#E84B35', bgColor: '#FAF7F0' },
+  { name: 'יום האהבה', emoji: '💝', month: '02', day: '14', color: '#FF6B6B', bgColor: '#FFF0F0' },
+  { name: 'יום הולדת', emoji: '🎂', month: '', day: '', color: '#2E5BFF', bgColor: '#EEF2FF' },
+  { name: 'יום נישואין', emoji: '💍', month: '', day: '', color: '#FF6B6B', bgColor: '#FFF5F0' },
+  { name: 'ראש השנה', emoji: '🍎', month: '09', day: '22', color: '#2ED573', bgColor: '#F0FFF6' },
+  { name: 'חנוכה', emoji: '🕎', month: '12', day: '25', color: '#2E5BFF', bgColor: '#EEF2FF' },
+  { name: 'פסח', emoji: '✡️', month: '04', day: '12', color: '#F59E0B', bgColor: '#FFFBEB' },
+  { name: 'יום האב', emoji: '👨', month: '06', day: '16', color: '#7C3AED', bgColor: '#F5F3FF' },
+  { name: 'יום האם', emoji: '💐', month: '05', day: '11', color: '#EC4899', bgColor: '#FDF2F8' },
 ]
 
 export let _nextEventId = 10
@@ -422,12 +422,12 @@ export const PRIMARY_STYLES = ['Casual', 'Streetwear', 'Classic', 'Minimalist', 
 export const SEC_STYLES     = ['Boho', 'Urban', 'Preppy', 'Techwear', 'Resort', 'Business Casual']
 export const PATTERNS       = ['Solid', 'Patterned', 'Graphic']
 export const COLOR_PALETTE  = [
-  ['#1A1A1A', '#F5F0E6', '#1A1A1A'],
-  ['#1A1A1A', '#FAF7F0', '#E8E2D5'],
-  ['#DC2626', '#FFF5F0', '#1A1A1A'],
-  ['#6B6155', '#FFFBEB', '#8B8175'],
-  ['#4CAF7D', '#E8F5EF', '#1A1A1A'],
-  ['#3A8B5E', '#E8F5EF', '#F5F0E6'],
+  ['#1E293B', '#F1F5F9', '#2E5BFF'],
+  ['#7C3AED', '#F5F3FF', '#DDD6FE'],
+  ['#DC2626', '#FFF0F0', '#1E293B'],
+  ['#D97706', '#FFFBEB', '#78716C'],
+  ['#16A34A', '#F0FFF6', '#1E293B'],
+  ['#0891B2', '#E0F2FE', '#F1F5F9'],
 ]
 export const AESTHETIC_TAGS = [
   ['minimalist', 'monochrome', 'clean lines'],
