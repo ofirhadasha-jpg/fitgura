@@ -281,7 +281,7 @@ export function AddDeviceModal({ visible, onClose, onAdd }: AddDeviceModalProps)
 const modalStyles = StyleSheet.create({
   sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 80 },
   sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
-  sheet: { backgroundColor: '#fff', borderRadius: 24, padding: 28, maxHeight: '80%', width: '92%', maxWidth: 420, boxShadow: '0 8px 30px rgba(0,0,0,0.18)' },
+  sheet: { backgroundColor: '#fff', borderRadius: 24, padding: 28, maxHeight: '80%', width: '92%', maxWidth: 420, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 30, elevation: 8 },
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   sheetTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
   sheetCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F0E6', alignItems: 'center', justifyContent: 'center' },
