@@ -2,14 +2,18 @@
 @import 'tailwindcss';
 
 @theme inline {
-  --color-royal-blue: #2E5BFF;
-  --color-coral: #FF6B6B;
-  --color-emerald: #2ED573;
-  --color-cream: #F8FAFC;
-  --color-navy: #1A3399;
-  --color-coral-light: #FFF0F0;
-  --color-emerald-light: #F0FFF6;
-  --color-blue-light: #EEF2FF;
+  --color-primary: #1A1A1A;
+  --color-coral: #E84B35;
+  --color-mint: #5CC8A8;
+  --color-yellow: #F5D547;
+  --color-cream: #F5F0E6;
+  --color-cream-dark: #E8E2D5;
+  --color-warm-gray: #6B6155;
+  --color-warm-gray-light: #8B8175;
+  --color-tan: #D4C9B5;
+  --color-coral-light: #FFF5F0;
+  --color-mint-light: #E8F5EF;
+  --color-yellow-light: #FFF8DB;
 }
 
 * {
@@ -25,11 +29,11 @@ html, body, #root {
 body {
   font-family: 'Outfit', 'Noto Sans Hebrew', sans-serif;
   background:
-    radial-gradient(circle at 12% 8%, rgba(46,91,255,0.12), transparent 28rem),
-    radial-gradient(circle at 88% 92%, rgba(46,213,115,0.08), transparent 24rem),
-    #071226;
+    radial-gradient(circle at 12% 8%, rgba(92,200,168,0.10), transparent 28rem),
+    radial-gradient(circle at 88% 92%, rgba(245,213,71,0.06), transparent 24rem),
+    #F5F0E6;
   direction: rtl;
-  color: #1E293B;
+  color: #1A1A1A;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -49,12 +53,12 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 3px solid rgba(46,91,255,0.35);
+  outline: 3px solid rgba(92,200,168,0.45);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: rgba(46,91,255,0.2);
+  background: rgba(92,200,168,0.25);
 }
 
 ::-webkit-scrollbar {
@@ -78,7 +82,7 @@ select:focus-visible {
   height: 22px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid #2E5BFF;
+  border: 3px solid #1A1A1A;
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
@@ -88,7 +92,7 @@ select:focus-visible {
   height: 22px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid #2E5BFF;
+  border: 3px solid #1A1A1A;
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);

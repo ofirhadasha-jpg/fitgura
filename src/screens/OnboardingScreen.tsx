@@ -155,12 +155,12 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F0E6' }}>
       {/* Header */}
-      <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.header}>
+      <LinearGradient colors={['#1A1A1A', '#2A2520']} style={obStyles.header}>
         <View style={obStyles.progressRow}>
           {(['upload', 'scanning', 'result', 'gallery-access'] as OnboardStep[]).map((_s, i) => {
             const stepOrder = ['upload', 'scanning', 'result', 'gallery-access']
             const currentIdx = stepOrder.indexOf(step)
-            const barColor = i <= currentIdx ? (step === 'gallery-access' && i === currentIdx ? '#2E5BFF' : i < currentIdx ? '#2ED573' : '#2E5BFF') : 'rgba(255,255,255,0.2)'
+            const barColor = i <= currentIdx ? (step === 'gallery-access' && i === currentIdx ? '#1A1A1A' : i < currentIdx ? '#5CC8A8' : '#1A1A1A') : 'rgba(255,255,255,0.2)'
             return <View key={i} style={[obStyles.progressBar, { backgroundColor: barColor }]} />
           })}
         </View>
@@ -248,8 +248,8 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
-            <Text style={{ fontSize: 13, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
-            <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}>
+            <Text style={{ fontSize: 13, color: '#6B6155', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
+            <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}>
               <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>נסה שוב</Text>
             </TouchableOpacity>
           </View>
@@ -341,7 +341,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
               style={[
                 obStyles.cornerBracket,
                 c,
-                { borderColor: '#2ED573', width: 26, height: 26, marginLeft: isLeft ? -13 : -13, marginTop: isTop ? -13 : -13 },
+                { borderColor: '#5CC8A8', width: 26, height: 26, marginLeft: isLeft ? -13 : -13, marginTop: isTop ? -13 : -13 },
               ]}
             />
           )
@@ -365,8 +365,8 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
           { label: 'style_profile', sub: 'סגנון', value: '...', done: progress > 70 },
           { label: 'fit_preference', sub: 'גזרה', value: '...', done: progress > 88 },
         ].map(({ label, sub, value, done }) => (
-          <View key={label} style={[obStyles.metricCard, { borderColor: done ? 'rgba(46,213,115,0.4)' : '#E2E8F0', backgroundColor: done ? '#F0FFF6' : '#F8FAFC' }]}>
-            <Text style={[obStyles.metricValue, { color: done ? '#16A34A' : '#94A3B8' }]}>{value}</Text>
+          <View key={label} style={[obStyles.metricCard, { borderColor: done ? 'rgba(92,200,168,0.4)' : '#E8E2D5', backgroundColor: done ? '#E8F5EF' : '#F5F0E6' }]}>
+            <Text style={[obStyles.metricValue, { color: done ? '#4CAF7D' : '#8B8175' }]}>{value}</Text>
             <Text style={obStyles.metricLabel}>{label}</Text>
             <Text style={obStyles.metricSub}>{sub}</Text>
           </View>
@@ -387,7 +387,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
   const [primaryStyle, setPrimaryStyle] = useState(sizes.style?.primaryStyle ?? '')
   const [secondaryStyle, setSecondaryStyle] = useState(sizes.style?.secondaryStyle ?? '')
   const [colors, setColors] = useState<string[]>(sizes.style?.dominantColors ?? [])
-  const COLOR_PALETTE = ['#1E293B', '#475569', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#22C55E', '#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#FFFFFF', '#94A3B8']
+  const COLOR_PALETTE = ['#1A1A1A', '#4A4035', '#EF4444', '#F5D547', '#F5D547', '#F5D547', '#4CAF7D', '#5CC8A8', '#5CC8A8', '#1A1A1A', '#1A1A1A', '#1A1A1A', '#E84B35', '#E84B35', '#FFFFFF', '#8B8175']
   const [gender, setGender] = useState<'male' | 'female' | 'unisex'>(sizes.gender ?? 'unisex')
   const [heightCm, setHeightCm] = useState(sizes.sizing.bodyMetrics?.estimated_height_cm?.toString() ?? '')
   const [weightKg, setWeightKg] = useState(sizes.sizing.bodyMetrics?.estimated_weight_kg?.toString() ?? '')
@@ -495,7 +495,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
         </View>
       )}
 
-      <View style={[obStyles.resultBanner, { backgroundColor: sizes.sizing.baselineMatched ? '#EEF2FF' : '#F0FFF6', borderColor: sizes.sizing.baselineMatched ? 'rgba(46,91,255,0.3)' : 'rgba(46,213,115,0.4)' }]}>
+      <View style={[obStyles.resultBanner, { backgroundColor: sizes.sizing.baselineMatched ? '#FAF7F0' : '#E8F5EF', borderColor: sizes.sizing.baselineMatched ? 'rgba(92,200,168,0.3)' : 'rgba(92,200,168,0.4)' }]}>
         {sizes.preview && (
           <Image source={{ uri: sizes.preview }} style={obStyles.resultPhoto} />
         )}
@@ -640,7 +640,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
             { label: 'גזרה', value: fitType, options: FIT_TYPES, set: setFitType },
             { label: 'נעליים', value: shoeSize, options: SHOE_SIZES_EU, set: setShoeSize },
           ].map(({ label, value, options, set }) => (
-            <View key={label} style={[obStyles.sizeBox, { borderColor: editing ? '#2E5BFF' : '#E2E8F0', borderWidth: editing ? 2 : 1.5 }]}>
+            <View key={label} style={[obStyles.sizeBox, { borderColor: editing ? '#1A1A1A' : '#E8E2D5', borderWidth: editing ? 2 : 1.5 }]}>
               {editing ? (
                 <View>
                   {options.map((o) => (
@@ -759,7 +759,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
           <Text style={obStyles.confirmBtnText}>אשר פרופיל והמשך</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onRetake} activeOpacity={0.7}>
-          <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>סרוק תמונה חדשה</Text>
+          <Text style={{ color: '#6B6155', fontSize: 14, fontWeight: '600', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>סרוק תמונה חדשה</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -847,7 +847,7 @@ const obStyles = StyleSheet.create({
   headerSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   explainCard: { borderRadius: 20, padding: 18, gap: 12 },
   explainHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  explainIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(46,91,255,0.3)', alignItems: 'center', justifyContent: 'center' },
+  explainIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(92,200,168,0.3)', alignItems: 'center', justifyContent: 'center' },
   explainTitle: { fontWeight: '800', fontSize: 15, color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   explainSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   explainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
@@ -859,7 +859,7 @@ const obStyles = StyleSheet.create({
   carouselDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingTop: 4 },
   carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)' },
   carouselDotActive: { backgroundColor: '#C4A86D', width: 20 },
-  uploadCard: { backgroundColor: '#FFFFFF', borderRadius: 32, padding: 28, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#E8E2D5', minHeight: 280, justifyContent: 'center', shadowColor: '#1E293B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4 } as React.CSSProperties,
+  uploadCard: { backgroundColor: '#FFFFFF', borderRadius: 32, padding: 28, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#E8E2D5', minHeight: 280, justifyContent: 'center', shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4 } as React.CSSProperties,
   uploadCardActive: { borderColor: '#C4A86D', backgroundColor: '#FAF7F0' },
   scanCircle: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   scanCircleInner: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F5F0E6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#D4C9B5' },
@@ -881,89 +881,89 @@ const obStyles = StyleSheet.create({
   scanInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   scanInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FAF7F0', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, width: '48%' },
   scanInfoLabel: { fontSize: 13, color: '#4A4035', fontWeight: '500', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  scanFrame: { width: '100%', height: 280, borderRadius: 24, backgroundColor: '#1a2f7a', overflow: 'hidden', position: 'relative' },
+  scanFrame: { width: '100%', height: 280, borderRadius: 24, backgroundColor: '#2A2520', overflow: 'hidden', position: 'relative' },
   scanPhoto: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.55 },
   scanGrid: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3 },
-  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#2ED573', shadowColor: '#2ED573', shadowRadius: 16, shadowOpacity: 0.6 },
+  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#5CC8A8', shadowColor: '#5CC8A8', shadowRadius: 16, shadowOpacity: 0.6 },
   cornerBracket: { position: 'absolute', width: 24, height: 24 },
   progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  progressPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
-  progressTrack: { height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
+  progressLabel: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  progressPct: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
+  progressTrack: { height: 8, backgroundColor: '#E8E2D5', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#1A1A1A', borderRadius: 4 },
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, width: '100%' },
   metricCard: { width: '48%', borderRadius: 14, padding: 10, alignItems: 'center', borderWidth: 1.5 },
   metricValue: { fontSize: 13, fontWeight: '700' },
-  metricLabel: { fontSize: 9, color: '#94A3B8', marginTop: 2, letterSpacing: 0.5 },
-  metricSub: { fontSize: 10, color: '#64748B', marginTop: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  metricLabel: { fontSize: 9, color: '#8B8175', marginTop: 2, letterSpacing: 0.5 },
+  metricSub: { fontSize: 10, color: '#6B6155', marginTop: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   resultBanner: { borderRadius: 20, padding: 18, borderWidth: 1.5, alignItems: 'center' },
   resultPhoto: { width: 60, height: 60, borderRadius: 30, marginBottom: 10 },
   resultBadges: { flexDirection: 'row', gap: 8, marginBottom: 6 },
-  resultBadge: { backgroundColor: '#2E5BFF', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
-  weeklyBadge: { backgroundColor: '#7C3AED', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
-  resultTitle: { fontWeight: '800', fontSize: 17, color: '#15803D', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  resultSub: { fontSize: 12, color: '#16A34A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deltaCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, borderWidth: 1.5, borderColor: '#E0E7FF' },
-  deltaTitle: { fontWeight: '700', color: '#1E293B', fontSize: 13, marginBottom: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deltaSummary: { fontSize: 12, color: '#475569', marginBottom: 8, lineHeight: 18, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  resultBadge: { backgroundColor: '#1A1A1A', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
+  weeklyBadge: { backgroundColor: '#1A1A1A', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
+  resultTitle: { fontWeight: '800', fontSize: 17, color: '#3A8B5E', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  resultSub: { fontSize: 12, color: '#4CAF7D', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deltaCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, borderWidth: 1.5, borderColor: '#FAF7F0' },
+  deltaTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 13, marginBottom: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deltaSummary: { fontSize: 12, color: '#4A4035', marginBottom: 8, lineHeight: 18, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   deltaChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  deltaChip: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center' },
-  deltaChipLabel: { fontSize: 10, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deltaChipVal: { fontSize: 11, fontWeight: '700', color: '#2E5BFF' },
-  bodyMetricsCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#DBEAFE' },
+  deltaChip: { backgroundColor: '#FAF7F0', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center' },
+  deltaChipLabel: { fontSize: 10, color: '#6B6155', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  deltaChipVal: { fontSize: 11, fontWeight: '700', color: '#1A1A1A' },
+  bodyMetricsCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#FAF7F0' },
   bodyMetricsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  bodyMetricsTitle: { fontWeight: '700', color: '#1E40AF', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricsTitle: { fontWeight: '700', color: '#4A4035', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   bodyMetricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  bodyMetricItem: { width: '31%', backgroundColor: '#EFF6FF', borderRadius: 12, padding: 8, alignItems: 'center' },
-  bodyMetricValue: { fontSize: 16, fontWeight: '800', color: '#1E40AF' },
-  bodyMetricUnit: { fontSize: 9, color: '#3B82F6', marginTop: 1 },
-  bodyMetricLabel: { fontSize: 11, color: '#64748B', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  bodyMetricItemEditing: { borderColor: '#2E5BFF', borderWidth: 2, backgroundColor: '#EFF6FF', padding: 6 },
-  bodyMetricInput: { fontSize: 14, fontWeight: '700', color: '#1E40AF', textAlign: 'center', paddingVertical: 4, paddingHorizontal: 2, width: '100%', maxWidth: 60, borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 8, backgroundColor: '#fff' },
+  bodyMetricItem: { width: '31%', backgroundColor: '#FAF7F0', borderRadius: 12, padding: 8, alignItems: 'center' },
+  bodyMetricValue: { fontSize: 16, fontWeight: '800', color: '#4A4035' },
+  bodyMetricUnit: { fontSize: 9, color: '#1A1A1A', marginTop: 1 },
+  bodyMetricLabel: { fontSize: 11, color: '#6B6155', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricItemEditing: { borderColor: '#1A1A1A', borderWidth: 2, backgroundColor: '#FAF7F0', padding: 6 },
+  bodyMetricInput: { fontSize: 14, fontWeight: '700', color: '#4A4035', textAlign: 'center', paddingVertical: 4, paddingHorizontal: 2, width: '100%', maxWidth: 60, borderWidth: 1, borderColor: '#E8E2D5', borderRadius: 8, backgroundColor: '#fff' },
   sizingCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
   sizingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sizingTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  editBtn: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12 },
-  editBtnActive: { backgroundColor: '#2E5BFF' },
-  editBtnText: { color: '#2E5BFF', fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizingTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  editBtn: { backgroundColor: '#FAF7F0', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12 },
+  editBtnActive: { backgroundColor: '#1A1A1A' },
+  editBtnText: { color: '#1A1A1A', fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   editBtnTextActive: { color: '#fff' },
   sizingGrid: { flexDirection: 'row', gap: 8 },
-  sizeBox: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5 },
-  sizeValue: { fontSize: 16, fontWeight: '700', color: '#2E5BFF' },
-  sizeLabel: { fontSize: 10, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeOption: { fontSize: 14, fontWeight: '700', color: '#475569', paddingVertical: 2 },
-  sizeOptionActive: { color: '#2E5BFF' },
+  sizeBox: { flex: 1, backgroundColor: '#F5F0E6', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5 },
+  sizeValue: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
+  sizeLabel: { fontSize: 10, color: '#8B8175', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sizeOption: { fontSize: 14, fontWeight: '700', color: '#4A4035', paddingVertical: 2 },
+  sizeOptionActive: { color: '#1A1A1A' },
   styleCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
   styleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  styleTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  stylePickerLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  styleTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  stylePickerLabel: { fontSize: 11, fontWeight: '600', color: '#6B6155', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   stylePickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  styleChip: { backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1.5, borderColor: 'transparent' },
-  styleChipActive: { backgroundColor: '#EEF2FF', borderColor: '#2E5BFF' },
-  styleChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
-  styleChipTextActive: { color: '#2E5BFF' },
+  styleChip: { backgroundColor: '#F5F0E6', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1.5, borderColor: 'transparent' },
+  styleChipActive: { backgroundColor: '#FAF7F0', borderColor: '#1A1A1A' },
+  styleChipText: { fontSize: 12, fontWeight: '600', color: '#4A4035' },
+  styleChipTextActive: { color: '#1A1A1A' },
   styleRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  stylePrimary: { flex: 1, backgroundColor: '#EEF2FF', borderRadius: 12, padding: 10, alignItems: 'center' },
-  stylePrimaryText: { fontSize: 13, fontWeight: '700', color: '#2E5BFF' },
-  stylePrimaryLabel: { fontSize: 10, color: '#64748B', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  styleSecondary: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, alignItems: 'center' },
-  styleSecondaryText: { fontSize: 13, fontWeight: '700', color: '#475569' },
-  styleSecondaryLabel: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  stylePrimary: { flex: 1, backgroundColor: '#FAF7F0', borderRadius: 12, padding: 10, alignItems: 'center' },
+  stylePrimaryText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A' },
+  stylePrimaryLabel: { fontSize: 10, color: '#6B6155', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  styleSecondary: { flex: 1, backgroundColor: '#F5F0E6', borderRadius: 12, padding: 10, alignItems: 'center' },
+  styleSecondaryText: { fontSize: 13, fontWeight: '700', color: '#4A4035' },
+  styleSecondaryLabel: { fontSize: 10, color: '#8B8175', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   colorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  colorLabel: { fontSize: 11, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  colorLabel: { fontSize: 11, color: '#6B6155', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   colorDots: { flexDirection: 'row', gap: 6 },
   colorDot: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
   colorDotsEditable: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   colorDotRemove: { color: '#fff', fontSize: 14, fontWeight: '700', textAlign: 'center', lineHeight: 18 },
-  colorAddLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  colorAddLabel: { fontSize: 11, fontWeight: '600', color: '#6B6155', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   colorPalette: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   colorPaletteDot: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
-  colorPaletteDotActive: { borderColor: '#2E5BFF', borderWidth: 3 },
-  patternText: { fontSize: 11, color: '#94A3B8' },
+  colorPaletteDotActive: { borderColor: '#1A1A1A', borderWidth: 3 },
+  patternText: { fontSize: 11, color: '#8B8175' },
   tagsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  tag: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
-  tagText: { fontSize: 11, fontWeight: '600', color: '#475569' },
-  confirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#2E5BFF', alignItems: 'center' },
+  tag: { backgroundColor: '#F5F0E6', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
+  tagText: { fontSize: 11, fontWeight: '600', color: '#4A4035' },
+  confirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#1A1A1A', alignItems: 'center' },
   confirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   faceMissingCard: { backgroundColor: '#FEF2F2', borderRadius: 18, padding: 18, borderWidth: 2, borderColor: '#FECACA', gap: 10 },
   faceMissingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -971,31 +971,31 @@ const obStyles = StyleSheet.create({
   faceMissingText: { fontSize: 13, color: '#991B1B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   faceMissingBtn: { backgroundColor: '#DC2626', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', marginTop: 4 },
   faceMissingBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryAccessCard: { backgroundColor: '#fff', borderRadius: 24, padding: 24, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#DBEAFE' },
-  galleryAccessIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-  galleryAccessTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryAccessDesc: { fontSize: 13, color: '#64748B', lineHeight: 20, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessCard: { backgroundColor: '#fff', borderRadius: 24, padding: 24, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#FAF7F0' },
+  galleryAccessIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FAF7F0', alignItems: 'center', justifyContent: 'center' },
+  galleryAccessTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessDesc: { fontSize: 13, color: '#6B6155', lineHeight: 20, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryAccessFeatures: { gap: 10, width: '100%', marginTop: 6 },
-  galleryAccessFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
-  galleryAccessFeatureText: { fontSize: 12, color: '#475569', flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryGrantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2E5BFF', borderRadius: 18, paddingVertical: 16 },
+  galleryAccessFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F5F0E6', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
+  galleryAccessFeatureText: { fontSize: 12, color: '#4A4035', flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryGrantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#1A1A1A', borderRadius: 18, paddingVertical: 16 },
   galleryGrantBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  gallerySkipText: { color: '#94A3B8', fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gallerySkipText: { color: '#8B8175', fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   galleryScanBox: { alignItems: 'center', gap: 14, paddingVertical: 20 },
-  galleryScanTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
-  galleryScanBarFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
-  galleryScanPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryScanTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#E8E2D5', borderRadius: 4, overflow: 'hidden' },
+  galleryScanBarFill: { height: '100%', backgroundColor: '#1A1A1A', borderRadius: 4 },
+  galleryScanPct: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   genderRow: { marginBottom: 12 },
-  genderLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderLabel: { fontSize: 12, fontWeight: '600', color: '#6B6155', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   genderSelector: { flexDirection: 'row', gap: 8 },
-  genderOption: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
-  genderOptionActive: { backgroundColor: '#EEF2FF', borderColor: '#2E5BFF' },
-  genderOptionText: { fontSize: 13, fontWeight: '600', color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  genderOptionTextActive: { color: '#2E5BFF' },
+  genderOption: { flex: 1, backgroundColor: '#F5F0E6', borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
+  genderOptionActive: { backgroundColor: '#FAF7F0', borderColor: '#1A1A1A' },
+  genderOptionText: { fontSize: 13, fontWeight: '600', color: '#4A4035', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderOptionTextActive: { color: '#1A1A1A' },
   genderDisplayRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
-  genderDisplayLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  genderDisplayValue: { fontSize: 13, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  updateResultsBtn: { marginTop: 12, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
+  genderDisplayLabel: { fontSize: 13, fontWeight: '600', color: '#6B6155', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderDisplayValue: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  updateResultsBtn: { marginTop: 12, backgroundColor: '#1A1A1A', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
   updateResultsBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

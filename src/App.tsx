@@ -222,9 +222,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
     if (this.state.hasError) {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B' }}>משהו השתבש</Text>
-          <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center' }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
-          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8 }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>משהו השתבש</Text>
+          <Text style={{ fontSize: 14, color: '#6B6155', textAlign: 'center' }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
+          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8 }}>
             <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>חזור להתחלה</Text>
           </TouchableOpacity>
         </View>
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
   phoneFrame: {
     width: 390,
     minHeight: 844,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F5F0E6',
     borderRadius: 48,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -671,8 +671,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     zIndex: 200,
-    backgroundColor: '#16A34A',
-    shadowColor: '#16A34A',
+    backgroundColor: '#4CAF7D',
+    shadowColor: '#4CAF7D',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 16,

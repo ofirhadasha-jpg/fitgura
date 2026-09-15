@@ -24,7 +24,7 @@ const splashStyles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F4F4F1',
+    backgroundColor: '#F5F0E6',
     overflow: 'hidden',
   },
   image: {
