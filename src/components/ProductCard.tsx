@@ -70,7 +70,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
     <View style={cardStyles.productCard} className="product-card">
       <View style={cardStyles.productImageWrap}>
         {imgError || !imageUrl ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E0' }}>
             <Text style={{ fontSize: 36 }}>📦</Text>
           </View>
         ) : (
@@ -177,34 +177,34 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
 }
 
 const cardStyles = StyleSheet.create({
-  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'visible', minHeight: 390 },
-  productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F1F5F9', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+  productCard: { width: '48%', backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', overflow: 'visible', minHeight: 390, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F5F0E0', borderTopLeftRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', borderTopRightRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', overflow: 'hidden' } as React.CSSProperties,
   productImage: { width: '100%', height: '100%' },
-  heartBtn: { position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
-  aiBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(11,20,55,0.85)', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#2ED573' },
-  aiBadgeText: { fontSize: 9, color: '#fff', fontWeight: '600' },
+  heartBtn: { position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', backgroundColor: '#FFFEF5', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  aiBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: '#FFE566', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 3, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  aiBadgeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#00FF66' },
+  aiBadgeText: { fontSize: 9, color: '#1A1A1A', fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
   productInfo: { padding: 10, paddingBottom: 14, minHeight: 190, flexShrink: 1 },
-  matchChip: { backgroundColor: '#F0FFF6', borderWidth: 1, borderColor: 'rgba(46,213,115,0.35)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 6, marginBottom: 6, alignSelf: 'flex-start' },
-  matchChipTitle: { fontSize: 8, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif", marginBottom: 3 },
-  matchChipText: { fontSize: 9, fontWeight: '700', color: '#16A34A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  matchChip: { backgroundColor: '#E0FFF0', borderWidth: 1.5, borderColor: '#00CC52', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 4, paddingHorizontal: 6, marginBottom: 6, alignSelf: 'flex-start' } as React.CSSProperties,
+  matchChipTitle: { fontSize: 9, fontWeight: '700', color: '#00CC52', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Permanent Marker', cursive", marginBottom: 3 },
+  matchChipText: { fontSize: 10, fontWeight: '700', color: '#00CC52', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
-  sizePill: { backgroundColor: '#F8FAFC', borderRadius: 5, paddingVertical: 2, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#E2E8F0' },
-  sizePillPrimary: { backgroundColor: '#2E5BFF', borderColor: '#2E5BFF' },
-  sizePillRegion: { fontSize: 7, fontWeight: '700', color: '#64748B', letterSpacing: 0.3 },
-  sizePillValue: { fontSize: 9, fontWeight: '700', color: '#1E293B' },
-  sizePillValuePrimary: { color: '#fff' },
-  productName: { fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  productBrand: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  sizePill: { backgroundColor: '#FFFEF5', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 2, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  sizePillPrimary: { backgroundColor: '#FFE566', borderColor: '#1A1A1A' },
+  sizePillRegion: { fontSize: 8, fontWeight: '700', color: '#4A4A4A', letterSpacing: 0.3, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sizePillValue: { fontSize: 10, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  sizePillValuePrimary: { color: '#1A1A1A' },
+  productName: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', lineHeight: 18, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  productBrand: { fontSize: 12, color: '#9A9A9A', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  productPrice: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
-  productOriginalPrice: { fontSize: 12, color: '#94A3B8', textDecorationLine: 'line-through' },
+  productPrice: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  productOriginalPrice: { fontSize: 13, color: '#9A9A9A', textDecorationLine: 'line-through', fontFamily: "'Permanent Marker', cursive" },
   buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 10, minHeight: 38 },
-  buyBtnAli: { flex: 1, minHeight: 44, backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
+  buyBtnAli: { flex: 1, minHeight: 44, backgroundColor: '#00FF66', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   buyBtnIcon: { fontSize: 14, marginBottom: 2 },
-  buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  toast: { marginTop: 6, backgroundColor: '#0B1437', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
-  toastText: { color: '#fff', fontSize: 10, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeBadge: { position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: '#2E5BFF', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 },
-  sizeBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  buyBtnText: { color: '#1A1A1A', fontSize: 12, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  toast: { marginTop: 6, backgroundColor: '#1A1A1A', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' } as React.CSSProperties,
+  toastText: { color: '#FFFEF5', fontSize: 11, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sizeBadge: { position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: '#FFE566', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  sizeBadgeText: { fontSize: 10, fontWeight: '700', color: '#1A1A1A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Permanent Marker', cursive" },
   })

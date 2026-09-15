@@ -65,9 +65,9 @@ export function BottomNav({ current, onNav, isAdmin }: { current: Screen; onNav:
 const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row-reverse',
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    backgroundColor: '#FFFEF5',
+    borderTopWidth: 1.5,
+    borderTopColor: '#1A1A1A',
     paddingTop: 10,
     paddingBottom: 28,
     position: 'fixed',
@@ -85,23 +85,25 @@ const styles = StyleSheet.create({
   navIconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
     alignItems: 'center',
     justifyContent: 'center',
   },
   navIconActive: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#FFFACC',
+    borderWidth: 1.5,
+    borderColor: '#FFE566',
   },
   navLabel: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '400',
-    color: '#94A3B8',
+    color: '#9A9A9A',
     marginTop: 4,
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
   },
   navLabelActive: {
     fontWeight: '700',
-    color: '#2E5BFF',
+    color: '#1A1A1A',
   },
 })
 
@@ -166,9 +168,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
         style={authStyles.backdrop}
       />
       <View style={authStyles.sheet}>
-        <LinearGradient colors={['#2E5BFF', '#1A3399']} style={authStyles.header}>
-          <View style={authStyles.headerOrb1} />
-          <View style={authStyles.headerOrb2} />
+        <View style={authStyles.header}>
           <TouchableOpacity onPress={onDismiss} style={authStyles.closeBtn} activeOpacity={0.7}>
             <Text style={authStyles.closeText}>✕</Text>
           </TouchableOpacity>
@@ -180,7 +180,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
               שמור את המידות והפריטים המועדפים שלך!
             </Text>
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={authStyles.body}>
           <Text style={authStyles.bodyDesc}>
@@ -188,8 +188,8 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
           </Text>
 
           {authError && (
-            <View style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#FECACA' }}>
-              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+            <View style={{ backgroundColor: '#FFF0F0', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' }}>
+              <Text style={{ fontSize: 14, color: '#DC2626', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
                 ⚠️ {authError}
               </Text>
             </View>
@@ -278,12 +278,12 @@ const authStyles = StyleSheet.create({
   backdrop: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(11,20,55,0.6)',
+    backgroundColor: 'rgba(26,26,26,0.6)',
   },
   sheet: {
-    backgroundColor: '#fff',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    backgroundColor: '#FFFEF5',
+    borderBottomLeftRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
+    borderBottomRightRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
     overflow: 'hidden',
   },
   header: {
@@ -292,31 +292,22 @@ const authStyles = StyleSheet.create({
     paddingBottom: 24,
     position: 'relative',
     overflow: 'hidden',
-  },
-  headerOrb1: {
-    position: 'absolute',
-    top: -30, left: -30,
-    width: 120, height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  headerOrb2: {
-    position: 'absolute',
-    bottom: -20, right: -20,
-    width: 80, height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,107,107,0.15)',
+    backgroundColor: '#FFE566',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#1A1A1A',
   },
   closeBtn: {
     position: 'absolute',
     top: 16, left: 16,
     width: 32, height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    backgroundColor: '#FFFEF5',
+    borderWidth: 1.5,
+    borderColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeText: { color: '#fff', fontSize: 16, lineHeight: 16 },
+  closeText: { color: '#1A1A1A', fontSize: 16, lineHeight: 16, fontWeight: '700' },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -324,20 +315,20 @@ const authStyles = StyleSheet.create({
   },
   headerIcon: {
     width: 48, height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    backgroundColor: '#FFFEF5',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#fff',
-    lineHeight: 22,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    lineHeight: 24,
     flexShrink: 1,
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Permanent Marker', cursive",
   },
   body: {
     paddingHorizontal: 24,
@@ -345,11 +336,11 @@ const authStyles = StyleSheet.create({
     paddingBottom: 12,
   },
   bodyDesc: {
-    fontSize: 13,
-    color: '#64748B',
-    lineHeight: 21,
+    fontSize: 16,
+    color: '#4A4A4A',
+    lineHeight: 24,
     marginBottom: 20,
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
   },
   googleBtn: {
     flexDirection: 'row',
@@ -358,16 +349,17 @@ const authStyles = StyleSheet.create({
     gap: 12,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    borderRadius: 18,
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#fff',
+    borderColor: '#1A1A1A',
+    backgroundColor: '#FFFEF5',
+    boxShadow: '3px 3px 0 #1A1A1A',
   },
   googleText: {
     fontWeight: '700',
-    fontSize: 15,
-    color: '#1E293B',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontSize: 16,
+    color: '#1A1A1A',
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
   },
   emailBtn: {
     flexDirection: 'row',
@@ -376,63 +368,69 @@ const authStyles = StyleSheet.create({
     gap: 10,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    borderRadius: 18,
-    backgroundColor: '#2E5BFF',
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    backgroundColor: '#00FF66',
+    borderWidth: 1.5,
+    borderColor: '#1A1A1A',
+    boxShadow: '3px 3px 0 #1A1A1A',
   },
   emailBtnText: {
     fontWeight: '700',
-    fontSize: 15,
-    color: '#fff',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontSize: 16,
+    color: '#1A1A1A',
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
   },
   emailInput: {
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 14,
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    fontSize: 15,
-    color: '#1E293B',
-    backgroundColor: '#F8FAFC',
+    borderColor: '#1A1A1A',
+    fontSize: 16,
+    color: '#1A1A1A',
+    backgroundColor: '#FFFACC',
   },
   emailSubmit: {
     paddingVertical: 15,
-    borderRadius: 18,
-    backgroundColor: '#2E5BFF',
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    backgroundColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#1A1A1A',
+    boxShadow: '3px 3px 0 #FFE566',
   },
   emailSubmitDisabled: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#9A9A9A',
   },
   emailSubmitText: {
     fontWeight: '700',
-    fontSize: 15,
-    color: '#fff',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontSize: 16,
+    color: '#FFE566',
+    fontFamily: "'Permanent Marker', cursive",
   },
   emailBtnDisabled: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#9A9A9A',
   },
   spinner: {
     width: 20, height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#E2E8F0',
-    borderTopColor: '#2E5BFF',
+    borderColor: '#1A1A1A',
+    borderTopColor: '#1A1A1A',
   },
   spinnerWhite: {
     width: 18, height: 18,
     borderRadius: 9,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-    borderTopColor: '#fff',
+    borderColor: 'rgba(255,229,102,0.4)',
+    borderTopColor: '#FFE566',
   },
   backText: {
-    color: '#94A3B8',
-    fontSize: 13,
+    color: '#6B6B6B',
+    fontSize: 15,
     textAlign: 'center',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
   },
   guestBtn: {
     paddingVertical: 14,
@@ -441,9 +439,9 @@ const authStyles = StyleSheet.create({
     alignItems: 'center',
   },
   guestText: {
-    color: '#CBD5E1',
-    fontSize: 13,
+    color: '#6B6B6B',
+    fontSize: 15,
     textDecorationLine: 'underline',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
   },
 })

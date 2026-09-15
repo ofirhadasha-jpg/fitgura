@@ -221,11 +221,11 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   render() {
     if (this.state.hasError) {
       return (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B' }}>משהו השתבש</Text>
-          <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center' }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
-          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8 }}>
-            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>חזור להתחלה</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24, backgroundColor: '#FFFEF5' }}>
+          <Text style={{ fontSize: 22, fontFamily: "'Permanent Marker', cursive", color: '#1A1A1A' }}>משהו השתבש</Text>
+          <Text style={{ fontSize: 16, color: '#6B6B6B', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
+          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', paddingVertical: 12, paddingHorizontal: 28, marginTop: 8, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
+            <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>חזור להתחלה</Text>
           </TouchableOpacity>
         </View>
       )
@@ -640,31 +640,38 @@ const styles = StyleSheet.create({
     minHeight: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0a1628',
+    backgroundColor: '#1A1A1A',
+    backgroundImage: 'linear-gradient(rgba(255,229,102,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,229,102,0.07) 1px, transparent 1px)',
+    backgroundSize: '28px 28px',
     paddingVertical: 24,
     paddingHorizontal: 16,
-  },
+  } as React.CSSProperties,
   phoneFrame: {
     width: 390,
     minHeight: 844,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 48,
+    backgroundColor: '#FFFEF5',
+    backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)',
+    border: '2px solid #1A1A1A',
+    borderRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
+    boxShadow: '6px 6px 0 #FFE566, 12px 12px 0 rgba(255,229,102,0.2)',
     overflow: 'hidden',
-  },
+  } as React.CSSProperties,
   toast: {
     position: 'absolute',
     bottom: 100,
     left: 16,
     right: 16,
-    borderRadius: 16,
+    borderRadius: '10px 10px 10px 2px',
     paddingVertical: 14,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     zIndex: 200,
-    backgroundColor: '#16A34A',
-  },
+    backgroundColor: '#00FF66',
+    border: '1.5px solid #1A1A1A',
+    boxShadow: '2px 2px 0 #1A1A1A',
+  } as React.CSSProperties,
   toastEmoji: { fontSize: 20 },
-  toastText: { fontWeight: '700', fontSize: 14, color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  toastText: { fontWeight: '700', fontSize: 16, color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })

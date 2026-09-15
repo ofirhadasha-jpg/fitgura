@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
-import { LinearGradient, BottomNav } from '../components'
+import { BottomNav } from '../components'
 import {
   type Screen, type FitEvent, type Platform,
   PLATFORMS, PRESET_EVENTS,
@@ -13,7 +13,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
 
   const [events, setEvents] = useState<FitEvent[]>([
     { id: 1, name: 'יום האהבה', emoji: '💝', date: `${yr}-02-14`, platforms: ['Amazon', 'Shein'], color: '#FF6B6B', bgColor: '#FFF0F0' },
-    { id: 2, name: 'יום הולדת — מיכל', emoji: '🎂', date: `${yr}-${mo(2)}-18`, platforms: ['AliExpress', 'ZARA'], color: '#2E5BFF', bgColor: '#EEF2FF' },
+    { id: 2, name: 'יום הולדת — מיכל', emoji: '🎂', date: `${yr}-${mo(2)}-18`, platforms: ['AliExpress', 'ZARA'], color: '#FFE566', bgColor: '#FFFACC' },
     { id: 3, name: 'יום נישואין', emoji: '💍', date: `${yr + 1}-12-25`, platforms: ['AliExpress', 'Amazon', 'ASOS'], color: '#FF6B6B', bgColor: '#FFF5F0' },
   ])
 
@@ -22,8 +22,8 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
   const [newDate, setNewDate] = useState('')
   const [newPlatforms, setNewPlatforms] = useState<string[]>([])
   const [newEmoji, setNewEmoji] = useState('🎉')
-  const [newColor, setNewColor] = useState('#2E5BFF')
-  const [newBg, setNewBg] = useState('#EEF2FF')
+  const [newColor, setNewColor] = useState('#FFE566')
+  const [newBg, setNewBg] = useState('#FFFACC')
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -54,7 +54,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
       { id: nextEventId(), name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bgColor: newBg },
     ])
     setShowAdd(false)
-    setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#2E5BFF'); setNewBg('#EEF2FF')
+    setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#FFE566'); setNewBg('#FFFACC')
   }
 
   function removeEvent(id: number) {
@@ -66,8 +66,8 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-      <LinearGradient colors={['#0B1437', '#1A2F7A']} style={evStyles.header}>
+    <View style={{ flex: 1, backgroundColor: '#F5F0E0' }}>
+      <View style={evStyles.header}>
         <View style={evStyles.headerOrb1} />
         <View style={evStyles.headerOrb2} />
         <View style={{ position: 'relative', zIndex: 1 }}>
@@ -86,7 +86,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
             <View style={evStyles.summaryChipUrgent}><Text style={evStyles.summaryChipUrgentText}>{events.filter(e => daysUntil(e.date) <= 14 && daysUntil(e.date) >= 0).length} מתקרבים</Text></View>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
         {sorted.length === 0 && (
@@ -105,7 +105,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
 
           return (
             <View key={ev.id} style={[evStyles.eventCard, { opacity: deletingId === ev.id ? 0 : past ? 0.55 : 1 }]}>
-              <View style={[evStyles.eventColorBar, { backgroundColor: past ? '#E2E8F0' : ev.color }]} />
+              <View style={[evStyles.eventColorBar, { backgroundColor: past ? '#9A9A9A' : ev.color }]} />
               <View style={{ padding: 14 }}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <View style={[evStyles.eventEmojiBox, { backgroundColor: ev.bgColor }]}>
@@ -118,7 +118,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                         <Text style={evStyles.eventDate}>{formatDate(ev.date)}</Text>
                       </View>
                       <TouchableOpacity onPress={() => removeEvent(ev.id)} activeOpacity={0.7}>
-                        <Text style={{ color: '#CBD5E1', fontSize: 16 }}>✕</Text>
+                        <Text style={{ color: '#9A9A9A', fontSize: 16 }}>✕</Text>
                       </TouchableOpacity>
                     </View>
                     <View style={evStyles.eventBadges}>
@@ -133,9 +133,9 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                           </View>
                           {evPlatforms.map((plat) => {
                             const orderBy = dLeft - plat.daysIL
-                            const chipBg = orderBy <= 0 ? '#FFF0F0' : orderBy <= 3 ? '#FFFBEB' : '#F0FFF6'
-                            const chipBorder = orderBy <= 0 ? '#FECACA' : orderBy <= 3 ? '#FDE68A' : 'rgba(46,213,115,0.3)'
-                            const chipColor = orderBy <= 0 ? '#DC2626' : orderBy <= 3 ? '#D97706' : '#15803D'
+                            const chipBg = orderBy <= 0 ? '#FFF0F0' : orderBy <= 3 ? '#FFFACC' : '#E0FFF0'
+                            const chipBorder = orderBy <= 0 ? '#1A1A1A' : orderBy <= 3 ? '#1A1A1A' : '#1A1A1A'
+                            const chipColor = orderBy <= 0 ? '#DC2626' : orderBy <= 3 ? '#1A1A1A' : '#00CC52'
                             const label = orderBy <= 0
                               ? `⚠️ הזמן עכשיו! — ${plat.name}`
                               : orderBy <= 3
@@ -158,12 +158,12 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                     <View style={evStyles.timelineLabels}>
                       <Text style={evStyles.timelineLabel}>היום</Text>
                       <Text style={evStyles.timelineLabel}>הזמנה אחרונה</Text>
-                      <Text style={[evStyles.timelineLabel, { color: ev.color, fontWeight: '700' }]}>האירוע 🎯</Text>
+                      <Text style={[evStyles.timelineLabel, { color: '#1A1A1A', fontWeight: '700' }]}>האירוע 🎯</Text>
                     </View>
                     <View style={evStyles.timelineBar}>
                       <View style={[evStyles.timelineFill, {
                         width: `${Math.min(100, Math.max(0, (1 - minOrderBy / Math.max(dLeft, 1)) * 100))}%`,
-                        backgroundColor: minOrderBy <= 0 ? '#FECACA' : minOrderBy <= 3 ? '#FDE68A' : ev.color,
+                        backgroundColor: minOrderBy <= 0 ? '#FF6B6B' : minOrderBy <= 3 ? '#FFE566' : '#00FF66',
                       }]} />
                     </View>
                   </View>
@@ -185,14 +185,14 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
         <View style={evStyles.sheetOverlay}>
           <TouchableOpacity onPress={() => setShowAdd(false)} activeOpacity={1} style={evStyles.sheetBackdrop} />
           <View style={evStyles.sheet}>
-            <LinearGradient colors={['#2E5BFF', '#1a38c8']} style={evStyles.sheetHeader}>
+            <View style={evStyles.sheetHeader}>
               <View style={evStyles.sheetHeaderRow}>
                 <Text style={evStyles.sheetTitle}>הוסף אירוע חדש</Text>
                 <TouchableOpacity onPress={() => setShowAdd(false)} activeOpacity={0.7} style={evStyles.sheetCloseBtn}>
-                  <Text style={{ color: '#fff', fontSize: 15 }}>✕</Text>
+                  <Text style={{ color: '#1A1A1A', fontSize: 15 }}>✕</Text>
                 </TouchableOpacity>
               </View>
-            </LinearGradient>
+            </View>
 
             <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
               <View>
@@ -203,10 +203,10 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                       key={i}
                       onPress={() => selectPreset(i)}
                       activeOpacity={0.7}
-                      style={[evStyles.presetBtn, { borderColor: selectedPreset === i ? p.color : '#E2E8F0', backgroundColor: selectedPreset === i ? p.bgColor : '#F8FAFC' }]}
+                      style={[evStyles.presetBtn, { borderColor: selectedPreset === i ? '#1A1A1A' : '#9A9A9A', backgroundColor: selectedPreset === i ? p.bgColor : '#FFFEF5' }]}
                     >
                       <Text style={{ fontSize: 14 }}>{p.emoji}</Text>
-                      <Text style={[evStyles.presetBtnText, { color: selectedPreset === i ? p.color : '#475569' }]}>{p.name}</Text>
+                      <Text style={[evStyles.presetBtnText, { color: selectedPreset === i ? '#1A1A1A' : '#4A4A4A' }]}>{p.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -241,7 +241,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
               <View>
                 <View style={evStyles.platformHeader}>
                   <Text style={evStyles.inputLabel}>פלטפורמות הזמנה — עד 3</Text>
-                  <Text style={[evStyles.platformCount, { color: newPlatforms.length >= 3 ? '#DC2626' : '#94A3B8' }]}>{newPlatforms.length}/3</Text>
+                  <Text style={[evStyles.platformCount, { color: newPlatforms.length >= 3 ? '#DC2626' : '#9A9A9A' }]}>{newPlatforms.length}/3</Text>
                 </View>
                 <View style={evStyles.platformGrid}>
                   {PLATFORMS.map((p) => {
@@ -253,12 +253,12 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                         onPress={() => toggleNewPlatform(p.name)}
                         disabled={disabled}
                         activeOpacity={0.7}
-                        style={[evStyles.platformBtn, { borderColor: isSel ? p.color : '#E2E8F0', backgroundColor: isSel ? `${p.color}15` : '#F8FAFC', opacity: disabled ? 0.4 : 1 }]}
+                        style={[evStyles.platformBtn, { borderColor: isSel ? '#1A1A1A' : '#9A9A9A', backgroundColor: isSel ? '#FFFACC' : '#FFFEF5', opacity: disabled ? 0.4 : 1 }]}
                       >
                         <Text style={{ fontSize: 14 }}>{p.logo}</Text>
-                        <Text style={[evStyles.platformBtnText, { color: isSel ? p.color : '#475569' }]}>{p.name}</Text>
-                        <Text style={{ fontSize: 10, color: isSel ? p.color : '#94A3B8' }}>{p.daysIL}ד׳</Text>
-                        {isSel && <Text style={{ fontSize: 10, color: p.color }}>✓</Text>}
+                        <Text style={[evStyles.platformBtnText, { color: isSel ? '#1A1A1A' : '#4A4A4A' }]}>{p.name}</Text>
+                        <Text style={{ fontSize: 10, color: isSel ? '#1A1A1A' : '#9A9A9A' }}>{p.daysIL}ד׳</Text>
+                        {isSel && <Text style={{ fontSize: 10, color: '#00CC52' }}>✓</Text>}
                       </TouchableOpacity>
                     )
                   })}
@@ -289,62 +289,148 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
 }
 
 const evStyles = StyleSheet.create({
-  header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20, position: 'relative', overflow: 'hidden' },
-  headerOrb1: { position: 'absolute', top: -40, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(46,91,255,0.12)' },
-  headerOrb2: { position: 'absolute', bottom: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,107,107,0.1)' },
+  header: {
+    paddingTop: 52, paddingHorizontal: 24, paddingBottom: 20, position: 'relative', overflow: 'hidden',
+    backgroundColor: '#FFE566',
+    backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)',
+    borderBottomWidth: 2, borderBottomColor: '#1A1A1A',
+    boxShadow: '3px 3px 0 #1A1A1A',
+  } as React.CSSProperties,
+  headerOrb1: { position: 'absolute', top: -40, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(26,26,26,0.06)' },
+  headerOrb2: { position: 'absolute', bottom: -30, right: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,107,107,0.12)' },
   headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  addEventBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 14, paddingVertical: 9, paddingHorizontal: 16 },
-  addEventBtnText: { color: '#fff', fontWeight: '700', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  headerTitle: { fontSize: 26, fontWeight: '400', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  headerSub: { fontSize: 15, color: '#2D2D2D', marginTop: 4, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  addEventBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#1A1A1A', borderWidth: 2, borderColor: '#1A1A1A',
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    paddingVertical: 9, paddingHorizontal: 16,
+    boxShadow: '2px 2px 0 #1A1A1A',
+  } as React.CSSProperties,
+  addEventBtnText: { color: '#FFE566', fontWeight: '700', fontSize: 14, fontFamily: "'Permanent Marker', cursive" },
   summaryRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  summaryChip: { backgroundColor: 'rgba(46,91,255,0.2)', borderRadius: 10, paddingVertical: 5, paddingHorizontal: 12 },
-  summaryChipText: { fontSize: 12, fontWeight: '700', color: '#93C5FD', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  summaryChipUrgent: { backgroundColor: 'rgba(255,107,107,0.2)', borderRadius: 10, paddingVertical: 5, paddingHorizontal: 12 },
-  summaryChipUrgentText: { fontSize: 12, fontWeight: '700', color: '#FCA5A5', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  summaryChip: {
+    backgroundColor: '#FFFEF5', borderWidth: 1.5, borderColor: '#1A1A1A',
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    paddingVertical: 5, paddingHorizontal: 12,
+    boxShadow: '2px 2px 0 #1A1A1A',
+  } as React.CSSProperties,
+  summaryChipText: { fontSize: 13, fontWeight: '400', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  summaryChipUrgent: {
+    backgroundColor: '#E0FFF0', borderWidth: 1.5, borderColor: '#1A1A1A',
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    paddingVertical: 5, paddingHorizontal: 12,
+    boxShadow: '2px 2px 0 #00CC52',
+  } as React.CSSProperties,
+  summaryChipUrgentText: { fontSize: 13, fontWeight: '400', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
   emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyText: { color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  eventCard: { backgroundColor: '#fff', borderRadius: 22, overflow: 'hidden', borderWidth: 1.5, borderColor: 'transparent' },
-  eventColorBar: { height: 4 },
-  eventEmojiBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  eventName: { fontWeight: '700', fontSize: 15, color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  eventDate: { fontSize: 12, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  emptyText: { color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", fontSize: 16 },
+  eventCard: {
+    backgroundColor: '#FFFEF5',
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    overflow: 'hidden', borderWidth: 1.5, borderColor: '#1A1A1A',
+    boxShadow: '3px 3px 0 #1A1A1A',
+  } as React.CSSProperties,
+  eventColorBar: { height: 6, borderBottomWidth: 1.5, borderBottomColor: '#1A1A1A' },
+  eventEmojiBox: {
+    width: 48, height: 48,
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#1A1A1A',
+  } as React.CSSProperties,
+  eventName: { fontWeight: '700', fontSize: 17, color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  eventDate: { fontSize: 13, color: '#4A4A4A', marginTop: 3, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   eventBadges: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  pastBadge: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
-  pastBadgeText: { fontSize: 11, color: '#94A3B8', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  daysBadge: { borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1 },
-  daysBadgeText: { fontSize: 12, fontWeight: '700' },
-  platformChip: { borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  platformChipText: { fontSize: 11, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  pastBadge: {
+    backgroundColor: '#F5F0E0', borderWidth: 1.5, borderColor: '#9A9A9A',
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    paddingVertical: 4, paddingHorizontal: 10,
+  } as React.CSSProperties,
+  pastBadgeText: { fontSize: 12, color: '#6B6B6B', fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
+  daysBadge: {
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#1A1A1A',
+  } as React.CSSProperties,
+  daysBadgeText: { fontSize: 13, fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
+  platformChip: {
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#1A1A1A',
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+  backgroundColor: '#FFFEF5',
+  } as React.CSSProperties,
+  platformChipText: { fontSize: 12, fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
   timelineLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  timelineLabel: { fontSize: 10, color: '#94A3B8', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  timelineBar: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
-  timelineFill: { height: '100%', borderRadius: 3 },
-  tipBox: { backgroundColor: '#EEF2FF', borderRadius: 18, padding: 14, flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 4 },
-  tipText: { fontSize: 12, color: '#4F6EFF', lineHeight: 19, flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  timelineLabel: { fontSize: 12, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  timelineBar: {
+    height: 8, backgroundColor: '#F5F0E0',
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    overflow: 'hidden', borderWidth: 1.5, borderColor: '#1A1A1A',
+  } as React.CSSProperties,
+  timelineFill: { height: '100%', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px' } as React.CSSProperties,
+  tipBox: {
+    backgroundColor: '#FFFACC', borderWidth: 1.5, borderColor: '#1A1A1A',
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    padding: 14, flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 4,
+    boxShadow: '3px 3px 0 #1A1A1A',
+  } as React.CSSProperties,
+  tipText: { fontSize: 14, color: '#1A1A1A', lineHeight: 20, flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, justifyContent: 'flex-end' },
-  sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(11,20,55,0.55)' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden', maxHeight: '88%' },
-  sheetHeader: { padding: 24, flexShrink: 0 },
+  sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
+  sheet: {
+    backgroundColor: '#FFFEF5',
+    borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    overflow: 'hidden', maxHeight: '88%',
+    borderWidth: 2, borderColor: '#1A1A1A',
+    borderBottomWidth: 0,
+  },
+  sheetHeader: {
+    padding: 24, flexShrink: 0,
+    backgroundColor: '#FFE566',
+    borderBottomWidth: 2, borderBottomColor: '#1A1A1A',
+  },
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { fontSize: 18, fontWeight: '800', color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sheetCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  presetLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sheetTitle: { fontSize: 20, fontWeight: '400', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  sheetCloseBtn: {
+    width: 32, height: 32,
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    backgroundColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#1A1A1A',
+  } as React.CSSProperties,
+  presetLabel: { fontSize: 15, fontWeight: '700', color: '#2D2D2D', marginBottom: 10, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  presetBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5 },
-  presetBtnText: { fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  presetBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12,
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1.5,
+  } as React.CSSProperties,
+  presetBtnText: { fontSize: 13, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#F1F5F9' },
-  dividerText: { fontSize: 11, color: '#CBD5E1', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  inputLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  textInput: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0', fontSize: 14, backgroundColor: '#F8FAFC', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  dividerLine: { flex: 1, height: 1.5, backgroundColor: '#9A9A9A' },
+  dividerText: { fontSize: 13, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  inputLabel: { fontSize: 14, fontWeight: '700', color: '#2D2D2D', marginBottom: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  textInput: {
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderWidth: 1.5, borderColor: '#1A1A1A', fontSize: 15,
+    backgroundColor: '#FFFEF5', color: '#1A1A1A',
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
+  } as React.CSSProperties,
   platformHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  platformCount: { fontSize: 11, fontWeight: '600' },
+  platformCount: { fontSize: 13, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
   platformGrid: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  platformBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5 },
-  platformBtnText: { fontSize: 12, fontWeight: '600' },
-  platformNote: { fontSize: 11, color: '#64748B', marginTop: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  addEventConfirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#2E5BFF', alignItems: 'center', marginBottom: 8 },
-  addEventConfirmBtnDisabled: { backgroundColor: '#E2E8F0' },
-  addEventConfirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  platformBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1.5,
+  } as React.CSSProperties,
+  platformBtnText: { fontSize: 13, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  platformNote: { fontSize: 13, color: '#4A4A4A', marginTop: 8, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  addEventConfirmBtn: {
+    padding: 16,
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    backgroundColor: '#00FF66', alignItems: 'center', marginBottom: 8,
+    borderWidth: 2, borderColor: '#1A1A1A',
+    boxShadow: '3px 3px 0 #1A1A1A',
+  } as React.CSSProperties,
+  addEventConfirmBtnDisabled: { backgroundColor: '#F5F0E0', boxShadow: 'none' } as React.CSSProperties,
+  addEventConfirmBtnText: { color: '#1A1A1A', fontSize: 17, fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
 })

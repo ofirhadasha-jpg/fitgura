@@ -87,7 +87,7 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#0EA5E9" />
+          <ActivityIndicator size="large" color="#1A1A1A" />
           <Text style={styles.loadingText}>טוען נתונים...</Text>
         </View>
         <BottomNav current="profile" onNav={onNav} />
@@ -133,14 +133,14 @@ export function AdminDashboard({ onNav }: { onNav: (s: Screen) => void }) {
               <>
                 <Text style={styles.sectionLabel}>מדדי ביצוע</Text>
                 <View style={styles.kpiGrid}>
-                  <KpiCard label="סה״כ קליקים" value={summary?.total_clicks ?? 0} icon="📊" color="#0EA5E9" />
-                  <KpiCard label="קליקים היום" value={summary?.clicks_today ?? 0} icon="📅" color="#10B981" />
-                  <KpiCard label="קליקים החודש" value={summary?.clicks_this_month ?? 0} icon="📆" color="#F59E0B" />
-                  <KpiCard label="קליקרים ייחודיים" value={summary?.unique_active_clickers ?? 0} icon="👥" color="#8B5CF6" />
-                  <KpiCard label="סה״כ משתמשים" value={summary?.total_users ?? 0} icon="👤" color="#3B82F6" />
-                  <KpiCard label="משתמשים חדשים" value={summary?.new_users_today ?? 0} icon="✨" color="#EC4899" />
-                  <KpiCard label="סה״כ מועדפים" value={summary?.total_favorites ?? 0} icon="💚" color="#14B8A6" />
-                  <KpiCard label="מוצרים פעילים" value={products.length} icon="🏷️" color="#F97316" />
+                  <KpiCard label="סה״כ קליקים" value={summary?.total_clicks ?? 0} icon="📊" color="#FFE566" />
+                  <KpiCard label="קליקים היום" value={summary?.clicks_today ?? 0} icon="📅" color="#00FF66" />
+                  <KpiCard label="קליקים החודש" value={summary?.clicks_this_month ?? 0} icon="📆" color="#F5C842" />
+                  <KpiCard label="קליקרים ייחודיים" value={summary?.unique_active_clickers ?? 0} icon="👥" color="#00CC52" />
+                  <KpiCard label="סה״כ משתמשים" value={summary?.total_users ?? 0} icon="👤" color="#FFE566" />
+                  <KpiCard label="משתמשים חדשים" value={summary?.new_users_today ?? 0} icon="✨" color="#00FF66" />
+                  <KpiCard label="סה״כ מועדפים" value={summary?.total_favorites ?? 0} icon="💚" color="#E0FFF0" />
+                  <KpiCard label="מוצרים פעילים" value={products.length} icon="🏷️" color="#FFFACC" />
                 </View>
 
                 <Text style={styles.sectionLabel}>תנועה יומית</Text>
@@ -339,7 +339,7 @@ function PasswordGate({ onNav, onVerified }: { onNav: (s: Screen) => void; onVer
           <TextInput
             style={styles.gateInput}
             placeholder="סיסמה"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#9A9A9A"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -420,7 +420,7 @@ function BroadcastPanel() {
           <TextInput
             style={styles.input}
             placeholder="אימייל נמען"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#9A9A9A"
             value={targetEmail}
             onChangeText={setTargetEmail}
             autoCapitalize="none"
@@ -430,14 +430,14 @@ function BroadcastPanel() {
         <TextInput
           style={styles.input}
           placeholder="כותרת"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor="#9A9A9A"
           value={title}
           onChangeText={setTitle}
         />
         <TextInput
           style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
           placeholder="תוכן"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor="#9A9A9A"
           value={body}
           onChangeText={setBody}
           multiline
@@ -445,7 +445,7 @@ function BroadcastPanel() {
 
         <View style={styles.typeRow}>
           {(['info', 'promo', 'update', 'alert'] as const).map((t) => (
-            <TouchableOpacity key={t} onPress={() => setType(t)} activeOpacity={0.7} style={[styles.typeBtn, type === t && styles.typeBtnActive(t)]}>
+            <TouchableOpacity key={t} onPress={() => setType(t)} activeOpacity={0.7} style={[styles.typeBtn, type === t && typeBtnActiveStyle(t)]}>
               <Text style={[styles.typeBtnText, type === t && styles.typeBtnTextActive]}>{typeLabel(t)}</Text>
             </TouchableOpacity>
           ))}
@@ -509,7 +509,7 @@ function UserDrawer({ userId, onClose }: { userId: string; onClose: () => void }
 
           {loading ? (
             <View style={styles.drawerLoading}>
-              <ActivityIndicator size="large" color="#0EA5E9" />
+              <ActivityIndicator size="large" color="#1A1A1A" />
             </View>
           ) : details ? (
             <ScrollView style={styles.drawerScroll} showsVerticalScrollIndicator={false}>
@@ -680,108 +680,120 @@ function formatDateTime(dateStr: string): string {
   return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
 }
 
+const FONT_HEADING = "'Permanent Marker', cursive" as const
+const FONT_BODY = "'Caveat', 'Noto Sans Hebrew', cursive" as const
+const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' as const
+const SHADOW_STD = '3px 3px 0 #1A1A1A' as const
+const SHADOW_SM = '2px 2px 0 #1A1A1A' as const
+const SHADOW_ACTIVE = '3px 3px 0 #FFE566' as const
+const RADIUS_BOX = '3px 12px 4px 10px / 8px 3px 9px 4px' as const
+const RADIUS_SM = '2px 8px 3px 7px / 6px 2px 7px 3px' as const
+
+function typeBtnActiveStyle(t: string): React.CSSProperties {
+  return {
+    backgroundColor: t === 'alert' ? '#1A1A1A' : t === 'promo' ? '#F5C842' : t === 'update' ? '#00FF66' : '#FFE566',
+  }
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#F5F0E0' } as React.CSSProperties,
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 52, paddingBottom: 100, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  backArrow: { fontSize: 22, color: '#1E293B' },
-  title: { fontSize: 22, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  refreshIcon: { fontSize: 22, color: '#0EA5E9' },
+  iconBtn: { width: 40, height: 40, borderRadius: RADIUS_SM, backgroundColor: '#FFFEF5', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: SHADOW_SM } as React.CSSProperties,
+  backArrow: { fontSize: 22, color: '#1A1A1A', fontFamily: FONT_HEADING },
+  title: { fontSize: 26, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_HEADING },
+  refreshIcon: { fontSize: 22, color: '#1A1A1A', fontFamily: FONT_HEADING },
   spin: { opacity: 0.5 },
   loadingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 16 },
-  loadingText: { fontSize: 14, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  loadingText: { fontSize: 16, color: '#4A4A4A', fontFamily: FONT_BODY },
   errorWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
-  errorIcon: { fontSize: 40, color: '#EF4444' },
-  errorText: { fontSize: 14, color: '#64748B', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9' },
-  retryText: { color: '#fff', fontWeight: '600', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  errorIcon: { fontSize: 40, color: '#1A1A1A' },
+  errorText: { fontSize: 15, color: '#4A4A4A', textAlign: 'center', fontFamily: FONT_BODY },
+  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: RADIUS_SM, backgroundColor: '#FFE566', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: SHADOW_SM } as React.CSSProperties,
+  retryText: { color: '#1A1A1A', fontWeight: '700', fontSize: 15, fontFamily: FONT_HEADING },
   tabScroll: { marginBottom: 4 },
   tabBar: { flexDirection: 'row', gap: 6 },
-  tab: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  tabActive: { backgroundColor: '#0EA5E9' },
-  tabText: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  tabTextActive: { color: '#fff' },
-  sectionLabel: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  tab: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: RADIUS_SM, backgroundColor: '#FFFEF5', alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: SHADOW_SM } as React.CSSProperties,
+  tabActive: { backgroundColor: '#FFE566', boxShadow: SHADOW_ACTIVE } as React.CSSProperties,
+  tabText: { fontSize: 14, fontWeight: '700', color: '#4A4A4A', fontFamily: FONT_BODY },
+  tabTextActive: { color: '#1A1A1A', fontFamily: FONT_HEADING },
+  sectionLabel: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 4, fontFamily: FONT_HEADING },
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  kpiCard: { width: '47%', flexGrow: 1, backgroundColor: '#fff', borderRadius: 16, padding: 16, borderTopWidth: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  kpiCard: { width: '47%', flexGrow: 1, backgroundColor: '#FFFEF5', borderRadius: RADIUS_BOX, padding: 16, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: SHADOW_STD, borderTopWidth: 3 } as React.CSSProperties,
   kpiIcon: { fontSize: 24, marginBottom: 8 },
-  kpiValue: { fontSize: 28, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  kpiLabel: { fontSize: 13, color: '#64748B', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  emptyText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', paddingVertical: 24, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  kpiValue: { fontSize: 28, fontWeight: '800', color: '#1A1A1A', fontFamily: FONT_HEADING },
+  kpiLabel: { fontSize: 15, color: '#4A4A4A', marginTop: 4, fontFamily: FONT_BODY },
+  card: { backgroundColor: '#FFFEF5', borderRadius: RADIUS_BOX, padding: 16, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: SHADOW_STD } as React.CSSProperties,
+  emptyText: { fontSize: 15, color: '#9A9A9A', textAlign: 'center', paddingVertical: 24, fontFamily: FONT_BODY },
   dailyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  dailyDate: { width: 50, fontSize: 12, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  dailyBarBg: { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#F1F5F9', overflow: 'hidden' },
-  dailyBar: { height: '100%', borderRadius: 5, backgroundColor: '#0EA5E9' },
-  dailyCount: { width: 30, fontSize: 13, fontWeight: '600', color: '#1E293B', textAlign: 'left', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 8, marginBottom: 4 },
-  tableHeaderCell: { fontWeight: '700', color: '#1E293B', fontSize: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  tableRowAlt: { backgroundColor: '#F8FAFC', borderRadius: 6 },
-  tableCell: { fontSize: 12, color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  inactiveText: { color: '#EF4444' },
-  activityRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  dailyDate: { width: 50, fontSize: 13, color: '#4A4A4A', fontFamily: FONT_BODY },
+  dailyBarBg: { flex: 1, height: 12, borderRadius: RADIUS_SM, backgroundColor: '#FFFACC', overflow: 'hidden', borderWidth: 1, borderColor: '#1A1A1A' } as React.CSSProperties,
+  dailyBar: { height: '100%', borderRadius: RADIUS_SM, backgroundColor: '#FFE566' } as React.CSSProperties,
+  dailyCount: { width: 30, fontSize: 15, fontWeight: '700', color: '#1A1A1A', textAlign: 'left', fontFamily: FONT_HEADING },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1.5, borderBottomColor: '#1A1A1A', paddingBottom: 8, marginBottom: 4 },
+  tableHeaderCell: { fontWeight: '700', color: '#1A1A1A', fontSize: 13, fontFamily: FONT_HEADING },
+  tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#9A9A9A' },
+  tableRowAlt: { backgroundColor: '#FFFACC', borderRadius: RADIUS_SM } as React.CSSProperties,
+  tableCell: { fontSize: 13, color: '#2D2D2D', fontFamily: FONT_BODY },
+  inactiveText: { color: '#1A1A1A', fontWeight: '700' },
+  activityRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#9A9A9A' },
   activityIcon: { fontSize: 18 },
   activityContent: { flex: 1 },
-  activityDesc: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  activityMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  activityDesc: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_BODY },
+  activityMeta: { fontSize: 12, color: '#6B6B6B', marginTop: 2, fontFamily: FONT_BODY },
   broadcastModeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center' },
-  modeBtnActive: { backgroundColor: '#0EA5E9' },
-  modeBtnText: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  modeBtnTextActive: { color: '#fff' },
-  input: { backgroundColor: '#F8FAFC', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0', fontFamily: "'Noto Sans Hebrew', sans-serif", color: '#1E293B' },
+  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: RADIUS_SM, backgroundColor: '#FFFACC', alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  modeBtnActive: { backgroundColor: '#FFE566', boxShadow: SHADOW_SM } as React.CSSProperties,
+  modeBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_BODY },
+  modeBtnTextActive: { color: '#1A1A1A', fontFamily: FONT_HEADING },
+  input: { backgroundColor: '#FFFEF5', borderRadius: RADIUS_SM, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, marginBottom: 10, borderWidth: 1.5, borderColor: '#1A1A1A', fontFamily: FONT_BODY, color: '#1A1A1A' } as React.CSSProperties,
   typeRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
-  typeBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center' },
-  typeBtnActive: (t: string) => ({
-    backgroundColor: t === 'alert' ? '#EF4444' : t === 'promo' ? '#F59E0B' : t === 'update' ? '#10B981' : '#0EA5E9',
-  }),
-  typeBtnText: { fontSize: 12, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  typeBtnTextActive: { color: '#fff' },
-  sendBtn: { backgroundColor: '#0EA5E9', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  typeBtn: { flex: 1, paddingVertical: 8, borderRadius: RADIUS_SM, backgroundColor: '#FFFACC', alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  typeBtnText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_BODY },
+  typeBtnTextActive: { color: '#1A1A1A', fontFamily: FONT_HEADING },
+  sendBtn: { backgroundColor: '#00FF66', borderRadius: RADIUS_BOX, paddingVertical: 14, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: SHADOW_STD } as React.CSSProperties,
   sendBtnDisabled: { opacity: 0.5 },
-  sendBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  resultText: { fontSize: 13, color: '#10B981', textAlign: 'center', marginTop: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  sendBtnText: { color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: FONT_HEADING },
+  resultText: { fontSize: 14, color: '#00CC52', textAlign: 'center', marginTop: 10, fontFamily: FONT_BODY, fontWeight: '700' },
   drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  drawer: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
-  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  drawerTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  drawerCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  drawerCloseText: { fontSize: 16, color: '#64748B' },
+  drawer: { backgroundColor: '#FFFEF5', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%', borderWidth: 2, borderColor: '#1A1A1A' } as React.CSSProperties,
+  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1.5, borderBottomColor: '#1A1A1A' },
+  drawerTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_HEADING },
+  drawerCloseBtn: { width: 32, height: 32, borderRadius: RADIUS_SM, backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  drawerCloseText: { fontSize: 16, color: '#1A1A1A', fontFamily: FONT_HEADING },
   drawerLoading: { paddingVertical: 60, alignItems: 'center' },
   drawerScroll: { padding: 16 },
-  drawerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#0EA5E9', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 8 },
-  drawerAvatarText: { fontSize: 28, fontWeight: '800', color: '#fff' },
-  drawerEmail: { fontSize: 15, fontWeight: '600', color: '#1E293B', textAlign: 'center', marginBottom: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  drawerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFE566', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 8, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: SHADOW_SM } as React.CSSProperties,
+  drawerAvatarText: { fontSize: 28, fontWeight: '800', color: '#1A1A1A', fontFamily: FONT_HEADING },
+  drawerEmail: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', marginBottom: 16, fontFamily: FONT_BODY },
   drawerSubTabs: { flexDirection: 'row', gap: 6, marginBottom: 12 },
-  subTab: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center' },
-  subTabActive: { backgroundColor: '#0EA5E9' },
-  subTabText: { fontSize: 12, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  subTabTextActive: { color: '#fff' },
+  subTab: { flex: 1, paddingVertical: 8, borderRadius: RADIUS_SM, backgroundColor: '#FFFACC', alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  subTabActive: { backgroundColor: '#FFE566', boxShadow: SHADOW_SM } as React.CSSProperties,
+  subTabText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_BODY },
+  subTabTextActive: { color: '#1A1A1A', fontFamily: FONT_HEADING },
   drawerStats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  drawerStat: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, alignItems: 'center' },
-  drawerStatValue: { fontSize: 20, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  drawerStatLabel: { fontSize: 11, color: '#64748B', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  drawerInfoCard: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, marginBottom: 12 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  infoLabel: { fontSize: 13, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  infoValue: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  drawerItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  drawerItemText: { fontSize: 13, fontWeight: '600', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  drawerItemMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  toggleBtn: { backgroundColor: '#F1F5F9', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 20 },
-  toggleBtnActive: { backgroundColor: '#FEF3C7' },
-  toggleBtnText: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  gateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingTop: 52 },
-  gateCard: { backgroundColor: '#fff', borderRadius: 24, padding: 32, alignItems: 'center', width: '100%', maxWidth: 360, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, elevation: 4 },
+  drawerStat: { flex: 1, backgroundColor: '#FFFEF5', borderRadius: RADIUS_SM, padding: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: SHADOW_SM } as React.CSSProperties,
+  drawerStatValue: { fontSize: 22, fontWeight: '800', color: '#1A1A1A', fontFamily: FONT_HEADING },
+  drawerStatLabel: { fontSize: 12, color: '#4A4A4A', marginTop: 2, fontFamily: FONT_BODY },
+  drawerInfoCard: { backgroundColor: '#FFFEF5', borderRadius: RADIUS_BOX, padding: 12, marginBottom: 12, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#9A9A9A' },
+  infoLabel: { fontSize: 14, color: '#4A4A4A', fontFamily: FONT_BODY },
+  infoValue: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_BODY },
+  drawerItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#9A9A9A' },
+  drawerItemText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_BODY },
+  drawerItemMeta: { fontSize: 12, color: '#6B6B6B', marginTop: 2, fontFamily: FONT_BODY },
+  toggleBtn: { backgroundColor: '#FFFACC', borderRadius: RADIUS_BOX, paddingVertical: 14, alignItems: 'center', marginBottom: 20, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: SHADOW_STD } as React.CSSProperties,
+  toggleBtnActive: { backgroundColor: '#FFFACC' },
+  toggleBtnText: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: FONT_HEADING },
+  gateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingTop: 52, backgroundColor: '#F5F0E0', backgroundImage: PAPER_TEXTURE } as React.CSSProperties,
+  gateCard: { backgroundColor: '#FFFEF5', borderRadius: RADIUS_BOX, padding: 32, alignItems: 'center', width: '100%', maxWidth: 360, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: SHADOW_STD } as React.CSSProperties,
   gateLockIcon: { fontSize: 48, marginBottom: 16 },
-  gateTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  gateSub: { fontSize: 14, color: '#64748B', marginBottom: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  gateInput: { width: '100%', backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif", color: '#1E293B' },
-  gateError: { fontSize: 13, color: '#EF4444', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  gateBtn: { width: '100%', backgroundColor: '#0EA5E9', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  gateTitle: { fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 4, fontFamily: FONT_HEADING },
+  gateSub: { fontSize: 15, color: '#4A4A4A', marginBottom: 20, fontFamily: FONT_BODY },
+  gateInput: { width: '100%', backgroundColor: '#FFFEF5', borderRadius: RADIUS_SM, paddingVertical: 14, paddingHorizontal: 16, fontSize: 16, borderWidth: 1.5, borderColor: '#1A1A1A', marginBottom: 12, fontFamily: FONT_BODY, color: '#1A1A1A' } as React.CSSProperties,
+  gateError: { fontSize: 14, color: '#1A1A1A', marginBottom: 8, fontFamily: FONT_BODY, fontWeight: '700' },
+  gateBtn: { width: '100%', backgroundColor: '#FFE566', borderRadius: RADIUS_SM, paddingVertical: 14, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: SHADOW_STD } as React.CSSProperties,
   gateBtnDisabled: { opacity: 0.5 },
-  gateBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  gateBtnText: { color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: FONT_HEADING },
 })

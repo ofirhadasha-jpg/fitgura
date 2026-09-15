@@ -1,15 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Permanent+Marker&family=Noto+Sans+Hebrew:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
-  --color-royal-blue: #2E5BFF;
-  --color-coral: #FF6B6B;
-  --color-emerald: #2ED573;
-  --color-cream: #F8FAFC;
-  --color-navy: #1A3399;
-  --color-coral-light: #FFF0F0;
-  --color-emerald-light: #F0FFF6;
-  --color-blue-light: #EEF2FF;
+  --color-neon-blue: #FFE566;
+  --color-neon-blue-dark: #F5C842;
+  --color-neon-blue-pale: #FFFACC;
+  --color-neon-green: #00FF66;
+  --color-neon-green-dark: #00CC52;
+  --color-neon-green-pale: #E0FFF0;
+  --color-charcoal: #1A1A1A;
+  --color-ink: #2D2D2D;
+  --color-pencil: #4A4A4A;
+  --color-paper: #FFFEF5;
+  --color-paper-dark: #F5F0E0;
+  --color-muted: #6B6B6B;
+  --color-subtle: #9A9A9A;
 }
 
 * {
@@ -23,8 +28,12 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Outfit', 'Noto Sans Hebrew', sans-serif;
-  background: #F8FAFC;
+  font-family: 'Caveat', 'Noto Sans Hebrew', cursive;
+  background: #1A1A1A;
+  background-image:
+    linear-gradient(rgba(255,229,102,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,229,102,0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
   direction: rtl;
 }
 
@@ -34,6 +43,40 @@ body {
 
 * {
   scrollbar-width: none;
+}
+
+/* Sketch utility classes */
+.sketch-box {
+  border: 1.5px solid #1A1A1A;
+  border-radius: 3px 12px 4px 10px / 8px 3px 9px 4px;
+  box-shadow: 3px 3px 0 #1A1A1A;
+}
+
+.sketch-box-sm {
+  border: 1.5px solid #1A1A1A;
+  border-radius: 2px 8px 3px 7px / 6px 2px 7px 3px;
+  box-shadow: 2px 2px 0 #1A1A1A;
+}
+
+.sketch-box-yellow {
+  border: 2px solid #FFE566;
+  border-radius: 3px 12px 4px 10px / 8px 3px 9px 4px;
+  box-shadow: 3px 3px 0 #FFE566;
+}
+
+.sketch-box-green {
+  border: 2px solid #00FF66;
+  border-radius: 3px 12px 4px 10px / 8px 3px 9px 4px;
+  box-shadow: 3px 3px 0 #00FF66;
+}
+
+.paper-bg {
+  background-color: #FFFEF5;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 27px,
+    rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px
+  );
 }
 
 .budget-range-input {
@@ -48,21 +91,21 @@ body {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #fff;
-  border: 3px solid #2E5BFF;
+  background: #FFFEF5;
+  border: 3px solid #1A1A1A;
   pointer-events: auto;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  box-shadow: 2px 2px 0 #1A1A1A;
 }
 .budget-range-input::-moz-range-thumb {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #fff;
-  border: 3px solid #2E5BFF;
+  background: #FFFEF5;
+  border: 3px solid #1A1A1A;
   pointer-events: auto;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  box-shadow: 2px 2px 0 #1A1A1A;
 }
 .budget-range-input::-webkit-slider-runnable-track {
   background: transparent;
@@ -92,6 +135,48 @@ body {
 
 .fitgura-carousel-enter {
   animation: fitgura-carousel-enter 0.5s ease-out both;
+}
+
+@keyframes sketchWobble {
+  0% { transform: rotate(-0.5deg); }
+  50% { transform: rotate(0.5deg); }
+  100% { transform: rotate(-0.5deg); }
+}
+
+@keyframes neonPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,229,102,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(255,229,102,0); }
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes sheetDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 
 @media (max-width: 480px) {

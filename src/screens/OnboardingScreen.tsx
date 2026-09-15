@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Image } from 'react-native'
 import { LinearGradient } from '../components'
+// LinearGradient is kept for compatibility but not used in sketch theme
 import {
   type ScannedSizes,
   type PersonBounds,
@@ -153,14 +154,14 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   }, [])
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' } as React.CSSProperties}>
       {/* Header */}
-      <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.header}>
+      <View style={obStyles.header}>
         <View style={obStyles.progressRow}>
           {(['upload', 'scanning', 'result', 'gallery-access'] as OnboardStep[]).map((_s, i) => {
             const stepOrder = ['upload', 'scanning', 'result', 'gallery-access']
             const currentIdx = stepOrder.indexOf(step)
-            const barColor = i <= currentIdx ? (step === 'gallery-access' && i === currentIdx ? '#2E5BFF' : i < currentIdx ? '#2ED573' : '#2E5BFF') : 'rgba(255,255,255,0.2)'
+            const barColor = i <= currentIdx ? (step === 'gallery-access' && i === currentIdx ? '#FFE566' : i < currentIdx ? '#00FF66' : '#FFE566') : 'rgba(26,26,26,0.1)'
             return <View key={i} style={[obStyles.progressBar, { backgroundColor: barColor }]} />
           })}
         </View>
@@ -170,7 +171,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         <Text style={obStyles.headerSub}>
           {step === 'upload' ? 'העלה תמונה וה-AI ימצא את המידה המדויקת שלך' : step === 'scanning' ? 'בינה מלאכותית מנתחת את מבנה הגוף שלך' : step === 'result' ? 'אישור מידות ופרופיל מוכן' : 'אישור גישה לגלריה לעדכון אוטומטי של מידות'}
         </Text>
-      </LinearGradient>
+      </View>
 
       {/* Hidden file inputs — use opacity:0 + absolute positioning instead of display:none so .click() works on mobile browsers */}
       <input ref={galleryRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleFile} />
@@ -233,9 +234,9 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
-            <Text style={{ fontSize: 13, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
-            <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#2E5BFF', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}>
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>נסה שוב</Text>
+            <Text style={{ fontSize: 16, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
+            <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', paddingVertical: 12, paddingHorizontal: 28, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
+              <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>נסה שוב</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -274,7 +275,7 @@ function BenefitCarousel() {
   const slide = BENEFIT_SLIDES[index]
 
   return (
-    <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.explainCard}>
+    <View style={obStyles.explainCard}>
       <View style={obStyles.carouselStage} key={animKey} className="fitgura-carousel-enter">
         <View style={obStyles.carouselIconWrap}>
           <Text style={obStyles.carouselIcon}>{slide.icon}</Text>
@@ -289,7 +290,7 @@ function BenefitCarousel() {
           />
         ))}
       </View>
-    </LinearGradient>
+    </View>
   )
 }
 
@@ -326,7 +327,7 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
               style={[
                 obStyles.cornerBracket,
                 c,
-                { borderColor: '#2ED573', width: 26, height: 26, marginLeft: isLeft ? -13 : -13, marginTop: isTop ? -13 : -13 },
+                { borderColor: '#00FF66', width: 26, height: 26, marginLeft: isLeft ? -13 : -13, marginTop: isTop ? -13 : -13 },
               ]}
             />
           )
@@ -350,8 +351,8 @@ function ScanningView({ progress, sizes }: { progress: number; sizes: ScannedSiz
           { label: 'style_profile', sub: 'סגנון', value: '...', done: progress > 70 },
           { label: 'fit_preference', sub: 'גזרה', value: '...', done: progress > 88 },
         ].map(({ label, sub, value, done }) => (
-          <View key={label} style={[obStyles.metricCard, { borderColor: done ? 'rgba(46,213,115,0.4)' : '#E2E8F0', backgroundColor: done ? '#F0FFF6' : '#F8FAFC' }]}>
-            <Text style={[obStyles.metricValue, { color: done ? '#16A34A' : '#94A3B8' }]}>{value}</Text>
+          <View key={label} style={[obStyles.metricCard, { borderColor: done ? '#00FF66' : '#9A9A9A', backgroundColor: done ? '#E0FFF0' : '#FFFEF5' }]}>
+            <Text style={[obStyles.metricValue, { color: done ? '#00CC52' : '#9A9A9A' }]}>{value}</Text>
             <Text style={obStyles.metricLabel}>{label}</Text>
             <Text style={obStyles.metricSub}>{sub}</Text>
           </View>
@@ -372,7 +373,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
   const [primaryStyle, setPrimaryStyle] = useState(sizes.style?.primaryStyle ?? '')
   const [secondaryStyle, setSecondaryStyle] = useState(sizes.style?.secondaryStyle ?? '')
   const [colors, setColors] = useState<string[]>(sizes.style?.dominantColors ?? [])
-  const COLOR_PALETTE = ['#1E293B', '#475569', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#22C55E', '#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#FFFFFF', '#94A3B8']
+  const COLOR_PALETTE = ['#1A1A1A', '#4A4A4A', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#22C55E', '#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#FFFFFF', '#9A9A9A']
   const [gender, setGender] = useState<'male' | 'female' | 'unisex'>(sizes.gender ?? 'unisex')
   const [heightCm, setHeightCm] = useState(sizes.sizing.bodyMetrics?.estimated_height_cm?.toString() ?? '')
   const [weightKg, setWeightKg] = useState(sizes.sizing.bodyMetrics?.estimated_weight_kg?.toString() ?? '')
@@ -480,7 +481,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
         </View>
       )}
 
-      <View style={[obStyles.resultBanner, { backgroundColor: sizes.sizing.baselineMatched ? '#EEF2FF' : '#F0FFF6', borderColor: sizes.sizing.baselineMatched ? 'rgba(46,91,255,0.3)' : 'rgba(46,213,115,0.4)' }]}>
+      <View style={[obStyles.resultBanner, { backgroundColor: sizes.sizing.baselineMatched ? '#FFFACC' : '#E0FFF0', borderColor: sizes.sizing.baselineMatched ? '#FFE566' : '#00FF66' }]}>
         {sizes.preview && (
           <Image source={{ uri: sizes.preview }} style={obStyles.resultPhoto} />
         )}
@@ -597,11 +598,11 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
       )}
 
       {scanError && (
-        <View style={{ backgroundColor: '#FEF2F2', borderRadius: 14, padding: 12, borderWidth: 1.5, borderColor: '#FECACA' }}>
-          <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+        <View style={{ backgroundColor: '#FFF0F0', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' }}>
+          <Text style={{ fontSize: 14, color: '#DC2626', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
             ⚠️ AI: {scanError}
           </Text>
-          <Text style={{ fontSize: 11, color: '#991B1B', marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+          <Text style={{ fontSize: 13, color: '#991B1B', marginTop: 4, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
             מציג תוצאות מהמערכת המקומית כגיבוי
           </Text>
         </View>
@@ -625,7 +626,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
             { label: 'גזרה', value: fitType, options: FIT_TYPES, set: setFitType },
             { label: 'נעליים', value: shoeSize, options: SHOE_SIZES_EU, set: setShoeSize },
           ].map(({ label, value, options, set }) => (
-            <View key={label} style={[obStyles.sizeBox, { borderColor: editing ? '#2E5BFF' : '#E2E8F0', borderWidth: editing ? 2 : 1.5 }]}>
+            <View key={label} style={[obStyles.sizeBox, { borderColor: editing ? '#FFE566' : '#9A9A9A', borderWidth: editing ? 2 : 1.5 }]}>
               {editing ? (
                 <View>
                   {options.map((o) => (
@@ -744,7 +745,7 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
           <Text style={obStyles.confirmBtnText}>אשר פרופיל והמשך</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onRetake} activeOpacity={0.7}>
-          <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>סרוק תמונה חדשה</Text>
+          <Text style={{ color: '#6B6B6B', fontSize: 16, fontWeight: '600', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>סרוק תמונה חדשה</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -825,157 +826,157 @@ function GalleryAccessView({ onGranted, onSkip }: { onGranted: () => void; onSki
 }
 
 const obStyles = StyleSheet.create({
-  header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 24 },
+  header: { paddingTop: 52, paddingHorizontal: 24, paddingBottom: 24, backgroundColor: '#FFE566', borderBottomWidth: 1.5, borderBottomColor: '#1A1A1A' },
   progressRow: { flexDirection: 'row', gap: 6, marginBottom: 18 },
   progressBar: { flex: 1, height: 3, borderRadius: 2 },
-  headerTitle: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  headerSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  explainCard: { borderRadius: 20, padding: 18, gap: 12 },
+  headerTitle: { color: '#1A1A1A', fontSize: 22, fontWeight: '700', marginBottom: 6, fontFamily: "'Permanent Marker', cursive" },
+  headerSub: { color: '#4A4A4A', fontSize: 16, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  explainCard: { borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 18, gap: 12, backgroundColor: '#1A1A1A', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #FFE566' } as React.CSSProperties,
   explainHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  explainIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(46,91,255,0.3)', alignItems: 'center', justifyContent: 'center' },
-  explainTitle: { fontWeight: '800', fontSize: 15, color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  explainSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  explainIcon: { width: 40, height: 40, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', backgroundColor: 'rgba(255,229,102,0.3)', alignItems: 'center', justifyContent: 'center' },
+  explainTitle: { fontWeight: '800', fontSize: 16, color: '#FFE566', fontFamily: "'Permanent Marker', cursive" },
+  explainSub: { fontSize: 14, color: 'rgba(255,229,102,0.6)', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   explainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  explainRowText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', flex: 1, lineHeight: 18, textAlign: 'right', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  explainRowText: { fontSize: 14, color: 'rgba(255,229,102,0.75)', flex: 1, lineHeight: 20, textAlign: 'right', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   carouselStage: { alignItems: 'center', justifyContent: 'center', paddingVertical: 22, gap: 14, minHeight: 130 },
-  carouselIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(46,91,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  carouselIconWrap: { width: 72, height: 72, borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', backgroundColor: 'rgba(255,229,102,0.25)', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
   carouselIcon: { fontSize: 36 },
-  carouselText: { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  carouselText: { fontSize: 22, fontWeight: '700', color: '#FFE566', textAlign: 'center', fontFamily: "'Permanent Marker', cursive" },
   carouselDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingTop: 4 },
-  carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)' },
-  carouselDotActive: { backgroundColor: '#2E5BFF', width: 20 },
-  dropZone: { borderWidth: 2, borderColor: '#CBD5E1', borderRadius: 24, padding: 36, alignItems: 'center', gap: 14, backgroundColor: '#fff', minHeight: 200, justifyContent: 'center' },
-  dropZoneActive: { borderColor: '#2E5BFF', backgroundColor: '#EEF2FF' },
-  dropIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-  dropTitle: { fontWeight: '700', color: '#1E293B', fontSize: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  dropSub: { color: '#94A3B8', fontSize: 13, marginTop: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  tipBox: { backgroundColor: '#FFFBEB', borderRadius: 14, padding: 10, flexDirection: 'row', gap: 8, width: '100%', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)' },
-  tipText: { fontSize: 12, color: '#92400E', lineHeight: 18, flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,229,102,0.25)' },
+  carouselDotActive: { backgroundColor: '#FFE566', width: 20 },
+  dropZone: { borderWidth: 1.5, borderColor: '#1A1A1A', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 36, alignItems: 'center', gap: 14, backgroundColor: '#FFFEF5', minHeight: 200, justifyContent: 'center', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  dropZoneActive: { borderColor: '#FFE566', backgroundColor: '#FFFACC', boxShadow: '3px 3px 0 #FFE566' } as React.CSSProperties,
+  dropIcon: { width: 72, height: 72, borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  dropTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 18, fontFamily: "'Permanent Marker', cursive" },
+  dropSub: { color: '#6B6B6B', fontSize: 15, marginTop: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  tipBox: { backgroundColor: '#FFFACC', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 10, flexDirection: 'row', gap: 8, width: '100%', borderWidth: 1, borderColor: '#FFE566' },
+  tipText: { fontSize: 14, color: '#4A4A4A', lineHeight: 20, flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   btnRow: { flexDirection: 'row', gap: 10 },
-  cameraBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 18 },
-  cameraBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F1F5F9', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 18 },
-  galleryBtnText: { color: '#475569', fontSize: 13, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  scanInfoCard: { backgroundColor: '#fff', borderRadius: 20, padding: 18 },
-  scanInfoTitle: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  cameraBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00FF66', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  cameraBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFEF5', borderWidth: 1.5, borderColor: '#1A1A1A', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 10, paddingHorizontal: 18, boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  galleryBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  scanInfoCard: { backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 18, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  scanInfoTitle: { fontSize: 15, fontWeight: '700', color: '#4A4A4A', marginBottom: 12, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   scanInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  scanInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, width: '48%' },
-  scanInfoLabel: { fontSize: 13, color: '#475569', fontWeight: '500', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  scanFrame: { width: '100%', height: 280, borderRadius: 24, backgroundColor: '#1a2f7a', overflow: 'hidden', position: 'relative' },
+  scanInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFACC', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 10, paddingHorizontal: 12, width: '48%', borderWidth: 1, borderColor: '#FFE566' },
+  scanInfoLabel: { fontSize: 15, color: '#2D2D2D', fontWeight: '500', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  scanFrame: { width: '100%', height: 280, borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', backgroundColor: '#1A1A1A', overflow: 'hidden', position: 'relative', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #FFE566' } as React.CSSProperties,
   scanPhoto: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.55 },
   scanGrid: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3 },
-  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#2ED573', shadowColor: '#2ED573', shadowRadius: 16, shadowOpacity: 0.6 },
+  scanBeam: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#00FF66', shadowColor: '#00FF66', shadowRadius: 16, shadowOpacity: 0.6 },
   cornerBracket: { position: 'absolute', width: 24, height: 24 },
   progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  progressPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF' },
-  progressTrack: { height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
+  progressLabel: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  progressPct: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  progressTrack: { height: 8, backgroundColor: '#F5F0E0', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#FFE566', borderRadius: 4 },
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, width: '100%' },
-  metricCard: { width: '48%', borderRadius: 14, padding: 10, alignItems: 'center', borderWidth: 1.5 },
-  metricValue: { fontSize: 13, fontWeight: '700' },
-  metricLabel: { fontSize: 9, color: '#94A3B8', marginTop: 2, letterSpacing: 0.5 },
-  metricSub: { fontSize: 10, color: '#64748B', marginTop: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  resultBanner: { borderRadius: 20, padding: 18, borderWidth: 1.5, alignItems: 'center' },
-  resultPhoto: { width: 60, height: 60, borderRadius: 30, marginBottom: 10 },
+  metricCard: { width: '48%', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 10, alignItems: 'center', borderWidth: 1.5, boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  metricValue: { fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  metricLabel: { fontSize: 10, color: '#9A9A9A', marginTop: 2, letterSpacing: 0.5, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  metricSub: { fontSize: 12, color: '#6B6B6B', marginTop: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  resultBanner: { borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 18, borderWidth: 1.5, alignItems: 'center', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  resultPhoto: { width: 60, height: 60, borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', marginBottom: 10, borderWidth: 1.5, borderColor: '#1A1A1A' },
   resultBadges: { flexDirection: 'row', gap: 8, marginBottom: 6 },
-  resultBadge: { backgroundColor: '#2E5BFF', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
-  weeklyBadge: { backgroundColor: '#7C3AED', color: '#fff', fontSize: 10, fontWeight: '700', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 8 },
-  resultTitle: { fontWeight: '800', fontSize: 17, color: '#15803D', marginBottom: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  resultSub: { fontSize: 12, color: '#16A34A', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deltaCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, borderWidth: 1.5, borderColor: '#E0E7FF' },
-  deltaTitle: { fontWeight: '700', color: '#1E293B', fontSize: 13, marginBottom: 10, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deltaSummary: { fontSize: 12, color: '#475569', marginBottom: 8, lineHeight: 18, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  resultBadge: { backgroundColor: '#FFE566', color: '#1A1A1A', fontSize: 11, fontWeight: '700', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 2, paddingHorizontal: 8, borderWidth: 1, borderColor: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  weeklyBadge: { backgroundColor: '#00FF66', color: '#1A1A1A', fontSize: 11, fontWeight: '700', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 2, paddingHorizontal: 8, borderWidth: 1, borderColor: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  resultTitle: { fontWeight: '700', fontSize: 18, color: '#00CC52', marginBottom: 4, fontFamily: "'Permanent Marker', cursive" },
+  resultSub: { fontSize: 14, color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  deltaCard: { backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #FFE566' } as React.CSSProperties,
+  deltaTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 15, marginBottom: 10, fontFamily: "'Permanent Marker', cursive" },
+  deltaSummary: { fontSize: 14, color: '#4A4A4A', marginBottom: 8, lineHeight: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   deltaChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  deltaChip: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center' },
-  deltaChipLabel: { fontSize: 10, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  deltaChipVal: { fontSize: 11, fontWeight: '700', color: '#2E5BFF' },
-  bodyMetricsCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1.5, borderColor: '#DBEAFE' },
+  deltaChip: { backgroundColor: '#FFFACC', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 4, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center', borderWidth: 1, borderColor: '#FFE566' },
+  deltaChipLabel: { fontSize: 12, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  deltaChipVal: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  bodyMetricsCard: { backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 16, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #00FF66' } as React.CSSProperties,
   bodyMetricsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  bodyMetricsTitle: { fontWeight: '700', color: '#1E40AF', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  bodyMetricsTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 15, fontFamily: "'Permanent Marker', cursive" },
   bodyMetricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  bodyMetricItem: { width: '31%', backgroundColor: '#EFF6FF', borderRadius: 12, padding: 8, alignItems: 'center' },
-  bodyMetricValue: { fontSize: 16, fontWeight: '800', color: '#1E40AF' },
-  bodyMetricUnit: { fontSize: 9, color: '#3B82F6', marginTop: 1 },
-  bodyMetricLabel: { fontSize: 11, color: '#64748B', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  bodyMetricItemEditing: { borderColor: '#2E5BFF', borderWidth: 2, backgroundColor: '#EFF6FF', padding: 6 },
-  bodyMetricInput: { fontSize: 14, fontWeight: '700', color: '#1E40AF', textAlign: 'center', paddingVertical: 4, paddingHorizontal: 2, width: '100%', maxWidth: 60, borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 8, backgroundColor: '#fff' },
-  sizingCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
+  bodyMetricItem: { width: '31%', backgroundColor: '#FFFACC', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 8, alignItems: 'center', borderWidth: 1, borderColor: '#FFE566' },
+  bodyMetricValue: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  bodyMetricUnit: { fontSize: 11, color: '#6B6B6B', marginTop: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  bodyMetricLabel: { fontSize: 13, color: '#4A4A4A', marginTop: 3, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  bodyMetricItemEditing: { borderColor: '#00FF66', borderWidth: 2, backgroundColor: '#E0FFF0', padding: 6 },
+  bodyMetricInput: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', paddingVertical: 4, paddingHorizontal: 2, width: '100%', maxWidth: 60, borderWidth: 1, borderColor: '#1A1A1A', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', backgroundColor: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
+  sizingCard: { backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 16, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   sizingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sizingTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  editBtn: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12 },
-  editBtnActive: { backgroundColor: '#2E5BFF' },
-  editBtnText: { color: '#2E5BFF', fontSize: 12, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  editBtnTextActive: { color: '#fff' },
+  sizingTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 15, fontFamily: "'Permanent Marker', cursive" },
+  editBtn: { backgroundColor: '#FFFACC', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 5, paddingHorizontal: 12, borderWidth: 1, borderColor: '#FFE566' },
+  editBtnActive: { backgroundColor: '#FFE566', borderColor: '#1A1A1A' },
+  editBtnText: { color: '#1A1A1A', fontSize: 14, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  editBtnTextActive: { color: '#1A1A1A' },
   sizingGrid: { flexDirection: 'row', gap: 8 },
-  sizeBox: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1.5 },
-  sizeValue: { fontSize: 16, fontWeight: '700', color: '#2E5BFF' },
-  sizeLabel: { fontSize: 10, color: '#94A3B8', marginTop: 3, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  sizeOption: { fontSize: 14, fontWeight: '700', color: '#475569', paddingVertical: 2 },
-  sizeOptionActive: { color: '#2E5BFF' },
-  styleCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16 },
+  sizeBox: { flex: 1, backgroundColor: '#FFFEF5', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 10, alignItems: 'center', borderWidth: 1.5, boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  sizeValue: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  sizeLabel: { fontSize: 12, color: '#6B6B6B', marginTop: 3, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sizeOption: { fontSize: 16, fontWeight: '700', color: '#4A4A4A', paddingVertical: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sizeOptionActive: { color: '#1A1A1A' },
+  styleCard: { backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 16, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   styleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  styleTitle: { fontWeight: '700', color: '#1E293B', fontSize: 14, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  stylePickerLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  styleTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 15, fontFamily: "'Permanent Marker', cursive" },
+  stylePickerLabel: { fontSize: 14, fontWeight: '600', color: '#4A4A4A', marginBottom: 8, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   stylePickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  styleChip: { backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1.5, borderColor: 'transparent' },
-  styleChipActive: { backgroundColor: '#EEF2FF', borderColor: '#2E5BFF' },
-  styleChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
-  styleChipTextActive: { color: '#2E5BFF' },
+  styleChip: { backgroundColor: '#F5F0E0', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1.5, borderColor: 'transparent' },
+  styleChipActive: { backgroundColor: '#FFFACC', borderColor: '#FFE566' },
+  styleChipText: { fontSize: 14, fontWeight: '600', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  styleChipTextActive: { color: '#1A1A1A' },
   styleRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  stylePrimary: { flex: 1, backgroundColor: '#EEF2FF', borderRadius: 12, padding: 10, alignItems: 'center' },
-  stylePrimaryText: { fontSize: 13, fontWeight: '700', color: '#2E5BFF' },
-  stylePrimaryLabel: { fontSize: 10, color: '#64748B', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  styleSecondary: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, alignItems: 'center' },
-  styleSecondaryText: { fontSize: 13, fontWeight: '700', color: '#475569' },
-  styleSecondaryLabel: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  stylePrimary: { flex: 1, backgroundColor: '#FFFACC', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#FFE566' },
+  stylePrimaryText: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  stylePrimaryLabel: { fontSize: 12, color: '#6B6B6B', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  styleSecondary: { flex: 1, backgroundColor: '#E0FFF0', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#00FF66' },
+  styleSecondaryText: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  styleSecondaryLabel: { fontSize: 12, color: '#6B6B6B', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   colorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  colorLabel: { fontSize: 11, color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  colorLabel: { fontSize: 14, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   colorDots: { flexDirection: 'row', gap: 6 },
-  colorDot: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
+  colorDot: { width: 22, height: 22, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1.5, borderColor: '#1A1A1A' },
   colorDotsEditable: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
-  colorDotRemove: { color: '#fff', fontSize: 14, fontWeight: '700', textAlign: 'center', lineHeight: 18 },
-  colorAddLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  colorDotRemove: { color: '#FFFEF5', fontSize: 14, fontWeight: '700', textAlign: 'center', lineHeight: 18 },
+  colorAddLabel: { fontSize: 14, fontWeight: '600', color: '#4A4A4A', marginBottom: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   colorPalette: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  colorPaletteDot: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
-  colorPaletteDotActive: { borderColor: '#2E5BFF', borderWidth: 3 },
-  patternText: { fontSize: 11, color: '#94A3B8' },
+  colorPaletteDot: { width: 28, height: 28, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  colorPaletteDotActive: { borderColor: '#FFE566', borderWidth: 3 },
+  patternText: { fontSize: 14, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   tagsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  tag: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
-  tagText: { fontSize: 11, fontWeight: '600', color: '#475569' },
-  confirmBtn: { padding: 16, borderRadius: 18, backgroundColor: '#2E5BFF', alignItems: 'center' },
-  confirmBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  faceMissingCard: { backgroundColor: '#FEF2F2', borderRadius: 18, padding: 18, borderWidth: 2, borderColor: '#FECACA', gap: 10 },
+  tag: { backgroundColor: '#FFFACC', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, borderColor: '#FFE566' },
+  tagText: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  confirmBtn: { padding: 16, borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', backgroundColor: '#00FF66', alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  confirmBtnText: { color: '#1A1A1A', fontSize: 17, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  faceMissingCard: { backgroundColor: '#FFF0F0', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 18, borderWidth: 1.5, borderColor: '#1A1A1A', gap: 10, boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   faceMissingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  faceMissingTitle: { fontSize: 15, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  faceMissingText: { fontSize: 13, color: '#991B1B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  faceMissingBtn: { backgroundColor: '#DC2626', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', marginTop: 4 },
-  faceMissingBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryAccessCard: { backgroundColor: '#fff', borderRadius: 24, padding: 24, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#DBEAFE' },
-  galleryAccessIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-  galleryAccessTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryAccessDesc: { fontSize: 13, color: '#64748B', lineHeight: 20, textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  faceMissingTitle: { fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Permanent Marker', cursive" },
+  faceMissingText: { fontSize: 15, color: '#991B1B', lineHeight: 22, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  faceMissingBtn: { backgroundColor: '#DC2626', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', marginTop: 4, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  faceMissingBtnText: { color: '#FFFEF5', fontSize: 15, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  galleryAccessCard: { backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 24, alignItems: 'center', gap: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #FFE566' } as React.CSSProperties,
+  galleryAccessIcon: { width: 72, height: 72, borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
+  galleryAccessTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  galleryAccessDesc: { fontSize: 15, color: '#4A4A4A', lineHeight: 22, textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   galleryAccessFeatures: { gap: 10, width: '100%', marginTop: 6 },
-  galleryAccessFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
-  galleryAccessFeatureText: { fontSize: 12, color: '#475569', flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryGrantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2E5BFF', borderRadius: 18, paddingVertical: 16 },
-  galleryGrantBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  gallerySkipText: { color: '#94A3B8', fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryAccessFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFACC', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: '#FFE566' },
+  galleryAccessFeatureText: { fontSize: 14, color: '#2D2D2D', flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  galleryGrantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#00FF66', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', paddingVertical: 16, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  galleryGrantBtnText: { color: '#1A1A1A', fontSize: 17, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  gallerySkipText: { color: '#6B6B6B', fontSize: 15, fontWeight: '600', textAlign: 'center', paddingVertical: 8, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   galleryScanBox: { alignItems: 'center', gap: 14, paddingVertical: 20 },
-  galleryScanTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
-  galleryScanBarFill: { height: '100%', backgroundColor: '#2E5BFF', borderRadius: 4 },
-  galleryScanPct: { fontSize: 14, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  galleryScanTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  galleryScanBar: { width: '100%', height: 8, backgroundColor: '#F5F0E0', borderRadius: 4, overflow: 'hidden' },
+  galleryScanBarFill: { height: '100%', backgroundColor: '#00FF66', borderRadius: 4 },
+  galleryScanPct: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   genderRow: { marginBottom: 12 },
-  genderLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderLabel: { fontSize: 14, fontWeight: '600', color: '#4A4A4A', marginBottom: 8, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   genderSelector: { flexDirection: 'row', gap: 8 },
-  genderOption: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
-  genderOptionActive: { backgroundColor: '#EEF2FF', borderColor: '#2E5BFF' },
-  genderOptionText: { fontSize: 13, fontWeight: '600', color: '#475569', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  genderOptionTextActive: { color: '#2E5BFF' },
+  genderOption: { flex: 1, backgroundColor: '#F5F0E0', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 8, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
+  genderOptionActive: { backgroundColor: '#FFFACC', borderColor: '#FFE566' },
+  genderOptionText: { fontSize: 15, fontWeight: '600', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  genderOptionTextActive: { color: '#1A1A1A' },
   genderDisplayRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
-  genderDisplayLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  genderDisplayValue: { fontSize: 13, fontWeight: '700', color: '#2E5BFF', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  updateResultsBtn: { marginTop: 12, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
-  updateResultsBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  genderDisplayLabel: { fontSize: 15, fontWeight: '600', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  genderDisplayValue: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  updateResultsBtn: { marginTop: 12, backgroundColor: '#1A1A1A', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' } as React.CSSProperties,
+  updateResultsBtnText: { color: '#FFE566', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
 })

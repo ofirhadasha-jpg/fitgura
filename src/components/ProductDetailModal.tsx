@@ -101,7 +101,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
         <ScrollView style={modalStyles.scrollArea} contentContainerStyle={modalStyles.scrollContent}>
           <View style={modalStyles.imageWrap}>
             {imgError || !imageUrl ? (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E0' }}>
                 <Text style={{ fontSize: 48 }}>📦</Text>
               </View>
             ) : (
@@ -178,32 +178,32 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
 const modalStyles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(11,20,55,0.65)' },
-  sheet: { backgroundColor: '#fff', borderRadius: 22, padding: 18, width: 340, maxWidth: '92%', maxHeight: '88%', elevation: 12, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
+  sheet: { backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 18, width: 340, maxWidth: '92%', maxHeight: '88%', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   scrollArea: { flexShrink: 1 },
   scrollContent: { gap: 12, paddingBottom: 8 },
   closeBtn: { position: 'absolute', top: 8, right: 8, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  closeText: { color: '#94A3B8', fontSize: 24, lineHeight: 24, fontWeight: '500' },
-  imageWrap: { width: '100%', height: 200, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F1F5F9' },
+  closeText: { color: '#9A9A9A', fontSize: 24, lineHeight: 24, fontWeight: '500' },
+  imageWrap: { width: '100%', height: 200, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', overflow: 'hidden', backgroundColor: '#F5F0E0', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   productImage: { width: '100%', height: '100%' },
-  productName: { fontSize: 15, fontWeight: '700', color: '#1E293B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  productBrand: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  productName: { fontSize: 17, fontWeight: '700', color: '#1A1A1A', lineHeight: 22, fontFamily: "'Permanent Marker', cursive" },
+  productBrand: { fontSize: 13, color: '#9A9A9A', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  productPrice: { fontSize: 18, fontWeight: '800', color: '#2E5BFF' },
-  productOriginalPrice: { fontSize: 14, color: '#94A3B8', textDecorationLine: 'line-through' },
-  recommendationBox: { backgroundColor: '#F0FFF6', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: 'rgba(46,213,115,0.35)' },
-  recommendationTitle: { fontSize: 14, fontWeight: '700', color: '#16A34A', marginBottom: 8, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  recommendationHeadline: { fontSize: 14, fontWeight: '700', color: '#1E293B', lineHeight: 20, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  productPrice: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  productOriginalPrice: { fontSize: 15, color: '#9A9A9A', textDecorationLine: 'line-through', fontFamily: "'Permanent Marker', cursive" },
+  recommendationBox: { backgroundColor: '#E0FFF0', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 14, borderWidth: 1.5, borderColor: '#00CC52', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  recommendationTitle: { fontSize: 16, fontWeight: '700', color: '#00CC52', marginBottom: 8, fontFamily: "'Permanent Marker', cursive" },
+  recommendationHeadline: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', lineHeight: 22, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  sizePill: { backgroundColor: '#F8FAFC', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#E2E8F0' },
-  sizePillPrimary: { backgroundColor: '#2E5BFF', borderColor: '#2E5BFF' },
-  sizePillRegion: { fontSize: 10, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
-  sizePillValue: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
-  sizePillValuePrimary: { color: '#fff' },
-  confirmBtn: { backgroundColor: '#FF4747', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, alignSelf: 'center' },
-  confirmBtnLoading: { backgroundColor: '#E03A3A', opacity: 0.85 },
+  sizePill: { backgroundColor: '#FFFEF5', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 5, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  sizePillPrimary: { backgroundColor: '#FFE566', borderColor: '#1A1A1A' },
+  sizePillRegion: { fontSize: 11, fontWeight: '700', color: '#4A4A4A', letterSpacing: 0.5, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sizePillValue: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  sizePillValuePrimary: { color: '#1A1A1A' },
+  confirmBtn: { backgroundColor: '#00FF66', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, alignSelf: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  confirmBtnLoading: { backgroundColor: '#00CC52', opacity: 0.85 },
   btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   confirmBtnIcon: { fontSize: 15 },
-  spinner: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' },
-  confirmBtnText: { fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  spinner: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: 'rgba(26,26,26,0.3)', borderTopColor: '#1A1A1A' },
+  confirmBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })
