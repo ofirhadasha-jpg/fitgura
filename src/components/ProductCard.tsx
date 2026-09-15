@@ -52,12 +52,20 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  const imageUrl = normalizeProductImageUrl(product.img)
+  const imageUrl = normalizeProductImageUrl(product?.img)
+  const safeName = product?.name ?? ''
+  const safeBrand = product?.brand ?? ''
+  const safePrice = typeof product?.price === 'number' && !isNaN(product.price) ? product.price : 0
 
-  const effectiveCategory = detectEffectiveCategory(product.name, category)
+  const effectiveCategory = detectEffectiveCategory(safeName, category)
   const isDeviceAccessory = effectiveCategory === 'accessories'
   const showSizeRecommendation = !isDeviceAccessory
-  const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
+  let recommendedSize: SizeRecommendation | null = null
+  try {
+    recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
+  } catch {
+    recommendedSize = null
+  }
   const hasScanned = scannedSizes != null
 
   function handleBuy() {
@@ -138,12 +146,12 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
             </Text>
           </View>
         )}
-        <Text style={cardStyles.productName}>{product.name}</Text>
-        <Text style={cardStyles.productBrand}>{product.brand}</Text>
+        <Text style={cardStyles.productName}>{safeName}</Text>
+        <Text style={cardStyles.productBrand}>{safeBrand}</Text>
         <View style={cardStyles.priceRow}>
-          <Text style={cardStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <Text style={cardStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
+          <Text style={cardStyles.productPrice}>{formatPrice(safePrice, product?.currency)}</Text>
+          {product?.originalPrice && product.originalPrice > safePrice && (
+            <Text style={cardStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product?.currency)}</Text>
           )}
         </View>
         <View style={cardStyles.buyBtnRow}>
@@ -152,7 +160,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
             activeOpacity={0.7}
             style={cardStyles.buyBtnAli}
             accessibilityRole="button"
-            accessibilityLabel={`קניה: ${product.name}`}
+            accessibilityLabel={`קניה: ${safeName}`}
           >
             <Text style={cardStyles.buyBtnIcon}>🛒</Text>
             <Text style={cardStyles.buyBtnText}>לקניה במחיר הטוב ביותר</Text>

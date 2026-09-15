@@ -209,12 +209,12 @@ async function migrateGuestData(userId: string) {
   }
 }
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false }
-  static getDerivedStateFromError() { return { hasError: true } }
-  componentDidCatch(err: unknown) { console.error('App crash caught:', err) }
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
+  state = { hasError: false, error: '' }
+  static getDerivedStateFromError(err: unknown) { return { hasError: true, error: err instanceof Error ? err.message : String(err) } }
+  componentDidCatch(err: unknown, info: unknown) { console.error('App crash caught:', err, info) }
   handleRecover = () => {
-    this.setState({ hasError: false })
+    this.setState({ hasError: false, error: '' })
     sessionStorage.removeItem('fitgura_screen')
     sessionStorage.removeItem('fitgura_pending_scan')
   }
@@ -224,6 +224,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>משהו השתבש</Text>
           <Text style={{ fontSize: 14, color: '#6B6155', textAlign: 'center' }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
+          <Text style={{ fontSize: 11, color: '#8B8175', textAlign: 'center', marginTop: 4, fontFamily: "'Heebo', sans-serif" }}>{this.state.error}</Text>
           <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8 }}>
             <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>חזור להתחלה</Text>
           </TouchableOpacity>

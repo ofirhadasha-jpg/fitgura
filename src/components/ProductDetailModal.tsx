@@ -46,18 +46,26 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   if (!visible) return null
 
-  const imageUrl = normalizeProductImageUrl(product.img)
-  const accessory = isAccessory(product.name, category)
-  const recommendedSize: SizeRecommendation | null = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
+  const safeName = product?.name ?? ''
+  const safeBrand = product?.brand ?? ''
+  const safePrice = typeof product?.price === 'number' && !isNaN(product.price) ? product.price : 0
+  const imageUrl = normalizeProductImageUrl(product?.img)
+  const accessory = isAccessory(safeName, category)
+  let recommendedSize: SizeRecommendation | null = null
+  try {
+    recommendedSize = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, safeName, product?.availableSizes ?? [])
+  } catch {
+    recommendedSize = null
+  }
   const hasScanned = scannedSizes != null
 
   async function handleProceedToBuy() {
     setIsRedirecting(true)
 
-    const fallbackUrl = product.aliexpressUrl?.trim()
-      || `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent((product.brand ?? '') + ' ' + (product.name ?? ''))}`
+    const fallbackUrl = product?.aliexpressUrl?.trim()
+      || `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(safeBrand + ' ' + safeName)}`
 
-    let finalUrl = product.promotionLink?.trim() || null
+    let finalUrl = product?.promotionLink?.trim() || null
     try {
       if (!finalUrl) {
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
@@ -69,8 +77,8 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     finalUrl = finalUrl ?? fallbackUrl
 
     logAffiliateClick({
-      product_id: product.aliexpressSku ?? '',
-      title: product.name ?? '',
+      product_id: product?.aliexpressSku ?? '',
+      title: safeName,
       promotion_link: finalUrl,
     }).catch(() => {})
 
@@ -113,13 +121,13 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
             )}
           </View>
 
-          <Text style={modalStyles.productName} numberOfLines={3}>{product.name}</Text>
-          <Text style={modalStyles.productBrand}>{product.brand}</Text>
+          <Text style={modalStyles.productName} numberOfLines={3}>{safeName}</Text>
+          <Text style={modalStyles.productBrand}>{safeBrand}</Text>
 
           <View style={modalStyles.priceRow}>
-            <Text style={modalStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
-            {product.originalPrice && product.originalPrice > product.price && (
-              <Text style={modalStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
+            <Text style={modalStyles.productPrice}>{formatPrice(safePrice, product?.currency)}</Text>
+            {product?.originalPrice && product.originalPrice > safePrice && (
+              <Text style={modalStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product?.currency)}</Text>
             )}
           </View>
 
