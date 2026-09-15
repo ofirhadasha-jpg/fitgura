@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
 import { LinearGradient, BottomNav } from '../components'
 import { AddDeviceModal } from '../components/AddDeviceModal'
+import { ProductDetailModal } from '../components/ProductDetailModal'
 import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice, detectDevice } from '../types'
 import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
 import {
@@ -107,6 +108,7 @@ export function FeedScreen({
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [showDeviceModal, setShowDeviceModal] = useState(false)
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null)
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const selectedDeviceRef = useRef<string | null>(null)
   const [pendingNewDevice, setPendingNewDevice] = useState<string | null>(null)
@@ -591,6 +593,7 @@ export function FeedScreen({
                 onToggleWishlist={() => onToggleWishlist(globalIdx)}
                 scannedSizes={scannedSizes}
                 category={filter}
+                onBuy={() => setDetailProduct(product)}
               />
             )
           })}
@@ -623,6 +626,14 @@ export function FeedScreen({
         visible={showDeviceModal}
         onClose={() => setShowDeviceModal(false)}
         onAdd={(deviceName) => { onAddDevice(deviceName); setShowDeviceModal(false) }}
+      />
+
+      <ProductDetailModal
+        product={detailProduct}
+        scannedSizes={scannedSizes}
+        category={filter}
+        visible={detailProduct !== null}
+        onDismiss={() => setDetailProduct(null)}
       />
     </View>
   )

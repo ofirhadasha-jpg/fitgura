@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { type Product, type ScannedSizes } from '../types'
 import { calculateDetailedRecommendation, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
-import { ProductDetailModal } from './ProductDetailModal'
+
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
   const symbol = currency ?? '₪'
@@ -41,15 +41,15 @@ function getRecommendedSizeLabel(product: Product, scannedSizes: ScannedSizes | 
 
 
 
-export default function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category }: {
+export default function ProductCard({ product, inWishlist, onToggleWishlist, scannedSizes, category, onBuy }: {
   product: Product;
   inWishlist: boolean;
   onToggleWishlist: () => void;
   scannedSizes: ScannedSizes | null;
   category: string;
+  onBuy: () => void;
 }) {
   const [toast, setToast] = useState<string | null>(null)
-  const [showDetailModal, setShowDetailModal] = useState(false)
   const [imgError, setImgError] = useState(false)
 
   const imageUrl = normalizeProductImageUrl(product?.img)
@@ -68,9 +68,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   }
   const hasScanned = scannedSizes != null
 
-  function handleBuy() {
-    setShowDetailModal(true)
-  }
+
 
 
 
@@ -156,7 +154,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         </View>
         <View style={cardStyles.buyBtnRow}>
           <TouchableOpacity
-            onPress={handleBuy}
+            onPress={onBuy}
             activeOpacity={0.7}
             style={cardStyles.buyBtnAli}
             accessibilityRole="button"
@@ -173,13 +171,6 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         )}
       </View>
 
-      <ProductDetailModal
-        product={product}
-        scannedSizes={scannedSizes}
-        category={category}
-        visible={showDetailModal}
-        onDismiss={() => setShowDetailModal(false)}
-      />
     </View>
   )
 }
