@@ -679,5 +679,5 @@ const styles = StyleSheet.create({
     elevation: 8,
   } as React.CSSProperties,
   toastEmoji: { fontSize: 20 },
-  toastText: { fontWeight: '700', fontSize: 14, color: '#fff', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  toastText: { fontWeight: '700', fontSize: 14, color: '#fff', fontFamily: "'Heebo', sans-serif" },
 })

@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#8B8175',
     marginTop: 4,
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Heebo', sans-serif",
     transitionProperty: 'color, font-weight',
     transitionDuration: '0.2s',
   } as React.CSSProperties,
@@ -210,7 +210,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
 
           {authError && (
             <View style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#FECACA' }}>
-              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>
+              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', fontFamily: "'Heebo', sans-serif" }}>
                 ⚠️ {authError}
               </Text>
             </View>
@@ -358,7 +358,7 @@ const authStyles = StyleSheet.create({
     color: '#fff',
     lineHeight: 22,
     flexShrink: 1,
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Heebo', sans-serif",
   },
   body: {
     paddingHorizontal: 24,
@@ -370,7 +370,7 @@ const authStyles = StyleSheet.create({
     color: '#6B6155',
     lineHeight: 21,
     marginBottom: 20,
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Heebo', sans-serif",
   },
   googleBtn: {
     flexDirection: 'row',
@@ -388,7 +388,7 @@ const authStyles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     color: '#1A1A1A',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Heebo', sans-serif",
   },
   emailBtn: {
     flexDirection: 'row',
@@ -404,7 +404,7 @@ const authStyles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     color: '#fff',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Heebo', sans-serif",
   },
   emailInput: {
     paddingVertical: 14,
@@ -430,7 +430,7 @@ const authStyles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     color: '#fff',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Heebo', sans-serif",
   },
   emailBtnDisabled: {
     backgroundColor: '#E8E2D5',
@@ -453,7 +453,7 @@ const authStyles = StyleSheet.create({
     color: '#8B8175',
     fontSize: 13,
     textAlign: 'center',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Heebo', sans-serif",
   },
   guestBtn: {
     paddingVertical: 14,
@@ -465,6 +465,6 @@ const authStyles = StyleSheet.create({
     color: '#D4C9B5',
     fontSize: 13,
     textDecorationLine: 'underline',
-    fontFamily: "'Noto Sans Hebrew', sans-serif",
+    fontFamily: "'Heebo', sans-serif",
   },
 })
