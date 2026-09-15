@@ -153,7 +153,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   }, [])
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+    <View style={{ flex: 1, backgroundColor: '#F5F0E6' }}>
       {/* Header */}
       <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.header}>
         <View style={obStyles.progressRow}>
@@ -181,30 +181,45 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
           <>
             <BenefitCarousel />
 
-            <View style={[obStyles.dropZone, dragOver && obStyles.dropZoneActive]}>
-              <View style={obStyles.dropIcon}><Text style={{ fontSize: 32 }}>📸</Text></View>
-              <Text style={obStyles.dropTitle}>Upload Your Photo</Text>
-              <Text style={obStyles.dropSub}>גרור לכאן, או בחר אחת מהכפתורים למטה</Text>
-              <View style={obStyles.tipBox}>
-                <Text style={{ fontSize: 16 }}>💡</Text>
-                <Text style={obStyles.tipText}>לתוצאה מדויקת — העלה תמונה של <Text style={{ fontWeight: '700' }}>כל הגוף</Text> מהראש עד הרגליים, עמידה ישרה, על רקע בהיר.</Text>
+            <View
+              style={[obStyles.uploadCard, dragOver && obStyles.uploadCardActive]}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault(); setDragOver(false)
+                const file = e.dataTransfer.files?.[0]
+                if (file) void startScan(file)
+              }}
+            >
+              <View style={obStyles.scanCircle}>
+                <View style={obStyles.scanCircleInner}>
+                  <Text style={obStyles.scanCircleEmoji}>📸</Text>
+                </View>
+                <View style={obStyles.scanRing1} />
+                <View style={obStyles.scanRing2} />
               </View>
-              <View style={obStyles.btnRow}>
+              <Text style={obStyles.uploadTitle}>Upload Your Photo</Text>
+              <Text style={obStyles.uploadSub}>גרור לכאן, או בחר אחת מהכפתורים למטה</Text>
+              <View style={obStyles.uploadTipRow}>
+                <Text style={obStyles.uploadTipEmoji}>💡</Text>
+                <Text style={obStyles.uploadTipText}>לתוצאה מדויקת — העלה תמונה של <Text style={{ fontWeight: '700' }}>כל הגוף</Text> מהראש עד הרגליים, עמידה ישרה, על רקע בהיר.</Text>
+              </View>
+              <View style={obStyles.uploadBtnRow}>
                 <TouchableOpacity
                   onPress={() => cameraRef.current?.click()}
-                  style={obStyles.cameraBtn}
-                  activeOpacity={0.8}
+                  style={obStyles.uploadPrimaryBtn}
+                  activeOpacity={0.85}
                 >
                   <Text style={{ fontSize: 16 }}>📷</Text>
-                  <Text style={obStyles.cameraBtnText}>צלם עכשיו</Text>
+                  <Text style={obStyles.uploadPrimaryBtnText}>צלם עכשיו</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => galleryRef.current?.click()}
-                  style={obStyles.galleryBtn}
-                  activeOpacity={0.8}
+                  style={obStyles.uploadSecondaryBtn}
+                  activeOpacity={0.85}
                 >
                   <Text style={{ fontSize: 16 }}>🖼️</Text>
-                  <Text style={obStyles.galleryBtnText}>מגלריה</Text>
+                  <Text style={obStyles.uploadSecondaryBtnText}>מגלריה</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -267,14 +282,14 @@ function BenefitCarousel() {
     const t = setInterval(() => {
       setIndex((i) => (i + 1) % BENEFIT_SLIDES.length)
       setAnimKey((k) => k + 1)
-    }, 2800)
+    }, 2200)
     return () => clearInterval(t)
   }, [])
 
   const slide = BENEFIT_SLIDES[index]
 
   return (
-    <LinearGradient colors={['#0B1437', '#1A2F7A']} style={obStyles.explainCard}>
+    <LinearGradient colors={['#1A1A1A', '#2A2520']} style={obStyles.explainCard}>
       <View style={obStyles.carouselStage} key={animKey} className="fitgura-carousel-enter">
         <View style={obStyles.carouselIconWrap}>
           <Text style={obStyles.carouselIcon}>{slide.icon}</Text>
@@ -838,29 +853,34 @@ const obStyles = StyleSheet.create({
   explainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   explainRowText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', flex: 1, lineHeight: 18, textAlign: 'right', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   carouselStage: { alignItems: 'center', justifyContent: 'center', paddingVertical: 22, gap: 14, minHeight: 130 },
-  carouselIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(46,91,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  carouselIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(196,168,109,0.25)', alignItems: 'center', justifyContent: 'center' },
   carouselIcon: { fontSize: 36 },
   carouselText: { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   carouselDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingTop: 4 },
   carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)' },
-  carouselDotActive: { backgroundColor: '#2E5BFF', width: 20 },
-  dropZone: { borderWidth: 2, borderColor: '#CBD5E1', borderRadius: 24, padding: 36, alignItems: 'center', gap: 14, backgroundColor: '#fff', minHeight: 200, justifyContent: 'center' },
-  dropZoneActive: { borderColor: '#2E5BFF', backgroundColor: '#EEF2FF' },
-  dropIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-  dropTitle: { fontWeight: '700', color: '#1E293B', fontSize: 16, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  dropSub: { color: '#94A3B8', fontSize: 13, marginTop: 6, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  tipBox: { backgroundColor: '#FFFBEB', borderRadius: 14, padding: 10, flexDirection: 'row', gap: 8, width: '100%', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)' },
-  tipText: { fontSize: 12, color: '#92400E', lineHeight: 18, flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  btnRow: { flexDirection: 'row', gap: 10 },
-  cameraBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2E5BFF', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 18 },
-  cameraBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F1F5F9', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 18 },
-  galleryBtnText: { color: '#475569', fontSize: 13, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  scanInfoCard: { backgroundColor: '#fff', borderRadius: 20, padding: 18 },
-  scanInfoTitle: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  carouselDotActive: { backgroundColor: '#C4A86D', width: 20 },
+  uploadCard: { backgroundColor: '#FFFFFF', borderRadius: 32, padding: 28, alignItems: 'center', gap: 14, borderWidth: 2, borderColor: '#E8E2D5', minHeight: 280, justifyContent: 'center', shadowColor: '#1E293B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4 } as React.CSSProperties,
+  uploadCardActive: { borderColor: '#C4A86D', backgroundColor: '#FAF7F0' },
+  scanCircle: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  scanCircleInner: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F5F0E6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#D4C9B5' },
+  scanCircleEmoji: { fontSize: 32 },
+  scanRing1: { position: 'absolute', width: 96, height: 96, borderRadius: 48, borderWidth: 1.5, borderColor: 'rgba(196,168,109,0.3)' },
+  scanRing2: { position: 'absolute', width: 110, height: 110, borderRadius: 55, borderWidth: 1, borderColor: 'rgba(196,168,109,0.15)' },
+  uploadTitle: { fontWeight: '800', color: '#1A1A1A', fontSize: 17, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  uploadSub: { color: '#8B8175', fontSize: 13, marginTop: 4, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  uploadTipRow: { flexDirection: 'row', gap: 8, width: '100%', backgroundColor: '#FAF7F0', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#E8E2D5', marginTop: 4 },
+  uploadTipEmoji: { fontSize: 16 },
+  uploadTipText: { fontSize: 12, color: '#6B6155', lineHeight: 18, flex: 1, fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  uploadBtnRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  uploadPrimaryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1A1A1A', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 22 },
+  uploadPrimaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  uploadSecondaryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F5F0E6', borderWidth: 1.5, borderColor: '#D4C9B5', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 22 },
+  uploadSecondaryBtnText: { color: '#4A4035', fontSize: 14, fontWeight: '600', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  scanInfoCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, borderWidth: 1.5, borderColor: '#E8E2D5' },
+  scanInfoTitle: { fontSize: 13, fontWeight: '700', color: '#4A4035', marginBottom: 12, fontFamily: "'Noto Sans Hebrew', sans-serif" },
   scanInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  scanInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, width: '48%' },
-  scanInfoLabel: { fontSize: 13, color: '#475569', fontWeight: '500', fontFamily: "'Noto Sans Hebrew', sans-serif" },
+  scanInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FAF7F0', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, width: '48%' },
+  scanInfoLabel: { fontSize: 13, color: '#4A4035', fontWeight: '500', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   scanFrame: { width: '100%', height: 280, borderRadius: 24, backgroundColor: '#1a2f7a', overflow: 'hidden', position: 'relative' },
   scanPhoto: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.55 },
   scanGrid: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3 },
