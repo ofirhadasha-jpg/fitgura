@@ -289,7 +289,7 @@ export default function App() {
         is_admin: profileRow?.is_admin === true,
       })
       if (session?.user) {
-        setScreen((prev) => (prev === 'splash') ? 'splash' : (prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+        setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
       }
     })
 
@@ -320,7 +320,7 @@ export default function App() {
         // Navigate to feed on SIGNED_IN or INITIAL_SESSION (covers Google OAuth redirect)
         // but never skip the splash screen — user must tap to advance past it
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          setScreen((prev) => (prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+          setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
         }
 
         if (event === 'SIGNED_IN') {
