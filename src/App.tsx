@@ -287,7 +287,9 @@ export default function App() {
         avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
         is_admin: profileRow?.is_admin === true,
       })
-      setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+      if (session?.user) {
+        setScreen((prev) => (prev === 'splash') ? 'splash' : (prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+      }
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -315,8 +317,9 @@ export default function App() {
         })
 
         // Navigate to feed on SIGNED_IN or INITIAL_SESSION (covers Google OAuth redirect)
+        // but never skip the splash screen — user must tap to advance past it
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+          setScreen((prev) => (prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
         }
 
         if (event === 'SIGNED_IN') {
@@ -603,7 +606,7 @@ export default function App() {
     <ErrorBoundary>
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
-        {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
+        {screen === 'splash' && <SplashScreen onNext={() => changeScreen(user ? 'feed' : 'onboarding')} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={handleDeviceDetected} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
