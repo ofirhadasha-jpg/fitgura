@@ -208,7 +208,7 @@ const modalStyles = StyleSheet.create({
   sizePillRegion: { fontSize: 10, fontWeight: '700', color: '#6B6155', letterSpacing: 0.5 },
   sizePillValue: { fontSize: 13, fontWeight: '800', color: '#1A1A1A' },
   sizePillValuePrimary: { color: '#fff' },
-  confirmBtn: { backgroundColor: '#E84B35', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, alignSelf: 'center', shadowColor: '#E84B35', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5, transitionProperty: 'transform', transitionDuration: '0.15s' } as React.CSSProperties,
+  confirmBtn: { backgroundColor: '#E84B35', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, alignSelf: 'center', shadowColor: '#E84B35', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 } as React.CSSProperties,
   confirmBtnLoading: { backgroundColor: '#E03A3A', opacity: 0.85 },
   btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   confirmBtnIcon: { fontSize: 15 },

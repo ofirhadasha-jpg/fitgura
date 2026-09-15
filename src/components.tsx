@@ -97,8 +97,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    transitionProperty: 'background-color, transform',
-    transitionDuration: '0.2s',
   } as React.CSSProperties,
   navIconActive: {
     backgroundColor: '#FAF7F0',
@@ -117,8 +115,6 @@ const styles = StyleSheet.create({
     color: '#8B8175',
     marginTop: 4,
     fontFamily: "'Heebo', sans-serif",
-    transitionProperty: 'color, font-weight',
-    transitionDuration: '0.2s',
   } as React.CSSProperties,
   navLabelActive: {
     fontWeight: '700',

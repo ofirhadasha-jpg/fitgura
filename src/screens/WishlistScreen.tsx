@@ -94,7 +94,7 @@ const wlStyles = StyleSheet.create({
   sectionTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 14, fontFamily: "'Heebo', sans-serif" },
   sectionLine: { flex: 1, height: 1, backgroundColor: '#F5F0E6' },
   sectionBudget: { fontSize: 12, color: '#4CAF7D', fontWeight: '600', fontFamily: "'Heebo', sans-serif" },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12, shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, transitionProperty: 'transform', transitionDuration: '0.2s' } as React.CSSProperties,
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12, shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 } as React.CSSProperties,
   rowImage: { width: 58, height: 58, borderRadius: 12 },
   rowName: { fontWeight: '600', fontSize: 14, color: '#1A1A1A', fontFamily: "'Heebo', sans-serif" },
   rowBrand: { fontSize: 11, color: '#8B8175', marginTop: 2 },

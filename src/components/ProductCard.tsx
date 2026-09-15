@@ -185,7 +185,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
 }
 
 const cardStyles = StyleSheet.create({
-  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'visible', minHeight: 390, shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, transitionProperty: 'transform, box-shadow', transitionDuration: '0.2s' } as React.CSSProperties,
+  productCard: { width: '48%', backgroundColor: '#fff', borderRadius: 20, overflow: 'visible', minHeight: 390, shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 } as React.CSSProperties,
   productImageWrap: { position: 'relative', height: 200, backgroundColor: '#F5F0E6', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
   productImage: { width: '100%', height: '100%' },
   heartBtn: { position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center' },
@@ -208,7 +208,7 @@ const cardStyles = StyleSheet.create({
   productPrice: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
   productOriginalPrice: { fontSize: 12, color: '#8B8175', textDecorationLine: 'line-through' },
   buyBtnRow: { flexDirection: 'row', gap: 6, marginTop: 10, minHeight: 38 },
-  buyBtnAli: { flex: 1, minHeight: 44, backgroundColor: '#E84B35', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', shadowColor: '#E84B35', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4, transitionProperty: 'transform', transitionDuration: '0.15s' } as React.CSSProperties,
+  buyBtnAli: { flex: 1, minHeight: 44, backgroundColor: '#E84B35', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', shadowColor: '#E84B35', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 } as React.CSSProperties,
   buyBtnIcon: { fontSize: 14, marginBottom: 2 },
   buyBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', fontFamily: "'Heebo', sans-serif" },
   toast: { marginTop: 6, backgroundColor: '#1A1A1A', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center' },
