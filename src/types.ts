@@ -11,6 +11,7 @@ export interface FitEvent {
   platforms: string[]
   color: string
   bgColor: string
+  isRecurring?: boolean
 }
 
 export interface Platform {
@@ -58,6 +59,26 @@ export function daysUntil(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const target = new Date(dateStr); target.setHours(0, 0, 0, 0)
   return Math.ceil((target.getTime() - today.getTime()) / 86400000)
+}
+
+export function daysUntilRecurring(dateStr: string): number {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const [yr, mo, dy] = dateStr.split('-').map(Number)
+  let target = new Date(today.getFullYear(), mo - 1, dy)
+  if (target < today) {
+    target = new Date(today.getFullYear() + 1, mo - 1, dy)
+  }
+  return Math.ceil((target.getTime() - today.getTime()) / 86400000)
+}
+
+export function nextRecurringDate(dateStr: string): string {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const [, mo, dy] = dateStr.split('-').map(Number)
+  let target = new Date(today.getFullYear(), mo - 1, dy)
+  if (target < today) {
+    target = new Date(today.getFullYear() + 1, mo - 1, dy)
+  }
+  return `${target.getFullYear()}-${String(mo).padStart(2, '0')}-${String(dy).padStart(2, '0')}`
 }
 
 export function formatDate(dateStr: string): string {

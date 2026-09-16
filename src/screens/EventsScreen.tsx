@@ -4,7 +4,7 @@ import { BottomNav } from '../components'
 import {
   type Screen, type FitEvent, type Platform,
   PLATFORMS, PRESET_EVENTS,
-  daysUntil, formatDate, nextEventId,
+  daysUntil, daysUntilRecurring, nextRecurringDate, formatDate, nextEventId,
 } from '../types'
 
 export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; isAdmin?: boolean }) {
@@ -25,6 +25,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
   const [newColor, setNewColor] = useState('#FFE566')
   const [newBg, setNewBg] = useState('#FFFACC')
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
+  const [newRecurring, setNewRecurring] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const sorted = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -51,10 +52,10 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
     if (!newName || !newDate || newPlatforms.length === 0) return
     setEvents((prev) => [
       ...prev,
-      { id: nextEventId(), name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bgColor: newBg },
+      { id: nextEventId(), name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bgColor: newBg, isRecurring: newRecurring },
     ])
     setShowAdd(false)
-    setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#FFE566'); setNewBg('#FFFACC')
+    setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#FFE566'); setNewBg('#FFFACC'); setNewRecurring(false)
   }
 
   function removeEvent(id: number) {
@@ -83,7 +84,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
           </View>
           <View style={evStyles.summaryRow}>
             <View style={evStyles.summaryChip}><Text style={evStyles.summaryChipText}>{events.length} אירועים</Text></View>
-            <View style={evStyles.summaryChipUrgent}><Text style={evStyles.summaryChipUrgentText}>{events.filter(e => daysUntil(e.date) <= 14 && daysUntil(e.date) >= 0).length} מתקרבים</Text></View>
+            <View style={evStyles.summaryChipUrgent}><Text style={evStyles.summaryChipUrgentText}>{events.filter(e => { const d = e.isRecurring ? daysUntilRecurring(e.date) : daysUntil(e.date); return d <= 14 && d >= 0 }).length} מתקרבים</Text></View>
           </View>
         </View>
       </View>
@@ -97,11 +98,13 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
         )}
 
         {sorted.map((ev) => {
-          const dLeft = daysUntil(ev.date)
+          const recurring = ev.isRecurring ?? false
+          const dLeft = recurring ? daysUntilRecurring(ev.date) : daysUntil(ev.date)
+          const displayDate = recurring ? nextRecurringDate(ev.date) : ev.date
           const evPlatforms = ev.platforms.map((n) => PLATFORMS.find((p) => p.name === n)).filter((p): p is Platform => p !== undefined)
           const minOrderBy = evPlatforms.length > 0 ? Math.min(...evPlatforms.map((p) => dLeft - p.daysIL)) : dLeft
           const urgent = dLeft >= 0 && minOrderBy <= 3
-          const past = dLeft < 0
+          const past = !recurring && dLeft < 0
 
           return (
             <View key={ev.id} style={[evStyles.eventCard, { opacity: deletingId === ev.id ? 0 : past ? 0.55 : 1 }]}>
@@ -114,8 +117,15 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                       <View>
-                        <Text style={evStyles.eventName}>{ev.name}</Text>
-                        <Text style={evStyles.eventDate}>{formatDate(ev.date)}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={evStyles.eventName}>{ev.name}</Text>
+                          {recurring && (
+                            <View style={evStyles.recurringBadge}>
+                              <Text style={evStyles.recurringBadgeText}>🔁 חוזרת</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={evStyles.eventDate}>{formatDate(displayDate)}{recurring ? ' (כל שנה)' : ''}</Text>
                       </View>
                       <TouchableOpacity onPress={() => removeEvent(ev.id)} activeOpacity={0.7}>
                         <Text style={{ color: '#9A9A9A', fontSize: 16 }}>✕</Text>
@@ -230,12 +240,29 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
 
               <View>
                 <Text style={evStyles.inputLabel}>תאריך האירוע</Text>
-                <TextInput
+                <input
+                  type="date"
                   value={newDate}
-                  onChangeText={setNewDate}
-                  placeholder="YYYY-MM-DD"
-                  style={[evStyles.textInput, { textAlign: 'left' }]}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  style={evStyles.dateInput}
                 />
+              </View>
+
+              <View style={evStyles.recurringRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ fontSize: 18 }}>🔁</Text>
+                  <View>
+                    <Text style={evStyles.recurringLabel}>אירוע חוזר</Text>
+                    <Text style={evStyles.recurringSub}>קבל תזכורת כל שנה בתאריך זה</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setNewRecurring(!newRecurring)}
+                  activeOpacity={0.8}
+                  style={[evStyles.toggleSwitch, { backgroundColor: newRecurring ? '#00FF66' : '#9A9A9A' }]}
+                >
+                  <View style={[evStyles.toggleKnob, { left: newRecurring ? 25 : 3 }]} />
+                </TouchableOpacity>
               </View>
 
               <View>
@@ -433,4 +460,29 @@ const evStyles = StyleSheet.create({
   } as React.CSSProperties,
   addEventConfirmBtnDisabled: { backgroundColor: '#F5F0E0', boxShadow: 'none' } as React.CSSProperties,
   addEventConfirmBtnText: { color: '#1A1A1A', fontSize: 17, fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
+  dateInput: {
+    padding: '12px 14px',
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderWidth: '1.5px',
+    borderColor: '#1A1A1A',
+    fontSize: '15px',
+    backgroundColor: '#FFFEF5',
+    color: '#1A1A1A',
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
+    width: '100%',
+    boxSizing: 'border-box',
+  } as React.CSSProperties,
+  recurringRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderWidth: 1.5, borderColor: '#1A1A1A',
+    backgroundColor: '#FFFEF5',
+  } as React.CSSProperties,
+  recurringLabel: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  recurringSub: { fontSize: 12, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  toggleSwitch: { width: 50, height: 28, borderRadius: 14, justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  toggleKnob: { position: 'absolute', top: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFEF5', borderWidth: 1, borderColor: '#1A1A1A' } as React.CSSProperties,
+  recurringBadge: { backgroundColor: '#E0FFF0', borderWidth: 1.5, borderColor: '#00CC52', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 2, paddingHorizontal: 8 } as React.CSSProperties,
+  recurringBadgeText: { fontSize: 10, fontWeight: '700', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
 })
