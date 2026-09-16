@@ -725,7 +725,9 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                 {editingSizes ? (
                   <View style={profStyles.sizeOptionsRow}>
                     {options.map((o) => (
-                      <TouchableOpacity key={o} onPress={() => set(o)} activeOpacity={0.7}>
+                      <TouchableOpacity key={o} onPress={() => set(o)} activeOpacity={0.7}
+                        style={[profStyles.sizeOptionWrap, value === o && profStyles.sizeOptionWrapActive]}>
+                        {value === o && <Text style={profStyles.sizeOptionCheck}>✓</Text>}
                         <Text style={[profStyles.sizeOption, value === o && profStyles.sizeOptionActive]}>{o}</Text>
                       </TouchableOpacity>
                     ))}
@@ -1305,8 +1307,11 @@ const profStyles = StyleSheet.create({
   regionOptionTextActive: { color: '#1A1A1A' },
   sizeLabel: { fontSize: 11, color: '#2D2D2D', marginBottom: 8, textAlign: 'right', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   sizeOptionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-start' },
-  sizeOption: { fontSize: 14, fontWeight: '700', color: '#2D2D2D', paddingVertical: 4, paddingHorizontal: 5, fontFamily: "'Permanent Marker', cursive" },
-  sizeOptionActive: { color: '#1A1A1A', backgroundColor: '#FFE566', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px' as any, boxShadow: '2px 2px 0 #1A1A1A' as any },
+  sizeOptionWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px' as any, borderWidth: 1.5, borderColor: 'transparent', backgroundColor: 'transparent' } as React.CSSProperties,
+  sizeOptionWrapActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566', boxShadow: '2px 2px 0 #1A1A1A' as any },
+  sizeOptionCheck: { fontSize: 12, fontWeight: '700', color: '#1A1A1A' },
+  sizeOption: { fontSize: 14, fontWeight: '700', color: '#2D2D2D', fontFamily: "'Permanent Marker', cursive" },
+  sizeOptionActive: { color: '#1A1A1A' },
   devicesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   devicesTitle: { fontWeight: '700', color: '#1A1A1A', fontSize: 15, fontFamily: "'Permanent Marker', cursive" },
   addDeviceBtn: { backgroundColor: '#00FF66', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px' as any, paddingVertical: 7, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any },

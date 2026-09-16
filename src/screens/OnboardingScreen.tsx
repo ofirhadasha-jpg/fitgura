@@ -633,9 +633,11 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
           ].map(({ label, value, options, set }) => (
             <View key={label} style={[obStyles.sizeBox, { borderColor: editing ? '#FFE566' : '#9A9A9A', borderWidth: editing ? 2 : 1.5 }]}>
               {editing ? (
-                <View>
+                <View style={obStyles.sizeOptionsCol}>
                   {options.map((o) => (
-                    <TouchableOpacity key={o} onPress={() => set(o)} activeOpacity={0.7}>
+                    <TouchableOpacity key={o} onPress={() => set(o)} activeOpacity={0.7}
+                      style={[obStyles.sizeOptionWrap, value === o && obStyles.sizeOptionWrapActive]}>
+                      {value === o && <Text style={obStyles.sizeOptionCheck}>✓</Text>}
                       <Text style={[obStyles.sizeOption, value === o && obStyles.sizeOptionActive]}>{o}</Text>
                     </TouchableOpacity>
                   ))}
@@ -917,7 +919,11 @@ const obStyles = StyleSheet.create({
   sizeBox: { flex: 1, backgroundColor: '#FFFEF5', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 10, alignItems: 'center', borderWidth: 1.5, boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
   sizeValue: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sizeLabel: { fontSize: 12, color: '#6B6B6B', marginTop: 3, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  sizeOption: { fontSize: 16, fontWeight: '700', color: '#4A4A4A', paddingVertical: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sizeOptionsCol: { gap: 4, width: '100%' },
+  sizeOptionWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px' as any, borderWidth: 1.5, borderColor: 'transparent', backgroundColor: 'transparent' } as React.CSSProperties,
+  sizeOptionWrapActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566', boxShadow: '2px 2px 0 #1A1A1A' as any },
+  sizeOptionCheck: { fontSize: 13, fontWeight: '700', color: '#1A1A1A' },
+  sizeOption: { fontSize: 16, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   sizeOptionActive: { color: '#1A1A1A' },
   styleCard: { backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 16, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   styleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
