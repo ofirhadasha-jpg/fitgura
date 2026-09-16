@@ -78,12 +78,14 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       })
     }, 40)
 
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
     try {
       const aiPromise = analyzeBodyImage(file)
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('AI_TIMEOUT')), 45000)
-      )
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('AI_TIMEOUT')), 45000)
+      })
       const { analysis, preview } = await Promise.race([aiPromise, timeoutPromise])
+      if (timeoutId) clearTimeout(timeoutId)
       if (previewUrlRef.current?.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
       previewUrlRef.current = preview
       const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
@@ -106,8 +108,10 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       }
       onGalleryAdd([baselineEntry])
     } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId)
       if (previewUrlRef.current?.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
       previewUrlRef.current = null
+      console.error('[Onboarding] Scan failed:', err)
       setSizes(null)
       setScanError(err instanceof Error && err.message === 'AI_TIMEOUT'
         ? 'ניתוח AI לא הספיק. נסה שוב.'
@@ -123,10 +127,10 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) {
-      await startScan(file)
       fileToCompressedBase64(file)
         .then((base64) => sessionStorage.setItem(PENDING_SCAN_KEY, base64))
         .catch(() => {})
+      await startScan(file)
     }
     e.target.value = ''
   }
@@ -174,7 +178,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       </View>
 
       {/* Hidden file inputs — use opacity:0 + absolute positioning instead of display:none so .click() works on mobile browsers */}
-      <input ref={galleryRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleFile} />
+      <input ref={galleryRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleFile} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleFile} />
 
       <View style={{ flex: 1, padding: 24, gap: 20 }}>
@@ -235,6 +239,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
             <Text style={{ fontSize: 16, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
+            {scanError && <Text style={{ fontSize: 13, color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center', marginTop: 4 }}>{scanError}</Text>}
             <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', paddingVertical: 12, paddingHorizontal: 28, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
               <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>נסה שוב</Text>
             </TouchableOpacity>

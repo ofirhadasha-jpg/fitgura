@@ -270,22 +270,29 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
 
 const authStyles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
+    position: 'fixed',
     top: 0, left: 0, right: 0, bottom: 0,
-    zIndex: 100,
-    justifyContent: 'flex-start',
-  },
+    zIndex: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as React.CSSProperties,
   backdrop: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(26,26,26,0.6)',
+    animation: 'fadeIn 0.2s ease-out both',
   },
   sheet: {
     backgroundColor: '#FFFEF5',
-    borderBottomLeftRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
-    borderBottomRightRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
+    borderRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
     overflow: 'hidden',
-  },
+    width: 340,
+    maxHeight: '90%',
+    animation: 'popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both',
+    boxShadow: '6px 6px 0 #1A1A1A',
+    borderWidth: 2,
+    borderColor: '#1A1A1A',
+  } as React.CSSProperties,
   header: {
     paddingTop: 28,
     paddingHorizontal: 24,
@@ -293,8 +300,6 @@ const authStyles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     backgroundColor: '#FFE566',
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#1A1A1A',
   },
   closeBtn: {
     position: 'absolute',
@@ -306,6 +311,7 @@ const authStyles = StyleSheet.create({
     borderColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
   },
   closeText: { color: '#1A1A1A', fontSize: 16, lineHeight: 16, fontWeight: '700' },
   headerContent: {

@@ -87,7 +87,6 @@ serve(async (req: Request) => {
       body: JSON.stringify({
         model: "deepseek-v4-flash-vision-exp",
         temperature: 0.1,
-        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {

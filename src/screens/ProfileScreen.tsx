@@ -57,12 +57,14 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   // Profile photo management
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(scannedSizes?.preview ?? null)
   const [photoLoading, setPhotoLoading] = useState(false)
+  const [photoScanProgress, setPhotoScanProgress] = useState(0)
+  const [photoScanPhase, setPhotoScanPhase] = useState('')
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoToast, setPhotoToast] = useState<string | null>(null)
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
   const photoUploadRef = useRef<HTMLInputElement>(null)
 
-  // Load saved avatar_url from profiles table on mount
+  // Load saved avatar path from profiles table and create a signed URL on mount
   useEffect(() => {
     if (!user) return
     void (async () => {
@@ -74,7 +76,14 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           .maybeSingle()
         if (error) throw error
         if (data?.avatar_url) {
-          setProfilePhotoUrl(data.avatar_url)
+          const filePath = data.avatar_url
+          const { data: signed, error: signError } = await supabase.storage
+            .from('profile-photos')
+            .createSignedUrl(filePath, 3600)
+          if (signError) throw signError
+          if (signed?.signedUrl) {
+            setProfilePhotoUrl(signed.signedUrl)
+          }
         }
       } catch (err) {
         console.error('[ProfileScreen] Failed to load profile photo URL:', err)
@@ -93,31 +102,77 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     e.target.value = ''
     setPhotoError(null)
     setPhotoLoading(true)
+    setPhotoScanProgress(0)
+    setPhotoScanPhase('מעלה תמונה...')
+
+    const progressInterval = setInterval(() => {
+      setPhotoScanProgress((p) => {
+        if (p < 30) { setPhotoScanPhase('מעלה תמונה...'); return p + 4 }
+        if (p < 70) { setPhotoScanPhase('AI מנתח מידות...'); return p + 3 }
+        if (p < 95) { setPhotoScanPhase('מעדכן פרופיל...'); return p + 3 }
+        clearInterval(progressInterval)
+        return p
+      })
+    }, 80)
+
     try {
+      const { analysis, preview } = await analyzeBodyImage(file)
+      const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
+      const prevSizing = scannedSizes?.sizing ?? null
+      const delta = prevSizing ? computeDelta(prevSizing, aiSizes.sizing) : null
+      aiSizes.sizing.baselineMatched = true
+      aiSizes.sizing.isWeeklyUpdate = true
+      aiSizes.sizing.measurementDelta = delta
+      setScannedSizes(aiSizes)
+      setProfTop(aiSizes.sizing.top)
+      setProfBottom(aiSizes.sizing.bottom)
+      setProfFit(aiSizes.sizing.fit)
+      if (aiSizes.shoeSize) setProfShoe(aiSizes.shoeSize)
+
+      const ts = formatTimestamp(new Date())
+      const entry: ScanEntry = {
+        id: nextScanId(),
+        date: ts.date,
+        time: ts.time,
+        top: aiSizes.sizing.top,
+        bottom: aiSizes.sizing.bottom,
+        fit: aiSizes.sizing.fit,
+        confidence: aiSizes.sizing.confidence,
+        photoUrl: preview,
+        source: 'החלפת תמונת פרופיל',
+        isBaseline: true,
+        delta,
+      }
+      setScanGallery((prev) => [entry, ...prev])
+
       if (user) {
         const filePath = `${user.id}/avatar.jpg`
         const { error: uploadError } = await supabase.storage
           .from('profile-photos')
           .upload(filePath, file, { upsert: true, contentType: file.type })
         if (uploadError) throw uploadError
-        const { data: urlData } = supabase.storage
-          .from('profile-photos')
-          .getPublicUrl(filePath)
-        const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
         const { error: dbError } = await supabase
           .from('profiles')
-          .upsert({ user_id: user.id, avatar_url: publicUrl }, { onConflict: 'user_id' })
+          .upsert({ user_id: user.id, avatar_url: filePath }, { onConflict: 'user_id' })
         if (dbError) throw dbError
-        setProfilePhotoUrl(publicUrl)
+        const { data: signed, error: signError } = await supabase.storage
+          .from('profile-photos')
+          .createSignedUrl(filePath, 3600)
+        if (signError) throw signError
+        if (signed?.signedUrl) {
+          setProfilePhotoUrl(signed.signedUrl)
+        }
       } else {
-        const preview = URL.createObjectURL(file)
         setProfilePhotoUrl(preview)
       }
-      showPhotoToast('התמונה עודכנה בהצלחה')
+      showPhotoToast('התמונה נסרקה והמידות עודכנו')
     } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : 'העלאה נכשלה')
+      console.error('[ProfileScreen] Photo scan failed:', err)
+      setPhotoError(err instanceof Error ? err.message : 'סריקת התמונה נכשלה. נסה שוב.')
     } finally {
-      setPhotoLoading(false)
+      clearInterval(progressInterval)
+      setPhotoScanProgress(100)
+      setTimeout(() => { setPhotoLoading(false); setPhotoScanProgress(0); setPhotoScanPhase('') }, 600)
     }
   }
 
@@ -541,14 +596,19 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         <View style={profStyles.card}>
           <Text style={profStyles.sizesTitle}>📸 תמונת פרופיל / סריקת גוף</Text>
           <Text style={profStyles.regionSub}>התמונה שהועלתה בתהליך ההרשמה</Text>
-          <input ref={photoUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleReplacePhoto} />
+          <input ref={photoUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleReplacePhoto} />
 
           {/* Photo display area */}
           <View style={profStyles.photoDisplayArea}>
             {photoLoading ? (
               <View style={profStyles.photoPlaceholder}>
-                <Text style={{ fontSize: 28 }}>⏳</Text>
-                <Text style={profStyles.photoPlaceholderText}>טוען...</Text>
+                <Text style={{ fontSize: 28 }}>{photoScanProgress < 30 ? '📤' : photoScanProgress < 70 ? '🤖' : '✅'}</Text>
+                <Text style={profStyles.photoPlaceholderText}>{photoScanPhase || 'טוען...'}</Text>
+                {photoScanProgress > 0 && photoScanProgress < 100 && (
+                  <View style={{ width: '80%', height: 6, borderRadius: 3, backgroundColor: '#E5E0CC', marginTop: 8, overflow: 'hidden' }}>
+                    <View style={{ width: `${photoScanProgress}%`, height: '100%', backgroundColor: '#00FF66', borderRadius: 3 }} />
+                  </View>
+                )}
               </View>
             ) : profilePhotoUrl ? (
               <Image source={{ uri: profilePhotoUrl }} style={profStyles.photoPreview} />
@@ -797,8 +857,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
         {/* AI scan gallery */}
         <View style={profStyles.card}>
-          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleManualUpload} />
-          <input ref={galleryMultiUploadRef} type="file" accept="image/*" multiple style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleGalleryMultiUpload} />
+          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleManualUpload} />
+          <input ref={galleryMultiUploadRef} type="file" accept="image/*" multiple style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleGalleryMultiUpload} />
           <View style={profStyles.galleryHeader}>
             <View>
               <Text style={profStyles.galleryTitle}>🖼️ גלריית סריקות AI</Text>
@@ -1014,8 +1074,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             style={profStyles.sheetBackdrop}
           />
           <View style={profStyles.sheet}>
-            <input ref={devCameraInputRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleDevPhoto} />
-            <input ref={devGalleryInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleDevPhoto} />
+            <input ref={devCameraInputRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleDevPhoto} />
+            <input ref={devGalleryInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleDevPhoto} />
 
             <View style={profStyles.sheetHeaderRow}>
               <Text style={profStyles.sheetTitle}>הוסף מכשיר</Text>

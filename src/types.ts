@@ -327,9 +327,30 @@ export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAn
   return { analysis, preview: base64Image }
 }
 
-export function aiAnalysisToScannedSizes(analysis: AIBodyAnalysis, preview: string): ScannedSizes {
-  const sp = analysis.sizing_profile
-  const st = analysis.style_profile
+export function aiAnalysisToScannedSizes(analysis: Partial<AIBodyAnalysis>, preview: string): ScannedSizes {
+  const sp = analysis.sizing_profile ?? {
+    body_metrics: {
+      estimated_height_cm: 175,
+      estimated_weight_kg: 75,
+      chest_circumference_cm: 100,
+      waist_circumference_cm: 82,
+      hips_circumference_cm: 98,
+      shoulder_width_cm: 46,
+    },
+    recommended_top_size: 'M',
+    recommended_bottom_size: '40',
+    recommended_shoe_size_eu: 42,
+    fit_preference: 'Regular',
+    body_frame_estimate: 'Medium',
+    confidence_score: 0.75,
+  }
+  const st = analysis.style_profile ?? {
+    primary_style: 'Casual',
+    secondary_style: 'Urban',
+    dominant_colors: [],
+    pattern_preference: 'Solid',
+    aesthetic_tags: [],
+  }
 
   const top = sp.recommended_top_size ?? 'M'
   const bottom = sp.recommended_bottom_size ?? '38'

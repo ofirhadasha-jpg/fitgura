@@ -34,6 +34,7 @@ interface GuestProfile {
   bottomSize: string | null
   fit: string | null
   preferredRegion: SizeRegion | null
+  preview: string | null
 }
 
 function saveGuestProfile(sizes: ScannedSizes | null, preferredRegion: SizeRegion = 'EU') {
@@ -51,6 +52,7 @@ function saveGuestProfile(sizes: ScannedSizes | null, preferredRegion: SizeRegio
     bottomSize: sizes.sizing.bottom ?? null,
     fit: sizes.sizing.fit ?? null,
     preferredRegion: preferredRegion ?? 'EU',
+    preview: sizes.preview ?? null,
   }
   localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile))
 }
@@ -151,6 +153,29 @@ async function migrateGuestData(userId: string) {
     return
   }
 
+  let avatarUrl: string | null = null
+
+  try {
+    if (guestProfile?.preview) {
+      const base64 = guestProfile.preview
+      const byteString = atob(base64.split(',')[1] ?? '')
+      const ab = new Uint8Array(byteString.length)
+      for (let i = 0; i < byteString.length; i++) ab[i] = byteString.charCodeAt(i)
+      const blob = new Blob([ab], { type: 'image/jpeg' })
+      const filePath = `${userId}/avatar.jpg`
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' })
+      if (uploadError) {
+        console.error('[App] Failed to upload guest photo:', uploadError.message)
+      } else {
+        avatarUrl = filePath
+      }
+    }
+  } catch (err) {
+    console.error('[App] Guest photo upload failed:', err)
+  }
+
   try {
     if (guestProfile) {
       const deviceName = guestDevice ? `${guestDevice.brand} ${guestDevice.model}` : null
@@ -170,6 +195,7 @@ async function migrateGuestData(userId: string) {
         preferred_region: guestProfile.preferredRegion ?? 'EU',
         registered_device: deviceName,
         registered_devices: deviceName ? [deviceName] : [],
+        ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       }, { onConflict: 'user_id' })
       if (error) throw error
     } else if (guestDevice) {
@@ -193,7 +219,7 @@ async function migrateGuestData(userId: string) {
         product_id: f.productId,
         product_name: f.productName,
       }))
-      const { error } = await supabase.from('favorites').insert(rows)
+      const { error } = await supabase.from('favorites').upsert(rows, { onConflict: 'user_id,product_id', ignoreDuplicates: true })
       if (error) throw error
     }
   } catch (err) {
@@ -202,9 +228,6 @@ async function migrateGuestData(userId: string) {
   }
 
   if (migrationSucceeded) {
-    // Delay clearing guest data so the hydration effect (which runs on mount)
-    // can still read localStorage before it's wiped — critical for Google OAuth
-    // where the page reloads and onAuthStateChange fires before hydration.
     setTimeout(() => clearGuestData(), 3000)
   }
 }
@@ -319,7 +342,7 @@ export default function App() {
           setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
         }
 
-        if (event === 'SIGNED_IN') {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           try {
             await migrateGuestData(u.id)
           } catch (err) {
@@ -436,11 +459,10 @@ export default function App() {
   function handleAuth(loggedInUser: User) {
     setUser(loggedInUser)
     if (authModal) {
-      setWishlistItems((prev) => [...prev, authModal.pendingIdx])
+      setWishlistItems((prev) => prev.includes(authModal.pendingIdx) ? prev : [...prev, authModal.pendingIdx])
       showToast('הפריט נשמר ב-Wishlist שלך! 💚')
     }
     setAuthModal(null)
-    // Navigate to feed so users land on the product feed after registration/login
     changeScreen('feed')
   }
 
@@ -544,14 +566,11 @@ export default function App() {
   // Hydrate guest device and favorites on initial mount
   useEffect(() => {
     try {
-      // Restore guest data from localStorage — works for both guests and users
-      // who just signed in via Google OAuth (page reload clears React state)
       migrateLegacyFavorites()
       const guestDevice = loadGuestDevice()
       if (guestDevice) setDetectedDevice((prev) => prev ?? guestDevice)
       const guestDevices = loadGuestDevices()
       if (guestDevices.length > 0) setRegisteredDevices((prev) => prev.length > 0 ? prev : guestDevices)
-      // Hydrate guest profile sizes so they survive reloads
       const gp = loadGuestProfile()
       if (gp?.preferredRegion) setPreferredRegion(gp.preferredRegion)
       if (gp && !scannedSizes) {
@@ -576,7 +595,7 @@ export default function App() {
         },
         style: { primaryStyle: '', secondaryStyle: '', dominantColors: [], patternPreference: '', aestheticTags: [] },
         confidence: 85,
-        preview: '',
+        preview: gp.preview ?? '',
         top: gp.topSize ?? 'M',
         bottom: gp.bottomSize ?? '48',
         fit: gp.fit ?? 'Regular',
@@ -586,7 +605,6 @@ export default function App() {
       }
       setScannedSizes(restored)
     }
-      // Hydrate guest favorites from localStorage
       const favIndices = loadFavoriteIndices(feedCatalog)
       if (favIndices.length > 0) {
         setWishlistItems(favIndices)
@@ -598,6 +616,34 @@ export default function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Load favorites from Supabase for logged-in users
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured) return
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('product_id')
+          .eq('user_id', user.id)
+        if (error) throw error
+        if (data && data.length > 0) {
+          const indices = data
+            .map((row) => Number(row.product_id))
+            .filter((n) => !Number.isNaN(n) && n >= 0)
+          setWishlistItems((prev) => {
+            const merged = [...prev]
+            for (const idx of indices) {
+              if (!merged.includes(idx)) merged.push(idx)
+            }
+            return merged
+          })
+        }
+      } catch (err) {
+        console.error('[App] Failed to load favorites from Supabase:', err)
+      }
+    })()
+  }, [user?.id])
 
   return (
     <ErrorBoundary>
