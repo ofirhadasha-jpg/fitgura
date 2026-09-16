@@ -60,6 +60,9 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
   const hasScanned = scannedSizes != null
 
+  const platformLabel = product.platform === 'shein' ? 'SHEIN' : product.platform === 'temu' ? 'Temu' : 'AliExpress'
+  const platformColor = product.platform === 'shein' ? '#111827' : product.platform === 'temu' ? '#2563EB' : '#E84B35'
+
   function handleBuy() {
     setShowDetailModal(true)
   }
@@ -91,6 +94,11 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
           <View style={cardStyles.aiBadgeDot} />
           <Text style={cardStyles.aiBadgeText}>AI Match</Text>
         </View>
+        {product.platform && (
+          <View style={[cardStyles.platformBadge, { backgroundColor: platformColor } as React.CSSProperties]}>
+            <Text style={cardStyles.platformBadgeText}>{platformLabel}</Text>
+          </View>
+        )}
         {recommendedSize && showSizeRecommendation && (
           <View style={cardStyles.sizeBadge}>
             <Text style={cardStyles.sizeBadgeText}>מידה: {recommendedSize.pills.find(p => p.isPrimary)?.value ?? recommendedSize.size}</Text>
@@ -207,4 +215,6 @@ const cardStyles = StyleSheet.create({
   toastText: { color: '#FFFEF5', fontSize: 11, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   sizeBadge: { position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: '#FFE566', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   sizeBadgeText: { fontSize: 10, fontWeight: '700', color: '#1A1A1A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Permanent Marker', cursive" },
+  platformBadge: { position: 'absolute', top: 8, right: 8, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  platformBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
   })
