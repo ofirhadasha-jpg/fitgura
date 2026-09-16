@@ -5,15 +5,15 @@ import { AddDeviceModal } from '../components/AddDeviceModal'
 import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice, detectDevice } from '../types'
 import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
 import {
-  searchProductsByCategory,
-  searchDeviceAccessories,
-  filterProducts,
   filterByPrice,
-  isSmartwatch,
   type FeedCategory,
   type Gender,
   type AgeGroupFilter,
 } from '../services/aliexpressClient'
+import {
+  searchAllPlatformsByCategory,
+  searchAllPlatformDeviceAccessories,
+} from '../services/multiPlatformService'
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
 
@@ -116,7 +116,7 @@ export function FeedScreen({
     if (!latestAddedDevice) return
     let cancelled = false
     const gender: Gender = (scannedSizes?.gender as Gender) ?? 'unisex'
-    searchDeviceAccessories(latestAddedDevice, 1, PAGE_SIZE, gender)
+    searchAllPlatformDeviceAccessories(latestAddedDevice, 1, PAGE_SIZE, gender)
       .then((newProducts) => {
         if (cancelled || newProducts.length === 0) return
         const cleaned = newProducts.filter((p) => {
@@ -213,19 +213,19 @@ export function FeedScreen({
           remoteProducts = []
         } else {
           const deviceResults = await Promise.all(
-            accessoryDevices.map((device) => searchDeviceAccessories(device, page, PAGE_SIZE, gender)),
+            accessoryDevices.map((device) => searchAllPlatformDeviceAccessories(device, page, PAGE_SIZE, gender)),
           )
           remoteProducts = deviceResults.flat()
         }
       } else {
-        remoteProducts = await searchProductsByCategory(feedCategory, gender, page, PAGE_SIZE, undefined, ageGroup)
+        remoteProducts = await searchAllPlatformsByCategory(feedCategory, gender, page, PAGE_SIZE, undefined, ageGroup)
       }
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)
 
       if (requestId !== loadRequestRef.current) return
 
-      // The aliexpressClient already applied gender + category filters,
+      // The multi-platform aggregator already applied gender + category filters,
       // but we run a second pass here for accessories device-name matching
       const cleanedProducts = category === 'accessories' && accessoryDevices.length > 0
         ? remoteProducts.filter((p) => {
@@ -558,7 +558,7 @@ export function FeedScreen({
 
         {productsError && !isLoadingProducts && (
           <View style={feedStyles.productsNotice}>
-            <Text style={feedStyles.productsNoticeTitle}>לא ניתן לטעון מוצרים מ-AliExpress</Text>
+            <Text style={feedStyles.productsNoticeTitle}>לא ניתן לטעון מוצרים</Text>
             <Text style={feedStyles.productsNoticeText}>{productsError}</Text>
             <TouchableOpacity onPress={() => void loadProducts(1, false, filter)} style={feedStyles.retryBtn} activeOpacity={0.8}>
               <Text style={feedStyles.retryBtnText}>נסה שוב</Text>
