@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
-import { type Product, type ScannedSizes } from '../types'
+import { type Product, type ScannedSizes, type ProductPlatform } from '../types'
+import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/multiPlatformService'
 import { calculateDetailedRecommendation, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
 import { ProductDetailModal } from './ProductDetailModal'
@@ -60,8 +61,13 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
   const hasScanned = scannedSizes != null
 
-  const platformLabel = product.platform === 'shein' ? 'SHEIN' : product.platform === 'temu' ? 'Temu' : 'AliExpress'
-  const platformColor = product.platform === 'shein' ? '#111827' : product.platform === 'temu' ? '#2563EB' : '#E84B35'
+  const platformLabel = product.platform ? PLATFORM_LABELS[product.platform] : 'AliExpress'
+  const platformColor = product.platform ? PLATFORM_COLORS[product.platform] : '#E84B35'
+  const priceComparison = product.priceComparison ?? []
+  const storeCount = priceComparison.length
+  const hasMultiStore = storeCount > 1
+  const lowestEntry = priceComparison.find((e) => e.isLowestPrice)
+  const highestEntry = priceComparison.length > 1 ? priceComparison[priceComparison.length - 1] : null
 
   function handleBuy() {
     setShowDetailModal(true)
@@ -94,9 +100,14 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
           <View style={cardStyles.aiBadgeDot} />
           <Text style={cardStyles.aiBadgeText}>AI Match</Text>
         </View>
-        {product.platform && (
+        {product.platform && !hasMultiStore && (
           <View style={[cardStyles.platformBadge, { backgroundColor: platformColor } as React.CSSProperties]}>
             <Text style={cardStyles.platformBadgeText}>{platformLabel}</Text>
+          </View>
+        )}
+        {hasMultiStore && (
+          <View style={cardStyles.multiStoreBadge}>
+            <Text style={cardStyles.multiStoreBadgeText}>זמין ב-{storeCount} חנויות</Text>
           </View>
         )}
         {recommendedSize && showSizeRecommendation && (
@@ -150,10 +161,27 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         <Text style={cardStyles.productBrand}>{product.brand}</Text>
         <View style={cardStyles.priceRow}>
           <Text style={cardStyles.productPrice}>{formatPrice(product.price, product.currency)}</Text>
-          {product.originalPrice && product.originalPrice > product.price && (
+          {hasMultiStore && highestEntry && highestEntry.price > product.price && (
+            <Text style={cardStyles.productOriginalPrice}>{formatPrice(highestEntry.price, highestEntry.currency)}</Text>
+          )}
+          {!hasMultiStore && product.originalPrice && product.originalPrice > product.price && (
             <Text style={cardStyles.productOriginalPrice}>{formatPrice(product.originalPrice, product.currency)}</Text>
           )}
         </View>
+        {hasMultiStore && lowestEntry && (
+          <View style={cardStyles.lowestPriceChip}>
+            <Text style={cardStyles.lowestPriceText}>הכי זול ב-{PLATFORM_LABELS[lowestEntry.platform]}</Text>
+          </View>
+        )}
+        {hasMultiStore && (
+          <View style={cardStyles.platformIconRow}>
+            {priceComparison.map((entry, idx) => (
+              <View key={idx} style={[cardStyles.platformIconDot, { backgroundColor: PLATFORM_COLORS[entry.platform] } as React.CSSProperties]}>
+                <Text style={cardStyles.platformIconEmoji}>{PLATFORM_LOGOS[entry.platform]}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         <View style={cardStyles.buyBtnRow}>
           <TouchableOpacity
             onPress={handleBuy}
@@ -217,4 +245,11 @@ const cardStyles = StyleSheet.create({
   sizeBadgeText: { fontSize: 10, fontWeight: '700', color: '#1A1A1A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Permanent Marker', cursive" },
   platformBadge: { position: 'absolute', top: 8, right: 8, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   platformBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
+  multiStoreBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#00CC52', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  multiStoreBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
+  lowestPriceChip: { backgroundColor: '#E0FFF0', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 2, paddingHorizontal: 6, alignSelf: 'flex-start', marginTop: 3, borderWidth: 1, borderColor: '#00CC52' } as React.CSSProperties,
+  lowestPriceText: { fontSize: 10, fontWeight: '700', color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  platformIconRow: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  platformIconDot: { width: 20, height: 20, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1A1A1A' } as React.CSSProperties,
+  platformIconEmoji: { fontSize: 10 },
   })

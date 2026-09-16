@@ -5,6 +5,7 @@ import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecomme
 import { type SizePill } from '../utils/sizeConverter'
 import { generateAffiliateLink } from '../lib/aliexpress'
 import { logAffiliateClick } from '../services/analyticsService'
+import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/multiPlatformService'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
   const symbol = currency ?? '₪'
@@ -145,6 +146,59 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
               </Text>
             </View>
           )}
+
+          {product.priceComparison && product.priceComparison.length > 1 && (
+            <View style={modalStyles.comparisonBox}>
+              <Text style={modalStyles.comparisonTitle}>השוואת מחירים ומידות</Text>
+              <View style={modalStyles.comparisonTable}>
+                {product.priceComparison.map((entry, idx) => (
+                  <View key={idx} style={[modalStyles.comparisonRow, entry.isLowestPrice && modalStyles.comparisonRowLowest]}>
+                    <View style={modalStyles.comparisonPlatformCell}>
+                      <Text style={modalStyles.comparisonPlatformEmoji}>{PLATFORM_LOGOS[entry.platform]}</Text>
+                      <Text style={modalStyles.comparisonPlatformName}>{PLATFORM_LABELS[entry.platform]}</Text>
+                    </View>
+                    <View style={modalStyles.comparisonPriceCell}>
+                      <Text style={modalStyles.comparisonPrice}>{formatPrice(entry.price, entry.currency)}</Text>
+                      {entry.isLowestPrice && (
+                        <Text style={modalStyles.lowestPriceTag}>הכי זול</Text>
+                      )}
+                    </View>
+                    <View style={modalStyles.comparisonSizesCell}>
+                      <Text style={modalStyles.comparisonSizesText}>
+                        {entry.sizesAvailable.length > 0 ? entry.sizesAvailable.slice(0, 5).join(', ') : '—'}
+                        {entry.sizesAvailable.length > 5 ? '...' : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const url = entry.productUrl
+                        logAffiliateClick({
+                          product_id: product.aliexpressSku ?? '',
+                          title: product.name ?? '',
+                          promotion_link: url,
+                        }).catch(() => {})
+                        try {
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.target = '_blank'
+                          a.rel = 'noopener noreferrer'
+                          document.body.appendChild(a)
+                          a.click()
+                          document.body.removeChild(a)
+                        } catch {
+                          window.open(url, '_blank', 'noopener,noreferrer')
+                        }
+                      }}
+                      activeOpacity={0.7}
+                      style={[modalStyles.comparisonBuyBtn, { backgroundColor: PLATFORM_COLORS[entry.platform] } as React.CSSProperties]}
+                    >
+                      <Text style={modalStyles.comparisonBuyBtnText}>קנה</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
         </ScrollView>
 
         <TouchableOpacity
@@ -206,4 +260,19 @@ const modalStyles = StyleSheet.create({
   confirmBtnIcon: { fontSize: 15 },
   spinner: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: 'rgba(26,26,26,0.3)', borderTopColor: '#1A1A1A' },
   confirmBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  comparisonBox: { backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', padding: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' } as React.CSSProperties,
+  comparisonTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 10, textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Permanent Marker', cursive" },
+  comparisonTable: { gap: 6 },
+  comparisonRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F0E0', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 6, paddingHorizontal: 8, borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  comparisonRowLowest: { backgroundColor: '#E0FFF0', borderColor: '#00CC52' } as React.CSSProperties,
+  comparisonPlatformCell: { flexDirection: 'row', alignItems: 'center', gap: 4, width: 90, flexShrink: 1 },
+  comparisonPlatformEmoji: { fontSize: 12 },
+  comparisonPlatformName: { fontSize: 11, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  comparisonPriceCell: { width: 70, alignItems: 'flex-start' },
+  comparisonPrice: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  lowestPriceTag: { fontSize: 8, fontWeight: '700', color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  comparisonSizesCell: { flex: 1, flexShrink: 1 },
+  comparisonSizesText: { fontSize: 10, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  comparisonBuyBtn: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1, borderColor: '#1A1A1A' } as React.CSSProperties,
+  comparisonBuyBtnText: { fontSize: 11, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
 })

@@ -730,6 +730,16 @@ export const deviceOptions = [
 
 export type ProductPlatform = 'aliexpress' | 'shein' | 'temu'
 
+export interface PriceComparisonEntry {
+  platform: ProductPlatform
+  price: number
+  originalPrice?: number | null
+  currency: string
+  productUrl: string
+  sizesAvailable: string[]
+  isLowestPrice: boolean
+}
+
 export interface Product {
   name: string
   brand: string
@@ -747,6 +757,7 @@ export interface Product {
   evaluateRate?: number
   availableSizes?: string[]
   platform?: ProductPlatform
+  priceComparison?: PriceComparisonEntry[]
 }
 
 export interface UserDevice {
