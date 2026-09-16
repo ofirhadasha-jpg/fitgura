@@ -1,0 +1,11 @@
+{
+  "name": "Fitgura - AI Size & Shopping",
+  "short_name": "Fitgura",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FA5252",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "he"
+}
