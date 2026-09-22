@@ -74,12 +74,12 @@ const splashStyles = StyleSheet.create({
   pulseRing: {
     position: 'absolute',
     top: -16, left: -16, right: -16, bottom: -16,
-    borderRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
+    borderRadius: 14,
     borderWidth: 2,
   },
   logoBox: {
     width: 100, height: 100,
-    borderRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFE566',

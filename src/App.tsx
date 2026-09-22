@@ -247,7 +247,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24, backgroundColor: '#FFFEF5' }}>
           <Text style={{ fontSize: 22, fontFamily: "'Permanent Marker', cursive", color: '#1A1A1A' }}>משהו השתבש</Text>
           <Text style={{ fontSize: 16, color: '#6B6B6B', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
-          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', paddingVertical: 12, paddingHorizontal: 28, marginTop: 8, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
+          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
             <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>חזור להתחלה</Text>
           </TouchableOpacity>
         </View>
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFEF5',
     backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)',
     border: '2px solid #1A1A1A',
-    borderRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
+    borderRadius: 14,
     boxShadow: '6px 6px 0 #FFE566, 12px 12px 0 rgba(255,229,102,0.2)',
     overflow: 'hidden',
   } as React.CSSProperties,

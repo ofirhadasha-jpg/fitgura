@@ -331,7 +331,7 @@ const evStyles = StyleSheet.create({
   addEventBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#1A1A1A', borderWidth: 2, borderColor: '#1A1A1A',
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     paddingVertical: 9, paddingHorizontal: 16,
     boxShadow: '2px 2px 0 #1A1A1A',
   } as React.CSSProperties,
@@ -339,14 +339,14 @@ const evStyles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
   summaryChip: {
     backgroundColor: '#FFFEF5', borderWidth: 1.5, borderColor: '#1A1A1A',
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     paddingVertical: 5, paddingHorizontal: 12,
     boxShadow: '2px 2px 0 #1A1A1A',
   } as React.CSSProperties,
   summaryChipText: { fontSize: 13, fontWeight: '400', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   summaryChipUrgent: {
     backgroundColor: '#E0FFF0', borderWidth: 1.5, borderColor: '#1A1A1A',
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     paddingVertical: 5, paddingHorizontal: 12,
     boxShadow: '2px 2px 0 #00CC52',
   } as React.CSSProperties,
@@ -355,14 +355,14 @@ const evStyles = StyleSheet.create({
   emptyText: { color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", fontSize: 16 },
   eventCard: {
     backgroundColor: '#FFFEF5',
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     overflow: 'hidden', borderWidth: 1.5, borderColor: '#1A1A1A',
     boxShadow: '3px 3px 0 #1A1A1A',
   } as React.CSSProperties,
   eventColorBar: { height: 6, borderBottomWidth: 1.5, borderBottomColor: '#1A1A1A' },
   eventEmojiBox: {
     width: 48, height: 48,
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: '#1A1A1A',
   } as React.CSSProperties,
@@ -371,17 +371,17 @@ const evStyles = StyleSheet.create({
   eventBadges: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   pastBadge: {
     backgroundColor: '#F5F0E0', borderWidth: 1.5, borderColor: '#9A9A9A',
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     paddingVertical: 4, paddingHorizontal: 10,
   } as React.CSSProperties,
   pastBadgeText: { fontSize: 12, color: '#6B6B6B', fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
   daysBadge: {
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#1A1A1A',
   } as React.CSSProperties,
   daysBadgeText: { fontSize: 13, fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
   platformChip: {
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#1A1A1A',
     flexDirection: 'row', alignItems: 'center', gap: 4,
   backgroundColor: '#FFFEF5',
@@ -391,13 +391,13 @@ const evStyles = StyleSheet.create({
   timelineLabel: { fontSize: 12, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   timelineBar: {
     height: 8, backgroundColor: '#F5F0E0',
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     overflow: 'hidden', borderWidth: 1.5, borderColor: '#1A1A1A',
   } as React.CSSProperties,
-  timelineFill: { height: '100%', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px' } as React.CSSProperties,
+  timelineFill: { height: '100%', borderRadius: 8 } as React.CSSProperties,
   tipBox: {
     backgroundColor: '#FFFACC', borderWidth: 1.5, borderColor: '#1A1A1A',
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     padding: 14, flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 4,
     boxShadow: '3px 3px 0 #1A1A1A',
   } as React.CSSProperties,
@@ -420,7 +420,7 @@ const evStyles = StyleSheet.create({
   sheetTitle: { fontSize: 20, fontWeight: '400', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sheetCloseBtn: {
     width: 32, height: 32,
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     backgroundColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: '#1A1A1A',
   } as React.CSSProperties,
@@ -428,7 +428,7 @@ const evStyles = StyleSheet.create({
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   presetBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12,
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1.5,
+    borderRadius: 8, borderWidth: 1.5,
   } as React.CSSProperties,
   presetBtnText: { fontSize: 13, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -437,7 +437,7 @@ const evStyles = StyleSheet.create({
   inputLabel: { fontSize: 14, fontWeight: '700', color: '#2D2D2D', marginBottom: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   textInput: {
     paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     borderWidth: 1.5, borderColor: '#1A1A1A', fontSize: 15,
     backgroundColor: '#FFFEF5', color: '#1A1A1A',
     fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
@@ -447,13 +447,13 @@ const evStyles = StyleSheet.create({
   platformGrid: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   platformBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12,
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1.5,
+    borderRadius: 8, borderWidth: 1.5,
   } as React.CSSProperties,
   platformBtnText: { fontSize: 13, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   platformNote: { fontSize: 13, color: '#4A4A4A', marginTop: 8, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   addEventConfirmBtn: {
     padding: 16,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     backgroundColor: '#00FF66', alignItems: 'center', marginBottom: 8,
     borderWidth: 2, borderColor: '#1A1A1A',
     boxShadow: '3px 3px 0 #1A1A1A',
@@ -462,7 +462,7 @@ const evStyles = StyleSheet.create({
   addEventConfirmBtnText: { color: '#1A1A1A', fontSize: 17, fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
   dateInput: {
     padding: '12px 14px',
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     borderWidth: '1.5px',
     borderColor: '#1A1A1A',
     fontSize: '15px',
@@ -475,7 +475,7 @@ const evStyles = StyleSheet.create({
   recurringRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     borderWidth: 1.5, borderColor: '#1A1A1A',
     backgroundColor: '#FFFEF5',
   } as React.CSSProperties,
@@ -483,6 +483,6 @@ const evStyles = StyleSheet.create({
   recurringSub: { fontSize: 12, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   toggleSwitch: { width: 50, height: 28, borderRadius: 14, justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   toggleKnob: { position: 'absolute', top: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFEF5', borderWidth: 1, borderColor: '#1A1A1A' } as React.CSSProperties,
-  recurringBadge: { backgroundColor: '#E0FFF0', borderWidth: 1.5, borderColor: '#00CC52', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 2, paddingHorizontal: 8 } as React.CSSProperties,
+  recurringBadge: { backgroundColor: '#E0FFF0', borderWidth: 1.5, borderColor: '#00CC52', borderRadius: 8, paddingVertical: 2, paddingHorizontal: 8 } as React.CSSProperties,
   recurringBadgeText: { fontSize: 10, fontWeight: '700', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
 })

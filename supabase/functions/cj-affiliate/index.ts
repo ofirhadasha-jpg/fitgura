@@ -88,6 +88,7 @@ function normalizeProduct(raw: CJShoppingProduct): Record<string, unknown> {
   return {
     name: raw.title,
     brand: raw.advertiserName ?? "",
+    advertiserName: raw.advertiserName ?? "",
     price: parsePrice(raw.price?.amount ?? "0"),
     currency: raw.price?.currency ?? "USD",
     img: raw.imageLink ?? "",

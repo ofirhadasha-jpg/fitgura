@@ -32,7 +32,7 @@ class StartupErrorBoundary extends Component<{ children: ReactNode }, { hasError
       <View style={{ flex: 1, minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#FFFEF5' }}>
         <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 8, fontFamily: "'Permanent Marker', cursive" }}>משהו השתבש</Text>
         <Text style={{ fontSize: 16, color: '#6B6B6B', textAlign: 'center', marginBottom: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>אירעה שגיאה בטעינת האפליקציה.</Text>
-        <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', paddingVertical: 12, paddingHorizontal: 28, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
+        <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
           <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>נסה שוב</Text>
         </TouchableOpacity>
       </View>

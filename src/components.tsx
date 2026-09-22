@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   navIconWrap: {
     width: 40,
     height: 40,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -188,7 +188,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
           </Text>
 
           {authError && (
-            <View style={{ backgroundColor: '#FFF0F0', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' }}>
+            <View style={{ backgroundColor: '#FFF0F0', borderRadius: 8, padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' }}>
               <Text style={{ fontSize: 14, color: '#DC2626', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
                 ⚠️ {authError}
               </Text>
@@ -284,7 +284,7 @@ const authStyles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: '#FFFEF5',
-    borderRadius: '3px 14px 5px 12px / 12px 4px 13px 4px',
+    borderRadius: 14,
     overflow: 'hidden',
     width: 340,
     maxHeight: '90%',
@@ -305,7 +305,7 @@ const authStyles = StyleSheet.create({
     position: 'absolute',
     top: 16, left: 16,
     width: 32, height: 32,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     backgroundColor: '#FFFEF5',
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
@@ -321,7 +321,7 @@ const authStyles = StyleSheet.create({
   },
   headerIcon: {
     width: 48, height: 48,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     backgroundColor: '#FFFEF5',
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
@@ -355,7 +355,7 @@ const authStyles = StyleSheet.create({
     gap: 12,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
     backgroundColor: '#FFFEF5',
@@ -374,7 +374,7 @@ const authStyles = StyleSheet.create({
     gap: 10,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     backgroundColor: '#00FF66',
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
@@ -389,7 +389,7 @@ const authStyles = StyleSheet.create({
   emailInput: {
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px',
+    borderRadius: 8,
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
     fontSize: 16,
@@ -398,7 +398,7 @@ const authStyles = StyleSheet.create({
   },
   emailSubmit: {
     paddingVertical: 15,
-    borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+    borderRadius: 12,
     backgroundColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',

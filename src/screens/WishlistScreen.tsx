@@ -89,10 +89,10 @@ const wlStyles = StyleSheet.create({
   sectionLine: { flex: 1, height: 2, backgroundColor: '#1A1A1A' },
   sectionBudget: { fontSize: 12, color: '#00CC52', fontWeight: '600', fontFamily: "'Permanent Marker', cursive" },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFEF5', borderWidth: 1.5, borderColor: '#1A1A1A', borderRadius: 3, padding: 12, boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
-  rowImage: { width: 58, height: 58, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  rowImage: { width: 58, height: 58, borderRadius: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   rowName: { fontWeight: '600', fontSize: 14, color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   rowBrand: { fontSize: 11, color: '#4A4A4A', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   rowPrice: { fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
-  rowAiBadge: { backgroundColor: '#E0FFF0', paddingVertical: 2, paddingHorizontal: 6, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  rowAiBadge: { backgroundColor: '#E0FFF0', paddingVertical: 2, paddingHorizontal: 6, borderRadius: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   rowAiBadgeText: { fontSize: 10, fontWeight: '700', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
 })
