@@ -27,11 +27,17 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   const [dragOver, setDragOver] = useState(false)
   const [sizes, setSizes] = useState<ScannedSizes | null>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
-  const cameraRef = useRef<HTMLInputElement>(null)
+  const cameraFallbackRef = useRef<HTMLInputElement>(null)
   const previewUrlRef = useRef<string | null>(null)
 
   const [scanError, setScanError] = useState<string | null>(null)
   const [faceMissing, setFaceMissing] = useState(false)
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const resetScan = useCallback(() => {
     sessionStorage.removeItem(PENDING_SCAN_KEY)
@@ -179,7 +185,29 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
 
       {/* Hidden file inputs — use opacity:0 + absolute positioning instead of display:none so .click() works on mobile browsers */}
       <input ref={galleryRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleFile} />
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleFile} />
+      <input ref={cameraFallbackRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleFile} />
+
+      {cameraOpen && (
+        <CameraModal
+          videoRef={videoRef}
+          streamRef={streamRef}
+          canvasRef={canvasRef}
+          facingMode={facingMode}
+          cameraError={cameraError}
+          onCapture={async (file) => {
+            setCameraOpen(false)
+            setCameraError(null)
+            await startScan(file)
+          }}
+          onClose={() => { setCameraOpen(false); setCameraError(null) }}
+          onSwitchCamera={() => setFacingMode((m) => (m === 'user' ? 'environment' : 'user'))}
+          onFallback={() => {
+            setCameraOpen(false)
+            setCameraError(null)
+            cameraFallbackRef.current?.click()
+          }}
+        />
+      )}
 
       <View style={{ flex: 1, padding: 24, gap: 20 }}>
         {step === 'upload' && (
@@ -196,7 +224,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
               </View>
               <View style={obStyles.btnRow}>
                 <TouchableOpacity
-                  onPress={() => cameraRef.current?.click()}
+                  onPress={() => { setCameraError(null); setCameraOpen(true) }}
                   style={obStyles.cameraBtn}
                   activeOpacity={0.8}
                 >
@@ -252,6 +280,166 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
           />
         )}
       </View>
+    </View>
+  )
+}
+
+function CameraModal({
+  videoRef,
+  streamRef,
+  canvasRef,
+  facingMode,
+  cameraError,
+  onCapture,
+  onClose,
+  onSwitchCamera,
+  onFallback,
+}: {
+  videoRef: React.RefObject<HTMLVideoElement | null>
+  streamRef: React.MutableRefObject<MediaStream | null>
+  canvasRef: React.RefObject<HTMLCanvasElement | null>
+  facingMode: 'user' | 'environment'
+  cameraError: string | null
+  onCapture: (file: File) => void
+  onClose: () => void
+  onSwitchCamera: () => void
+  onFallback: () => void
+}) {
+  const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(cameraError)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function startCamera() {
+      try {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop())
+          streamRef.current = null
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode },
+          audio: false,
+        })
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play().catch(() => {})
+            setReady(true)
+          }
+        }
+      } catch (err) {
+        if (cancelled) return
+        const msg = err instanceof Error ? err.message : 'Camera access failed'
+        if (msg.includes('Permission') || msg.includes('NotAllowed') || msg.includes('denied')) {
+          setError('נדרשת הרשאת מצלמה. אנא אשר גישה למצלמה ונסה שוב.')
+        } else if (msg.includes('NotFound') || msg.includes('device')) {
+          setError('לא נמצאה מצלמה במכשיר זה.')
+        } else {
+          setError('לא הצלחתי לפתוח את המצלמה. ניתן להשתמש בבחירת תמונה מהמכשיר.')
+        }
+      }
+    }
+
+    setReady(false)
+    setError(null)
+    startCamera()
+
+    return () => {
+      cancelled = true
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facingMode])
+
+  function handleSnap() {
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    if (!video || !canvas) return
+    const w = video.videoWidth || 720
+    const h = video.videoHeight || 1280
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    if (facingMode === 'user') {
+      ctx.translate(w, 0)
+      ctx.scale(-1, 1)
+    }
+    ctx.drawImage(video, 0, 0, w, h)
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' })
+      onCapture(file)
+    }, 'image/jpeg', 0.85)
+  }
+
+  return (
+    <View style={obStyles.cameraOverlay}>
+      <View style={obStyles.cameraModal}>
+        <View style={obStyles.cameraModalHeader}>
+          <Text style={obStyles.cameraModalTitle}>צלם תמונה</Text>
+          <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={obStyles.cameraCloseBtn}>
+            <Text style={obStyles.cameraCloseText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={obStyles.cameraPreviewWrap}>
+          {error ? (
+            <View style={obStyles.cameraErrorBox}>
+              <Text style={{ fontSize: 40 }}>📷</Text>
+              <Text style={obStyles.cameraErrorText}>{error}</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                <TouchableOpacity onPress={onFallback} activeOpacity={0.8} style={obStyles.cameraFallbackBtn}>
+                  <Text style={obStyles.cameraFallbackBtnText}>בחר תמונה מהמכשיר</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px',
+                  transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+                } as React.CSSProperties}
+              />
+              {!ready && (
+                <View style={obStyles.cameraLoadingBox}>
+                  <Text style={{ fontSize: 28 }}>⏳</Text>
+                  <Text style={obStyles.cameraLoadingText}>פותח מצלמה...</Text>
+                </View>
+              )}
+              <View style={obStyles.cameraGuideFrame} />
+            </>
+          )}
+        </View>
+
+        <View style={obStyles.cameraControls}>
+          <TouchableOpacity onPress={onSwitchCamera} activeOpacity={0.7} style={obStyles.cameraSwitchBtn} disabled={!!error}>
+            <Text style={{ fontSize: 18 }}>🔄</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSnap} activeOpacity={0.8} style={obStyles.cameraSnapBtn} disabled={!ready || !!error}>
+            <View style={obStyles.cameraSnapInner} />
+          </TouchableOpacity>
+          <View style={{ width: 54 }} />
+        </View>
+      </View>
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
     </View>
   )
 }
@@ -990,4 +1178,22 @@ const obStyles = StyleSheet.create({
   genderDisplayValue: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   updateResultsBtn: { marginTop: 12, backgroundColor: '#1A1A1A', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' } as React.CSSProperties,
   updateResultsBtnText: { color: '#FFE566', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  cameraOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
+  cameraModal: { width: '90%', maxWidth: 420, backgroundColor: '#FFFEF5', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #FFE566', overflow: 'hidden' } as React.CSSProperties,
+  cameraModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#FFE566', borderBottomWidth: 1.5, borderBottomColor: '#1A1A1A' },
+  cameraModalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  cameraCloseBtn: { width: 32, height: 32, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', backgroundColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  cameraCloseText: { color: '#FFE566', fontSize: 16, fontWeight: '700' },
+  cameraPreviewWrap: { width: '100%', height: 420, backgroundColor: '#1A1A1A', position: 'relative', overflow: 'hidden' } as React.CSSProperties,
+  cameraErrorBox: { alignItems: 'center', justifyContent: 'center', height: '100%', padding: 24, gap: 10 },
+  cameraErrorText: { fontSize: 15, color: '#FFFEF5', textAlign: 'center', lineHeight: 22, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  cameraFallbackBtn: { backgroundColor: '#00FF66', borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  cameraFallbackBtnText: { color: '#1A1A1A', fontSize: 14, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  cameraLoadingBox: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
+  cameraLoadingText: { fontSize: 16, color: '#FFFEF5', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  cameraGuideFrame: { position: 'absolute', top: '15%', left: '10%', right: '10%', bottom: '15%', borderWidth: 2, borderColor: 'rgba(0,255,102,0.5)', borderRadius: '3px 12px 4px 10px / 8px 3px 9px 4px', borderStyle: 'dashed' } as React.CSSProperties,
+  cameraControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 20, backgroundColor: '#FFFEF5' },
+  cameraSwitchBtn: { width: 54, height: 54, borderRadius: '2px 8px 3px 7px / 6px 2px 7px 3px', backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  cameraSnapBtn: { width: 72, height: 72, borderRadius: 40, backgroundColor: '#FFFEF5', borderWidth: 4, borderColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
+  cameraSnapInner: { width: 56, height: 56, borderRadius: 30, backgroundColor: '#00FF66', borderWidth: 2, borderColor: '#1A1A1A' },
 })
