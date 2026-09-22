@@ -16,6 +16,11 @@ import {
   searchProducts as temuSearchProducts,
   searchDeviceAccessories as temuSearchDeviceAccessories,
 } from './temuClient'
+import {
+  searchProductsByCategory as cjSearchByCategory,
+  searchProducts as cjSearchProducts,
+  searchDeviceAccessories as cjSearchDeviceAccessories,
+} from './cjClient'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 
 // ── Sorting & dedup ───────────────────────────────────────────────────────
@@ -156,6 +161,7 @@ export async function searchAllPlatformsByCategory(
     aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     sheinSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     temuSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
+    cjSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
   ])
 
   const merged: Product[] = []
@@ -181,6 +187,7 @@ export async function searchAllPlatformsByQuery(
     aliSearchProducts(keywords, pageNo, pageSize),
     sheinSearchProducts(keywords, pageNo, pageSize),
     temuSearchProducts(keywords, pageNo, pageSize),
+    cjSearchProducts(keywords, pageNo, pageSize),
   ])
 
   const merged: Product[] = []
@@ -204,6 +211,7 @@ export async function searchAllPlatformDeviceAccessories(
     aliSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     sheinSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     temuSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
+    cjSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
   ])
 
   const merged: Product[] = []
@@ -222,16 +230,19 @@ export const PLATFORM_LABELS: Record<ProductPlatform, string> = {
   aliexpress: 'AliExpress',
   shein: 'SHEIN',
   temu: 'Temu',
+  cj: 'CJ',
 }
 
 export const PLATFORM_COLORS: Record<ProductPlatform, string> = {
   aliexpress: '#E84B35',
   shein: '#111827',
   temu: '#2563EB',
+  cj: '#FF6B00',
 }
 
 export const PLATFORM_LOGOS: Record<ProductPlatform, string> = {
   aliexpress: '🟠',
   shein: '⬛',
   temu: '🔵',
+  cj: '🟡',
 }

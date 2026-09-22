@@ -1,6 +1,9 @@
 // CJ Affiliate GraphQL proxy — all CJ API calls happen server-side.
-// CJ_PERSONAL_ACCESS_TOKEN, CJ_PROPERTY_ID, CJ_PUBLISHER_ID are read from
-// Deno.env and are NEVER sent to the client browser.
+// CJ_PERSONAL_ACCESS_TOKEN and CJ_PROPERTY_ID are read from Deno.env
+// and are NEVER sent to the client browser.
+//
+// Endpoint: https://ads.api.cj.com/query
+// Auth: Authorization: Bearer <CJ_PERSONAL_ACCESS_TOKEN>
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,33 +11,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const CJ_GRAPHQL_ENDPOINT = "https://commissions.api.cj.com/query";
+const CJ_GRAPHQL_ENDPOINT = "https://ads.api.cj.com/query";
 
-interface CJProduct {
+// ── Types ─────────────────────────────────────────────────────────────────
+
+interface CJShoppingProduct {
   id: string;
   title: string;
-  price: string;
-  currency: string;
-  imageUrl: string;
-  productUrl: string;
+  description?: string;
+  price: { amount: string; currency: string };
+  link: string;
+  imageLink: string;
   advertiserName: string;
-  category: string;
-  inStock: string;
 }
 
-interface NormalizedProduct {
-  name: string;
-  brand: string;
-  price: number;
-  currency: string;
-  img: string;
-  category: string;
-  aliexpressUrl: string;
-  aliexpressSku: string;
-  availableSizes: string[];
-  platform: "cj";
-  promotionLink: string | null;
+interface CJSearchResponse {
+  shoppingProducts: {
+    totalMatched: number;
+    resultList: CJShoppingProduct[];
+  };
 }
+
+// ── Env helpers ────────────────────────────────────────────────────────────
 
 function getEnvVar(name: string): string {
   const value = Deno.env.get(name);
@@ -44,48 +42,32 @@ function getEnvVar(name: string): string {
   return value?.trim() ?? "";
 }
 
-// ── GraphQL queries ───────────────────────────────────────────────────────
+// ── GraphQL query (shoppingProducts) ───────────────────────────────────────
 
-const SEARCH_PRODUCTS_QUERY = `
-  query SearchProducts($advertiserIds: [String], $keywords: String, $page: Int, $pageSize: Int) {
-    productSearch(
-      advertiserIds: $advertiserIds
-      keywords: $keywords
-      page: $page
-      resultsPerPage: $pageSize
-    ) {
-      products {
+const SHOPPING_PRODUCTS_QUERY = `
+  query getProducts($companyId: String!, $keywords: String) {
+    shoppingProducts(companyId: $companyId, keywords: $keywords) {
+      totalMatched
+      resultList {
         id
         title
-        price
-        currency
-        imageUrl
-        buyUrl
+        description
+        price {
+          amount
+          currency
+        }
+        link
+        imageLink
         advertiserName
-        category
-        inStock
       }
-      totalCount
     }
   }
 `;
 
-const GET_LINK_QUERY = `
-  query GetLink($advertiserId: String!, $websiteId: String!, $landingUrl: String!) {
-    link(
-      advertiserId: $advertiserId
-      websiteId: $websiteId
-      landingUrl: $landingUrl
-    ) {
-      clickUrl
-    }
-  }
-`;
+// ── Normalization into Fitgura's unified Product schema ────────────────────
 
-// ── Helpers ──────────────────────────────────────────────────────────────
-
-function parsePrice(priceStr: string): number {
-  const num = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
+function parsePrice(amount: string): number {
+  const num = parseFloat(amount.replace(/[^0-9.]/g, ""));
   return isNaN(num) ? 0 : num;
 }
 
@@ -102,21 +84,23 @@ function extractSizes(title: string): string[] {
   return Array.from(found);
 }
 
-function normalizeProduct(raw: CJProduct): NormalizedProduct {
+function normalizeProduct(raw: CJShoppingProduct): Record<string, unknown> {
   return {
     name: raw.title,
     brand: raw.advertiserName ?? "",
-    price: parsePrice(raw.price),
-    currency: raw.currency || "USD",
-    img: raw.imageUrl ?? "",
-    category: raw.category ?? "",
-    aliexpressUrl: raw.productUrl ?? raw.buyUrl ?? "",
+    price: parsePrice(raw.price?.amount ?? "0"),
+    currency: raw.price?.currency ?? "USD",
+    img: raw.imageLink ?? "",
+    category: "",
+    aliexpressUrl: raw.link ?? "",
     aliexpressSku: raw.id,
     availableSizes: extractSizes(raw.title),
     platform: "cj",
     promotionLink: null,
   };
 }
+
+// ── GraphQL fetch ──────────────────────────────────────────────────────────
 
 async function cjGraphQL<T>(
   query: string,
@@ -158,7 +142,7 @@ async function cjGraphQL<T>(
   return parsed.data as T;
 }
 
-// ── Request handler ──────────────────────────────────────────────────────
+// ── Request handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -171,9 +155,14 @@ Deno.serve(async (req: Request) => {
 
     if (action === "search") {
       const keywords: string = body.keywords ?? "";
-      const page: number = body.page ?? 1;
-      const pageSize: number = body.pageSize ?? 50;
-      const advertiserIds: string[] | undefined = body.advertiserIds;
+      const propertyId = getEnvVar("CJ_PROPERTY_ID");
+
+      if (!propertyId) {
+        return new Response(
+          JSON.stringify({ error: "CJ_PROPERTY_ID is not configured", products: [] }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
 
       if (!keywords) {
         return new Response(
@@ -182,48 +171,17 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const data = await cjGraphQL<{
-        productSearch: { products: CJProduct[]; totalCount: number };
-      }>(SEARCH_PRODUCTS_QUERY, {
-        advertiserIds: advertiserIds ?? null,
+      const data = await cjGraphQL<CJSearchResponse>(SHOPPING_PRODUCTS_QUERY, {
+        companyId: propertyId,
         keywords,
-        page,
-        pageSize,
       });
 
-      const products = (data.productSearch?.products ?? []).map(normalizeProduct);
+      const resultList = data.shoppingProducts?.resultList ?? [];
+      const products = resultList.map(normalizeProduct);
+      const totalCount = data.shoppingProducts?.totalMatched ?? 0;
 
       return new Response(
-        JSON.stringify({ products, totalCount: data.productSearch?.totalCount ?? 0 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    if (action === "link") {
-      const advertiserId: string = body.advertiserId ?? "";
-      const landingUrl: string = body.landingUrl ?? "";
-
-      const propertyId = getEnvVar("CJ_PROPERTY_ID");
-      const publisherId = getEnvVar("CJ_PUBLISHER_ID");
-
-      if (!advertiserId || !landingUrl) {
-        return new Response(
-          JSON.stringify({ error: "advertiserId and landingUrl are required" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      const data = await cjGraphQL<{ link: { clickUrl: string } }>(
-        GET_LINK_QUERY,
-        {
-          advertiserId,
-          websiteId: publisherId || propertyId,
-          landingUrl,
-        },
-      );
-
-      return new Response(
-        JSON.stringify({ clickUrl: data.link?.clickUrl ?? landingUrl }),
+        JSON.stringify({ products, totalCount }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
