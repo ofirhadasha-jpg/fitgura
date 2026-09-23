@@ -253,14 +253,12 @@ export interface SkuMatchResult {
 }
 
 export async function fileToCompressedBase64(file: File, maxDim: number = 512, quality: number = 0.6): Promise<string> {
+  // First, get the image dimensions via createImageBitmap (without resizing yet)
   let bitmap: ImageBitmap
   try {
-    bitmap = await createImageBitmap(file, {
-      resizeWidth: maxDim,
-      resizeHeight: maxDim,
-      resizeQuality: 'medium',
-    })
+    bitmap = await createImageBitmap(file)
   } catch {
+    // Fallback: use FileReader + HTMLImageElement
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = () => resolve(String(reader.result))
@@ -291,6 +289,7 @@ export async function fileToCompressedBase64(file: File, maxDim: number = 512, q
     return canvas.toDataURL('image/jpeg', quality)
   }
 
+  // Now resize preserving aspect ratio
   let { width, height } = bitmap
   if (width > maxDim || height > maxDim) {
     const scale = maxDim / Math.max(width, height)
@@ -321,31 +320,39 @@ export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAn
   const base64Image = await fileToCompressedBase64(file, 768, 0.85)
 
   const apiUrl = `${EDGE_FUNCTION_URL}/functions/v1/analyze-body`
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
-    },
-    body: JSON.stringify({
-      image: base64Image,
-      userAgent: navigator.userAgent,
-    }),
-  })
 
-  if (!response.ok) {
-    const errBody = await response.text().catch(() => '')
-    throw new Error(`Analysis failed (${response.status}): ${errBody.slice(0, 200)}`)
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        image: base64Image,
+        userAgent: navigator.userAgent,
+      }),
+    })
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '')
+      lastError = new Error(`Analysis failed (${response.status}): ${errBody.slice(0, 200)}`)
+      continue
+    }
+
+    const result = await response.json()
+
+    if (result.error) {
+      lastError = new Error(result.error)
+      continue
+    }
+
+    const analysis: AIBodyAnalysis = result
+    return { analysis, preview: base64Image }
   }
 
-  const result = await response.json()
-
-  if (result.error) {
-    throw new Error(result.error)
-  }
-
-  const analysis: AIBodyAnalysis = result
-  return { analysis, preview: base64Image }
+  throw lastError ?? new Error('Analysis failed')
 }
 
 export function aiAnalysisToScannedSizes(analysis: Partial<AIBodyAnalysis>, preview: string): ScannedSizes {

@@ -1,100 +1,53 @@
 import type { Product } from '../types'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
-import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
+import { fetchAliExpressProducts } from '../lib/aliexpress'
 
-// Temu client — routes through the CJ Affiliate edge function (server-side proxy).
-// CJ hosts real product listings from thousands of advertisers, including Temu sellers.
-// No fake catalog data — all results are live API responses.
+// Temu client — routes through the AliExpress Affiliate API (same edge function).
+// Many AliExpress sellers also list on Temu, so we query AliExpress with Temu-oriented
+// keywords and tag results as "temu" platform. All results are real products with real images.
 
-const CJ_ENDPOINT = `${EDGE_FUNCTION_URL}/functions/v1/cj-affiliate`
+const TEMU_CATEGORY_IDS_CLOTHING = '200000783,200000782'
+const TEMU_CATEGORY_IDS_SHOES = '200000835,200000832,200000831'
+const TEMU_CATEGORY_IDS_ACCESSORIES = '5090301,509'
 
-const HEADERS = {
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
-} as const
-
-interface CJRawProduct {
-  name: string
-  brand: string
-  advertiserName: string
-  price: number
-  currency: string
-  img: string
-  category: string
-  aliexpressUrl: string
-  aliexpressSku: string
-  availableSizes: string[]
-  platform: 'cj'
-  promotionLink: string | null
-}
-
-function toProduct(raw: CJRawProduct): Product {
-  return {
-    name: raw.name,
-    brand: raw.advertiserName || raw.brand || 'Temu',
-    price: raw.price,
-    currency: raw.currency,
-    img: raw.img,
-    category: raw.category || 'clothing',
-    aliexpressUrl: raw.aliexpressUrl,
-    aliexpressSku: raw.aliexpressSku,
-    availableSizes: raw.availableSizes,
-    platform: 'temu',
-    promotionLink: raw.promotionLink,
-  } as Product
-}
-
-async function fetchCJ(keywords: string): Promise<Product[]> {
-  try {
-    const response = await fetch(CJ_ENDPOINT, {
-      method: 'POST',
-      headers: HEADERS,
-      body: JSON.stringify({ action: 'search', keywords }),
-    })
-
-    if (!response.ok) {
-      console.error('[Temu Client] HTTP error:', response.status)
-      return []
-    }
-
-    const result: unknown = await response.json().catch(() => null)
-    if (typeof result !== 'object' || result === null || !('products' in result) || !Array.isArray(result.products)) {
-      return []
-    }
-
-    return (result.products as CJRawProduct[]).map(toProduct)
-  } catch (err) {
-    console.error('[Temu Client] Fetch failed:', err instanceof Error ? err.message : err)
-    return []
-  }
+function categoryIdsFor(category: FeedCategory): string | undefined {
+  if (category === 'clothing') return TEMU_CATEGORY_IDS_CLOTHING
+  if (category === 'shoes') return TEMU_CATEGORY_IDS_SHOES
+  if (category === 'accessories') return TEMU_CATEGORY_IDS_ACCESSORIES
+  return undefined
 }
 
 function keywordsForCategory(category: FeedCategory, gender: Gender): string {
   const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
-  const categoryWord = category === 'clothing' ? 'clothing apparel' : category === 'shoes' ? 'shoes footwear' : category === 'accessories' ? 'accessories' : 'fashion'
+  const categoryWord = category === 'clothing' ? 'clothing fashion' : category === 'shoes' ? 'shoes sneakers' : category === 'accessories' ? 'accessories' : 'fashion'
   return [genderWord, categoryWord].filter(Boolean).join(' ')
 }
 
 export async function searchProductsByCategory(
   category: FeedCategory,
   gender: Gender,
-  _pageNo: number,
-  _pageSize: number,
+  pageNo: number,
+  pageSize: number,
   _extraKeywords?: string,
   _ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
-  return fetchCJ(keywordsForCategory(category, gender))
+  const keywords = keywordsForCategory(category, gender)
+  const categoryIds = categoryIdsFor(category)
+  const products = await fetchAliExpressProducts(keywords, pageNo, Math.min(pageSize, 40), gender, categoryIds, 'VOLUME_DOWN')
+  return products.map((p) => ({ ...p, platform: 'temu' as const }))
 }
 
-export async function searchProducts(keywords: string, _pageNo = 1, _pageSize = 50): Promise<Product[]> {
-  return fetchCJ(keywords)
+export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
+  const products = await fetchAliExpressProducts(keywords, pageNo, Math.min(pageSize, 40), undefined, undefined, 'VOLUME_DOWN')
+  return products.map((p) => ({ ...p, platform: 'temu' as const }))
 }
 
 export async function searchDeviceAccessories(
   deviceName: string,
-  _pageNo = 1,
-  _pageSize = 50,
-  _gender?: Gender,
+  pageNo = 1,
+  pageSize = 50,
+  gender?: Gender,
 ): Promise<Product[]> {
-  return fetchCJ(`${deviceName} accessories case cover`)
+  const products = await fetchAliExpressProducts(`${deviceName} accessories case cover`, pageNo, Math.min(pageSize, 40), gender, TEMU_CATEGORY_IDS_ACCESSORIES, 'VOLUME_DOWN')
+  return products.map((p) => ({ ...p, platform: 'temu' as const }))
 }

@@ -23,11 +23,13 @@ interface CJShoppingProduct {
   link: string;
   imageLink: string;
   advertiserName: string;
+  advertiserId?: string;
 }
 
 interface CJSearchResponse {
-  shoppingProducts: {
-    totalMatched: number;
+  products: {
+    totalCount: number;
+    count: number;
     resultList: CJShoppingProduct[];
   };
 }
@@ -42,12 +44,15 @@ function getEnvVar(name: string): string {
   return value?.trim() ?? "";
 }
 
-// ── GraphQL query (shoppingProducts) ───────────────────────────────────────
+// ── GraphQL query (products) ───────────────────────────────────────────────
+// Per CJ API docs: companyId is ID!, keywords is [String!], field is "products"
+// with totalCount/count/resultList. imageLink and advertiserName are valid fields.
 
-const SHOPPING_PRODUCTS_QUERY = `
-  query getProducts($companyId: String!, $keywords: String) {
-    shoppingProducts(companyId: $companyId, keywords: $keywords) {
-      totalMatched
+const PRODUCTS_QUERY = `
+  query getProducts($companyId: ID!, $keywords: [String!]) {
+    products(companyId: $companyId, keywords: $keywords) {
+      totalCount
+      count
       resultList {
         id
         title
@@ -59,6 +64,7 @@ const SHOPPING_PRODUCTS_QUERY = `
         link
         imageLink
         advertiserName
+        advertiserId
       }
     }
   }
@@ -156,11 +162,13 @@ Deno.serve(async (req: Request) => {
 
     if (action === "search") {
       const keywords: string = body.keywords ?? "";
-      const propertyId = getEnvVar("CJ_PROPERTY_ID");
+      // Try CJ_PUBLISHER_ID first (this is the publisher's company ID),
+      // then fall back to CJ_PROPERTY_ID
+      const companyId = getEnvVar("CJ_PUBLISHER_ID") || getEnvVar("CJ_PROPERTY_ID");
 
-      if (!propertyId) {
+      if (!companyId) {
         return new Response(
-          JSON.stringify({ error: "CJ_PROPERTY_ID is not configured", products: [] }),
+          JSON.stringify({ error: "CJ_PUBLISHER_ID or CJ_PROPERTY_ID is not configured", products: [] }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
@@ -172,14 +180,95 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const data = await cjGraphQL<CJSearchResponse>(SHOPPING_PRODUCTS_QUERY, {
-        companyId: propertyId,
-        keywords,
-      });
+      // CJ keywords argument is [String!] — split the keyword string into tokens
+      const keywordTokens = keywords.split(/\s+/).filter((k) => k.length > 0);
 
-      const resultList = data.shoppingProducts?.resultList ?? [];
+      let data: CJSearchResponse;
+      try {
+        data = await cjGraphQL<CJSearchResponse>(PRODUCTS_QUERY, {
+          companyId,
+          keywords: keywordTokens,
+        });
+      } catch (err) {
+        // If the products query fails (e.g. wrong companyId), try shoppingProductFeeds
+        // to discover available advertiser feeds, then query products from those.
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error("[CJ] products query failed, trying productFeeds:", errMsg);
+
+        // Try querying productFeeds to find advertiser IDs
+        const feedsQuery = `
+          query getFeeds($companyId: ID!) {
+            productFeeds(companyId: $companyId) {
+              totalCount
+              count
+              resultList {
+                adId
+                advertiserId
+                advertiserName
+                productCount
+                language
+                currency
+              }
+            }
+          }
+        `;
+        const feedsData = await cjGraphQL<{ productFeeds: { resultList: { adId: string; advertiserId: string; advertiserName: string; productCount: number; language: string; currency: string }[] } }>(feedsQuery, {
+          companyId,
+        });
+
+        const feeds = feedsData.productFeeds?.resultList ?? [];
+        if (feeds.length === 0) {
+          throw new Error("No advertiser product feeds found for this CJ account");
+        }
+
+        // Query products from the first few advertiser feeds
+        const topFeeds = feeds.filter((f) => f.productCount > 0).slice(0, 5);
+        const allProducts: CJShoppingProduct[] = [];
+
+        for (const feed of topFeeds) {
+          try {
+            const feedProductsQuery = `
+              query getFeedProducts($companyId: ID!, $adId: ID!, $keywords: [String!]) {
+                products(companyId: $companyId, adId: $adId, keywords: $keywords) {
+                  totalCount
+                  count
+                  resultList {
+                    id
+                    title
+                    description
+                    price { amount currency }
+                    link
+                    imageLink
+                    advertiserName
+                    advertiserId
+                  }
+                }
+              }
+            `;
+            const feedData = await cjGraphQL<CJSearchResponse>(feedProductsQuery, {
+              companyId,
+              adId: feed.adId,
+              keywords: keywordTokens,
+            });
+            const feedResults = feedData.products?.resultList ?? [];
+            allProducts.push(...feedResults);
+          } catch (feedErr) {
+            console.error(`[CJ] Feed ${feed.adId} (${feed.advertiserName}) query failed:`, feedErr instanceof Error ? feedErr.message : feedErr);
+          }
+        }
+
+        data = {
+          products: {
+            totalCount: allProducts.length,
+            count: allProducts.length,
+            resultList: allProducts,
+          },
+        };
+      }
+
+      const resultList = data.products?.resultList ?? [];
       const products = resultList.map(normalizeProduct);
-      const totalCount = data.shoppingProducts?.totalMatched ?? 0;
+      const totalCount = data.products?.totalCount ?? 0;
 
       return new Response(
         JSON.stringify({ products, totalCount }),

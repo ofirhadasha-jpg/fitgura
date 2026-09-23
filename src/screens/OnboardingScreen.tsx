@@ -266,10 +266,34 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
-            <Text style={{ fontSize: 16, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב.</Text>
+            <Text style={{ fontSize: 16, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב, או המשך ללא סריקה.</Text>
             {scanError && <Text style={{ fontSize: 13, color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center', marginTop: 4 }}>{scanError}</Text>}
             <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
               <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>נסה שוב</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                const fallback: ScannedSizes = {
+                  sizing: { top: 'M', bottom: '40', fit: 'Regular', bodyFrame: 'Medium', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: null },
+                  style: { primaryStyle: 'Casual', secondaryStyle: 'Urban', dominantColors: [], patternPreference: 'Solid', aestheticTags: [] },
+                  confidence: 0,
+                  preview: '',
+                  top: 'M',
+                  bottom: '40',
+                  fit: 'Regular',
+                  gender: 'unisex',
+                  ageGroup: 'adult',
+                  personBounds: { top: 2, left: 10, width: 80, height: 96 },
+                  shoeSize: '42',
+                }
+                setSizes(fallback)
+                onScanned(fallback)
+                setStep('gallery-access')
+              }}
+              activeOpacity={0.7}
+              style={{ paddingVertical: 10, paddingHorizontal: 24 }}
+            >
+              <Text style={{ color: '#6B6B6B', fontSize: 15, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>המשך ללא סריקה</Text>
             </TouchableOpacity>
           </View>
         )}
