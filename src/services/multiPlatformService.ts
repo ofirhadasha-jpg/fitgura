@@ -122,7 +122,9 @@ function clusterProducts(products: Product[]): Product[] {
       if (used.has(j)) continue
       const sim = jaccardSimilarity(tokenized[i].tokens, tokenized[j].tokens)
       const sameCategory = tokenized[i].product.category === tokenized[j].product.category
-      if (sim >= SIMILARITY_THRESHOLD && sameCategory) {
+      const samePlatform = (tokenized[i].product.platform ?? 'aliexpress') === (tokenized[j].product.platform ?? 'aliexpress')
+      // Only cluster products from the SAME platform — different platforms should show separately
+      if (sim >= SIMILARITY_THRESHOLD && sameCategory && samePlatform) {
         cluster.push(tokenized[j].product)
         used.add(j)
       }

@@ -88,7 +88,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
     try {
       const aiPromise = analyzeBodyImage(file)
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error('AI_TIMEOUT')), 45000)
+        timeoutId = setTimeout(() => reject(new Error('AI_TIMEOUT')), 90000)
       })
       const { analysis, preview } = await Promise.race([aiPromise, timeoutPromise])
       if (timeoutId) clearTimeout(timeoutId)

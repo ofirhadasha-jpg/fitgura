@@ -322,34 +322,54 @@ export async function analyzeBodyImage(file: File): Promise<{ analysis: AIBodyAn
   const apiUrl = `${EDGE_FUNCTION_URL}/functions/v1/analyze-body`
 
   let lastError: Error | null = null
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
-      },
-      body: JSON.stringify({
-        image: base64Image,
-        userAgent: navigator.userAgent,
-      }),
-    })
-
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => '')
-      lastError = new Error(`Analysis failed (${response.status}): ${errBody.slice(0, 200)}`)
-      continue
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 1000 * attempt))
     }
 
-    const result = await response.json()
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
 
-    if (result.error) {
-      lastError = new Error(result.error)
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          image: base64Image,
+          userAgent: navigator.userAgent,
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => '')
+        lastError = new Error(`Analysis failed (${response.status}): ${errBody.slice(0, 200)}`)
+        continue
+      }
+
+      const result = await response.json()
+
+      if (result.error) {
+        lastError = new Error(result.error)
+        continue
+      }
+
+      const analysis: AIBodyAnalysis = result
+      return { analysis, preview: base64Image }
+    } catch (err) {
+      clearTimeout(timeoutId)
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        lastError = new Error('AI_TIMEOUT')
+      } else {
+        lastError = err instanceof Error ? err : new Error('Analysis failed')
+      }
       continue
     }
-
-    const analysis: AIBodyAnalysis = result
-    return { analysis, preview: base64Image }
   }
 
   throw lastError ?? new Error('Analysis failed')

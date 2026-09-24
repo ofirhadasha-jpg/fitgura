@@ -164,7 +164,7 @@ serve(async (req: Request) => {
 
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
-      signal: AbortSignal.timeout(40000),
+      signal: AbortSignal.timeout(55000),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
