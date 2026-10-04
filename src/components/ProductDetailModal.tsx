@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native'
-import { type Product, type ScannedSizes, type Offer } from '../types'
+import { type Product, type ScannedSizes, type Offer, type PriceComparisonEntry } from '../types'
 import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
 import { generateAffiliateLink } from '../lib/aliexpress'
@@ -55,6 +55,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   const [imgError, setImgError] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [redirectingOffer, setRedirectingOffer] = useState<string | null>(null)
+  const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null)
 
   if (!visible) return null
 
@@ -96,9 +97,15 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   function handleSecondaryBuy(offer: Offer) {
     if (!offer.url) return
+    setSelectedOfferKey(offer.platform)
     setRedirectingOffer(offer.platform)
     openUrl(offer.url, product)
     setRedirectingOffer(null)
+  }
+
+  function handleComparisonClick(entry: PriceComparisonEntry, entryKey: string) {
+    setSelectedOfferKey(entryKey)
+    openUrl(entry.productUrl, product)
   }
 
   return (
@@ -154,38 +161,49 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
             </View>
           )}
 
-          {/* ── Price comparison table (preserved) ── */}
+          {/* ── Price comparison table (redesigned) ── */}
           {product.priceComparison && product.priceComparison.length > 1 && (
             <View style={modalStyles.comparisonBox}>
               <Text style={modalStyles.comparisonTitle}>השוואת מחירים ומידות</Text>
               <View style={modalStyles.comparisonTable}>
-                {product.priceComparison.map((entry, idx) => (
-                  <View key={idx} style={[modalStyles.comparisonRow, entry.isLowestPrice && modalStyles.comparisonRowLowest]}>
-                    <View style={modalStyles.comparisonPlatformCell}>
-                      <Text style={modalStyles.comparisonPlatformEmoji}>{PLATFORM_LOGOS[entry.platform]}</Text>
-                      <Text style={modalStyles.comparisonPlatformName}>{PLATFORM_LABELS[entry.platform]}</Text>
-                    </View>
-                    <View style={modalStyles.comparisonPriceCell}>
-                      <Text style={modalStyles.comparisonPrice}>{formatPrice(entry.price, entry.currency)}</Text>
-                      {entry.isLowestPrice && (
-                        <Text style={modalStyles.lowestPriceTag}>הכי זול</Text>
-                      )}
-                    </View>
-                    <View style={modalStyles.comparisonSizesCell}>
-                      <Text style={modalStyles.comparisonSizesText}>
-                        {entry.sizesAvailable.length > 0 ? entry.sizesAvailable.slice(0, 5).join(', ') : '—'}
-                        {entry.sizesAvailable.length > 5 ? '...' : ''}
-                      </Text>
-                    </View>
+                {product.priceComparison.map((entry, idx) => {
+                  const entryKey = `${entry.platform}-${idx}`
+                  const isSelected = selectedOfferKey === entryKey
+                  return (
                     <TouchableOpacity
-                      onPress={() => openUrl(entry.productUrl, product)}
-                      activeOpacity={0.7}
-                      style={[modalStyles.comparisonBuyBtn, { backgroundColor: PLATFORM_COLORS[entry.platform] } as React.CSSProperties]}
+                      key={idx}
+                      onPress={() => handleComparisonClick(entry, entryKey)}
+                      activeOpacity={0.6}
+                      style={[
+                        modalStyles.comparisonRow,
+                        entry.isLowestPrice && modalStyles.comparisonRowLowest,
+                        isSelected && modalStyles.comparisonRowSelected,
+                        { cursor: 'pointer' } as React.CSSProperties,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${PLATFORM_LABELS[entry.platform]} ${formatPrice(entry.price, entry.currency)}`}
                     >
-                      <Text style={modalStyles.comparisonBuyBtnText}>קנה</Text>
+                      {/* Left: platform logo + name + sizes */}
+                      <View style={modalStyles.comparisonLeftCell}>
+                        <View style={modalStyles.comparisonPlatformCell}>
+                          <Text style={modalStyles.comparisonPlatformEmoji}>{PLATFORM_LOGOS[entry.platform]}</Text>
+                          <Text style={modalStyles.comparisonPlatformName}>{PLATFORM_LABELS[entry.platform]}</Text>
+                        </View>
+                        <Text style={modalStyles.comparisonSizesText} numberOfLines={1}>
+                          {entry.sizesAvailable.length > 0 ? entry.sizesAvailable.slice(0, 4).join(', ') : '—'}
+                        </Text>
+                      </View>
+
+                      {/* Right: price + lowest badge */}
+                      <View style={modalStyles.comparisonRightCell}>
+                        <Text style={modalStyles.comparisonPrice}>{formatPrice(entry.price, entry.currency)}</Text>
+                        {entry.isLowestPrice && (
+                          <Text style={modalStyles.lowestPriceTag}>הכי זול</Text>
+                        )}
+                      </View>
                     </TouchableOpacity>
-                  </View>
-                ))}
+                  )
+                })}
               </View>
             </View>
           )}
@@ -236,7 +254,19 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
             <View style={modalStyles.secondaryOffersContainer}>
               <Text style={modalStyles.secondaryOffersHeader}>התאמה משוערת - שווה לבדוק</Text>
               {secondaryOffers?.map((offer: Offer, idx: number) => (
-                <View key={idx} style={modalStyles.secondaryOfferRow}>
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => handleSecondaryBuy(offer)}
+                  activeOpacity={0.6}
+                  style={[
+                    modalStyles.secondaryOfferRow,
+                    selectedOfferKey === offer.platform && modalStyles.secondaryOfferRowSelected,
+                    { cursor: 'pointer' } as React.CSSProperties,
+                  ]}
+                  disabled={redirectingOffer === offer.platform}
+                  accessibilityRole="button"
+                  accessibilityLabel={`שווה בדיקה ב${offer.label}`}
+                >
                   <View style={modalStyles.secondaryOfferInfo}>
                     <Text style={modalStyles.secondaryOfferPlatform}>
                       {PLATFORM_LOGOS[offer.platform] ?? '🛍️'}{' '}
@@ -246,22 +276,15 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
                       {formatPrice(offer.price, offer.currency)}
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => handleSecondaryBuy(offer)}
-                    activeOpacity={0.7}
-                    style={[
-                      modalStyles.secondaryOfferBtn,
-                      redirectingOffer === offer.platform && modalStyles.secondaryOfferBtnLoading,
-                    ]}
-                    disabled={redirectingOffer === offer.platform}
-                    accessibilityRole="button"
-                    accessibilityLabel={`שווה בדיקה ב${offer.label}`}
-                  >
+                  <View style={[
+                    modalStyles.secondaryOfferBtn,
+                    redirectingOffer === offer.platform && modalStyles.secondaryOfferBtnLoading,
+                  ]}>
                     <Text style={modalStyles.secondaryOfferBtnText}>
                       {redirectingOffer === offer.platform ? '...' : 'שווה בדיקה'}
                     </Text>
-                  </TouchableOpacity>
-                </View>
+                  </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}
@@ -306,7 +329,8 @@ const modalStyles = StyleSheet.create({
   primaryOfferBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   secondaryOffersContainer: { gap: 6 },
   secondaryOffersHeader: { fontSize: 13, fontWeight: '700', color: '#4A4A4A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  secondaryOfferRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F5F0E0', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  secondaryOfferRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F5F0E0', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: '#9A9A9A', minHeight: 44 } as React.CSSProperties,
+  secondaryOfferRowSelected: { borderWidth: 2, borderColor: '#1A1A1A', backgroundColor: '#FFFACC' } as React.CSSProperties,
   secondaryOfferInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   secondaryOfferPlatform: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   secondaryOfferPrice: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
@@ -317,20 +341,19 @@ const modalStyles = StyleSheet.create({
   btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   confirmBtnIcon: { fontSize: 15 },
   spinner: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: 'rgba(26,26,26,0.3)', borderTopColor: '#1A1A1A' },
-  // ── comparison (preserved) ──
+  // ── comparison (redesigned) ──
   comparisonBox: { backgroundColor: '#FFFEF5', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' } as React.CSSProperties,
   comparisonTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 10, textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Permanent Marker', cursive" },
-  comparisonTable: { gap: 6 },
-  comparisonRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F0E0', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 8, borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  comparisonTable: { gap: 8 },
+  comparisonRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F5F0E0', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: '#9A9A9A', minHeight: 48 } as React.CSSProperties,
   comparisonRowLowest: { backgroundColor: '#E0FFF0', borderColor: '#00CC52' } as React.CSSProperties,
-  comparisonPlatformCell: { flexDirection: 'row', alignItems: 'center', gap: 4, width: 90, flexShrink: 1 },
-  comparisonPlatformEmoji: { fontSize: 12 },
-  comparisonPlatformName: { fontSize: 11, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  comparisonPriceCell: { width: 70, alignItems: 'flex-start' },
-  comparisonPrice: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
-  lowestPriceTag: { fontSize: 8, fontWeight: '700', color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  comparisonSizesCell: { flex: 1, flexShrink: 1 },
+  comparisonRowSelected: { borderWidth: 2, borderColor: '#1A1A1A', backgroundColor: '#FFFACC' } as React.CSSProperties,
+  comparisonLeftCell: { flex: 1, flexShrink: 1, alignItems: 'flex-start', gap: 2 },
+  comparisonPlatformCell: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  comparisonPlatformEmoji: { fontSize: 14 },
+  comparisonPlatformName: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   comparisonSizesText: { fontSize: 10, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  comparisonBuyBtn: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: '#1A1A1A' } as React.CSSProperties,
-  comparisonBuyBtnText: { fontSize: 11, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
+  comparisonRightCell: { alignItems: 'flex-end', gap: 2, flexShrink: 0 },
+  comparisonPrice: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  lowestPriceTag: { fontSize: 9, fontWeight: '700', color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })

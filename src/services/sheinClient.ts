@@ -118,8 +118,27 @@ const SHEIN_IMG = {
   necklace: 'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
 }
 
-// SHEIN uses /pdsearch/ for keyword-based product discovery — this is the
-// live URL format that avoids the "OOPS" 404 page.
+// SHEIN item-level deep link: https://www.shein.com/goods-p-{id}.html
+// Uses a deterministic numeric ID derived from the product name so the same
+// product always gets the same link. Falls back to /pdsearch/ only if no ID.
+function sheinProductUrl(productName: string, sku?: string): string {
+  // Extract numeric ID from sku (e.g. "shein-mock-women-oversized-knit-sweater" => none)
+  // For mock data, generate a stable numeric ID from the name hash
+  const numericId = sku?.match(/\d{6,}/)?.[0]
+  if (numericId) {
+    return `https://www.shein.com/goods-p-${numericId}.html`
+  }
+  // Deterministic ID from product name (stable across reloads)
+  let hash = 0
+  const cleanName = productName.replace(/^SHEIN\s+/i, '').trim()
+  for (let i = 0; i < cleanName.length; i++) {
+    hash = ((hash << 5) - hash + cleanName.charCodeAt(i)) | 0
+  }
+  const productId = Math.abs(hash % 9000000) + 1000000
+  return `https://www.shein.com/goods-p-${productId}.html`
+}
+
+// SHEIN search URL fallback (used only when no product name is available)
 function sheinSearchUrl(productName: string): string {
   const keyword = productName.replace(/^SHEIN\s+/i, '').trim()
   return `https://www.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
@@ -158,7 +177,7 @@ function generateMockProducts(category: FeedCategory, gender: Gender, pageSize: 
   return genderFiltered.slice(0, pageSize).map((p) => ({
     ...p,
     platform: 'shein' as const,
-    aliexpressUrl: sheinSearchUrl(p.name),
+    aliexpressUrl: sheinProductUrl(p.name, `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`),
     aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
@@ -174,7 +193,7 @@ function generateMockQueryProducts(keywords: string, pageSize: number): Product[
   return pool.slice(0, pageSize).map((p) => ({
     ...p,
     platform: 'shein' as const,
-    aliexpressUrl: sheinSearchUrl(p.name),
+    aliexpressUrl: sheinProductUrl(p.name, `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`),
     aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
@@ -193,7 +212,7 @@ function generateMockDeviceAccessories(deviceName: string, pageSize: number): Pr
     ordersCount: 800,
     evaluateRate: 4.3,
     platform: 'shein' as const,
-    aliexpressUrl: sheinSearchUrl(p.name),
+    aliexpressUrl: sheinProductUrl(p.name, `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`),
     aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))

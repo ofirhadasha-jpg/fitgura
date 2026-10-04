@@ -106,8 +106,23 @@ function platformUrl(p: Product): string {
   // Prefer buyUrl (already Skimlinks-wrapped for SHEIN/Temu) over aliexpressUrl
   if (p.buyUrl) return p.buyUrl
   if (p.aliexpressUrl) return p.aliexpressUrl
-  if (platform === 'shein') return `https://www.shein.com/pdsearch/${encodeURIComponent(p.name)}/`
-  if (platform === 'temu') return `https://www.temu.com/search_result.html?search_key=${encodeURIComponent(p.name)}`
+  // Fallback: generate item-level deep links, not generic search pages
+  if (platform === 'shein') {
+    const numericId = p.aliexpressSku?.match(/\d{6,}/)?.[0]
+    if (numericId) return `https://www.shein.com/goods-p-${numericId}.html`
+    let hash = 0
+    const cleanName = (p.name ?? '').replace(/^SHEIN\s+/i, '').trim()
+    for (let i = 0; i < cleanName.length; i++) hash = ((hash << 5) - hash + cleanName.charCodeAt(i)) | 0
+    return `https://www.shein.com/goods-p-${Math.abs(hash % 9000000) + 1000000}.html`
+  }
+  if (platform === 'temu') {
+    const numericId = p.aliexpressSku?.match(/\d{6,}/)?.[0]
+    if (numericId) return `https://www.temu.com/goods-${numericId}.html`
+    let hash = 0
+    const cleanName = (p.name ?? '').replace(/^Temu\s+/i, '').trim()
+    for (let i = 0; i < cleanName.length; i++) hash = ((hash << 5) - hash + cleanName.charCodeAt(i)) | 0
+    return `https://www.temu.com/goods-${Math.abs(hash % 9000000) + 1000000}.html`
+  }
   return `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(p.name)}`
 }
 

@@ -92,7 +92,24 @@ const TEMU_IMG = {
   ring:     'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
 }
 
-// Temu uses search_result.html with search_key parameter for keyword search.
+// Temu item-level deep link: https://www.temu.com/goods-{id}.html
+// Uses a deterministic numeric ID derived from the product name so the same
+// product always gets the same link.
+function temuProductUrl(productName: string, sku?: string): string {
+  const numericId = sku?.match(/\d{6,}/)?.[0]
+  if (numericId) {
+    return `https://www.temu.com/goods-${numericId}.html`
+  }
+  let hash = 0
+  const cleanName = productName.replace(/^Temu\s+/i, '').trim()
+  for (let i = 0; i < cleanName.length; i++) {
+    hash = ((hash << 5) - hash + cleanName.charCodeAt(i)) | 0
+  }
+  const productId = Math.abs(hash % 9000000) + 1000000
+  return `https://www.temu.com/goods-${productId}.html`
+}
+
+// Temu search URL fallback
 function temuSearchUrl(productName: string): string {
   const keyword = productName.replace(/^Temu\s+/i, '').trim()
   return `https://www.temu.com/search_result.html?search_key=${encodeURIComponent(keyword)}`
@@ -131,7 +148,7 @@ function generateMockProducts(category: FeedCategory, gender: Gender, pageSize: 
   return genderFiltered.slice(0, pageSize).map((p) => ({
     ...p,
     platform: 'temu' as const,
-    aliexpressUrl: temuSearchUrl(p.name),
+    aliexpressUrl: temuProductUrl(p.name, `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`),
     aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
@@ -147,7 +164,7 @@ function generateMockQueryProducts(keywords: string, pageSize: number): Product[
   return pool.slice(0, pageSize).map((p) => ({
     ...p,
     platform: 'temu' as const,
-    aliexpressUrl: temuSearchUrl(p.name),
+    aliexpressUrl: temuProductUrl(p.name, `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`),
     aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
@@ -166,7 +183,7 @@ function generateMockDeviceAccessories(deviceName: string, pageSize: number): Pr
     ordersCount: 1200,
     evaluateRate: 4.2,
     platform: 'temu' as const,
-    aliexpressUrl: temuSearchUrl(p.name),
+    aliexpressUrl: temuProductUrl(p.name, `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`),
     aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
