@@ -1,5 +1,7 @@
 import type { Product, PriceComparisonEntry, ProductPlatform } from '../types'
+import type { AffiliateAdapter } from './adapterTypes'
 import {
+  aliExpressAdapter,
   searchProductsByCategory as aliSearchByCategory,
   searchProducts as aliSearchProducts,
   searchDeviceAccessories as aliSearchDeviceAccessories,
@@ -7,21 +9,40 @@ import {
   filterByPrice,
 } from './aliexpressClient'
 import {
+  sheinAdapter,
   searchProductsByCategory as sheinSearchByCategory,
   searchProducts as sheinSearchProducts,
   searchDeviceAccessories as sheinSearchDeviceAccessories,
 } from './sheinClient'
 import {
+  temuAdapter,
   searchProductsByCategory as temuSearchByCategory,
   searchProducts as temuSearchProducts,
   searchDeviceAccessories as temuSearchDeviceAccessories,
 } from './temuClient'
 import {
+  cjAdapter,
   searchProductsByCategory as cjSearchByCategory,
   searchProducts as cjSearchProducts,
   searchDeviceAccessories as cjSearchDeviceAccessories,
 } from './cjClient'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
+
+// ── Adapter registry ─────────────────────────────────────────────────────────
+// All four affiliate adapters are registered here. The aggregator queries them
+// in parallel and merges results. Adapters without credentials return mock or
+// fallback data rather than throwing, so the feed always has results.
+
+export const ADAPTERS: AffiliateAdapter[] = [
+  aliExpressAdapter,
+  sheinAdapter,
+  temuAdapter,
+  cjAdapter,
+]
+
+export function getAdapterStatus(): { platform: ProductPlatform; isConfigured: boolean }[] {
+  return ADAPTERS.map((a) => ({ platform: a.platform, isConfigured: a.isConfigured }))
+}
 
 // ── Sorting & dedup ───────────────────────────────────────────────────────
 

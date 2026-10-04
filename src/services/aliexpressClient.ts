@@ -1,5 +1,6 @@
 import { fetchAliExpressProducts, fetchProductDetails, generateAffiliateLink as fetchAffiliateLink } from '../lib/aliexpress'
 import type { Product, AgeGroup } from '../types'
+import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams, AliExpressCredentials } from './adapterTypes'
 
 export type Gender = 'male' | 'female' | 'unisex'
 export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
@@ -429,4 +430,44 @@ export async function getProductDetails(productIds: string[]): Promise<unknown> 
 
 export async function generateAffiliateLink(sourceUrl: string): Promise<string | null> {
   return fetchAffiliateLink(sourceUrl)
+}
+
+// ── Credential configuration ──────────────────────────────────────────────────
+// When the AliExpress Portals API credentials are provided, the edge function
+// can use them directly. Until then, the existing affiliate API flow works.
+
+export const ALIEXPRESS_CREDENTIALS: AliExpressCredentials = {
+  appKey: '',
+  appSecret: '',
+  trackingId: '',
+}
+
+export function setAliExpressCredentials(creds: Partial<AliExpressCredentials>): void {
+  Object.assign(ALIEXPRESS_CREDENTIALS, creds)
+}
+
+// ── Adapter interface implementation ──────────────────────────────────────────
+
+export const aliExpressAdapter: AffiliateAdapter = {
+  platform: 'aliexpress',
+  isConfigured: true,
+
+  async searchByCategory(params: AdapterSearchParams): Promise<Product[]> {
+    return searchProductsByCategory(
+      params.category,
+      params.gender,
+      params.pageNo,
+      params.pageSize,
+      params.extraKeywords,
+      params.ageGroup,
+    )
+  },
+
+  async searchByQuery(params: AdapterQueryParams): Promise<Product[]> {
+    return searchProducts(params.keywords, params.pageNo, params.pageSize)
+  },
+
+  async searchDeviceAccessories(params: AdapterDeviceParams): Promise<Product[]> {
+    return searchDeviceAccessories(params.deviceName, params.pageNo, params.pageSize, params.gender)
+  },
 }

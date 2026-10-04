@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.cj-affiliate]
 verify_jwt = false
+
+[functions.temu-affiliate]
+verify_jwt = false

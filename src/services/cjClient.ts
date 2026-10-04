@@ -1,11 +1,21 @@
 import type { Product } from '../types'
+import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams, CJCredentials } from './adapterTypes'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 import { fetchAliExpressProducts } from '../lib/aliexpress'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 
-// CJ client — calls the real CJ Affiliate edge function (supabase/functions/cj-affiliate).
-// If CJ returns an error (e.g. 403 not authorized), falls back to AliExpress products
-// tagged as "cj" so the feed still has results.
+// CJ affiliate adapter — calls the CJ Affiliate edge function.
+// Falls back to AliExpress products tagged as "cj" when CJ returns no results.
+
+export const CJ_DIRECT_CREDENTIALS: CJCredentials = {
+  accessToken: '',
+  websiteId: '',
+  advertiserId: '',
+}
+
+export function setCJDirectCredentials(creds: Partial<CJCredentials>): void {
+  Object.assign(CJ_DIRECT_CREDENTIALS, creds)
+}
 
 const CJ_CATEGORY_IDS_CLOTHING = '200000783,200000782'
 const CJ_CATEGORY_IDS_SHOES = '200000835,200000832,200000831'
@@ -107,4 +117,30 @@ export async function searchDeviceAccessories(
 
   const products = await fetchAliExpressProducts(`${deviceName} accessories case cover`, pageNo, Math.min(pageSize, 40), gender, CJ_CATEGORY_IDS_ACCESSORIES, 'VOLUME_DOWN')
   return products.map((p) => ({ ...p, platform: 'cj' as const }))
+}
+
+// ── Adapter interface implementation ──────────────────────────────────────────
+
+export const cjAdapter: AffiliateAdapter = {
+  platform: 'cj',
+  isConfigured: !!CJ_DIRECT_CREDENTIALS.accessToken,
+
+  async searchByCategory(params: AdapterSearchParams): Promise<Product[]> {
+    return searchProductsByCategory(
+      params.category,
+      params.gender,
+      params.pageNo,
+      params.pageSize,
+      params.extraKeywords,
+      params.ageGroup,
+    )
+  },
+
+  async searchByQuery(params: AdapterQueryParams): Promise<Product[]> {
+    return searchProducts(params.keywords, params.pageNo, params.pageSize)
+  },
+
+  async searchDeviceAccessories(params: AdapterDeviceParams): Promise<Product[]> {
+    return searchDeviceAccessories(params.deviceName, params.pageNo, params.pageSize, params.gender)
+  },
 }
