@@ -23,6 +23,39 @@ function normalizeProductImageUrl(imageUrl: string | null | undefined): string |
   return null
 }
 
+// Category-based fallback fashion images so the modal never shows a box placeholder.
+const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
+  shirts:   'https://images.pexels.com/photos/14564843/pexels-photo-14564843.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  tops:     'https://images.pexels.com/photos/14564843/pexels-photo-14564843.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  pants:    'https://images.pexels.com/photos/6439226/pexels-photo-6439226.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  jeans:    'https://images.pexels.com/photos/6439226/pexels-photo-6439226.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  bottoms:  'https://images.pexels.com/photos/6439226/pexels-photo-6439226.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  shoes:    'https://images.pexels.com/photos/27516985/pexels-photo-27516985.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  sneakers: 'https://images.pexels.com/photos/27516985/pexels-photo-27516985.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  footwear: 'https://images.pexels.com/photos/27516985/pexels-photo-27516985.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  dresses:  'https://images.pexels.com/photos/39873869/pexels-photo-39873869.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  dress:    'https://images.pexels.com/photos/39873869/pexels-photo-39873869.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  jackets:  'https://images.pexels.com/photos/4398944/pexels-photo-4398944.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  outerwear:'https://images.pexels.com/photos/4398944/pexels-photo-4398944.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  coats:    'https://images.pexels.com/photos/4398944/pexels-photo-4398944.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  accessories: 'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+}
+
+function getFallbackImage(category: string, productName: string): string {
+  const cat = category.toLowerCase().trim()
+  if (CATEGORY_FALLBACK_IMAGES[cat]) return CATEGORY_FALLBACK_IMAGES[cat]
+  // Keyword matching on product name
+  const name = productName.toLowerCase()
+  if (/\b(shirt|tshirt|tee|top|blouse)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.tops
+  if (/\b(pant|jean|trouser|short)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.pants
+  if (/\b(shoe|sneaker|boot|sandal|heel)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.shoes
+  if (/\b(dress|gown|skirt)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.dresses
+  if (/\b(jacket|coat|blazer|parka|windbreaker)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.jackets
+  if (/\b(bag|purse|wallet|belt|hat|cap|scarf|glasses|watch|jewelr)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.accessories
+  // Default: generic clothing
+  return CATEGORY_FALLBACK_IMAGES.tops
+}
+
 const FOOTWEAR_RE = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
 const DEVICE_RE = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
 
@@ -30,6 +63,98 @@ function isAccessory(productName: string, category: string): boolean {
   if (category === 'accessories') return true
   if (category === 'shoes' || FOOTWEAR_RE.test(productName)) return false
   return DEVICE_RE.test(productName)
+}
+
+// ── Multi-offer helpers ──────────────────────────────────────────────────────
+
+interface OfferEntry {
+  platform: string
+  label: string
+  price: number
+  currency?: string
+  url: string
+}
+
+function buildOffers(product: Product): OfferEntry[] {
+  const offers: OfferEntry[] = []
+
+  // Primary: SHEIN (or product's own platform if it's shein)
+  const sheinComparison = product.priceComparison?.find(
+    (e) => e.platform === 'shein',
+  )
+  if (sheinComparison) {
+    offers.push({
+      platform: 'shein',
+      label: PLATFORM_LABELS.shein,
+      price: sheinComparison.price,
+      currency: sheinComparison.currency,
+      url: sheinComparison.productUrl,
+    })
+  } else if (product.platform === 'shein') {
+    offers.push({
+      platform: 'shein',
+      label: PLATFORM_LABELS.shein,
+      price: product.price,
+      currency: product.currency,
+      url: product.buyUrl || product.aliexpressUrl || '',
+    })
+  }
+
+  // Secondary: AliExpress, Temu, CJ
+  const secondaryPlatforms: string[] = ['aliexpress', 'temu', 'cj']
+  for (const plat of secondaryPlatforms) {
+    const cmp = product.priceComparison?.find((e) => e.platform === plat)
+    if (cmp) {
+      offers.push({
+        platform: plat,
+        label: PLATFORM_LABELS[plat as keyof typeof PLATFORM_LABELS] ?? plat,
+        price: cmp.price,
+        currency: cmp.currency,
+        url: cmp.productUrl,
+      })
+    } else if (product.platform === plat) {
+      offers.push({
+        platform: plat,
+        label: PLATFORM_LABELS[plat as keyof typeof PLATFORM_LABELS] ?? plat,
+        price: product.price,
+        currency: product.currency,
+        url: product.buyUrl || product.aliexpressUrl || '',
+      })
+    }
+  }
+
+  // If no offers were built from priceComparison, use the product itself as primary
+  if (offers.length === 0) {
+    const plat = product.platform ?? 'aliexpress'
+    offers.push({
+      platform: plat,
+      label: PLATFORM_LABELS[plat as keyof typeof PLATFORM_LABELS] ?? plat,
+      price: product.price,
+      currency: product.currency,
+      url: product.buyUrl || product.aliexpressUrl || product.promotionLink || '',
+    })
+  }
+
+  return offers
+}
+
+function openUrl(url: string, product: Product) {
+  logAffiliateClick({
+    product_id: product.aliexpressSku ?? '',
+    title: product.name ?? '',
+    promotion_link: url,
+  }).catch(() => {})
+  try {
+    const a = document.createElement('a')
+    a.href = url
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  } catch {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
 }
 
 export interface ProductDetailModalProps {
@@ -44,56 +169,52 @@ export interface ProductDetailModalProps {
 export function ProductDetailModal({ product, scannedSizes, category, sellerSizeChart = [], visible, onDismiss }: ProductDetailModalProps) {
   const [imgError, setImgError] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [redirectingOffer, setRedirectingOffer] = useState<string | null>(null)
 
   if (!visible) return null
 
-  const imageUrl = normalizeProductImageUrl(product.img)
+  // Image: use normalized URL; on error, fall back to category-appropriate fashion image (never the box)
+  const rawImageUrl = normalizeProductImageUrl(product.img)
+  const fallbackUrl = getFallbackImage(category, product.name)
+  const imageUrl = rawImageUrl ?? fallbackUrl
+  const usingFallback = !rawImageUrl
+
   const accessory = isAccessory(product.name, category)
   const recommendedSize: SizeRecommendation | null = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
   const hasScanned = scannedSizes != null
 
-  async function handleProceedToBuy() {
+  const offers = buildOffers(product)
+  const primaryOffer = offers[0] ?? null
+  const secondaryOffers = offers.slice(1)
+
+  async function handlePrimaryBuy() {
+    if (!primaryOffer || !primaryOffer.url) return
     setIsRedirecting(true)
+    setRedirectingOffer('primary')
 
-    const fallbackUrl = product.buyUrl?.trim()
-      || product.aliexpressUrl?.trim()
-      || `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent((product.brand ?? '') + ' ' + (product.name ?? ''))}`
-
-    let finalUrl = product.promotionLink?.trim() || null
-    // Skimlinks-wrapped buyUrl is already an affiliate link — use it directly.
-    if (!finalUrl && product.buyUrl?.trim()) {
-      finalUrl = product.buyUrl.trim()
-    }
-    try {
-      if (!finalUrl) {
+    let finalUrl = primaryOffer.url
+    // Try affiliate wrapping for non-Skimlinks URLs
+    if (!primaryOffer.url.includes('go.skimresources') && !primaryOffer.url.includes('go.redirecting')) {
+      try {
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
-        finalUrl = await Promise.race([generateAffiliateLink(fallbackUrl), timeoutPromise])
+        const wrapped = await Promise.race([generateAffiliateLink(primaryOffer.url), timeoutPromise])
+        if (wrapped) finalUrl = wrapped
+      } catch {
+        // fall back to direct URL
       }
-    } catch {
-      // Affiliate link generation failed — fall back to direct product URL
     }
-    finalUrl = finalUrl ?? fallbackUrl
 
-    logAffiliateClick({
-      product_id: product.aliexpressSku ?? '',
-      title: product.name ?? '',
-      promotion_link: finalUrl,
-    }).catch(() => {})
-
+    openUrl(finalUrl, product)
     setIsRedirecting(false)
+    setRedirectingOffer(null)
     onDismiss()
+  }
 
-    try {
-      const a = document.createElement('a')
-      a.href = finalUrl
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-    } catch {
-      window.open(finalUrl, '_blank', 'noopener,noreferrer')
-    }
+  function handleSecondaryBuy(offer: OfferEntry) {
+    if (!offer.url) return
+    setRedirectingOffer(offer.platform)
+    openUrl(offer.url, product)
+    setRedirectingOffer(null)
   }
 
   return (
@@ -106,15 +227,19 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
         <ScrollView style={modalStyles.scrollArea} contentContainerStyle={modalStyles.scrollContent}>
           <View style={modalStyles.imageWrap}>
-            {imgError || !imageUrl ? (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E0' }}>
-                <Text style={{ fontSize: 48 }}>📦</Text>
-              </View>
-            ) : (
+            <Image
+              source={{ uri: imageUrl }}
+              style={modalStyles.productImage}
+              onError={() => {
+                if (!usingFallback) {
+                  setImgError(true)
+                }
+              }}
+            />
+            {imgError && usingFallback === false && (
               <Image
-                source={{ uri: imageUrl }}
-                style={modalStyles.productImage}
-                onError={() => setImgError(true)}
+                source={{ uri: fallbackUrl }}
+                style={[modalStyles.productImage, { position: 'absolute', top: 0, left: 0 }]}
               />
             )}
           </View>
@@ -175,25 +300,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
                       </Text>
                     </View>
                     <TouchableOpacity
-                      onPress={() => {
-                        const url = entry.productUrl
-                        logAffiliateClick({
-                          product_id: product.aliexpressSku ?? '',
-                          title: product.name ?? '',
-                          promotion_link: url,
-                        }).catch(() => {})
-                        try {
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.target = '_blank'
-                          a.rel = 'noopener noreferrer'
-                          document.body.appendChild(a)
-                          a.click()
-                          document.body.removeChild(a)
-                        } catch {
-                          window.open(url, '_blank', 'noopener,noreferrer')
-                        }
-                      }}
+                      onPress={() => openUrl(entry.productUrl, product)}
                       activeOpacity={0.7}
                       style={[modalStyles.comparisonBuyBtn, { backgroundColor: PLATFORM_COLORS[entry.platform] } as React.CSSProperties]}
                     >
@@ -206,30 +313,81 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
           )}
         </ScrollView>
 
-        <TouchableOpacity
-          onPress={handleProceedToBuy}
-          activeOpacity={0.7}
-          style={[
-            modalStyles.confirmBtn,
-            isRedirecting && modalStyles.confirmBtnLoading,
-          ]}
-          disabled={isRedirecting}
-          accessibilityRole="button"
-          accessibilityLabel={isRedirecting ? 'מעביר לרכישה, אנא המתן' : 'מתאים לי, המשך לרכישה בעליאקספרס'}
-          accessibilityState={{ disabled: isRedirecting }}
-        >
-          {isRedirecting ? (
-            <View style={modalStyles.btnContentWrap}>
-              <View style={modalStyles.spinner} className="fitgura-spinner" />
-              <Text style={modalStyles.confirmBtnText}>מעביר לרכישה...</Text>
-            </View>
-          ) : (
-            <View style={modalStyles.btnContentWrap}>
-              <Text style={modalStyles.confirmBtnIcon}>🛒</Text>
-              <Text style={modalStyles.confirmBtnText}>מתאים לי</Text>
+        {/* ── Multi-offer action area (replaces single green button) ── */}
+        <View style={modalStyles.offerArea}>
+          {/* Primary verified offer (SHEIN or first available) */}
+          {primaryOffer && (
+            <View style={modalStyles.primaryOfferContainer}>
+              <View style={modalStyles.primaryOfferInfo}>
+                <Text style={modalStyles.primaryOfferPlatform}>
+                  {PLATFORM_LOGOS[primaryOffer.platform as keyof typeof PLATFORM_LOGOS] ?? '🛍️'}{' '}
+                  {primaryOffer.label}
+                </Text>
+                <Text style={modalStyles.primaryOfferPrice}>
+                  {formatPrice(primaryOffer.price, primaryOffer.currency)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handlePrimaryBuy}
+                activeOpacity={0.7}
+                style={[
+                  modalStyles.primaryOfferBtn,
+                  isRedirecting && redirectingOffer === 'primary' && modalStyles.primaryOfferBtnLoading,
+                ]}
+                disabled={isRedirecting && redirectingOffer === 'primary'}
+                accessibilityRole="button"
+                accessibilityLabel="מתאים לי, המשך לרכישה"
+              >
+                {isRedirecting && redirectingOffer === 'primary' ? (
+                  <View style={modalStyles.btnContentWrap}>
+                    <View style={modalStyles.spinner} className="fitgura-spinner" />
+                    <Text style={modalStyles.primaryOfferBtnText}>מעביר לרכישה...</Text>
+                  </View>
+                ) : (
+                  <View style={modalStyles.btnContentWrap}>
+                    <Text style={modalStyles.confirmBtnIcon}>🛒</Text>
+                    <Text style={modalStyles.primaryOfferBtnText}>מתאים לי</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
           )}
-        </TouchableOpacity>
+
+          {/* Secondary potential offers (AliExpress / Temu / CJ) */}
+          {secondaryOffers.length > 0 && (
+            <View style={modalStyles.secondaryOffersContainer}>
+              <Text style={modalStyles.secondaryOffersHeader}>התאמה משוערת - שווה לבדוק</Text>
+              {secondaryOffers.map((offer, idx) => (
+                <View key={idx} style={modalStyles.secondaryOfferRow}>
+                  <View style={modalStyles.secondaryOfferInfo}>
+                    <Text style={modalStyles.secondaryOfferPlatform}>
+                      {PLATFORM_LOGOS[offer.platform as keyof typeof PLATFORM_LOGOS] ?? '🛍️'}{' '}
+                      {offer.label}
+                    </Text>
+                    <Text style={modalStyles.secondaryOfferPrice}>
+                      {formatPrice(offer.price, offer.currency)}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleSecondaryBuy(offer)}
+                    activeOpacity={0.7}
+                    style={[
+                      modalStyles.secondaryOfferBtn,
+                      redirectingOffer === offer.platform && modalStyles.secondaryOfferBtnLoading,
+                    ]}
+                    disabled={redirectingOffer === offer.platform}
+                    accessibilityRole="button"
+                    accessibilityLabel={`שווה בדיקה ב${offer.label}`}
+                  >
+                    <Text style={modalStyles.secondaryOfferBtnText}>
+                      {redirectingOffer === offer.platform ? '...' : 'שווה בדיקה'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       </View>
     </View>
   )
@@ -259,12 +417,29 @@ const modalStyles = StyleSheet.create({
   sizePillRegion: { fontSize: 11, fontWeight: '700', color: '#4A4A4A', letterSpacing: 0.5, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   sizePillValue: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sizePillValuePrimary: { color: '#1A1A1A' },
-  confirmBtn: { backgroundColor: '#00FF66', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, alignSelf: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
-  confirmBtnLoading: { backgroundColor: '#00CC52', opacity: 0.85 },
+  // ── Multi-offer styles ──
+  offerArea: { marginTop: 8, gap: 10 },
+  primaryOfferContainer: { backgroundColor: '#FFFEF5', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' } as React.CSSProperties,
+  primaryOfferInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  primaryOfferPlatform: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  primaryOfferPrice: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  primaryOfferBtn: { backgroundColor: '#00FF66', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  primaryOfferBtnLoading: { backgroundColor: '#00CC52', opacity: 0.85 },
+  primaryOfferBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  secondaryOffersContainer: { gap: 6 },
+  secondaryOffersHeader: { fontSize: 13, fontWeight: '700', color: '#4A4A4A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  secondaryOfferRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F5F0E0', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  secondaryOfferInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  secondaryOfferPlatform: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  secondaryOfferPrice: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  secondaryOfferBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1.5, borderColor: '#1A1A1A', backgroundColor: '#FFFEF5' } as React.CSSProperties,
+  secondaryOfferBtnLoading: { opacity: 0.6 },
+  secondaryOfferBtnText: { fontSize: 12, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  // ── shared ──
   btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   confirmBtnIcon: { fontSize: 15 },
   spinner: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: 'rgba(26,26,26,0.3)', borderTopColor: '#1A1A1A' },
-  confirmBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  // ── comparison (preserved) ──
   comparisonBox: { backgroundColor: '#FFFEF5', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' } as React.CSSProperties,
   comparisonTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 10, textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Permanent Marker', cursive" },
   comparisonTable: { gap: 6 },
