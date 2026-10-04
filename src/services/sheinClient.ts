@@ -2,6 +2,7 @@ import type { Product } from '../types'
 import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams, CJCredentials } from './adapterTypes'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
+import { wrapWithSkimlinks } from '../utils/skimlinks'
 
 // SHEIN adapter — routes through CJ Affiliate's GraphQL API (SHEIN is a CJ advertiser).
 // While CJ approval is pending, returns structured mock data so the feed stays populated.
@@ -181,6 +182,13 @@ function buildKeywords(category: FeedCategory, gender: Gender): string {
   return [genderWord, categoryWord].filter(Boolean).join(' ')
 }
 
+function withSkimlinks(products: Product[]): Product[] {
+  return products.map((p) => ({
+    ...p,
+    buyUrl: wrapWithSkimlinks(p.aliexpressUrl ?? ''),
+  }))
+}
+
 // ── Public API (backward-compatible exports) ──────────────────────────────────
 
 export async function searchProductsByCategory(
@@ -196,24 +204,24 @@ export async function searchProductsByCategory(
   // Try real CJ GraphQL first
   try {
     const products = await callCjGraphQL(keywords, pageNo, Math.min(pageSize, 40))
-    if (products.length > 0) return products
+    if (products.length > 0) return withSkimlinks(products)
   } catch {
     // CJ not ready — fall through to mock
   }
 
   // Fallback to structured mock data
-  return generateMockProducts(category, gender, pageSize)
+  return withSkimlinks(generateMockProducts(category, gender, pageSize))
 }
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
   try {
     const products = await callCjGraphQL(keywords, pageNo, Math.min(pageSize, 40))
-    if (products.length > 0) return products
+    if (products.length > 0) return withSkimlinks(products)
   } catch {
     // fall through
   }
 
-  return generateMockQueryProducts(keywords, pageSize)
+  return withSkimlinks(generateMockQueryProducts(keywords, pageSize))
 }
 
 export async function searchDeviceAccessories(
@@ -224,12 +232,12 @@ export async function searchDeviceAccessories(
 ): Promise<Product[]> {
   try {
     const products = await callCjGraphQL(`${deviceName} accessories`, pageNo, Math.min(pageSize, 40))
-    if (products.length > 0) return products
+    if (products.length > 0) return withSkimlinks(products)
   } catch {
     // fall through
   }
 
-  return generateMockDeviceAccessories(deviceName, pageSize)
+  return withSkimlinks(generateMockDeviceAccessories(deviceName, pageSize))
 }
 
 // ── Adapter interface implementation ──────────────────────────────────────────

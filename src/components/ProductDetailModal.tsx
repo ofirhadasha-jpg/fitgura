@@ -55,10 +55,15 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   async function handleProceedToBuy() {
     setIsRedirecting(true)
 
-    const fallbackUrl = product.aliexpressUrl?.trim()
+    const fallbackUrl = product.buyUrl?.trim()
+      || product.aliexpressUrl?.trim()
       || `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent((product.brand ?? '') + ' ' + (product.name ?? ''))}`
 
     let finalUrl = product.promotionLink?.trim() || null
+    // Skimlinks-wrapped buyUrl is already an affiliate link — use it directly.
+    if (!finalUrl && product.buyUrl?.trim()) {
+      finalUrl = product.buyUrl.trim()
+    }
     try {
       if (!finalUrl) {
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))

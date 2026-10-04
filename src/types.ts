@@ -784,6 +784,7 @@ export interface Product {
   evaluateRate?: number
   availableSizes?: string[]
   platform?: ProductPlatform
+  buyUrl?: string
   priceComparison?: PriceComparisonEntry[]
 }
 
