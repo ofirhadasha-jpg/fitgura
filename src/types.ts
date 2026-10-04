@@ -785,7 +785,6 @@ export interface Product {
   availableSizes?: string[]
   platform?: ProductPlatform
   buyUrl?: string
-  isBestBuy?: boolean
   priceComparison?: PriceComparisonEntry[]
 }
 

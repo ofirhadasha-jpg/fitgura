@@ -100,7 +100,6 @@ const SIMILARITY_THRESHOLD = 0.6
 // ── Product clustering ────────────────────────────────────────────────────
 
 function platformUrl(p: Product): string {
-  if (p.buyUrl) return p.buyUrl
   if (p.aliexpressUrl) return p.aliexpressUrl
   const platform = p.platform ?? 'aliexpress'
   if (platform === 'shein') return `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`
@@ -144,9 +143,9 @@ function clusterProducts(products: Product[]): Product[] {
       if (used.has(j)) continue
       const sim = jaccardSimilarity(tokenized[i].tokens, tokenized[j].tokens)
       const sameCategory = tokenized[i].product.category === tokenized[j].product.category
-      // Cross-platform matching: group identical items from different platforms
-      // so users can compare prices across AliExpress, SHEIN, and Temu.
-      if (sim >= SIMILARITY_THRESHOLD && sameCategory) {
+      const samePlatform = (tokenized[i].product.platform ?? 'aliexpress') === (tokenized[j].product.platform ?? 'aliexpress')
+      // Only cluster products from the SAME platform — different platforms should show separately
+      if (sim >= SIMILARITY_THRESHOLD && sameCategory && samePlatform) {
         cluster.push(tokenized[j].product)
         used.add(j)
       }
@@ -156,7 +155,7 @@ function clusterProducts(products: Product[]): Product[] {
   }
 
   // Build merged products: pick the lowest-price variant as the representative,
-  // attach priceComparison array with all platforms, and flag isBestBuy.
+  // attach priceComparison array with all platforms
   return clusters.map((cluster) => {
     const sorted = [...cluster].sort((a, b) => a.price - b.price)
     const representative = { ...sorted[0] }
@@ -165,12 +164,6 @@ function clusterProducts(products: Product[]): Product[] {
     representative.price = sorted[0].price
     representative.originalPrice = sorted[0].originalPrice
     representative.currency = sorted[0].currency
-    // Flag the cheapest platform's product as Best Buy
-    if (sorted.length > 1) {
-      representative.isBestBuy = true
-      representative.platform = sorted[0].platform
-      representative.buyUrl = sorted[0].buyUrl ?? sorted[0].aliexpressUrl
-    }
     return representative
   })
 }

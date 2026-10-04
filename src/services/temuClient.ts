@@ -3,11 +3,12 @@ import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, Adapter
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
-import { getImagesForKeyword } from '../utils/productImages'
 
 // Temu adapter — structured for direct Temu affiliate API integration.
-// While credentials are pending, returns keyword-dynamic mock data with real
-// product images. Once configured, the edge function calls Temu's API directly.
+// While the Temu affiliate program credentials are pending, returns
+// structured mock data so the feed stays populated.
+// Once credentials are configured, the edge function will call Temu's
+// affiliate product search API directly.
 
 export const TEMU_CREDENTIALS: TemuCredentials = {
   affiliateKey: '',
@@ -70,134 +71,88 @@ async function callTemuApi(keywords: string, pageNo: number, pageSize: number): 
   })) as Product[]
 }
 
-// ── Dynamic mock product generation ───────────────────────────────────────────
+// ── Structured mock data ──────────────────────────────────────────────────────
 
-let mockIdCounter = 200000
-
-function nextTemuId(): string {
-  return String(++mockIdCounter)
-}
-
-function detectCategoryFromKeywords(keywords: string): FeedCategory {
-  const lower = keywords.toLowerCase()
-  if (/shoe|sneaker|boot|sandal|heel|footwear|running/i.test(lower)) return 'shoes'
-  if (/bag|sunglass|necklace|accessory|jewel|ring|watch/i.test(lower)) return 'accessories'
-  return 'clothing'
-}
-
-function inferGenderFromKeywords(keywords: string): Gender | null {
-  const lower = keywords.toLowerCase()
-  if (/women|woman|female|girl|ladies/i.test(lower)) return 'female'
-  if (/men|man|male|boy/i.test(lower)) return 'male'
-  return null
-}
-
-interface MockTemplate {
-  name: (kw: string, gender: Gender) => string
-  basePrice: number
-  discount: number
-  sizes: string[]
-  orders: number
-  rating: number
-}
-
-const MOCK_TEMPLATES: Record<FeedCategory, MockTemplate[]> = {
+const MOCK_TEMU_PRODUCTS: Record<string, Omit<Product, 'platform'>[]> = {
   clothing: [
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Budget Pick`.trim(), basePrice: 49, discount: 89, sizes: ['XS', 'S', 'M', 'L'], orders: 6500, rating: 4.5 },
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Value Pack`.trim(), basePrice: 59, discount: 99, sizes: ['S', 'M', 'L', 'XL'], orders: 8900, rating: 4.7 },
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Everyday Wear`.trim(), basePrice: 39, discount: 69, sizes: ['XS', 'S', 'M', 'L'], orders: 12000, rating: 4.4 },
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Trending Now`.trim(), basePrice: 69, discount: 119, sizes: ['S', 'M', 'L', 'XL', 'XXL'], orders: 4100, rating: 4.4 },
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Best Value`.trim(), basePrice: 35, discount: 59, sizes: ['36', '38', '40', '42'], orders: 7200, rating: 4.6 },
+    { name: 'Temu Women Ribbed Crop Top Set', brand: 'Temu', price: 69, originalPrice: 119, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 6500, evaluateRate: 4.5 },
+    { name: 'Temu Men Loose Fit Cargo Joggers', brand: 'Temu', price: 79, originalPrice: 139, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['38', '40', '42', '44', '46'], ordersCount: 3200, evaluateRate: 4.3 },
+    { name: 'Temu Women Pleated Tennis Skirt', brand: 'Temu', price: 59, originalPrice: 99, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 8900, evaluateRate: 4.7 },
+    { name: 'Temu Men Quick-Dry Sports T-Shirt', brand: 'Temu', price: 49, originalPrice: 89, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['S', 'M', 'L', 'XL', 'XXL'], ordersCount: 4100, evaluateRate: 4.4 },
+    { name: 'Temu Women Cargo Parachute Pants', brand: 'Temu', price: 89, originalPrice: 149, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['36', '38', '40', '42'], ordersCount: 7200, evaluateRate: 4.6 },
   ],
   shoes: [
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Lightweight`.trim(), basePrice: 69, discount: 119, sizes: g === 'male' ? ['40', '41', '42', '43', '44', '45'] : ['36', '37', '38', '39', '40'], orders: 5600, rating: 4.5 },
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Comfort Pro`.trim(), basePrice: 89, discount: 149, sizes: g === 'male' ? ['40', '41', '42', '43', '44'] : ['36', '37', '38', '39', '40'], orders: 3800, rating: 4.4 },
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Budget`.trim(), basePrice: 49, discount: 89, sizes: g === 'male' ? ['41', '42', '43', '44'] : ['36', '37', '38', '39'], orders: 6700, rating: 4.6 },
+    { name: 'Temu Women Slip-On Canvas Sneakers', brand: 'Temu', price: 89, originalPrice: 149, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 5600, evaluateRate: 4.5 },
+    { name: 'Temu Men Lightweight Running Shoes', brand: 'Temu', price: 99, originalPrice: 169, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['40', '41', '42', '43', '44', '45'], ordersCount: 3800, evaluateRate: 4.4 },
+    { name: 'Temu Women Platform Sandals', brand: 'Temu', price: 69, originalPrice: 119, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 6700, evaluateRate: 4.6 },
   ],
   accessories: [
-    { name: (kw) => `Temu ${kw} Super Value`.trim(), basePrice: 25, discount: 49, sizes: [], orders: 15000, rating: 4.7 },
-    { name: (kw) => `Temu ${kw} Best Seller`.trim(), basePrice: 35, discount: 69, sizes: [], orders: 11000, rating: 4.8 },
-    { name: (kw) => `Temu ${kw} Hot Pick`.trim(), basePrice: 19, discount: 39, sizes: [], orders: 22000, rating: 4.6 },
-  ],
-  all: [
-    { name: (kw, g) => `Temu ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw}`.trim(), basePrice: 49, discount: 89, sizes: ['S', 'M', 'L'], orders: 5500, rating: 4.5 },
+    { name: 'Temu Clear Phone Crossbody Chain Bag', brand: 'Temu', price: 39, originalPrice: 69, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 11000, evaluateRate: 4.7 },
+    { name: 'Temu Retro Cat-Eye Sunglasses', brand: 'Temu', price: 29, originalPrice: 49, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 15000, evaluateRate: 4.8 },
+    { name: 'Temu Stackable Ring Set 12pcs', brand: 'Temu', price: 25, originalPrice: 49, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 22000, evaluateRate: 4.6 },
   ],
 }
 
-function temuProductUrl(name: string, id: string): string {
-  return `https://www.temu.com/goods-${id}.html`
-}
+function generateMockProducts(category: FeedCategory, gender: Gender, pageSize: number): Product[] {
+  const pool = MOCK_TEMU_PRODUCTS[category] ?? MOCK_TEMU_PRODUCTS.clothing
+  const genderFiltered = gender === 'unisex'
+    ? pool
+    : pool.filter((p) => {
+        if (gender === 'female') return /women|tennis|skirt|sandals|sunglasses|ring|bag/i.test(p.name)
+        if (gender === 'male') return /men|cargo|sports|running/i.test(p.name)
+        return true
+      })
 
-function generateMockProducts(category: FeedCategory, gender: Gender, pageSize: number, keywords?: string): Product[] {
-  const searchKw = keywords ?? TEMU_CATEGORIES[category] ?? 'fashion'
-  const effectiveGender = gender === 'unisex' ? (inferGenderFromKeywords(searchKw) ?? 'unisex') : gender
-  const templates = MOCK_TEMPLATES[category] ?? MOCK_TEMPLATES.clothing
-  const images = getImagesForKeyword(searchKw, templates.length)
-  const count = Math.min(pageSize, templates.length)
-
-  return Array.from({ length: count }, (_, i) => {
-    const tpl = templates[i % templates.length]
-    const id = nextTemuId()
-    const name = tpl.name(searchKw, effectiveGender)
-    return {
-      name,
-      brand: 'Temu',
-      price: tpl.basePrice,
-      originalPrice: tpl.discount,
-      currency: 'ILS',
-      img: images[i % images.length],
-      category,
-      aliexpressUrl: temuProductUrl(name, id),
-      aliexpressSku: `temu-${id}`,
-      availableSizes: tpl.sizes,
-      ordersCount: tpl.orders,
-      evaluateRate: tpl.rating,
-      platform: 'temu' as const,
-      promotionLink: null,
-    } as Product
-  })
+  return genderFiltered.slice(0, pageSize).map((p) => ({
+    ...p,
+    platform: 'temu' as const,
+    aliexpressUrl: `https://www.temu.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
+    promotionLink: null,
+  }))
 }
 
 function generateMockQueryProducts(keywords: string, pageSize: number): Product[] {
-  const category = detectCategoryFromKeywords(keywords)
-  const gender = inferGenderFromKeywords(keywords) ?? 'unisex'
-  return generateMockProducts(category, gender, pageSize, keywords)
+  const lower = keywords.toLowerCase()
+  let category: FeedCategory = 'clothing'
+  if (/shoe|sneaker|boot|sandal|running/i.test(lower)) category = 'shoes'
+  else if (/bag|sunglass|ring|accessory|jewel/i.test(lower)) category = 'accessories'
+
+  const pool = MOCK_TEMU_PRODUCTS[category] ?? MOCK_TEMU_PRODUCTS.clothing
+  return pool.slice(0, pageSize).map((p) => ({
+    ...p,
+    platform: 'temu' as const,
+    aliexpressUrl: `https://www.temu.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
+    promotionLink: null,
+  }))
 }
 
 function generateMockDeviceAccessories(deviceName: string, pageSize: number): Product[] {
-  const searchKw = `${deviceName} case`
-  const images = getImagesForKeyword(searchKw, 3)
   const mockAccessories = [
-    { name: `Temu ${deviceName} Soft Silicone Case`, basePrice: 19, discount: 39 },
-    { name: `Temu ${deviceName} Tempered Glass 2-Pack`, basePrice: 15, discount: 29 },
-    { name: `Temu ${deviceName} Magnetic Grip Stand`, basePrice: 25, discount: 49 },
+    { name: `Temu ${deviceName} Soft Silicone Case`, brand: 'Temu', price: 19, originalPrice: 39, currency: 'ILS', category: 'accessories' },
+    { name: `Temu ${deviceName} Tempered Glass 2-Pack`, brand: 'Temu', price: 15, originalPrice: 29, currency: 'ILS', category: 'accessories' },
+    { name: `Temu ${deviceName} Magnetic Phone Grip Stand`, brand: 'Temu', price: 25, originalPrice: 49, currency: 'ILS', category: 'accessories' },
   ]
-  return mockAccessories.slice(0, pageSize).map((p, i) => {
-    const id = nextTemuId()
-    return {
-      name: p.name,
-      brand: 'Temu',
-      price: p.basePrice,
-      originalPrice: p.discount,
-      currency: 'ILS',
-      img: images[i % images.length],
-      category: 'accessories',
-      aliexpressUrl: temuProductUrl(p.name, id),
-      aliexpressSku: `temu-${id}`,
-      availableSizes: [],
-      ordersCount: 1200,
-      evaluateRate: 4.2,
-      platform: 'temu' as const,
-      promotionLink: null,
-    } as Product
-  })
+  return mockAccessories.slice(0, pageSize).map((p) => ({
+    ...p,
+    img: '',
+    availableSizes: [],
+    ordersCount: 1200,
+    evaluateRate: 4.2,
+    platform: 'temu' as const,
+    aliexpressUrl: `https://www.temu.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
+    promotionLink: null,
+  }))
 }
 
 // ── Keyword builder ───────────────────────────────────────────────────────────
 
 function buildKeywords(category: FeedCategory, gender: Gender, extraKeywords?: string): string {
-  const parts = [gender === 'male' ? 'men' : gender === 'female' ? 'women' : '', TEMU_CATEGORIES[category] ?? 'fashion', extraKeywords]
-  return parts.filter(Boolean).join(' ')
+  const categoryWord = TEMU_CATEGORIES[category] ?? 'fashion'
+  const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
+  return [genderWord, categoryWord, extraKeywords].filter(Boolean).join(' ')
 }
 
 function withSkimlinks(products: Product[]): Product[] {
@@ -219,6 +174,7 @@ export async function searchProductsByCategory(
 ): Promise<Product[]> {
   const keywords = buildKeywords(category, gender, extraKeywords)
 
+  // Try real Temu affiliate API first
   try {
     const products = await callTemuApi(keywords, pageNo, Math.min(pageSize, 40))
     if (products.length > 0) return withSkimlinks(products)
@@ -226,7 +182,8 @@ export async function searchProductsByCategory(
     // Temu not ready — fall through to mock
   }
 
-  return withSkimlinks(generateMockProducts(category, gender, pageSize, extraKeywords))
+  // Fallback to structured mock data
+  return withSkimlinks(generateMockProducts(category, gender, pageSize))
 }
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
