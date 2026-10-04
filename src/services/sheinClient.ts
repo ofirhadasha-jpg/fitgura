@@ -118,23 +118,30 @@ const SHEIN_IMG = {
   necklace: 'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
 }
 
+// SHEIN uses /pdsearch/ for keyword-based product discovery — this is the
+// live URL format that avoids the "OOPS" 404 page.
+function sheinSearchUrl(productName: string): string {
+  const keyword = productName.replace(/^SHEIN\s+/i, '').trim()
+  return `https://www.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
+}
+
 const MOCK_SHEIN_PRODUCTS: Record<string, Omit<Product, 'platform'>[]> = {
   clothing: [
-    { name: 'SHEIN Women Oversized Knit Sweater', brand: 'SHEIN', price: 89, originalPrice: 149, currency: 'ILS', img: SHEIN_IMG.sweater, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L', 'XL'], ordersCount: 3200, evaluateRate: 4.6 },
-    { name: 'SHEIN Men Casual Cargo Pants', brand: 'SHEIN', price: 119, originalPrice: 189, currency: 'ILS', img: SHEIN_IMG.pants, category: 'clothing', availableSizes: ['38', '40', '42', '44'], ordersCount: 1800, evaluateRate: 4.3 },
-    { name: 'SHEIN Women Floral Midi Dress', brand: 'SHEIN', price: 99, originalPrice: 169, currency: 'ILS', img: SHEIN_IMG.dress, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 5400, evaluateRate: 4.7 },
-    { name: 'SHEIN Men Striped Button-Up Shirt', brand: 'SHEIN', price: 79, originalPrice: 129, currency: 'ILS', img: SHEIN_IMG.shirt, category: 'clothing', availableSizes: ['S', 'M', 'L', 'XL', 'XXL'], ordersCount: 2100, evaluateRate: 4.4 },
-    { name: 'SHEIN Women High-Waist Wide Leg Jeans', brand: 'SHEIN', price: 109, originalPrice: 179, currency: 'ILS', img: SHEIN_IMG.jeans, category: 'clothing', availableSizes: ['36', '38', '40', '42', '44'], ordersCount: 4100, evaluateRate: 4.5 },
+    { name: 'Women Oversized Knit Sweater', brand: 'SHEIN', price: 89, originalPrice: 149, currency: 'ILS', img: SHEIN_IMG.sweater, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L', 'XL'], ordersCount: 3200, evaluateRate: 4.6 },
+    { name: 'Men Casual Cargo Pants', brand: 'SHEIN', price: 119, originalPrice: 189, currency: 'ILS', img: SHEIN_IMG.pants, category: 'clothing', availableSizes: ['38', '40', '42', '44'], ordersCount: 1800, evaluateRate: 4.3 },
+    { name: 'Women Floral Midi Dress', brand: 'SHEIN', price: 99, originalPrice: 169, currency: 'ILS', img: SHEIN_IMG.dress, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 5400, evaluateRate: 4.7 },
+    { name: 'Men Striped Button-Up Shirt', brand: 'SHEIN', price: 79, originalPrice: 129, currency: 'ILS', img: SHEIN_IMG.shirt, category: 'clothing', availableSizes: ['S', 'M', 'L', 'XL', 'XXL'], ordersCount: 2100, evaluateRate: 4.4 },
+    { name: 'Women High-Waist Wide Leg Jeans', brand: 'SHEIN', price: 109, originalPrice: 179, currency: 'ILS', img: SHEIN_IMG.jeans, category: 'clothing', availableSizes: ['36', '38', '40', '42', '44'], ordersCount: 4100, evaluateRate: 4.5 },
   ],
   shoes: [
-    { name: 'SHEIN Women Chunky Platform Sneakers', brand: 'SHEIN', price: 129, originalPrice: 199, currency: 'ILS', img: SHEIN_IMG.sneakers, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40', '41'], ordersCount: 2800, evaluateRate: 4.5 },
-    { name: 'SHEIN Men Minimalist White Sneakers', brand: 'SHEIN', price: 149, originalPrice: 229, currency: 'ILS', img: SHEIN_IMG.sneakers, category: 'shoes', availableSizes: ['40', '41', '42', '43', '44', '45'], ordersCount: 1600, evaluateRate: 4.4 },
-    { name: 'SHEIN Women Strappy Sandals', brand: 'SHEIN', price: 89, originalPrice: 139, currency: 'ILS', img: SHEIN_IMG.sandals, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 3400, evaluateRate: 4.6 },
+    { name: 'Women Chunky Platform Sneakers', brand: 'SHEIN', price: 129, originalPrice: 199, currency: 'ILS', img: SHEIN_IMG.sneakers, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40', '41'], ordersCount: 2800, evaluateRate: 4.5 },
+    { name: 'Men Minimalist White Sneakers', brand: 'SHEIN', price: 149, originalPrice: 229, currency: 'ILS', img: SHEIN_IMG.sneakers, category: 'shoes', availableSizes: ['40', '41', '42', '43', '44', '45'], ordersCount: 1600, evaluateRate: 4.4 },
+    { name: 'Women Strappy Sandals', brand: 'SHEIN', price: 89, originalPrice: 139, currency: 'ILS', img: SHEIN_IMG.sandals, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 3400, evaluateRate: 4.6 },
   ],
   accessories: [
-    { name: 'SHEIN Crossbody Mini Bag', brand: 'SHEIN', price: 59, originalPrice: 99, currency: 'ILS', img: SHEIN_IMG.bag, category: 'accessories', availableSizes: [], ordersCount: 5200, evaluateRate: 4.7 },
-    { name: 'SHEIN Oversized Square Sunglasses', brand: 'SHEIN', price: 39, originalPrice: 69, currency: 'ILS', img: SHEIN_IMG.sunglasses, category: 'accessories', availableSizes: [], ordersCount: 8900, evaluateRate: 4.8 },
-    { name: 'SHEIN Gold Layered Necklace Set', brand: 'SHEIN', price: 29, originalPrice: 59, currency: 'ILS', img: SHEIN_IMG.necklace, category: 'accessories', availableSizes: [], ordersCount: 12000, evaluateRate: 4.6 },
+    { name: 'Crossbody Mini Bag', brand: 'SHEIN', price: 59, originalPrice: 99, currency: 'ILS', img: SHEIN_IMG.bag, category: 'accessories', availableSizes: [], ordersCount: 5200, evaluateRate: 4.7 },
+    { name: 'Oversized Square Sunglasses', brand: 'SHEIN', price: 39, originalPrice: 69, currency: 'ILS', img: SHEIN_IMG.sunglasses, category: 'accessories', availableSizes: [], ordersCount: 8900, evaluateRate: 4.8 },
+    { name: 'Gold Layered Necklace Set', brand: 'SHEIN', price: 29, originalPrice: 59, currency: 'ILS', img: SHEIN_IMG.necklace, category: 'accessories', availableSizes: [], ordersCount: 12000, evaluateRate: 4.6 },
   ],
 }
 
@@ -151,7 +158,7 @@ function generateMockProducts(category: FeedCategory, gender: Gender, pageSize: 
   return genderFiltered.slice(0, pageSize).map((p) => ({
     ...p,
     platform: 'shein' as const,
-    aliexpressUrl: `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressUrl: sheinSearchUrl(p.name),
     aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
@@ -167,7 +174,7 @@ function generateMockQueryProducts(keywords: string, pageSize: number): Product[
   return pool.slice(0, pageSize).map((p) => ({
     ...p,
     platform: 'shein' as const,
-    aliexpressUrl: `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressUrl: sheinSearchUrl(p.name),
     aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
@@ -186,7 +193,7 @@ function generateMockDeviceAccessories(deviceName: string, pageSize: number): Pr
     ordersCount: 800,
     evaluateRate: 4.3,
     platform: 'shein' as const,
-    aliexpressUrl: `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressUrl: sheinSearchUrl(p.name),
     aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))

@@ -97,7 +97,7 @@ function jaccardSimilarity(tokensA: string[], tokensB: string[]): number {
   return union === 0 ? 0 : intersection / union
 }
 
-const SIMILARITY_THRESHOLD = 0.6
+const SIMILARITY_THRESHOLD = 0.45
 
 // ── Product clustering ────────────────────────────────────────────────────
 
@@ -106,8 +106,8 @@ function platformUrl(p: Product): string {
   // Prefer buyUrl (already Skimlinks-wrapped for SHEIN/Temu) over aliexpressUrl
   if (p.buyUrl) return p.buyUrl
   if (p.aliexpressUrl) return p.aliexpressUrl
-  if (platform === 'shein') return `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`
-  if (platform === 'temu') return `https://www.temu.com/search?q=${encodeURIComponent(p.name)}`
+  if (platform === 'shein') return `https://www.shein.com/pdsearch/${encodeURIComponent(p.name)}/`
+  if (platform === 'temu') return `https://www.temu.com/search_result.html?search_key=${encodeURIComponent(p.name)}`
   return `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(p.name)}`
 }
 
@@ -198,9 +198,9 @@ function clusterProducts(products: Product[]): Product[] {
       if (used.has(j)) continue
       const sim = jaccardSimilarity(tokenized[i].tokens, tokenized[j].tokens)
       const sameCategory = tokenized[i].product.category === tokenized[j].product.category
-      const samePlatform = (tokenized[i].product.platform ?? 'aliexpress') === (tokenized[j].product.platform ?? 'aliexpress')
-      // Only cluster products from the SAME platform — different platforms should show separately
-      if (sim >= SIMILARITY_THRESHOLD && sameCategory && samePlatform) {
+      // Cross-platform clustering: group matching items from SHEIN, Temu, and
+      // AliExpress into a single card. Only require same category + similarity.
+      if (sim >= SIMILARITY_THRESHOLD && sameCategory) {
         cluster.push(tokenized[j].product)
         used.add(j)
       }
@@ -209,11 +209,12 @@ function clusterProducts(products: Product[]): Product[] {
     clusters.push(cluster)
   }
 
-  // Build merged products: pick the lowest-price variant as the representative,
-  // attach priceComparison array with all platforms
+  // Build merged products: prefer SHEIN as the representative (primary display),
+  // falling back to the lowest-price variant. Attach priceComparison + offers.
   return clusters.map((cluster) => {
+    const sheinProduct = cluster.find((p) => p.platform === 'shein')
     const sorted = [...cluster].sort((a, b) => a.price - b.price)
-    const representative = { ...sorted[0] }
+    const representative = { ...(sheinProduct ?? sorted[0]) }
     representative.priceComparison = buildPriceComparison(cluster)
     // Show the lowest price as the main price
     representative.price = sorted[0].price

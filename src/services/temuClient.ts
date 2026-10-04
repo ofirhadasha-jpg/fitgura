@@ -92,23 +92,29 @@ const TEMU_IMG = {
   ring:     'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
 }
 
+// Temu uses search_result.html with search_key parameter for keyword search.
+function temuSearchUrl(productName: string): string {
+  const keyword = productName.replace(/^Temu\s+/i, '').trim()
+  return `https://www.temu.com/search_result.html?search_key=${encodeURIComponent(keyword)}`
+}
+
 const MOCK_TEMU_PRODUCTS: Record<string, Omit<Product, 'platform'>[]> = {
   clothing: [
-    { name: 'Temu Women Ribbed Crop Top Set', brand: 'Temu', price: 69, originalPrice: 119, currency: 'ILS', img: TEMU_IMG.topset, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 6500, evaluateRate: 4.5 },
-    { name: 'Temu Men Loose Fit Cargo Joggers', brand: 'Temu', price: 79, originalPrice: 139, currency: 'ILS', img: TEMU_IMG.joggers, category: 'clothing', availableSizes: ['38', '40', '42', '44', '46'], ordersCount: 3200, evaluateRate: 4.3 },
-    { name: 'Temu Women Pleated Tennis Skirt', brand: 'Temu', price: 59, originalPrice: 99, currency: 'ILS', img: TEMU_IMG.skirt, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 8900, evaluateRate: 4.7 },
-    { name: 'Temu Men Quick-Dry Sports T-Shirt', brand: 'Temu', price: 49, originalPrice: 89, currency: 'ILS', img: TEMU_IMG.tshirt, category: 'clothing', availableSizes: ['S', 'M', 'L', 'XL', 'XXL'], ordersCount: 4100, evaluateRate: 4.4 },
-    { name: 'Temu Women Cargo Parachute Pants', brand: 'Temu', price: 89, originalPrice: 149, currency: 'ILS', img: TEMU_IMG.pants, category: 'clothing', availableSizes: ['36', '38', '40', '42'], ordersCount: 7200, evaluateRate: 4.6 },
+    { name: 'Women Oversized Knit Sweater', brand: 'Temu', price: 69, originalPrice: 119, currency: 'ILS', img: TEMU_IMG.topset, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 6500, evaluateRate: 4.5 },
+    { name: 'Men Casual Cargo Pants', brand: 'Temu', price: 79, originalPrice: 139, currency: 'ILS', img: TEMU_IMG.joggers, category: 'clothing', availableSizes: ['38', '40', '42', '44', '46'], ordersCount: 3200, evaluateRate: 4.3 },
+    { name: 'Women Floral Midi Dress', brand: 'Temu', price: 59, originalPrice: 99, currency: 'ILS', img: TEMU_IMG.skirt, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 8900, evaluateRate: 4.7 },
+    { name: 'Men Striped Button-Up Shirt', brand: 'Temu', price: 49, originalPrice: 89, currency: 'ILS', img: TEMU_IMG.tshirt, category: 'clothing', availableSizes: ['S', 'M', 'L', 'XL', 'XXL'], ordersCount: 4100, evaluateRate: 4.4 },
+    { name: 'Women High-Waist Wide Leg Jeans', brand: 'Temu', price: 89, originalPrice: 149, currency: 'ILS', img: TEMU_IMG.pants, category: 'clothing', availableSizes: ['36', '38', '40', '42'], ordersCount: 7200, evaluateRate: 4.6 },
   ],
   shoes: [
-    { name: 'Temu Women Slip-On Canvas Sneakers', brand: 'Temu', price: 89, originalPrice: 149, currency: 'ILS', img: TEMU_IMG.sneakers, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 5600, evaluateRate: 4.5 },
-    { name: 'Temu Men Lightweight Running Shoes', brand: 'Temu', price: 99, originalPrice: 169, currency: 'ILS', img: TEMU_IMG.running, category: 'shoes', availableSizes: ['40', '41', '42', '43', '44', '45'], ordersCount: 3800, evaluateRate: 4.4 },
-    { name: 'Temu Women Platform Sandals', brand: 'Temu', price: 69, originalPrice: 119, currency: 'ILS', img: TEMU_IMG.sandals, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 6700, evaluateRate: 4.6 },
+    { name: 'Women Chunky Platform Sneakers', brand: 'Temu', price: 89, originalPrice: 149, currency: 'ILS', img: TEMU_IMG.sneakers, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 5600, evaluateRate: 4.5 },
+    { name: 'Men Minimalist White Sneakers', brand: 'Temu', price: 99, originalPrice: 169, currency: 'ILS', img: TEMU_IMG.running, category: 'shoes', availableSizes: ['40', '41', '42', '43', '44', '45'], ordersCount: 3800, evaluateRate: 4.4 },
+    { name: 'Women Strappy Sandals', brand: 'Temu', price: 69, originalPrice: 119, currency: 'ILS', img: TEMU_IMG.sandals, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 6700, evaluateRate: 4.6 },
   ],
   accessories: [
-    { name: 'Temu Clear Phone Crossbody Chain Bag', brand: 'Temu', price: 39, originalPrice: 69, currency: 'ILS', img: TEMU_IMG.bag, category: 'accessories', availableSizes: [], ordersCount: 11000, evaluateRate: 4.7 },
-    { name: 'Temu Retro Cat-Eye Sunglasses', brand: 'Temu', price: 29, originalPrice: 49, currency: 'ILS', img: TEMU_IMG.sunglasses, category: 'accessories', availableSizes: [], ordersCount: 15000, evaluateRate: 4.8 },
-    { name: 'Temu Stackable Ring Set 12pcs', brand: 'Temu', price: 25, originalPrice: 49, currency: 'ILS', img: TEMU_IMG.ring, category: 'accessories', availableSizes: [], ordersCount: 22000, evaluateRate: 4.6 },
+    { name: 'Crossbody Mini Bag', brand: 'Temu', price: 39, originalPrice: 69, currency: 'ILS', img: TEMU_IMG.bag, category: 'accessories', availableSizes: [], ordersCount: 11000, evaluateRate: 4.7 },
+    { name: 'Oversized Square Sunglasses', brand: 'Temu', price: 29, originalPrice: 49, currency: 'ILS', img: TEMU_IMG.sunglasses, category: 'accessories', availableSizes: [], ordersCount: 15000, evaluateRate: 4.8 },
+    { name: 'Gold Layered Necklace Set', brand: 'Temu', price: 25, originalPrice: 49, currency: 'ILS', img: TEMU_IMG.ring, category: 'accessories', availableSizes: [], ordersCount: 22000, evaluateRate: 4.6 },
   ],
 }
 
@@ -117,15 +123,15 @@ function generateMockProducts(category: FeedCategory, gender: Gender, pageSize: 
   const genderFiltered = gender === 'unisex'
     ? pool
     : pool.filter((p) => {
-        if (gender === 'female') return /women|tennis|skirt|sandals|sunglasses|ring|bag/i.test(p.name)
-        if (gender === 'male') return /men|cargo|sports|running/i.test(p.name)
+        if (gender === 'female') return /women|floral|midi|sandals|sunglasses|necklace|bag/i.test(p.name)
+        if (gender === 'male') return /men|cargo|button-up/i.test(p.name)
         return true
       })
 
   return genderFiltered.slice(0, pageSize).map((p) => ({
     ...p,
     platform: 'temu' as const,
-    aliexpressUrl: `https://www.temu.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressUrl: temuSearchUrl(p.name),
     aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
@@ -141,7 +147,7 @@ function generateMockQueryProducts(keywords: string, pageSize: number): Product[
   return pool.slice(0, pageSize).map((p) => ({
     ...p,
     platform: 'temu' as const,
-    aliexpressUrl: `https://www.temu.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressUrl: temuSearchUrl(p.name),
     aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
@@ -160,7 +166,7 @@ function generateMockDeviceAccessories(deviceName: string, pageSize: number): Pr
     ordersCount: 1200,
     evaluateRate: 4.2,
     platform: 'temu' as const,
-    aliexpressUrl: `https://www.temu.com/search?q=${encodeURIComponent(p.name)}`,
+    aliexpressUrl: temuSearchUrl(p.name),
     aliexpressSku: `temu-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
     promotionLink: null,
   }))
