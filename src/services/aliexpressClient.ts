@@ -1,6 +1,7 @@
 import { fetchAliExpressProducts, fetchProductDetails, generateAffiliateLink as fetchAffiliateLink } from '../lib/aliexpress'
 import type { Product, AgeGroup } from '../types'
 import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams, AliExpressCredentials } from './adapterTypes'
+import { getFallbackImage } from '../utils/productImages'
 
 export type Gender = 'male' | 'female' | 'unisex'
 export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
@@ -329,7 +330,12 @@ export async function searchProductsByCategory(
   ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
   console.log('[aliexpressClient] searchProductsByCategory:', { category, gender, pageNo, batchSize: BATCH_SIZE, ageGroup })
-  return aggregateBatch(category, gender, pageNo, ageGroup)
+  try {
+    return await aggregateBatch(category, gender, pageNo, ageGroup)
+  } catch (err) {
+    console.error('[aliexpressClient] searchProductsByCategory failed:', err instanceof Error ? err.message : err)
+    return []
+  }
 }
 
 // ── Smartwatch / Wearable detection ──────────────────────────────────────────
@@ -371,57 +377,67 @@ export async function searchDeviceAccessories(
   _pageSize: number,
   gender?: Gender,
 ): Promise<Product[]> {
-  const lower = deviceName.toLowerCase()
-  const watch = isSmartwatch(deviceName)
-  const isDesktop = lower.includes('desktop') || lower.includes('laptop')
-  const categoryIds = CATEGORY_IDS.accessories
+  try {
+    const lower = deviceName.toLowerCase()
+    const watch = isSmartwatch(deviceName)
+    const isDesktop = lower.includes('desktop') || lower.includes('laptop')
+    const categoryIds = CATEGORY_IDS.accessories
 
-  const queries = watch
-    ? SMARTWATCH_QUERIES(deviceName)
-    : isDesktop
-      ? LAPTOP_QUERIES(deviceName)
-      : DEVICE_ACCESSORY_QUERIES(deviceName)
+    const queries = watch
+      ? SMARTWATCH_QUERIES(deviceName)
+      : isDesktop
+        ? LAPTOP_QUERIES(deviceName)
+        : DEVICE_ACCESSORY_QUERIES(deviceName)
 
-  // Run all 5 query categories in parallel for maximum yield per page
-  const parallelResults = await Promise.all(
-    queries.map((q) => fetchAliExpressProducts(q, pageNo, 30, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
-  )
-
-  const seenIds = new Set<string>()
-  const collected: Product[] = []
-  for (const p of parallelResults.flat()) {
-    const id = p.aliexpressSku
-    if (id && seenIds.has(id)) continue
-    if (id) seenIds.add(id)
-    collected.push(p)
-  }
-
-  // If first page didn't yield enough, try page pageNo+1 across all queries
-  if (collected.length < 50 && pageNo < 10) {
-    const moreResults = await Promise.all(
-      queries.map((q) => fetchAliExpressProducts(q, pageNo + 1, 30, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
+    // Run all 5 query categories in parallel for maximum yield per page
+    const parallelResults = await Promise.all(
+      queries.map((q) => fetchAliExpressProducts(q, pageNo, 30, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
     )
-    for (const p of moreResults.flat()) {
+
+    const seenIds = new Set<string>()
+    const collected: Product[] = []
+    for (const p of parallelResults.flat()) {
       const id = p.aliexpressSku
       if (id && seenIds.has(id)) continue
       if (id) seenIds.add(id)
       collected.push(p)
     }
-  }
 
-  const filtered = collected.filter((p) => {
-    const pName = p.name ?? ''
-    if (APPAREL_REGEX.test(pName)) return false
-    if (FOOTWEAR_REGEX.test(pName)) return false
-    return true
-  })
-  return sortByBestSellers(dedupById(filtered))
+    // If first page didn't yield enough, try page pageNo+1 across all queries
+    if (collected.length < 50 && pageNo < 10) {
+      const moreResults = await Promise.all(
+        queries.map((q) => fetchAliExpressProducts(q, pageNo + 1, 30, gender ?? 'unisex', categoryIds, 'VOLUME_DOWN')),
+      )
+      for (const p of moreResults.flat()) {
+        const id = p.aliexpressSku
+        if (id && seenIds.has(id)) continue
+        if (id) seenIds.add(id)
+        collected.push(p)
+      }
+    }
+
+    const filtered = collected.filter((p) => {
+      const pName = p.name ?? ''
+      if (APPAREL_REGEX.test(pName)) return false
+      if (FOOTWEAR_REGEX.test(pName)) return false
+      return true
+    })
+    return sortByBestSellers(dedupById(filtered))
+  } catch (err) {
+    console.error('[aliexpressClient] searchDeviceAccessories failed:', err instanceof Error ? err.message : err)
+    return []
+  }
 }
 
 // ── Legacy wrappers ────────────────────────────────────────────────────────
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
-  return fetchAliExpressProducts(keywords, pageNo, pageSize)
+  try {
+    return await fetchAliExpressProducts(keywords, pageNo, pageSize)
+  } catch (err) {
+    console.error('[aliexpressClient] searchProducts failed:', err instanceof Error ? err.message : err)
+    return []
+  }
 }
 
 export async function getProductDetails(productIds: string[]): Promise<unknown> {

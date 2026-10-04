@@ -767,6 +767,14 @@ export interface PriceComparisonEntry {
   isLowestPrice: boolean
 }
 
+export interface Offer {
+  platform: ProductPlatform
+  label: string
+  price: number
+  currency?: string
+  url: string
+}
+
 export interface Product {
   name: string
   brand: string
@@ -786,6 +794,8 @@ export interface Product {
   platform?: ProductPlatform
   buyUrl?: string
   priceComparison?: PriceComparisonEntry[]
+  primaryOffer?: Offer | null
+  secondaryOffers?: Offer[]
 }
 
 export interface UserDevice {

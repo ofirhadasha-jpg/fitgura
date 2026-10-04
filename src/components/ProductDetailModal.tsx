@@ -1,59 +1,17 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native'
-import { type Product, type ScannedSizes } from '../types'
+import { type Product, type ScannedSizes, type Offer } from '../types'
 import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
 import { generateAffiliateLink } from '../lib/aliexpress'
 import { logAffiliateClick } from '../services/analyticsService'
 import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/multiPlatformService'
+import { resolveProductImage, getFallbackImage } from '../utils/productImages'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
   const symbol = currency ?? '₪'
   const safePrice = typeof price === 'number' && !isNaN(price) ? price : 0
   return `${symbol}${safePrice.toLocaleString()}`
-}
-
-function normalizeProductImageUrl(imageUrl: string | null | undefined): string | null {
-  if (!imageUrl) return null
-  const value = imageUrl.trim()
-  if (!value) return null
-  if (value.startsWith('//')) return `https:${value}`
-  if (value.startsWith('http://')) return value.replace('http://', 'https://')
-  if (value.startsWith('https://')) return value
-  return null
-}
-
-// Category-based fallback fashion images so the modal never shows a box placeholder.
-const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
-  shirts:   'https://images.pexels.com/photos/14564843/pexels-photo-14564843.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  tops:     'https://images.pexels.com/photos/14564843/pexels-photo-14564843.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  pants:    'https://images.pexels.com/photos/6439226/pexels-photo-6439226.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  jeans:    'https://images.pexels.com/photos/6439226/pexels-photo-6439226.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  bottoms:  'https://images.pexels.com/photos/6439226/pexels-photo-6439226.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  shoes:    'https://images.pexels.com/photos/27516985/pexels-photo-27516985.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  sneakers: 'https://images.pexels.com/photos/27516985/pexels-photo-27516985.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  footwear: 'https://images.pexels.com/photos/27516985/pexels-photo-27516985.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  dresses:  'https://images.pexels.com/photos/39873869/pexels-photo-39873869.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  dress:    'https://images.pexels.com/photos/39873869/pexels-photo-39873869.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  jackets:  'https://images.pexels.com/photos/4398944/pexels-photo-4398944.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  outerwear:'https://images.pexels.com/photos/4398944/pexels-photo-4398944.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  coats:    'https://images.pexels.com/photos/4398944/pexels-photo-4398944.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  accessories: 'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-}
-
-function getFallbackImage(category: string, productName: string): string {
-  const cat = category.toLowerCase().trim()
-  if (CATEGORY_FALLBACK_IMAGES[cat]) return CATEGORY_FALLBACK_IMAGES[cat]
-  // Keyword matching on product name
-  const name = productName.toLowerCase()
-  if (/\b(shirt|tshirt|tee|top|blouse)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.tops
-  if (/\b(pant|jean|trouser|short)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.pants
-  if (/\b(shoe|sneaker|boot|sandal|heel)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.shoes
-  if (/\b(dress|gown|skirt)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.dresses
-  if (/\b(jacket|coat|blazer|parka|windbreaker)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.jackets
-  if (/\b(bag|purse|wallet|belt|hat|cap|scarf|glasses|watch|jewelr)\b/.test(name)) return CATEGORY_FALLBACK_IMAGES.accessories
-  // Default: generic clothing
-  return CATEGORY_FALLBACK_IMAGES.tops
 }
 
 const FOOTWEAR_RE = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
@@ -63,79 +21,6 @@ function isAccessory(productName: string, category: string): boolean {
   if (category === 'accessories') return true
   if (category === 'shoes' || FOOTWEAR_RE.test(productName)) return false
   return DEVICE_RE.test(productName)
-}
-
-// ── Multi-offer helpers ──────────────────────────────────────────────────────
-
-interface OfferEntry {
-  platform: string
-  label: string
-  price: number
-  currency?: string
-  url: string
-}
-
-function buildOffers(product: Product): OfferEntry[] {
-  const offers: OfferEntry[] = []
-
-  // Primary: SHEIN (or product's own platform if it's shein)
-  const sheinComparison = product.priceComparison?.find(
-    (e) => e.platform === 'shein',
-  )
-  if (sheinComparison) {
-    offers.push({
-      platform: 'shein',
-      label: PLATFORM_LABELS.shein,
-      price: sheinComparison.price,
-      currency: sheinComparison.currency,
-      url: sheinComparison.productUrl,
-    })
-  } else if (product.platform === 'shein') {
-    offers.push({
-      platform: 'shein',
-      label: PLATFORM_LABELS.shein,
-      price: product.price,
-      currency: product.currency,
-      url: product.buyUrl || product.aliexpressUrl || '',
-    })
-  }
-
-  // Secondary: AliExpress, Temu, CJ
-  const secondaryPlatforms: string[] = ['aliexpress', 'temu', 'cj']
-  for (const plat of secondaryPlatforms) {
-    const cmp = product.priceComparison?.find((e) => e.platform === plat)
-    if (cmp) {
-      offers.push({
-        platform: plat,
-        label: PLATFORM_LABELS[plat as keyof typeof PLATFORM_LABELS] ?? plat,
-        price: cmp.price,
-        currency: cmp.currency,
-        url: cmp.productUrl,
-      })
-    } else if (product.platform === plat) {
-      offers.push({
-        platform: plat,
-        label: PLATFORM_LABELS[plat as keyof typeof PLATFORM_LABELS] ?? plat,
-        price: product.price,
-        currency: product.currency,
-        url: product.buyUrl || product.aliexpressUrl || '',
-      })
-    }
-  }
-
-  // If no offers were built from priceComparison, use the product itself as primary
-  if (offers.length === 0) {
-    const plat = product.platform ?? 'aliexpress'
-    offers.push({
-      platform: plat,
-      label: PLATFORM_LABELS[plat as keyof typeof PLATFORM_LABELS] ?? plat,
-      price: product.price,
-      currency: product.currency,
-      url: product.buyUrl || product.aliexpressUrl || product.promotionLink || '',
-    })
-  }
-
-  return offers
 }
 
 function openUrl(url: string, product: Product) {
@@ -173,19 +58,18 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   if (!visible) return null
 
-  // Image: use normalized URL; on error, fall back to category-appropriate fashion image (never the box)
-  const rawImageUrl = normalizeProductImageUrl(product.img)
+  // Image: always resolve to a valid URL — never show a box placeholder
   const fallbackUrl = getFallbackImage(category, product.name)
-  const imageUrl = rawImageUrl ?? fallbackUrl
-  const usingFallback = !rawImageUrl
+  const primaryImageUrl = resolveProductImage(product.img, category, product.name)
+  const imageUrl = imgError ? fallbackUrl : primaryImageUrl
 
   const accessory = isAccessory(product.name, category)
   const recommendedSize: SizeRecommendation | null = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
   const hasScanned = scannedSizes != null
 
-  const offers = buildOffers(product)
-  const primaryOffer = offers[0] ?? null
-  const secondaryOffers = offers.slice(1)
+  // Offers: use product.primaryOffer / product.secondaryOffers with defensive fallbacks
+  const primaryOffer: Offer | null = product.primaryOffer ?? null
+  const secondaryOffers: Offer[] = product.secondaryOffers ?? []
 
   async function handlePrimaryBuy() {
     if (!primaryOffer || !primaryOffer.url) return
@@ -210,7 +94,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     onDismiss()
   }
 
-  function handleSecondaryBuy(offer: OfferEntry) {
+  function handleSecondaryBuy(offer: Offer) {
     if (!offer.url) return
     setRedirectingOffer(offer.platform)
     openUrl(offer.url, product)
@@ -226,24 +110,16 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
         </TouchableOpacity>
 
         <ScrollView style={modalStyles.scrollArea} contentContainerStyle={modalStyles.scrollContent}>
+          {/* ── Product image (never shows box placeholder) ── */}
           <View style={modalStyles.imageWrap}>
             <Image
               source={{ uri: imageUrl }}
               style={modalStyles.productImage}
-              onError={() => {
-                if (!usingFallback) {
-                  setImgError(true)
-                }
-              }}
+              onError={() => setImgError(true)}
             />
-            {imgError && usingFallback === false && (
-              <Image
-                source={{ uri: fallbackUrl }}
-                style={[modalStyles.productImage, { position: 'absolute', top: 0, left: 0 }]}
-              />
-            )}
           </View>
 
+          {/* ── Title, brand badge, price tags (PRESERVED) ── */}
           <Text style={modalStyles.productName} numberOfLines={3}>{product.name}</Text>
           <Text style={modalStyles.productBrand}>{product.brand}</Text>
 
@@ -254,6 +130,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
             )}
           </View>
 
+          {/* ── Size recommendation box (PRESERVED — do not touch) ── */}
           {recommendedSize && (
             <View style={modalStyles.recommendationBox}>
               <Text style={modalStyles.recommendationTitle}>🎯 מתאים לך</Text>
@@ -277,6 +154,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
             </View>
           )}
 
+          {/* ── Price comparison table (preserved) ── */}
           {product.priceComparison && product.priceComparison.length > 1 && (
             <View style={modalStyles.comparisonBox}>
               <Text style={modalStyles.comparisonTitle}>השוואת מחירים ומידות</Text>
@@ -315,12 +193,12 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
         {/* ── Multi-offer action area (replaces single green button) ── */}
         <View style={modalStyles.offerArea}>
-          {/* Primary verified offer (SHEIN or first available) */}
+          {/* A. Primary verified offer (SHEIN) */}
           {primaryOffer && (
             <View style={modalStyles.primaryOfferContainer}>
               <View style={modalStyles.primaryOfferInfo}>
                 <Text style={modalStyles.primaryOfferPlatform}>
-                  {PLATFORM_LOGOS[primaryOffer.platform as keyof typeof PLATFORM_LOGOS] ?? '🛍️'}{' '}
+                  {PLATFORM_LOGOS[primaryOffer.platform] ?? '🛍️'}{' '}
                   {primaryOffer.label}
                 </Text>
                 <Text style={modalStyles.primaryOfferPrice}>
@@ -353,15 +231,15 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
             </View>
           )}
 
-          {/* Secondary potential offers (AliExpress / Temu / CJ) */}
-          {secondaryOffers.length > 0 && (
+          {/* B. Secondary potential offers (AliExpress / Temu) */}
+          {secondaryOffers?.length > 0 && (
             <View style={modalStyles.secondaryOffersContainer}>
               <Text style={modalStyles.secondaryOffersHeader}>התאמה משוערת - שווה לבדוק</Text>
-              {secondaryOffers.map((offer, idx) => (
+              {secondaryOffers?.map((offer: Offer, idx: number) => (
                 <View key={idx} style={modalStyles.secondaryOfferRow}>
                   <View style={modalStyles.secondaryOfferInfo}>
                     <Text style={modalStyles.secondaryOfferPlatform}>
-                      {PLATFORM_LOGOS[offer.platform as keyof typeof PLATFORM_LOGOS] ?? '🛍️'}{' '}
+                      {PLATFORM_LOGOS[offer.platform] ?? '🛍️'}{' '}
                       {offer.label}
                     </Text>
                     <Text style={modalStyles.secondaryOfferPrice}>

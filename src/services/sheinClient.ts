@@ -3,6 +3,7 @@ import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, Adapter
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
+import { getFallbackImage } from '../utils/productImages'
 
 // SHEIN adapter — routes through CJ Affiliate's GraphQL API (SHEIN is a CJ advertiser).
 // While CJ approval is pending, returns structured mock data so the feed stays populated.
@@ -55,68 +56,85 @@ const CJ_GRAPHQL_QUERY = `
 async function callCjGraphQL(keywords: string, pageNo: number, pageSize: number): Promise<Product[]> {
   if (!CJ_CREDENTIALS.accessToken || !CJ_CREDENTIALS.advertiserId) return []
 
-  const response = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/cj-affiliate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
-    },
-    body: JSON.stringify({
-      action: 'graphql-search',
-      query: CJ_GRAPHQL_QUERY,
-      variables: {
-        keywords,
-        advertiserId: CJ_CREDENTIALS.advertiserId,
-        page: pageNo,
-        pageSize,
+  try {
+    const response = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/cj-affiliate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
       },
-      accessToken: CJ_CREDENTIALS.accessToken,
-    }),
-  })
+      body: JSON.stringify({
+        action: 'graphql-search',
+        query: CJ_GRAPHQL_QUERY,
+        variables: {
+          keywords,
+          advertiserId: CJ_CREDENTIALS.advertiserId,
+          page: pageNo,
+          pageSize,
+        },
+        accessToken: CJ_CREDENTIALS.accessToken,
+      }),
+    })
 
-  if (!response.ok) return []
+    if (!response.ok) return []
 
-  const result = await response.json() as { products?: Record<string, unknown>[]; error?: string }
-  if (result.error) return []
+    const result = await response.json() as { products?: Record<string, unknown>[]; error?: string }
+    if (result.error) return []
 
-  const raw = result.products ?? []
-  return raw.map((p) => ({
-    name: String(p.title ?? p.name ?? ''),
-    brand: String(p.brand ?? 'SHEIN'),
-    price: Number(p.price ?? 0),
-    originalPrice: null,
-    currency: String(p.currency ?? 'USD'),
-    img: String(p.imageUrl ?? p.img ?? ''),
-    category: String(p.category ?? ''),
-    aliexpressUrl: String(p.productUrl ?? p.link ?? ''),
-    aliexpressSku: String(p.sku ?? p.productId ?? ''),
-    availableSizes: (p.sizes as string[]) ?? [],
-    ordersCount: Number(p.reviewsCount ?? 0) || undefined,
-    evaluateRate: Number(p.rating ?? 0) || undefined,
-    platform: 'shein' as const,
-    promotionLink: null,
-  })) as Product[]
+    const raw = result.products ?? []
+    return raw.map((p) => ({
+      name: String(p.title ?? p.name ?? ''),
+      brand: String(p.brand ?? 'SHEIN'),
+      price: Number(p.price ?? 0),
+      originalPrice: null,
+      currency: String(p.currency ?? 'USD'),
+      img: String(p.imageUrl ?? p.img ?? ''),
+      category: String(p.category ?? ''),
+      aliexpressUrl: String(p.productUrl ?? p.link ?? ''),
+      aliexpressSku: String(p.sku ?? p.productId ?? ''),
+      availableSizes: (p.sizes as string[]) ?? [],
+      ordersCount: Number(p.reviewsCount ?? 0) || undefined,
+      evaluateRate: Number(p.rating ?? 0) || undefined,
+      platform: 'shein' as const,
+      promotionLink: null,
+    })) as Product[]
+  } catch {
+    return []
+  }
 }
 
 // ── Structured mock data ──────────────────────────────────────────────────────
 
+const SHEIN_IMG = {
+  sweater:  'https://images.pexels.com/photos/14564843/pexels-photo-14564843.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  pants:    'https://images.pexels.com/photos/6439226/pexels-photo-6439226.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  dress:    'https://images.pexels.com/photos/39873869/pexels-photo-39873869.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  shirt:    'https://images.pexels.com/photos/14564843/pexels-photo-14564843.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  jeans:    'https://images.pexels.com/photos/6439226/pexels-photo-6439226.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  sneakers: 'https://images.pexels.com/photos/27516985/pexels-photo-27516985.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  sandals:  'https://images.pexels.com/photos/27516985/pexels-photo-27516985.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  bag:      'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  sunglasses: 'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  necklace: 'https://images.pexels.com/photos/19869755/pexels-photo-19869755.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+}
+
 const MOCK_SHEIN_PRODUCTS: Record<string, Omit<Product, 'platform'>[]> = {
   clothing: [
-    { name: 'SHEIN Women Oversized Knit Sweater', brand: 'SHEIN', price: 89, originalPrice: 149, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L', 'XL'], ordersCount: 3200, evaluateRate: 4.6 },
-    { name: 'SHEIN Men Casual Cargo Pants', brand: 'SHEIN', price: 119, originalPrice: 189, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['38', '40', '42', '44'], ordersCount: 1800, evaluateRate: 4.3 },
-    { name: 'SHEIN Women Floral Midi Dress', brand: 'SHEIN', price: 99, originalPrice: 169, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 5400, evaluateRate: 4.7 },
-    { name: 'SHEIN Men Striped Button-Up Shirt', brand: 'SHEIN', price: 79, originalPrice: 129, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['S', 'M', 'L', 'XL', 'XXL'], ordersCount: 2100, evaluateRate: 4.4 },
-    { name: 'SHEIN Women High-Waist Wide Leg Jeans', brand: 'SHEIN', price: 109, originalPrice: 179, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['36', '38', '40', '42', '44'], ordersCount: 4100, evaluateRate: 4.5 },
+    { name: 'SHEIN Women Oversized Knit Sweater', brand: 'SHEIN', price: 89, originalPrice: 149, currency: 'ILS', img: SHEIN_IMG.sweater, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L', 'XL'], ordersCount: 3200, evaluateRate: 4.6 },
+    { name: 'SHEIN Men Casual Cargo Pants', brand: 'SHEIN', price: 119, originalPrice: 189, currency: 'ILS', img: SHEIN_IMG.pants, category: 'clothing', availableSizes: ['38', '40', '42', '44'], ordersCount: 1800, evaluateRate: 4.3 },
+    { name: 'SHEIN Women Floral Midi Dress', brand: 'SHEIN', price: 99, originalPrice: 169, currency: 'ILS', img: SHEIN_IMG.dress, category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 5400, evaluateRate: 4.7 },
+    { name: 'SHEIN Men Striped Button-Up Shirt', brand: 'SHEIN', price: 79, originalPrice: 129, currency: 'ILS', img: SHEIN_IMG.shirt, category: 'clothing', availableSizes: ['S', 'M', 'L', 'XL', 'XXL'], ordersCount: 2100, evaluateRate: 4.4 },
+    { name: 'SHEIN Women High-Waist Wide Leg Jeans', brand: 'SHEIN', price: 109, originalPrice: 179, currency: 'ILS', img: SHEIN_IMG.jeans, category: 'clothing', availableSizes: ['36', '38', '40', '42', '44'], ordersCount: 4100, evaluateRate: 4.5 },
   ],
   shoes: [
-    { name: 'SHEIN Women Chunky Platform Sneakers', brand: 'SHEIN', price: 129, originalPrice: 199, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['36', '37', '38', '39', '40', '41'], ordersCount: 2800, evaluateRate: 4.5 },
-    { name: 'SHEIN Men Minimalist White Sneakers', brand: 'SHEIN', price: 149, originalPrice: 229, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['40', '41', '42', '43', '44', '45'], ordersCount: 1600, evaluateRate: 4.4 },
-    { name: 'SHEIN Women Strappy Sandals', brand: 'SHEIN', price: 89, originalPrice: 139, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 3400, evaluateRate: 4.6 },
+    { name: 'SHEIN Women Chunky Platform Sneakers', brand: 'SHEIN', price: 129, originalPrice: 199, currency: 'ILS', img: SHEIN_IMG.sneakers, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40', '41'], ordersCount: 2800, evaluateRate: 4.5 },
+    { name: 'SHEIN Men Minimalist White Sneakers', brand: 'SHEIN', price: 149, originalPrice: 229, currency: 'ILS', img: SHEIN_IMG.sneakers, category: 'shoes', availableSizes: ['40', '41', '42', '43', '44', '45'], ordersCount: 1600, evaluateRate: 4.4 },
+    { name: 'SHEIN Women Strappy Sandals', brand: 'SHEIN', price: 89, originalPrice: 139, currency: 'ILS', img: SHEIN_IMG.sandals, category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 3400, evaluateRate: 4.6 },
   ],
   accessories: [
-    { name: 'SHEIN Crossbody Mini Bag', brand: 'SHEIN', price: 59, originalPrice: 99, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 5200, evaluateRate: 4.7 },
-    { name: 'SHEIN Oversized Square Sunglasses', brand: 'SHEIN', price: 39, originalPrice: 69, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 8900, evaluateRate: 4.8 },
-    { name: 'SHEIN Gold Layered Necklace Set', brand: 'SHEIN', price: 29, originalPrice: 59, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 12000, evaluateRate: 4.6 },
+    { name: 'SHEIN Crossbody Mini Bag', brand: 'SHEIN', price: 59, originalPrice: 99, currency: 'ILS', img: SHEIN_IMG.bag, category: 'accessories', availableSizes: [], ordersCount: 5200, evaluateRate: 4.7 },
+    { name: 'SHEIN Oversized Square Sunglasses', brand: 'SHEIN', price: 39, originalPrice: 69, currency: 'ILS', img: SHEIN_IMG.sunglasses, category: 'accessories', availableSizes: [], ordersCount: 8900, evaluateRate: 4.8 },
+    { name: 'SHEIN Gold Layered Necklace Set', brand: 'SHEIN', price: 29, originalPrice: 59, currency: 'ILS', img: SHEIN_IMG.necklace, category: 'accessories', availableSizes: [], ordersCount: 12000, evaluateRate: 4.6 },
   ],
 }
 
@@ -163,7 +181,7 @@ function generateMockDeviceAccessories(deviceName: string, pageSize: number): Pr
   ]
   return mockAccessories.slice(0, pageSize).map((p) => ({
     ...p,
-    img: '',
+    img: getFallbackImage('accessories', p.name),
     availableSizes: [],
     ordersCount: 800,
     evaluateRate: 4.3,
@@ -201,7 +219,6 @@ export async function searchProductsByCategory(
 ): Promise<Product[]> {
   const keywords = buildKeywords(category, gender)
 
-  // Try real CJ GraphQL first
   try {
     const products = await callCjGraphQL(keywords, pageNo, Math.min(pageSize, 40))
     if (products.length > 0) return withSkimlinks(products)
@@ -209,8 +226,11 @@ export async function searchProductsByCategory(
     // CJ not ready — fall through to mock
   }
 
-  // Fallback to structured mock data
-  return withSkimlinks(generateMockProducts(category, gender, pageSize))
+  try {
+    return withSkimlinks(generateMockProducts(category, gender, pageSize))
+  } catch {
+    return []
+  }
 }
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
@@ -221,7 +241,11 @@ export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50
     // fall through
   }
 
-  return withSkimlinks(generateMockQueryProducts(keywords, pageSize))
+  try {
+    return withSkimlinks(generateMockQueryProducts(keywords, pageSize))
+  } catch {
+    return []
+  }
 }
 
 export async function searchDeviceAccessories(
@@ -237,7 +261,11 @@ export async function searchDeviceAccessories(
     // fall through
   }
 
-  return withSkimlinks(generateMockDeviceAccessories(deviceName, pageSize))
+  try {
+    return withSkimlinks(generateMockDeviceAccessories(deviceName, pageSize))
+  } catch {
+    return []
+  }
 }
 
 // ── Adapter interface implementation ──────────────────────────────────────────

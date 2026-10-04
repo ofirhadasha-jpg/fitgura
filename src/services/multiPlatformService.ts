@@ -1,4 +1,4 @@
-import type { Product, PriceComparisonEntry, ProductPlatform } from '../types'
+import type { Product, PriceComparisonEntry, ProductPlatform, Offer } from '../types'
 import type { AffiliateAdapter } from './adapterTypes'
 import {
   aliExpressAdapter,
@@ -27,6 +27,8 @@ import {
   searchDeviceAccessories as cjSearchDeviceAccessories,
 } from './cjClient'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
+import { wrapWithSkimlinks } from '../utils/skimlinks'
+import { getFallbackImage } from '../utils/productImages'
 
 // ── Adapter registry ─────────────────────────────────────────────────────────
 // All four affiliate adapters are registered here. The aggregator queries them
@@ -100,8 +102,10 @@ const SIMILARITY_THRESHOLD = 0.6
 // ── Product clustering ────────────────────────────────────────────────────
 
 function platformUrl(p: Product): string {
-  if (p.aliexpressUrl) return p.aliexpressUrl
   const platform = p.platform ?? 'aliexpress'
+  // Prefer buyUrl (already Skimlinks-wrapped for SHEIN/Temu) over aliexpressUrl
+  if (p.buyUrl) return p.buyUrl
+  if (p.aliexpressUrl) return p.aliexpressUrl
   if (platform === 'shein') return `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`
   if (platform === 'temu') return `https://www.temu.com/search?q=${encodeURIComponent(p.name)}`
   return `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(p.name)}`
@@ -117,11 +121,62 @@ function buildPriceComparison(group: Product[]): PriceComparisonEntry[] {
     sizesAvailable: p.availableSizes ?? [],
     isLowestPrice: false,
   }))
-  const minPrice = Math.min(...entries.map((e) => e.price))
+  const minPrice = entries.length > 0 ? Math.min(...entries.map((e) => e.price)) : 0
   entries.forEach((e) => {
     e.isLowestPrice = e.price === minPrice
   })
   return entries.sort((a, b) => a.price - b.price)
+}
+
+// ── Offer builder: constructs primaryOffer + secondaryOffers for a product ──
+
+function buildOffersForProduct(representative: Product, group: Product[]): {
+  primaryOffer: Offer | null
+  secondaryOffers: Offer[]
+} {
+  const offers: Offer[] = []
+
+  // SHEIN is the primary verified source — add it first
+  const sheinProduct = group.find((p) => p.platform === 'shein')
+  if (sheinProduct) {
+    offers.push({
+      platform: 'shein',
+      label: PLATFORM_LABELS.shein,
+      price: sheinProduct.price,
+      currency: sheinProduct.currency,
+      url: platformUrl(sheinProduct),
+    })
+  }
+
+  // Secondary: AliExpress, Temu, CJ (in that order)
+  for (const plat of ['aliexpress', 'temu', 'cj'] as ProductPlatform[]) {
+    const p = group.find((item) => (item.platform ?? 'aliexpress') === plat)
+    if (p) {
+      offers.push({
+        platform: plat,
+        label: PLATFORM_LABELS[plat],
+        price: p.price,
+        currency: p.currency,
+        url: platformUrl(p),
+      })
+    }
+  }
+
+  // If no offers from group, use the representative product itself
+  if (offers.length === 0) {
+    const plat = representative.platform ?? 'aliexpress'
+    offers.push({
+      platform: plat,
+      label: PLATFORM_LABELS[plat] ?? plat,
+      price: representative.price,
+      currency: representative.currency,
+      url: platformUrl(representative),
+    })
+  }
+
+  const primaryOffer = offers[0] ?? null
+  const secondaryOffers = offers.slice(1)
+  return { primaryOffer, secondaryOffers }
 }
 
 function clusterProducts(products: Product[]): Product[] {
@@ -164,7 +219,42 @@ function clusterProducts(products: Product[]): Product[] {
     representative.price = sorted[0].price
     representative.originalPrice = sorted[0].originalPrice
     representative.currency = sorted[0].currency
+    // Build primary/secondary offers from the cluster
+    const { primaryOffer, secondaryOffers } = buildOffersForProduct(representative, cluster)
+    representative.primaryOffer = primaryOffer
+    representative.secondaryOffers = secondaryOffers
     return representative
+  })
+}
+
+// Ensures every product has primaryOffer and secondaryOffers populated.
+// Products that already have offers (from clustering) are left intact.
+// Single-platform products get a primary offer built from their own data.
+function ensureOffers(products: Product[]): Product[] {
+  return products.map((p) => {
+    if (p.primaryOffer) return p
+    const plat = p.platform ?? 'aliexpress'
+    const label = PLATFORM_LABELS[plat] ?? plat
+    const url = platformUrl(p)
+    return {
+      ...p,
+      primaryOffer: {
+        platform: plat,
+        label,
+        price: p.price,
+        currency: p.currency,
+        url,
+      },
+      secondaryOffers: [],
+    }
+  })
+}
+
+// Also ensure images are never empty — fill with category fallback if missing
+function ensureImages(products: Product[]): Product[] {
+  return products.map((p) => {
+    if (p.img && p.img.trim()) return p
+    return { ...p, img: getFallbackImage(p.category, p.name) }
   })
 }
 
@@ -181,9 +271,9 @@ export async function searchAllPlatformsByCategory(
   maxPrice = 1000,
 ): Promise<Product[]> {
   const results = await Promise.allSettled([
-    aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     sheinSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     temuSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
+    aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     cjSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
   ])
 
@@ -196,7 +286,18 @@ export async function searchAllPlatformsByCategory(
   const priceFiltered = filtered.filter((p) => filterByPrice(p, minPrice, maxPrice))
   const deduped = dedupByName(priceFiltered)
   const clustered = clusterProducts(deduped)
-  return sortByBestSellers(clustered)
+  // Sort so SHEIN products appear at the top, then by best-seller score
+  const sheinFirst = [...clustered].sort((a, b) => {
+    const aShein = a.platform === 'shein' ? 0 : 1
+    const bShein = b.platform === 'shein' ? 0 : 1
+    if (aShein !== bShein) return aShein - bShein
+    const salesA = a.ordersCount ?? a.volume ?? 0
+    const salesB = b.ordersCount ?? b.volume ?? 0
+    const ratingA = a.evaluateRate ?? 0
+    const ratingB = b.evaluateRate ?? 0
+    return (salesB * 0.6 + ratingB * 0.4) - (salesA * 0.6 + ratingA * 0.4)
+  })
+  return ensureImages(ensureOffers(sheinFirst))
 }
 
 export async function searchAllPlatformsByQuery(
@@ -207,9 +308,9 @@ export async function searchAllPlatformsByQuery(
   maxPrice = 1000,
 ): Promise<Product[]> {
   const results = await Promise.allSettled([
-    aliSearchProducts(keywords, pageNo, pageSize),
     sheinSearchProducts(keywords, pageNo, pageSize),
     temuSearchProducts(keywords, pageNo, pageSize),
+    aliSearchProducts(keywords, pageNo, pageSize),
     cjSearchProducts(keywords, pageNo, pageSize),
   ])
 
@@ -221,7 +322,15 @@ export async function searchAllPlatformsByQuery(
   const priceFiltered = merged.filter((p) => filterByPrice(p, minPrice, maxPrice))
   const deduped = dedupByName(priceFiltered)
   const clustered = clusterProducts(deduped)
-  return sortByBestSellers(clustered)
+  const sheinFirst = [...clustered].sort((a, b) => {
+    const aShein = a.platform === 'shein' ? 0 : 1
+    const bShein = b.platform === 'shein' ? 0 : 1
+    if (aShein !== bShein) return aShein - bShein
+    const salesA = a.ordersCount ?? a.volume ?? 0
+    const salesB = b.ordersCount ?? b.volume ?? 0
+    return salesB - salesA
+  })
+  return ensureImages(ensureOffers(sheinFirst))
 }
 
 export async function searchAllPlatformDeviceAccessories(
@@ -231,9 +340,9 @@ export async function searchAllPlatformDeviceAccessories(
   gender?: Gender,
 ): Promise<Product[]> {
   const results = await Promise.allSettled([
-    aliSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     sheinSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     temuSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
+    aliSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     cjSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
   ])
 
@@ -244,7 +353,7 @@ export async function searchAllPlatformDeviceAccessories(
 
   const deduped = dedupByName(merged)
   const clustered = clusterProducts(deduped)
-  return sortByBestSellers(clustered)
+  return ensureImages(ensureOffers(sortByBestSellers(clustered)))
 }
 
 // ── Platform display helpers (shared by UI components) ────────────────────

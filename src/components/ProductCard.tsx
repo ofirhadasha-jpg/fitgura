@@ -5,6 +5,7 @@ import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/mu
 import { calculateDetailedRecommendation, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
 import { ProductDetailModal } from './ProductDetailModal'
+import { resolveProductImage } from '../utils/productImages'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
   const symbol = currency ?? '₪'
@@ -21,6 +22,8 @@ function normalizeProductImageUrl(imageUrl: string | null | undefined): string |
   if (value.startsWith('https://')) return value
   return null
 }
+
+// Kept for the onError fallback logic below
 
 const SUIT_KEYWORDS = /\b(suit|blazer set|two.?piece|tracksuit|set|חליפה|סט|סט חליפה)\b/i
 const SHIRT_KEYWORDS = /\b(shirt|t-?shirt|hoodie|sweater|jacket|coat|polo|tank|top|blouse|חולצה|ג'?קט|מעיל|סוודר|בגד עליון)\b/i
@@ -53,7 +56,9 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  const imageUrl = normalizeProductImageUrl(product.img)
+  const rawImageUrl = normalizeProductImageUrl(product.img)
+  const fallbackUrl = resolveProductImage(product.img, category, product.name)
+  const imageUrl = rawImageUrl ?? fallbackUrl
 
   const effectiveCategory = detectEffectiveCategory(product.name, category)
   const isDeviceAccessory = effectiveCategory === 'accessories'
@@ -78,10 +83,12 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   return (
     <View style={cardStyles.productCard} className="product-card">
       <View style={cardStyles.productImageWrap}>
-        {imgError || !imageUrl ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E0' }}>
-            <Text style={{ fontSize: 36 }}>📦</Text>
-          </View>
+        {imgError ? (
+          <Image
+            source={{ uri: fallbackUrl }}
+            style={cardStyles.productImage}
+            onError={() => {}}
+          />
         ) : (
           <Image
             source={{ uri: imageUrl }}
