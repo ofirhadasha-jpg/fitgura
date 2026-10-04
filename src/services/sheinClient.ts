@@ -3,11 +3,12 @@ import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, Adapter
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
+import { getImagesForKeyword } from '../utils/productImages'
 
 // SHEIN adapter — routes through CJ Affiliate's GraphQL API (SHEIN is a CJ advertiser).
-// While CJ approval is pending, returns structured mock data so the feed stays populated.
-// Once CJ credentials are configured and the advertiser relationship is approved,
-// the real CJ GraphQL queries will return live SHEIN products.
+// While CJ approval is pending, returns keyword-dynamic mock data with real product
+// images so the feed shows realistic results. Once CJ credentials are configured,
+// real CJ GraphQL queries will return live SHEIN products.
 
 export const CJ_CREDENTIALS: CJCredentials = {
   accessToken: '',
@@ -98,88 +99,135 @@ async function callCjGraphQL(keywords: string, pageNo: number, pageSize: number)
   })) as Product[]
 }
 
-// ── Structured mock data ──────────────────────────────────────────────────────
+// ── Dynamic mock product generation ───────────────────────────────────────────
 
-const MOCK_SHEIN_PRODUCTS: Record<string, Omit<Product, 'platform'>[]> = {
+let mockIdCounter = 100000
+
+function nextSheinId(): string {
+  return String(++mockIdCounter)
+}
+
+function detectCategoryFromKeywords(keywords: string): FeedCategory {
+  const lower = keywords.toLowerCase()
+  if (/shoe|sneaker|boot|sandal|heel|footwear/i.test(lower)) return 'shoes'
+  if (/bag|sunglass|necklace|accessory|jewel|ring|watch/i.test(lower)) return 'accessories'
+  return 'clothing'
+}
+
+function inferGenderFromKeywords(keywords: string): Gender | null {
+  const lower = keywords.toLowerCase()
+  if (/women|woman|female|girl|ladies/i.test(lower)) return 'female'
+  if (/men|man|male|boy/i.test(lower)) return 'male'
+  return null
+}
+
+interface MockTemplate {
+  name: (kw: string, gender: Gender) => string
+  basePrice: number
+  discount: number
+  sizes: string[]
+  orders: number
+  rating: number
+}
+
+const MOCK_TEMPLATES: Record<FeedCategory, MockTemplate[]> = {
   clothing: [
-    { name: 'SHEIN Women Oversized Knit Sweater', brand: 'SHEIN', price: 89, originalPrice: 149, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L', 'XL'], ordersCount: 3200, evaluateRate: 4.6 },
-    { name: 'SHEIN Men Casual Cargo Pants', brand: 'SHEIN', price: 119, originalPrice: 189, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['38', '40', '42', '44'], ordersCount: 1800, evaluateRate: 4.3 },
-    { name: 'SHEIN Women Floral Midi Dress', brand: 'SHEIN', price: 99, originalPrice: 169, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['XS', 'S', 'M', 'L'], ordersCount: 5400, evaluateRate: 4.7 },
-    { name: 'SHEIN Men Striped Button-Up Shirt', brand: 'SHEIN', price: 79, originalPrice: 129, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['S', 'M', 'L', 'XL', 'XXL'], ordersCount: 2100, evaluateRate: 4.4 },
-    { name: 'SHEIN Women High-Waist Wide Leg Jeans', brand: 'SHEIN', price: 109, originalPrice: 179, currency: 'ILS', img: '', category: 'clothing', availableSizes: ['36', '38', '40', '42', '44'], ordersCount: 4100, evaluateRate: 4.5 },
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Casual Top`.trim(), basePrice: 79, discount: 139, sizes: ['XS', 'S', 'M', 'L', 'XL'], orders: 3200, rating: 4.5 },
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Slim Fit`.trim(), basePrice: 69, discount: 119, sizes: ['S', 'M', 'L', 'XL'], orders: 2100, rating: 4.3 },
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} Premium ${kw}`.trim(), basePrice: 99, discount: 169, sizes: ['XS', 'S', 'M', 'L', 'XL'], orders: 5400, rating: 4.7 },
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Oversized`.trim(), basePrice: 89, discount: 149, sizes: ['S', 'M', 'L', 'XL', 'XXL'], orders: 4100, rating: 4.5 },
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Basic Essential`.trim(), basePrice: 59, discount: 99, sizes: ['XS', 'S', 'M', 'L'], orders: 8900, rating: 4.6 },
   ],
   shoes: [
-    { name: 'SHEIN Women Chunky Platform Sneakers', brand: 'SHEIN', price: 129, originalPrice: 199, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['36', '37', '38', '39', '40', '41'], ordersCount: 2800, evaluateRate: 4.5 },
-    { name: 'SHEIN Men Minimalist White Sneakers', brand: 'SHEIN', price: 149, originalPrice: 229, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['40', '41', '42', '43', '44', '45'], ordersCount: 1600, evaluateRate: 4.4 },
-    { name: 'SHEIN Women Strappy Sandals', brand: 'SHEIN', price: 89, originalPrice: 139, currency: 'ILS', img: '', category: 'shoes', availableSizes: ['36', '37', '38', '39', '40'], ordersCount: 3400, evaluateRate: 4.6 },
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Sneakers`.trim(), basePrice: 129, discount: 199, sizes: g === 'male' ? ['40', '41', '42', '43', '44', '45'] : ['36', '37', '38', '39', '40', '41'], orders: 2800, rating: 4.5 },
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Casual Shoes`.trim(), basePrice: 99, discount: 169, sizes: g === 'male' ? ['40', '41', '42', '43', '44'] : ['36', '37', '38', '39', '40'], orders: 1600, rating: 4.4 },
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw} Comfort`.trim(), basePrice: 89, discount: 149, sizes: g === 'male' ? ['41', '42', '43', '44'] : ['36', '37', '38', '39'], orders: 3400, rating: 4.6 },
   ],
   accessories: [
-    { name: 'SHEIN Crossbody Mini Bag', brand: 'SHEIN', price: 59, originalPrice: 99, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 5200, evaluateRate: 4.7 },
-    { name: 'SHEIN Oversized Square Sunglasses', brand: 'SHEIN', price: 39, originalPrice: 69, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 8900, evaluateRate: 4.8 },
-    { name: 'SHEIN Gold Layered Necklace Set', brand: 'SHEIN', price: 29, originalPrice: 59, currency: 'ILS', img: '', category: 'accessories', availableSizes: [], ordersCount: 12000, evaluateRate: 4.6 },
+    { name: (kw) => `SHEIN ${kw} Premium Quality`.trim(), basePrice: 59, discount: 99, sizes: [], orders: 5200, rating: 4.7 },
+    { name: (kw) => `SHEIN ${kw} Minimalist Design`.trim(), basePrice: 39, discount: 69, sizes: [], orders: 8900, rating: 4.8 },
+    { name: (kw) => `SHEIN ${kw} Trending Style`.trim(), basePrice: 29, discount: 59, sizes: [], orders: 12000, rating: 4.6 },
+  ],
+  all: [
+    { name: (kw, g) => `SHEIN ${g === 'male' ? 'Men' : g === 'female' ? 'Women' : ''} ${kw}`.trim(), basePrice: 79, discount: 129, sizes: ['S', 'M', 'L'], orders: 3500, rating: 4.5 },
   ],
 }
 
-function generateMockProducts(category: FeedCategory, gender: Gender, pageSize: number): Product[] {
-  const pool = MOCK_SHEIN_PRODUCTS[category] ?? MOCK_SHEIN_PRODUCTS.clothing
-  const genderFiltered = gender === 'unisex'
-    ? pool
-    : pool.filter((p) => {
-        if (gender === 'female') return /women|floral|midi|sandals|sunglasses|necklace|bag/i.test(p.name)
-        if (gender === 'male') return /men|cargo|button-up/i.test(p.name)
-        return true
-      })
+function sheinProductUrl(name: string, id: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return `https://www.shein.com/${slug}-p-${id}.html`
+}
 
-  return genderFiltered.slice(0, pageSize).map((p) => ({
-    ...p,
-    platform: 'shein' as const,
-    aliexpressUrl: `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`,
-    aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
-    promotionLink: null,
-  }))
+function generateMockProducts(category: FeedCategory, gender: Gender, pageSize: number, keywords?: string): Product[] {
+  const searchKw = keywords ?? SHEIN_CATEGORIES[category] ?? 'fashion'
+  const effectiveGender = gender === 'unisex' ? (inferGenderFromKeywords(searchKw) ?? 'unisex') : gender
+  const templates = MOCK_TEMPLATES[category] ?? MOCK_TEMPLATES.clothing
+  const images = getImagesForKeyword(searchKw, templates.length)
+  const count = Math.min(pageSize, templates.length)
+
+  return Array.from({ length: count }, (_, i) => {
+    const tpl = templates[i % templates.length]
+    const id = nextSheinId()
+    const name = tpl.name(searchKw, effectiveGender)
+    return {
+      name,
+      brand: 'SHEIN',
+      price: tpl.basePrice,
+      originalPrice: tpl.discount,
+      currency: 'ILS',
+      img: images[i % images.length],
+      category,
+      aliexpressUrl: sheinProductUrl(name, id),
+      aliexpressSku: `shein-${id}`,
+      availableSizes: tpl.sizes,
+      ordersCount: tpl.orders,
+      evaluateRate: tpl.rating,
+      platform: 'shein' as const,
+      promotionLink: null,
+    } as Product
+  })
 }
 
 function generateMockQueryProducts(keywords: string, pageSize: number): Product[] {
-  const lower = keywords.toLowerCase()
-  let category: FeedCategory = 'clothing'
-  if (/shoe|sneaker|boot|sandal|heel/i.test(lower)) category = 'shoes'
-  else if (/bag|sunglass|necklace|accessory|jewel/i.test(lower)) category = 'accessories'
-
-  const pool = MOCK_SHEIN_PRODUCTS[category] ?? MOCK_SHEIN_PRODUCTS.clothing
-  return pool.slice(0, pageSize).map((p) => ({
-    ...p,
-    platform: 'shein' as const,
-    aliexpressUrl: `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`,
-    aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
-    promotionLink: null,
-  }))
+  const category = detectCategoryFromKeywords(keywords)
+  const gender = inferGenderFromKeywords(keywords) ?? 'unisex'
+  return generateMockProducts(category, gender, pageSize, keywords)
 }
 
 function generateMockDeviceAccessories(deviceName: string, pageSize: number): Product[] {
+  const searchKw = `${deviceName} case`
+  const images = getImagesForKeyword(searchKw, 3)
   const mockAccessories = [
-    { name: `SHEIN ${deviceName} Phone Case Minimalist`, brand: 'SHEIN', price: 49, originalPrice: 79, currency: 'ILS', category: 'accessories' },
-    { name: `SHEIN ${deviceName} Screen Protector Kit`, brand: 'SHEIN', price: 29, originalPrice: 49, currency: 'ILS', category: 'accessories' },
-    { name: `SHEIN ${deviceName} Leather Wallet Strap`, brand: 'SHEIN', price: 59, originalPrice: 99, currency: 'ILS', category: 'accessories' },
+    { name: `SHEIN ${deviceName} Premium Phone Case`, basePrice: 49, discount: 79 },
+    { name: `SHEIN ${deviceName} Screen Protector Kit`, basePrice: 29, discount: 49 },
+    { name: `SHEIN ${deviceName} Leather Wallet Strap`, basePrice: 59, discount: 99 },
   ]
-  return mockAccessories.slice(0, pageSize).map((p) => ({
-    ...p,
-    img: '',
-    availableSizes: [],
-    ordersCount: 800,
-    evaluateRate: 4.3,
-    platform: 'shein' as const,
-    aliexpressUrl: `https://www.shein.com/search?q=${encodeURIComponent(p.name)}`,
-    aliexpressSku: `shein-mock-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
-    promotionLink: null,
-  }))
+  return mockAccessories.slice(0, pageSize).map((p, i) => {
+    const id = nextSheinId()
+    return {
+      name: p.name,
+      brand: 'SHEIN',
+      price: p.basePrice,
+      originalPrice: p.discount,
+      currency: 'ILS',
+      img: images[i % images.length],
+      category: 'accessories',
+      aliexpressUrl: sheinProductUrl(p.name, id),
+      aliexpressSku: `shein-${id}`,
+      availableSizes: [],
+      ordersCount: 800,
+      evaluateRate: 4.3,
+      platform: 'shein' as const,
+      promotionLink: null,
+    } as Product
+  })
 }
 
 // ── Keyword builder ───────────────────────────────────────────────────────────
 
-function buildKeywords(category: FeedCategory, gender: Gender): string {
-  const categoryWord = SHEIN_CATEGORIES[category] ?? 'Fashion'
-  const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
-  return [genderWord, categoryWord].filter(Boolean).join(' ')
+function buildKeywords(category: FeedCategory, gender: Gender, extraKeywords?: string): string {
+  const parts = [gender === 'male' ? 'men' : gender === 'female' ? 'women' : '', SHEIN_CATEGORIES[category] ?? 'Fashion', extraKeywords]
+  return parts.filter(Boolean).join(' ')
 }
 
 function withSkimlinks(products: Product[]): Product[] {
@@ -196,12 +244,11 @@ export async function searchProductsByCategory(
   gender: Gender,
   pageNo: number,
   pageSize: number,
-  _extraKeywords?: string,
+  extraKeywords?: string,
   _ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
-  const keywords = buildKeywords(category, gender)
+  const keywords = buildKeywords(category, gender, extraKeywords)
 
-  // Try real CJ GraphQL first
   try {
     const products = await callCjGraphQL(keywords, pageNo, Math.min(pageSize, 40))
     if (products.length > 0) return withSkimlinks(products)
@@ -209,8 +256,7 @@ export async function searchProductsByCategory(
     // CJ not ready — fall through to mock
   }
 
-  // Fallback to structured mock data
-  return withSkimlinks(generateMockProducts(category, gender, pageSize))
+  return withSkimlinks(generateMockProducts(category, gender, pageSize, extraKeywords))
 }
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {

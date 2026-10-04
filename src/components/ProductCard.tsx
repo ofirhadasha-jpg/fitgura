@@ -110,6 +110,11 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
             <Text style={cardStyles.multiStoreBadgeText}>זמין ב-{storeCount} חנויות</Text>
           </View>
         )}
+        {product.isBestBuy && hasMultiStore && (
+          <View style={cardStyles.bestBuyBadge}>
+            <Text style={cardStyles.bestBuyBadgeText}>★ Best Buy</Text>
+          </View>
+        )}
         {recommendedSize && showSizeRecommendation && (
           <View style={cardStyles.sizeBadge}>
             <Text style={cardStyles.sizeBadgeText}>מידה: {recommendedSize.pills.find(p => p.isPrimary)?.value ?? recommendedSize.size}</Text>
@@ -249,6 +254,8 @@ const cardStyles = StyleSheet.create({
   multiStoreBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
   lowestPriceChip: { backgroundColor: '#E0FFF0', borderRadius: 8, paddingVertical: 2, paddingHorizontal: 6, alignSelf: 'flex-start', marginTop: 3, borderWidth: 1, borderColor: '#00CC52' } as React.CSSProperties,
   lowestPriceText: { fontSize: 10, fontWeight: '700', color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  bestBuyBadge: { position: 'absolute', top: 42, right: 8, backgroundColor: '#FFE566', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  bestBuyBadgeText: { fontSize: 10, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   platformIconRow: { flexDirection: 'row', gap: 4, marginTop: 4 },
   platformIconDot: { width: 20, height: 20, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1A1A1A' } as React.CSSProperties,
   platformIconEmoji: { fontSize: 10 },
