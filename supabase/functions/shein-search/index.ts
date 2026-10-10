@@ -59,6 +59,61 @@ function buildPdpUrl(goodsId: string, goodsUrlName: string, goodsName: string): 
   return `https://us.shein.com/${slug}-p-${goodsId}.html`;
 }
 
+function normalizeRawProduct(value: unknown): RawProduct | null {
+  if (!value || typeof value !== "object") return null;
+  const source = value as Record<string, unknown>;
+  const goodsId = String(source.goods_id ?? source.goodsId ?? source.product_id ?? source.productId ?? "").trim();
+  if (!goodsId) return null;
+
+  const priceValue = source.retail_price ?? source.retailPrice ?? null;
+  const salePriceValue = source.salePrice ?? source.sale_price ?? null;
+  const unitPriceValue = source.unit_price ?? source.unitPrice ?? null;
+  const toPriceObject = (price: unknown): { amountWithSymbol: string } | null => {
+    if (typeof price === "string" || typeof price === "number") {
+      return { amountWithSymbol: String(price) };
+    }
+    if (price && typeof price === "object") {
+      const amount = (price as Record<string, unknown>).amountWithSymbol ?? (price as Record<string, unknown>).amount;
+      return amount == null ? null : { amountWithSymbol: String(amount) };
+    }
+    return null;
+  };
+
+  return {
+    goods_id: goodsId,
+    goods_name: String(source.goods_name ?? source.goodsName ?? source.title ?? "").trim(),
+    goods_url_name: String(source.goods_url_name ?? source.goodsUrlName ?? source.url_name ?? "").trim(),
+    goods_img: String(source.goods_img ?? source.goodsImg ?? source.image_url ?? source.imageUrl ?? ""),
+    goods_thumb: String(source.goods_thumb ?? source.goodsThumb ?? source.thumbnail ?? ""),
+    retail_price: toPriceObject(priceValue),
+    salePrice: toPriceObject(salePriceValue),
+    unit_price: toPriceObject(unitPriceValue),
+    brand: source.brand == null ? null : String(source.brand),
+    cat_name: source.cat_name == null ? null : String(source.cat_name),
+    attr_value_list: Array.isArray(source.attr_value_list) ? source.attr_value_list as { attr_value: string }[] : null,
+  };
+}
+
+function extractRawProducts(data: Record<string, unknown>): RawProduct[] {
+  const nested = data.data && typeof data.data === "object" ? data.data as Record<string, unknown> : null;
+  const candidates = [
+    data.products,
+    data.goods_list,
+    data.goodsList,
+    nested?.products,
+    nested?.goods_list,
+    nested?.goodsList,
+    nested?.goods,
+  ];
+
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue;
+    const products = candidate.map(normalizeRawProduct).filter((product): product is RawProduct => product !== null);
+    if (products.length > 0) return products;
+  }
+  return [];
+}
+
 function normalizeImage(img: string | undefined): string {
   if (!img) return "";
   if (img.startsWith("//")) return `https:${img}`;
@@ -94,9 +149,7 @@ async function searchViaApi(keywords: string, page: number, pageSize: number): P
     return [];
   }
 
-  const products = (data.products ?? data.goods_list ?? []) as RawProduct[];
-  if (!Array.isArray(products)) return [];
-  return products;
+  return extractRawProducts(data);
 }
 
 // ── Strategy 2: HTML scraping ───────────────────────────────────────────────
