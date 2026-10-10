@@ -4,7 +4,7 @@ import { type Product, type ScannedSizes, type Offer, type PriceComparisonEntry 
 import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
 import { logAffiliateClick } from '../services/analyticsService'
-import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/multiPlatformService'
+import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS, isDirectPdpUrl } from '../services/multiPlatformService'
 import { resolveProductImage, getFallbackImage } from '../utils/productImages'
 import { searchAllVisualMatches, getMissingPlatforms, getFallbackSearchUrl } from '../services/imageSearch'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
@@ -97,26 +97,33 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   // Use the service-built primaryOffer when available — it is the source of
   // truth for platform-to-URL binding. Only construct a fallback if it's
-  // missing. For SHEIN products, never fall back to aliexpressUrl.
+  // missing AND the URL is a verified direct product page. We never fall back
+  // to generic search/category URLs.
   const primaryOffer: Offer | null = product.primaryOffer ?? (() => {
     if (productPlatform === 'shein') {
       const sheinUrl = product.buyUrl ?? ''
-      return sheinUrl ? {
-        platform: 'shein' as ProductPlatform,
-        label: PLATFORM_LABELS.shein,
-        price: product.price,
-        currency: product.currency ?? '₪',
-        url: sheinUrl,
-      } : null
+      if (sheinUrl && isDirectPdpUrl(sheinUrl)) {
+        return {
+          platform: 'shein' as ProductPlatform,
+          label: PLATFORM_LABELS.shein,
+          price: product.price,
+          currency: product.currency ?? '₪',
+          url: sheinUrl,
+        }
+      }
+      return null
     }
     const fallbackUrl = product.buyUrl ?? product.aliexpressUrl ?? ''
-    return fallbackUrl ? {
-      platform: productPlatform,
-      label: PLATFORM_LABELS[productPlatform],
-      price: product.price,
-      currency: product.currency ?? '₪',
-      url: fallbackUrl,
-    } : null
+    if (fallbackUrl && isDirectPdpUrl(fallbackUrl)) {
+      return {
+        platform: productPlatform,
+        label: PLATFORM_LABELS[productPlatform],
+        price: product.price,
+        currency: product.currency ?? '₪',
+        url: fallbackUrl,
+      }
+    }
+    return null
   })()
   const primaryUrl = primaryOffer?.url ?? ''
   const secondaryOffers: Offer[] = exactMatches.map((match) => ({
@@ -144,8 +151,13 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   function handlePrimaryBuy() {
     if (!primaryOffer || !primaryOffer.url) return
+    if (!isDirectPdpUrl(primaryOffer.url)) {
+      console.warn('[BUY BUTTON] Rejected non-PDP URL:', primaryOffer.url)
+      return
+    }
     const alreadyWrapped = primaryOffer.url.includes('go.skimlinks') || primaryOffer.url.includes('go.skimresources') || primaryOffer.url.includes('go.redirecting')
     const finalUrl = alreadyWrapped ? primaryOffer.url : wrapWithSkimlinks(primaryOffer.url)
+    console.log('[BUY BUTTON] Opening Exact PDP:', primaryOffer.url)
     openUrl(finalUrl, product)
     onDismiss()
   }

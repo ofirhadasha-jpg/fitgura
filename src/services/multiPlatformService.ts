@@ -116,6 +116,38 @@ function normalizeNameKey(title: string): string {
   return normalizeTitle(title).sort().join(' ')
 }
 
+// ── PDP validation ───────────────────────────────────────────────────────
+// A direct Product Detail Page URL contains a specific product ID, not a
+// generic search or category page. This prevents the buy button from ever
+// sending users to a search results page.
+
+const SHEIN_PDP_RE = /-p-\d+\.html/i
+const ALIEXPRESS_PDP_RE = /\/item\/|product\/[a-z0-9]+$/i
+const TEMU_PDP_RE = /\/goods\/|\/p\/[a-z0-9_-]+\.html/i
+
+export function isDirectPdpUrl(url: string): boolean {
+  if (!url) return false
+  // Skimlinks-wrapped URLs contain the real URL as a query param
+  const skimlinksMatch = url.match(/[?&]url=([^&]+)/i)
+  const rawUrl = skimlinksMatch ? decodeURIComponent(skimlinksMatch[1]) : url
+  if (SHEIN_PDP_RE.test(rawUrl)) return true
+  if (ALIEXPRESS_PDP_RE.test(rawUrl)) return true
+  if (TEMU_PDP_RE.test(rawUrl)) return true
+  return false
+}
+
+function filterToPdpProducts(products: Product[]): Product[] {
+  const before = products.length
+  const result = products.filter((p) => {
+    const url = platformUrl(p)
+    return isDirectPdpUrl(url)
+  })
+  if (result.length < before) {
+    console.log(`[PDP Filter] Filtered out ${before - result.length} products without direct PDP URLs (kept ${result.length})`)
+  }
+  return result
+}
+
 // ── Product clustering ────────────────────────────────────────────────────
 
 function platformUrl(p: Product): string {
@@ -156,9 +188,10 @@ function buildOffersForProduct(product: Product, group: Product[]): {
   const offers: Offer[] = []
   const usedPlatforms = new Set<string>()
 
-  // SHEIN is always the primary offer when available.
-  const sheinProduct = group.find((p) => p.platform === 'shein')
-  if (sheinProduct && platformUrl(sheinProduct)) {
+  // SHEIN is always the primary offer when available — but ONLY if it has
+  // a verified direct PDP URL.
+  const sheinProduct = group.find((p) => p.platform === 'shein' && isDirectPdpUrl(platformUrl(p)))
+  if (sheinProduct) {
     const sheinUrl = platformUrl(sheinProduct)
     offers.push({
       platform: 'shein',
@@ -168,11 +201,11 @@ function buildOffersForProduct(product: Product, group: Product[]): {
       url: sheinUrl,
     })
     usedPlatforms.add('shein')
-    console.log('[Skimlinks] Wrapped SHEIN PDP URL:', sheinUrl)
+    console.log('[Offer Builder] Bound SHEIN PDP URL:', sheinUrl)
   }
 
-  // Only fall back to AliExpress as primary if NO SHEIN product exists at all.
-  const aliProduct = group.find((p) => (p.platform ?? 'aliexpress') === 'aliexpress')
+  // Only fall back to AliExpress as primary if NO SHEIN PDP exists.
+  const aliProduct = group.find((p) => (p.platform ?? 'aliexpress') === 'aliexpress' && isDirectPdpUrl(platformUrl(p)))
   if (aliProduct && offers.length === 0) {
     offers.push({
       platform: 'aliexpress',
@@ -184,9 +217,9 @@ function buildOffersForProduct(product: Product, group: Product[]): {
     usedPlatforms.add('aliexpress')
   }
 
-  // Secondary: Temu with a direct URL
-  const temuProduct = group.find((p) => p.platform === 'temu')
-  if (temuProduct && platformUrl(temuProduct)) {
+  // Secondary: Temu with a direct PDP URL only
+  const temuProduct = group.find((p) => p.platform === 'temu' && isDirectPdpUrl(platformUrl(p)))
+  if (temuProduct) {
     offers.push({
       platform: 'temu',
       label: PLATFORM_LABELS.temu,
@@ -197,7 +230,7 @@ function buildOffersForProduct(product: Product, group: Product[]): {
     usedPlatforms.add('temu')
   }
 
-  // Secondary: AliExpress if it wasn't the primary
+  // Secondary: AliExpress if it wasn't the primary and has a PDP URL
   if (!usedPlatforms.has('aliexpress') && aliProduct) {
     offers.push({
       platform: 'aliexpress',
@@ -309,7 +342,8 @@ export async function searchAllPlatformsByCategory(
 
   const filtered = filterProducts(merged, category, gender, ageGroup)
   const priceFiltered = filtered.filter((p) => filterByPrice(p, minPrice, maxPrice))
-  const deduped = dedupByName(priceFiltered)
+  const pdpOnly = filterToPdpProducts(priceFiltered)
+  const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
   const sheinFirst = [...clustered].sort((a, b) => {
     const aShein = a.platform === 'shein' ? 0 : 1
@@ -347,7 +381,8 @@ export async function searchAllPlatformsByQuery(
   }
 
   const priceFiltered = merged.filter((p) => filterByPrice(p, minPrice, maxPrice))
-  const deduped = dedupByName(priceFiltered)
+  const pdpOnly = filterToPdpProducts(priceFiltered)
+  const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
   const sheinFirst = [...clustered].sort((a, b) => {
     const aShein = a.platform === 'shein' ? 0 : 1
@@ -381,7 +416,8 @@ export async function searchAllPlatformDeviceAccessories(
     if (r.status === 'fulfilled') merged.push(...r.value)
   }
 
-  const deduped = dedupByName(merged)
+  const pdpOnly = filterToPdpProducts(merged)
+  const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
   const sheinFirst = [...clustered].sort((a, b) => {
     const aShein = a.platform === 'shein' ? 0 : 1
