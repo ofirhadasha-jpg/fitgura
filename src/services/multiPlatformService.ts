@@ -23,10 +23,9 @@ import {
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 
 // ── Adapter registry ─────────────────────────────────────────────────────────
-// Three platforms: AliExpress (live API), SHEIN (CJ Affiliate, live when configured),
-// and Temu (live when configured). CJ adapter removed — it was returning irrelevant
-// AliExpress re-tags. SHEIN and Temu return empty without credentials; the aggregator
-// auto-generates real search links as secondary offers on every product.
+// Three platforms: SHEIN (primary, public search API), AliExpress (live API, secondary),
+// and Temu (live when configured, secondary). SHEIN is always fetched first; AliExpress
+// and Temu populate comparison offers only.
 
 export const ADAPTERS: AffiliateAdapter[] = [
   aliExpressAdapter,
@@ -376,19 +375,16 @@ export const PLATFORM_LABELS: Record<ProductPlatform, string> = {
   aliexpress: 'AliExpress',
   shein: 'SHEIN',
   temu: 'Temu',
-  cj: 'CJ',
 }
 
 export const PLATFORM_COLORS: Record<ProductPlatform, string> = {
   aliexpress: '#E84B35',
   shein: '#111827',
   temu: '#2563EB',
-  cj: '#FF6B00',
 }
 
 export const PLATFORM_LOGOS: Record<ProductPlatform, string> = {
   aliexpress: '🟠',
   shein: '⬛',
   temu: '🔵',
-  cj: '🟡',
 }

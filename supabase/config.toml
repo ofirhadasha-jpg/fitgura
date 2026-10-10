@@ -10,9 +10,6 @@ verify_jwt = false
 [functions.smart-recommend]
 verify_jwt = false
 
-[functions.cj-affiliate]
-verify_jwt = false
-
 [functions.shein-search]
 verify_jwt = false
 

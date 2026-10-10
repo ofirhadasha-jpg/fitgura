@@ -755,7 +755,7 @@ export const deviceOptions = [
   { name: 'Sony Xperia 1 VI', chip: 'Snapdragon 8 Gen 3', year: '2024', brand: 'Sony' },
 ]
 
-export type ProductPlatform = 'aliexpress' | 'shein' | 'temu' | 'cj'
+export type ProductPlatform = 'aliexpress' | 'shein' | 'temu'
 
 export interface PriceComparisonEntry {
   platform: ProductPlatform

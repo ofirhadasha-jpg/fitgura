@@ -13,12 +13,6 @@ export interface AliExpressCredentials {
   trackingId: string
 }
 
-export interface CJCredentials {
-  accessToken: string
-  websiteId: string
-  advertiserId: string
-}
-
 // ── Unified adapter interface ─────────────────────────────────────────────────
 // Every affiliate source implements this interface so the aggregator can
 // query them uniformly. Adapters that don't have credentials yet should
