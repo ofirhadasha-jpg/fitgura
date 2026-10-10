@@ -550,13 +550,6 @@ export function FeedScreen({
           </View>
         </View>
 
-        {isLoadingProducts && (
-          <View style={feedStyles.loadingState}>
-            <span className="fitgura-spinner" style={{ fontSize: 20, lineHeight: '20px' }}>⟳</span>
-            <Text style={feedStyles.loadingText}>פיטגורה מתאימה מוצרים חדשים עבורך</Text>
-          </View>
-        )}
-
         {productsError && !isLoadingProducts && (
           <View style={feedStyles.productsNotice}>
             <Text style={feedStyles.productsNoticeTitle}>לא ניתן לטעון מוצרים</Text>
@@ -598,13 +591,6 @@ export function FeedScreen({
         </View>
 
         <View ref={sentinelRef} style={{ height: 1, width: '100%' }} />
-
-        {isLoadingMore && (
-          <View style={feedStyles.loadingState}>
-            <span className="fitgura-spinner" style={{ fontSize: 20, lineHeight: '20px' }}>⟳</span>
-            <Text style={feedStyles.loadingText}>טוען מוצרים נוספים עבורך...</Text>
-          </View>
-        )}
 
         <View style={feedStyles.familyTeaser}>
           <Text style={{ fontSize: 26 }}>👨‍👩‍👧</Text>
