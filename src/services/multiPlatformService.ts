@@ -148,6 +148,31 @@ function filterToPdpProducts(products: Product[]): Product[] {
   return result
 }
 
+// Filter to high-rated products (4.5+). Products with no rating data are kept
+// so the feed isn't empty when rating info is unavailable from the API.
+function filterByHighRating(products: Product[]): Product[] {
+  const result = products.filter((p) => {
+    const rating = p.evaluateRate ?? 0
+    if (rating === 0) return true
+    return rating >= 4.5
+  })
+  if (result.length < products.length) {
+    console.log(`[Rating Filter] Filtered out ${products.length - result.length} products below 4.5 rating (kept ${result.length})`)
+  }
+  return result
+}
+
+// Sort by ascending price (lowest to highest) while keeping SHEIN first
+// within each price tier.
+function sortByPriceAscending(products: Product[]): Product[] {
+  return [...products].sort((a, b) => {
+    const aShein = a.platform === 'shein' ? 0 : 1
+    const bShein = b.platform === 'shein' ? 0 : 1
+    if (aShein !== bShein) return aShein - bShein
+    return a.price - b.price
+  })
+}
+
 // ── Product clustering ────────────────────────────────────────────────────
 
 function platformUrl(p: Product): string {
@@ -342,20 +367,12 @@ export async function searchAllPlatformsByCategory(
 
   const filtered = filterProducts(merged, category, gender, ageGroup)
   const priceFiltered = filtered.filter((p) => filterByPrice(p, minPrice, maxPrice))
-  const pdpOnly = filterToPdpProducts(priceFiltered)
+  const highRated = filterByHighRating(priceFiltered)
+  const pdpOnly = filterToPdpProducts(highRated)
   const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
-  const sheinFirst = [...clustered].sort((a, b) => {
-    const aShein = a.platform === 'shein' ? 0 : 1
-    const bShein = b.platform === 'shein' ? 0 : 1
-    if (aShein !== bShein) return aShein - bShein
-    const salesA = a.ordersCount ?? a.volume ?? 0
-    const salesB = b.ordersCount ?? b.volume ?? 0
-    const ratingA = a.evaluateRate ?? 0
-    const ratingB = b.evaluateRate ?? 0
-    return (salesB * 0.6 + ratingB * 0.4) - (salesA * 0.6 + ratingA * 0.4)
-  })
-  return ensureOffers(sheinFirst)
+  const priceSorted = sortByPriceAscending(clustered)
+  return ensureOffers(priceSorted)
 }
 
 export async function searchAllPlatformsByQuery(
@@ -381,18 +398,12 @@ export async function searchAllPlatformsByQuery(
   }
 
   const priceFiltered = merged.filter((p) => filterByPrice(p, minPrice, maxPrice))
-  const pdpOnly = filterToPdpProducts(priceFiltered)
+  const highRated = filterByHighRating(priceFiltered)
+  const pdpOnly = filterToPdpProducts(highRated)
   const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
-  const sheinFirst = [...clustered].sort((a, b) => {
-    const aShein = a.platform === 'shein' ? 0 : 1
-    const bShein = b.platform === 'shein' ? 0 : 1
-    if (aShein !== bShein) return aShein - bShein
-    const salesA = a.ordersCount ?? a.volume ?? 0
-    const salesB = b.ordersCount ?? b.volume ?? 0
-    return salesB - salesA
-  })
-  return ensureOffers(sheinFirst)
+  const priceSorted = sortByPriceAscending(clustered)
+  return ensureOffers(priceSorted)
 }
 
 export async function searchAllPlatformDeviceAccessories(
@@ -419,13 +430,8 @@ export async function searchAllPlatformDeviceAccessories(
   const pdpOnly = filterToPdpProducts(merged)
   const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
-  const sheinFirst = [...clustered].sort((a, b) => {
-    const aShein = a.platform === 'shein' ? 0 : 1
-    const bShein = b.platform === 'shein' ? 0 : 1
-    if (aShein !== bShein) return aShein - bShein
-    return (b.ordersCount ?? 0) - (a.ordersCount ?? 0)
-  })
-  return ensureOffers(sheinFirst)
+  const priceSorted = sortByPriceAscending(clustered)
+  return ensureOffers(priceSorted)
 }
 
 // ── Platform display helpers (shared by UI components) ────────────────────

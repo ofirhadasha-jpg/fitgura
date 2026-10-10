@@ -14,6 +14,7 @@ import {
   searchAllPlatformsByCategory,
   searchAllPlatformDeviceAccessories,
 } from '../services/multiPlatformService'
+import { setRotationSeed } from '../services/sheinClient'
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
 
@@ -338,11 +339,33 @@ export function FeedScreen({
     registeredDevices.join(','),
   ].join('|')
 
-  // Initial load — only once on mount
+  // Initial load — detect fresh session and force a new rotating feed.
+  // A session ID in sessionStorage identifies the current browser session;
+  // if it's missing or different from the last one, we treat it as a new
+  // app open and generate a fresh rotation seed.
   const hasInitiallyLoaded = useRef(false)
   useEffect(() => {
     if (hasInitiallyLoaded.current) return
     hasInitiallyLoaded.current = true
+
+    const SESSION_KEY = 'fitgura_session_id'
+    let isNewSession = false
+    try {
+      const stored = sessionStorage.getItem(SESSION_KEY)
+      const currentSession = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      if (stored !== currentSession) {
+        isNewSession = true
+        sessionStorage.setItem(SESSION_KEY, currentSession)
+      }
+    } catch {
+      isNewSession = true
+    }
+
+    const seed = Date.now() % 100000
+    setRotationSeed(seed)
+
+    console.log('[Feed Refresh] New session detected. Loaded fresh rotating product feed tailored to user profile.')
+
     setPageNo(1)
     setHasMore(true)
     setCatalog([])

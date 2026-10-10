@@ -19,6 +19,30 @@ const SHEIN_CATEGORIES: Record<FeedCategory, string> = {
   accessories: 'accessories bag jewelry sunglasses',
 }
 
+// Rotating style tags mixed into search keywords for variety across sessions.
+// Each session picks a different subset so users see fresh product pools.
+const STYLE_TAGS = [
+  'trending', 'new arrivals', 'casual', 'elegant', 'streetwear',
+  'minimalist', 'vintage', 'boho', 'y2k', 'preppy', 'oversized',
+  'slim fit', 'relaxed', 'classic', 'modern', 'chic',
+]
+
+function pickRotationTags(seed: number, count: number): string[] {
+  const shuffled = [...STYLE_TAGS].sort(() => {
+    // Deterministic shuffle based on seed so a session is stable but differs
+    // from previous sessions
+    const h = (seed + Math.random() * 1000) | 0
+    return ((h % 3) - 1)
+  })
+  return shuffled.slice(0, count)
+}
+
+let currentSessionSeed = Date.now() % 100000
+
+export function setRotationSeed(seed: number): void {
+  currentSessionSeed = seed
+}
+
 const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
 const SHOE_SIZES = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44']
 
@@ -216,10 +240,13 @@ function buildFallbackProducts(
     templates = genderCatalog[catKey] ?? genderCatalog.clothing
   }
 
-  // One product per template — no V2/V3 variants. Each template has a unique
-  // image so every card in the feed shows a distinct product.
+  // Rotate the catalog start offset by session seed so each session sees a
+  // different slice of the catalog first.
+  const rotationOffset = currentSessionSeed % templates.length
+  const rotated = [...templates.slice(rotationOffset), ...templates.slice(0, rotationOffset)]
+
   const start = (pageNo - 1) * pageSize
-  const slice = templates.slice(start, start + pageSize)
+  const slice = rotated.slice(start, start + pageSize)
 
   return slice.map((template) => {
     const priceILS = Math.round(template.basePrice * USD_TO_ILS)
@@ -299,7 +326,8 @@ export function sheinSearchUrl(productName: string): string {
 function buildKeywords(category: FeedCategory, gender: Gender): string {
   const categoryWord = SHEIN_CATEGORIES[category] ?? 'Fashion'
   const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
-  return [genderWord, categoryWord].filter(Boolean).join(' ')
+  const rotationTags = pickRotationTags(currentSessionSeed, 2)
+  return [genderWord, categoryWord, ...rotationTags].filter(Boolean).join(' ')
 }
 
 function isSheinUrl(url: string): boolean {
