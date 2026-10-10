@@ -1,4 +1,4 @@
-import type { Product, PriceComparisonEntry, ProductPlatform, Offer, ScannedSizes } from '../types'
+import type { Product, PriceComparisonEntry, ProductPlatform, Offer } from '../types'
 import type { AffiliateAdapter } from './adapterTypes'
 import {
   aliExpressAdapter,
@@ -21,128 +21,6 @@ import {
   searchDeviceAccessories as temuSearchDeviceAccessories,
 } from './temuClient'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
-import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
-
-// ── Feed filter options ────────────────────────────────────────────────────
-// When provided, the feed engine applies mandatory size matching, quality
-// rating filters, style alignment, and ascending price sort.
-
-export interface FeedFilterOptions {
-  scannedSizes: ScannedSizes | null
-}
-
-// ── Size matching ──────────────────────────────────────────────────────────
-// Hard-filter: remove products that don't carry the user's recommended size.
-// Products with no size data are kept (can't verify, don't penalize).
-// Accessories are exempt (one-size items).
-
-function productMatchesUserSize(product: Product, scannedSizes: ScannedSizes, category: string): boolean {
-  const available = product.availableSizes
-  if (!available || available.length === 0) return true
-  const recommended = calculateRecommendedSize(scannedSizes, [], category, product.name, available)
-  if (!recommended) return true
-  const recNorm = recommended.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL')
-  return available.some((s) => s.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL') === recNorm)
-}
-
-// ── Rating quality filter ──────────────────────────────────────────────────
-// Only include products with 4.5+ star ratings or high positive review ratios.
-// Products without rating data are kept (SHEIN catalog fallback has no ratings).
-
-const MIN_RATING = 4.5
-
-function passesRatingFilter(product: Product): boolean {
-  const rating = product.evaluateRate
-  if (rating == null || rating === 0) return true
-  // evaluateRate from AliExpress is on a 0-5 scale
-  if (rating > 5) return rating / 100 >= MIN_RATING / 5
-  return rating >= MIN_RATING
-}
-
-// ── Style alignment filter ─────────────────────────────────────────────────
-// Filter products based on the user's selected style preferences from onboarding.
-// Matches product name/keywords against the user's primary and secondary styles.
-
-const STYLE_KEYWORDS: Record<string, string[]> = {
-  Casual: ['casual', 'everyday', 'basic', 'relaxed', 'weekend', 'loose'],
-  Streetwear: ['streetwear', 'street', 'urban', 'oversized', 'graphic', 'hype', 'baggy', 'crew'],
-  Classic: ['classic', 'timeless', 'tailored', 'formal', 'elegant', 'vintage'],
-  Minimalist: ['minimalist', 'minimal', 'clean', 'simple', 'plain', 'solid', 'basic'],
-  'Smart Casual': ['smart', 'business', 'office', 'chino', 'polo', 'button'],
-  Athletic: ['athletic', 'sport', 'active', 'gym', 'performance', 'runner', 'jogger', 'track'],
-  Boho: ['boho', 'bohemian', 'flowy', 'floral', 'fringe', 'hippie'],
-  Urban: ['urban', 'city', 'modern', 'street', 'tech'],
-  Preppy: ['preppy', 'polo', 'collared', 'cardigan', 'khaki'],
-  Techwear: ['techwear', 'tech', 'functional', 'utility', 'cargo', 'tactical'],
-  Resort: ['resort', 'vacation', 'beach', 'summer', 'tropical', 'linen'],
-  'Business Casual': ['business', 'office', 'blazer', 'shirt', 'formal', 'slacks'],
-}
-
-function passesStyleFilter(product: Product, scannedSizes: ScannedSizes): boolean {
-  const primaryStyle = scannedSizes.style?.primaryStyle
-  const secondaryStyle = scannedSizes.style?.secondaryStyle
-  if (!primaryStyle && !secondaryStyle) return true
-
-  const productText = `${product.name} ${product.category}`.toLowerCase()
-
-  // Collect style keywords for the user's chosen styles
-  const userKeywords: string[] = []
-  if (primaryStyle && STYLE_KEYWORDS[primaryStyle]) {
-    userKeywords.push(...STYLE_KEYWORDS[primaryStyle])
-  }
-  if (secondaryStyle && STYLE_KEYWORDS[secondaryStyle]) {
-    userKeywords.push(...STYLE_KEYWORDS[secondaryStyle])
-  }
-  if (userKeywords.length === 0) return true
-
-  // Product passes if it matches any of the user's style keywords
-  return userKeywords.some((kw) => productText.includes(kw))
-}
-
-// ── Price ascending sort ───────────────────────────────────────────────────
-// Sort strictly by price ascending (lowest ₪ to highest).
-// SHEIN products are prioritized at equal price.
-
-function sortByPriceAscending(products: Product[]): Product[] {
-  return [...products].sort((a, b) => {
-    const priceA = a.price ?? 0
-    const priceB = b.price ?? 0
-    if (priceA !== priceB) return priceA - priceB
-    // Tie-breaker: SHEIN first
-    const aShein = a.platform === 'shein' ? 0 : 1
-    const bShein = b.platform === 'shein' ? 0 : 1
-    return aShein - bShein
-  })
-}
-
-// ── Apply feed engine filters ──────────────────────────────────────────────
-
-function applyFeedEngineFilters(
-  products: Product[],
-  category: string,
-  filterOptions?: FeedFilterOptions,
-): Product[] {
-  if (!filterOptions?.scannedSizes) return products
-  const { scannedSizes } = filterOptions
-
-  let result = products
-
-  // 1. Mandatory size matching
-  result = result.filter((p) => productMatchesUserSize(p, scannedSizes, category))
-
-  // 2. Rating & reviews quality filter (4.5+)
-  result = result.filter((p) => passesRatingFilter(p))
-
-  // 3. Style alignment
-  result = result.filter((p) => passesStyleFilter(p, scannedSizes))
-
-  // 4. Sort by price ascending
-  result = sortByPriceAscending(result)
-
-  console.log('[Feed Engine] Filtered feed by User Sizes, High Ratings (4.5+), Style, and sorted Ascending by Price.')
-
-  return result
-}
 
 // ── Adapter registry ─────────────────────────────────────────────────────────
 // Three platforms: SHEIN (primary, public search API), AliExpress (live API, secondary),
@@ -150,8 +28,8 @@ function applyFeedEngineFilters(
 // and Temu populate comparison offers only.
 
 export const ADAPTERS: AffiliateAdapter[] = [
-  sheinAdapter,
   aliExpressAdapter,
+  sheinAdapter,
   temuAdapter,
 ]
 
@@ -293,9 +171,18 @@ function buildOffersForProduct(product: Product, group: Product[]): {
     console.log('[Skimlinks] Wrapped SHEIN PDP URL:', sheinUrl)
   }
 
-  // AliExpress is NEVER the primary offer — it is comparison-only.
-  // If no SHEIN product exists, the primary offer is simply null.
+  // Only fall back to AliExpress as primary if NO SHEIN product exists at all.
   const aliProduct = group.find((p) => (p.platform ?? 'aliexpress') === 'aliexpress')
+  if (aliProduct && offers.length === 0) {
+    offers.push({
+      platform: 'aliexpress',
+      label: PLATFORM_LABELS.aliexpress,
+      price: aliProduct.price,
+      currency: aliProduct.currency,
+      url: platformUrl(aliProduct),
+    })
+    usedPlatforms.add('aliexpress')
+  }
 
   // Secondary: Temu with a direct URL
   const temuProduct = group.find((p) => p.platform === 'temu')
@@ -371,10 +258,12 @@ function clusterProducts(products: Product[]): Product[] {
 
   return clusters.map((cluster) => {
     const sheinProduct = cluster.find((p) => p.platform === 'shein')
-    // SHEIN is ALWAYS the representative — never fall back to AliExpress/Temu
-    const representative = { ...(sheinProduct ?? cluster[0]) }
-    representative.platform = 'shein'
+    const sorted = [...cluster].sort((a, b) => a.price - b.price)
+    const representative = { ...(sheinProduct ?? sorted[0]) }
     representative.priceComparison = buildPriceComparison(cluster)
+    representative.price = sorted[0].price
+    representative.originalPrice = sorted[0].originalPrice
+    representative.currency = sorted[0].currency
     const { primaryOffer, secondaryOffers } = buildOffersForProduct(representative, cluster)
     representative.primaryOffer = primaryOffer
     representative.secondaryOffers = secondaryOffers
@@ -385,11 +274,9 @@ function clusterProducts(products: Product[]): Product[] {
 // Ensures every product has primaryOffer and secondaryOffers populated.
 function ensureOffers(products: Product[]): Product[] {
   return products.map((p) => {
-    // Force platform to 'shein' on every feed card — AliExpress/Temu are comparison-only
-    const sheinP = { ...p, platform: 'shein' as ProductPlatform }
-    if (sheinP.primaryOffer) return sheinP
-    const { primaryOffer, secondaryOffers } = buildOffersForProduct(sheinP, [sheinP])
-    return { ...sheinP, primaryOffer, secondaryOffers }
+    if (p.primaryOffer) return p
+    const { primaryOffer, secondaryOffers } = buildOffersForProduct(p, [p])
+    return { ...p, primaryOffer, secondaryOffers }
   })
 }
 
@@ -404,46 +291,37 @@ export async function searchAllPlatformsByCategory(
   ageGroup: AgeGroupFilter = 'adult',
   minPrice = 0,
   maxPrice = 1000,
-  filterOptions?: FeedFilterOptions,
 ): Promise<Product[]> {
-  // SHEIN is the MANDATORY primary data source — always fetched first.
+  // SHEIN is the mandatory primary data source — fetch first.
   const sheinProducts = await sheinSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup)
-  console.log('[Feed Engine] MANDATORY PRIMARY SOURCE: SHEIN loaded successfully.', `(${sheinProducts.length} products)`)
+  console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
 
-  if (sheinProducts.length === 0) {
-    console.warn('[Feed Engine] SHEIN returned 0 products — feed will be empty. AliExpress/Temu are NOT substituted.')
-    return []
-  }
-
-  // AliExpress and Temu are fetched ONLY for price comparison entries (secondary offers).
-  // They must NEVER appear as primary feed cards.
+  // Fetch secondary platforms in parallel for comparison only.
   const secondaryResults = await Promise.allSettled([
     aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     temuSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
   ])
 
-  const secondaryProducts: Product[] = []
+  const merged: Product[] = [...sheinProducts]
   for (const r of secondaryResults) {
-    if (r.status === 'fulfilled') secondaryProducts.push(...r.value)
+    if (r.status === 'fulfilled') merged.push(...r.value)
   }
 
-  // Build the feed from SHEIN products only; secondary products are attached
-  // as comparison offers via clustering.
-  const filtered = filterProducts(sheinProducts, category, gender, ageGroup)
+  const filtered = filterProducts(merged, category, gender, ageGroup)
   const priceFiltered = filtered.filter((p) => filterByPrice(p, minPrice, maxPrice))
   const deduped = dedupByName(priceFiltered)
-
-  // Cluster SHEIN products with secondary products for price comparison,
-  // but SHEIN is always the representative (primary card).
-  const clustered = clusterProducts([...deduped, ...secondaryProducts])
-  // Keep only clusters that contain a SHEIN product — pure AliExpress/Temu clusters are dropped
-  const sheinClusters = clustered.filter((p) => {
-    const comparison = p.priceComparison ?? []
-    return comparison.some((e) => e.platform === 'shein')
+  const clustered = clusterProducts(deduped)
+  const sheinFirst = [...clustered].sort((a, b) => {
+    const aShein = a.platform === 'shein' ? 0 : 1
+    const bShein = b.platform === 'shein' ? 0 : 1
+    if (aShein !== bShein) return aShein - bShein
+    const salesA = a.ordersCount ?? a.volume ?? 0
+    const salesB = b.ordersCount ?? b.volume ?? 0
+    const ratingA = a.evaluateRate ?? 0
+    const ratingB = b.evaluateRate ?? 0
+    return (salesB * 0.6 + ratingB * 0.4) - (salesA * 0.6 + ratingA * 0.4)
   })
-
-  const feedFiltered = applyFeedEngineFilters(sheinClusters, category, filterOptions)
-  return ensureOffers(feedFiltered)
+  return ensureOffers(sheinFirst)
 }
 
 export async function searchAllPlatformsByQuery(
@@ -452,38 +330,34 @@ export async function searchAllPlatformsByQuery(
   pageSize = 50,
   minPrice = 0,
   maxPrice = 1000,
-  filterOptions?: FeedFilterOptions,
 ): Promise<Product[]> {
-  // SHEIN is the MANDATORY primary data source — always fetched first.
+  // SHEIN is the mandatory primary data source — fetch first.
   const sheinProducts = await sheinSearchProducts(keywords, pageNo, pageSize)
-  console.log('[Feed Engine] MANDATORY PRIMARY SOURCE: SHEIN loaded successfully.', `(${sheinProducts.length} products)`)
+  console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
 
-  if (sheinProducts.length === 0) {
-    console.warn('[Feed Engine] SHEIN returned 0 products — feed will be empty.')
-    return []
-  }
-
-  // AliExpress and Temu are fetched ONLY for price comparison.
+  // Fetch secondary platforms in parallel for comparison only.
   const secondaryResults = await Promise.allSettled([
     aliSearchProducts(keywords, pageNo, pageSize),
     temuSearchProducts(keywords, pageNo, pageSize),
   ])
 
-  const secondaryProducts: Product[] = []
+  const merged: Product[] = [...sheinProducts]
   for (const r of secondaryResults) {
-    if (r.status === 'fulfilled') secondaryProducts.push(...r.value)
+    if (r.status === 'fulfilled') merged.push(...r.value)
   }
 
-  const priceFiltered = sheinProducts.filter((p) => filterByPrice(p, minPrice, maxPrice))
+  const priceFiltered = merged.filter((p) => filterByPrice(p, minPrice, maxPrice))
   const deduped = dedupByName(priceFiltered)
-  const clustered = clusterProducts([...deduped, ...secondaryProducts])
-  const sheinClusters = clustered.filter((p) => {
-    const comparison = p.priceComparison ?? []
-    return comparison.some((e) => e.platform === 'shein')
+  const clustered = clusterProducts(deduped)
+  const sheinFirst = [...clustered].sort((a, b) => {
+    const aShein = a.platform === 'shein' ? 0 : 1
+    const bShein = b.platform === 'shein' ? 0 : 1
+    if (aShein !== bShein) return aShein - bShein
+    const salesA = a.ordersCount ?? a.volume ?? 0
+    const salesB = b.ordersCount ?? b.volume ?? 0
+    return salesB - salesA
   })
-
-  const feedFiltered = applyFeedEngineFilters(sheinClusters, 'all', filterOptions)
-  return ensureOffers(feedFiltered)
+  return ensureOffers(sheinFirst)
 }
 
 export async function searchAllPlatformDeviceAccessories(
@@ -491,41 +365,31 @@ export async function searchAllPlatformDeviceAccessories(
   pageNo = 1,
   pageSize = 50,
   gender?: Gender,
-  filterOptions?: FeedFilterOptions,
 ): Promise<Product[]> {
-  // SHEIN is the MANDATORY primary data source — always fetched first.
+  // SHEIN is the mandatory primary data source — fetch first.
   const sheinProducts = await sheinSearchDeviceAccessories(deviceName, pageNo, pageSize, gender)
-  console.log('[Feed Engine] MANDATORY PRIMARY SOURCE: SHEIN loaded successfully.', `(${sheinProducts.length} products)`)
+  console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
 
-  if (sheinProducts.length === 0) {
-    console.warn('[Feed Engine] SHEIN returned 0 products for device accessories — feed will be empty.')
-    return []
-  }
-
-  // AliExpress and Temu are fetched ONLY for price comparison.
+  // Fetch secondary platforms in parallel for comparison only.
   const secondaryResults = await Promise.allSettled([
     aliSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     temuSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
   ])
 
-  const secondaryProducts: Product[] = []
+  const merged: Product[] = [...sheinProducts]
   for (const r of secondaryResults) {
-    if (r.status === 'fulfilled') secondaryProducts.push(...r.value)
+    if (r.status === 'fulfilled') merged.push(...r.value)
   }
 
-  const deduped = dedupByName(sheinProducts)
-  const clustered = clusterProducts([...deduped, ...secondaryProducts])
-  const sheinClusters = clustered.filter((p) => {
-    const comparison = p.priceComparison ?? []
-    return comparison.some((e) => e.platform === 'shein')
+  const deduped = dedupByName(merged)
+  const clustered = clusterProducts(deduped)
+  const sheinFirst = [...clustered].sort((a, b) => {
+    const aShein = a.platform === 'shein' ? 0 : 1
+    const bShein = b.platform === 'shein' ? 0 : 1
+    if (aShein !== bShein) return aShein - bShein
+    return (b.ordersCount ?? 0) - (a.ordersCount ?? 0)
   })
-
-  if (filterOptions?.scannedSizes) {
-    const feedFiltered = sortByPriceAscending(sheinClusters)
-    console.log('[Feed Engine] Filtered feed by User Sizes, High Ratings (4.5+), Style, and sorted Ascending by Price.')
-    return ensureOffers(feedFiltered)
-  }
-  return ensureOffers(sheinClusters)
+  return ensureOffers(sheinFirst)
 }
 
 // ── Platform display helpers (shared by UI components) ────────────────────

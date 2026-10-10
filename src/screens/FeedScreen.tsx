@@ -13,7 +13,6 @@ import {
 import {
   searchAllPlatformsByCategory,
   searchAllPlatformDeviceAccessories,
-  type FeedFilterOptions,
 } from '../services/multiPlatformService'
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
@@ -117,7 +116,7 @@ export function FeedScreen({
     if (!latestAddedDevice) return
     let cancelled = false
     const gender: Gender = (scannedSizes?.gender as Gender) ?? 'unisex'
-    searchAllPlatformDeviceAccessories(latestAddedDevice, 1, PAGE_SIZE, gender, { scannedSizes })
+    searchAllPlatformDeviceAccessories(latestAddedDevice, 1, PAGE_SIZE, gender)
       .then((newProducts) => {
         if (cancelled || newProducts.length === 0) return
         const cleaned = newProducts.filter((p) => {
@@ -214,12 +213,12 @@ export function FeedScreen({
           remoteProducts = []
         } else {
           const deviceResults = await Promise.all(
-            accessoryDevices.map((device) => searchAllPlatformDeviceAccessories(device, page, PAGE_SIZE, gender, { scannedSizes })),
+            accessoryDevices.map((device) => searchAllPlatformDeviceAccessories(device, page, PAGE_SIZE, gender)),
           )
           remoteProducts = deviceResults.flat()
         }
       } else {
-        remoteProducts = await searchAllPlatformsByCategory(feedCategory, gender, page, PAGE_SIZE, undefined, ageGroup, 0, 1000, { scannedSizes })
+        remoteProducts = await searchAllPlatformsByCategory(feedCategory, gender, page, PAGE_SIZE, undefined, ageGroup)
       }
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)
@@ -429,16 +428,17 @@ export function FeedScreen({
     return matchSearch && matchBudget
   })
 
-  // Size-aware filtering: hard-filter out products that don't carry the user's
-  // recommended size. Only applies to clothing/shoes when user has scanned sizes.
-  // The feed engine already applied this server-side, but we re-apply here as a
-  // render-time safety net (e.g. when budget slider changes the visible set).
-  const sizeFiltered = (filter === 'all' || filter === 'clothing' || filter === 'shoes') && scannedSizes
-    ? filtered.filter((p) => productCarriesUserSize(p, scannedSizes, filter))
+  // Size-aware sorting: products that carry the user's recommended size float to the top;
+  // products that don't carry it sink to the bottom. Only applies to clothing/shoes.
+  const sizeSorted = (filter === 'all' || filter === 'clothing' || filter === 'shoes') && scannedSizes
+    ? [...filtered].sort((a, b) => {
+        const aHasSize = productCarriesUserSize(a, scannedSizes, filter)
+        const bHasSize = productCarriesUserSize(b, scannedSizes, filter)
+        if (aHasSize && !bHasSize) return -1
+        if (!aHasSize && bHasSize) return 1
+        return 0
+      })
     : filtered
-
-  // Sort by price ascending — lowest ₪ first
-  const sizeSorted = [...sizeFiltered].sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
 
   console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget)
 
@@ -550,6 +550,13 @@ export function FeedScreen({
           </View>
         </View>
 
+        {isLoadingProducts && (
+          <View style={feedStyles.loadingState}>
+            <span className="fitgura-spinner" style={{ fontSize: 20, lineHeight: '20px' }}>⟳</span>
+            <Text style={feedStyles.loadingText}>פיטגורה מתאימה מוצרים חדשים עבורך</Text>
+          </View>
+        )}
+
         {productsError && !isLoadingProducts && (
           <View style={feedStyles.productsNotice}>
             <Text style={feedStyles.productsNoticeTitle}>לא ניתן לטעון מוצרים</Text>
@@ -591,6 +598,13 @@ export function FeedScreen({
         </View>
 
         <View ref={sentinelRef} style={{ height: 1, width: '100%' }} />
+
+        {isLoadingMore && (
+          <View style={feedStyles.loadingState}>
+            <span className="fitgura-spinner" style={{ fontSize: 20, lineHeight: '20px' }}>⟳</span>
+            <Text style={feedStyles.loadingText}>טוען מוצרים נוספים עבורך...</Text>
+          </View>
+        )}
 
         <View style={feedStyles.familyTeaser}>
           <Text style={{ fontSize: 26 }}>👨‍👩‍👧</Text>
