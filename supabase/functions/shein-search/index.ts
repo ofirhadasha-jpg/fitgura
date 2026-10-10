@@ -127,13 +127,19 @@ Deno.serve(async (req: Request) => {
     const products = rawProducts.map((p) => {
       const pdpUrl = buildPdpUrl(p);
       const price = extractPrice(p.retail_price) || extractPrice(p.salePrice) || extractPrice(p.unit_price);
+      const rawImg = p.goods_img || p.goods_thumb || "";
+      // SHEIN CDN images come as //img.ltwebstatic.com/... — normalize to https://
+      let imageUrl = "";
+      if (rawImg) {
+        imageUrl = rawImg.startsWith("//") ? `https:${rawImg}` : rawImg.startsWith("http") ? rawImg.replace("http://", "https://") : rawImg;
+      }
       return {
         productId: p.goods_id,
         title: p.goods_name ?? "",
         brand: p.brand ?? "SHEIN",
         price,
         currency: "USD",
-        imageUrl: normalizeImage(p.goods_img || p.goods_thumb),
+        imageUrl,
         productUrl: pdpUrl,
         category: p.cat_name ?? "",
         sku: p.goods_id,
