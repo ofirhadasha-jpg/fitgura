@@ -13,10 +13,10 @@ export { searchVisualMatch as searchExactVisualMatch } from './imageSearch'
 const USD_TO_ILS = 3.7
 
 const SHEIN_CATEGORIES: Record<FeedCategory, string> = {
-  all: 'Fashion',
-  clothing: 'Apparel & Clothing',
-  shoes: 'Shoes & Footwear',
-  accessories: 'Accessories & Jewelry',
+  all: 'fashion clothing',
+  clothing: 'clothing dress shirt pants',
+  shoes: 'shoes sneakers boots sandals',
+  accessories: 'accessories bag jewelry sunglasses',
 }
 
 const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
@@ -196,7 +196,7 @@ function hashStr(s: string): number {
 
 function buildSearchUrl(productName: string): string {
   const keyword = productName.replace(/^SHEIN\s+/i, '').trim()
-  return `https://www.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
+  return `https://us.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
 }
 
 function buildFallbackProducts(
