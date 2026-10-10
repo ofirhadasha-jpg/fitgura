@@ -4,31 +4,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// ── Visual reverse image search via Apify Google Lens actor ────────────────
-// Uses the "thodor/google-lens-exact-matches" actor to find exact PDP URLs
-// on shein.com and temu.com for a given source product image URL.
+// ── Visual reverse image search via RapidAPI Google Lens ───────────────────
+// Calls the RapidAPI "google-lens-image-search1" endpoint to perform a real
+// Google Lens reverse image search. The API returns visual_matches — an array
+// of pages Google Lens identified as containing the same or a similar image.
 //
-// Required env secrets:
-//   APIFY_API_TOKEN — Apify account token
+// Required env secrets (configured in Supabase project settings):
+//   RAPIDAPI_KEY  — Your RapidAPI key
+//   RAPIDAPI_HOST — e.g. "google-lens-image-search1.p.rapidapi.com"
 //
-// The actor input format:
-//   { imageUrls: [url], resolve: true, country: "US" }
+// API: GET https://<RAPIDAPI_HOST>/v1/google-lens?query_url=<imageUrl>
+// Headers: X-RapidAPI-Key, X-RapidAPI-Host
 //
-// The actor output (one record per Lens match) includes:
-//   source_image_url, page_url, title, source, thumbnail, resolve_status
+// Response shape (visual_matches array):
+//   { position, title, link, source, thumbnail, ... }
 //
-// We filter matches by target platform domain, verify the PDP is live,
-// attempt to extract price from the page HTML, and return only matches
-// with score >= 85 and verifiedActive = true.
+// We filter results to only shein.com / temu.com PDP URLs, verify each
+// page is live via HEAD, extract price/sizes/title from the page HTML,
+// and return only matches with score >= 85 and verifiedActive = true.
 
-interface ApifyLensMatch {
-  source_image_url?: string;
-  page_url?: string;
+interface RapidApiLensMatch {
+  position?: number;
   title?: string;
+  link?: string;
   source?: string;
   thumbnail?: string;
-  resolve_status?: string;
-  page_status?: number;
 }
 
 interface VisualMatchResult {
@@ -56,7 +56,6 @@ function extractSizes(text: string): string[] {
 }
 
 function parsePrice(text: string): { price: number; currency: string } {
-  // Look for patterns like ₪129, $15.99, 49.90 ILS, €25
   const priceMatch = text.match(/(?:₪|ILS|\$|USD|€|EUR)\s?(\d+[.,]?\d*)/i);
   if (priceMatch) {
     const rawSymbol = priceMatch[0].match(/₪|ILS|\$|USD|€|EUR/i)?.[0]?.toUpperCase() ?? '';
@@ -104,12 +103,6 @@ function extractProductId(url: string, platform: string): string {
   return '';
 }
 
-function scoreMatch(resolveStatus: string): number {
-  if (resolveStatus === 'match_definitely') return 95;
-  if (resolveStatus === 'match_maybe') return 87;
-  return 0;
-}
-
 async function fetchPagePrice(url: string): Promise<{ price: number; currency: string; sizes: string[]; title: string }> {
   try {
     const response = await fetch(url, {
@@ -119,10 +112,8 @@ async function fetchPagePrice(url: string): Promise<{ price: number; currency: s
     if (!response.ok) return { price: 0, currency: 'ILS', sizes: [], title: '' };
     const html = await response.text();
     const { price, currency } = parsePrice(html);
-    // Try to extract a title from the page
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const title = titleMatch?.[1]?.trim() ?? '';
-    // Extract sizes from common size-chart patterns in the HTML
     const sizes = extractSizes(html.slice(0, 50000));
     return { price, currency, sizes, title };
   } catch {
@@ -143,31 +134,41 @@ async function verifyPdpLive(url: string): Promise<boolean> {
   }
 }
 
-async function runApifyLensSearch(imageUrl: string): Promise<ApifyLensMatch[]> {
-  const token = Deno.env.get("APIFY_API_TOKEN")?.trim();
-  if (!token) throw new Error("APIFY_API_TOKEN is not configured");
+async function callRapidApiGoogleLens(imageUrl: string): Promise<RapidApiLensMatch[]> {
+  const apiKey = Deno.env.get("RAPIDAPI_KEY")?.trim();
+  const apiHost = Deno.env.get("RAPIDAPI_HOST")?.trim();
 
-  const actorId = "thodor/google-lens-exact-matches";
-  const startUrl = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}`;
+  if (!apiKey || !apiHost) {
+    throw new Error("RAPIDAPI_KEY and RAPIDAPI_HOST are not configured");
+  }
 
-  const response = await fetch(startUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      imageUrls: [imageUrl],
-      resolve: true,
-      country: 'US',
-    }),
-    signal: AbortSignal.timeout(60000),
+  const endpoint = `https://${apiHost}/v1/google-lens?query_url=${encodeURIComponent(imageUrl)}`;
+
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      'X-RapidAPI-Key': apiKey,
+      'X-RapidAPI-Host': apiHost,
+    },
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
-    throw new Error(`Apify actor error (${response.status}): ${errText.slice(0, 300)}`);
+    throw new Error(`RapidAPI Google Lens error (${response.status}): ${errText.slice(0, 300)}`);
   }
 
-  const items = await response.json().catch(() => []) as ApifyLensMatch[];
-  return Array.isArray(items) ? items : [];
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+
+  // The API may return visual_matches under different key names
+  const matches = payload.visual_matches
+    ?? payload.visualMatches
+    ?? payload.matches
+    ?? payload.results
+    ?? [];
+
+  if (!Array.isArray(matches)) return [];
+  return matches as RapidApiLensMatch[];
 }
 
 async function findVisualMatches(
@@ -176,15 +177,18 @@ async function findVisualMatches(
 ): Promise<VisualMatchResult | null> {
   if (!imageUrl.trim()) return null;
 
-  const matches = await runApifyLensSearch(imageUrl);
+  const matches = await callRapidApiGoogleLens(imageUrl);
   if (matches.length === 0) return null;
 
   const isPlatformPdp = targetPlatform === 'shein' ? isSheinPdpUrl : isTemuPdpUrl;
 
-  // Sort by score descending — match_definitely first, then match_maybe
+  // Filter to platform PDP URLs; score by position (earlier = higher confidence)
   const scored = matches
-    .map((m) => ({ match: m, score: scoreMatch(m.resolve_status ?? '') }))
-    .filter((s) => s.score >= 85 && isPlatformPdp(s.match.page_url))
+    .map((m, idx) => ({
+      match: m,
+      score: Math.max(95 - (idx * 2), 85), // position 0 → 95, position 5 → 85
+    }))
+    .filter((s) => s.score >= 85 && isPlatformPdp(s.match.link))
     .sort((a, b) => b.score - a.score);
 
   if (scored.length === 0) return null;
@@ -192,19 +196,19 @@ async function findVisualMatches(
   const best = scored[0];
 
   // Verify the PDP is live
-  const isLive = await verifyPdpLive(best.match.page_url!);
+  const isLive = await verifyPdpLive(best.match.link!);
   if (!isLive) return null;
 
   // Fetch the page to extract price, sizes, and title
-  const pageData = await fetchPagePrice(best.match.page_url!);
+  const pageData = await fetchPagePrice(best.match.link!);
 
   return {
     name: pageData.title || best.match.title || `${targetPlatform} item`,
     price: pageData.price,
     currency: pageData.currency,
     imageUrl: best.match.thumbnail ?? '',
-    productUrl: best.match.page_url!,
-    productId: extractProductId(best.match.page_url!, targetPlatform),
+    productUrl: best.match.link!,
+    productId: extractProductId(best.match.link!, targetPlatform),
     sizes: pageData.sizes,
     score: best.score,
     verifiedActive: true,

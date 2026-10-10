@@ -3,10 +3,11 @@ import { wrapWithSkimlinks } from '../utils/skimlinks'
 import type { ExactVisualMatch, ProductPlatform } from './adapterTypes'
 
 // ── Visual reverse image search client ────────────────────────────────────
-// Calls the `visual-search` edge function, which runs the Apify Google Lens
-// actor to find exact PDP matches on the target platform. Only verified,
-// live PDP URLs with a score >= 85 are returned. Unverified results are
-// never used — the function returns null so the UI can show "exclusive".
+// Calls the `visual-search` edge function, which queries the RapidAPI Google
+// Lens endpoint (google-lens-image-search1.p.rapidapi.com/v1/google-lens) to
+// find exact PDP matches on SHEIN and Temu. Only verified, live PDP URLs with
+// a score >= 85 are returned. Unverified results are never used — the function
+// returns null so the UI can show "exclusive" badges instead of broken links.
 
 function isPdpForPlatform(url: string, platform: ProductPlatform): boolean {
   try {
