@@ -144,11 +144,8 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   function handlePrimaryBuy() {
     if (!primaryOffer || !primaryOffer.url) return
-    const finalUrl = primaryOffer.url.includes('go.skimresources') || primaryOffer.url.includes('go.redirecting')
-      ? primaryOffer.url
-      : primaryOffer.platform === 'aliexpress'
-        ? wrapWithSkimlinks(primaryOffer.url)
-        : wrapWithSkimlinks(primaryOffer.url)
+    const alreadyWrapped = primaryOffer.url.includes('go.skimlinks') || primaryOffer.url.includes('go.skimresources') || primaryOffer.url.includes('go.redirecting')
+    const finalUrl = alreadyWrapped ? primaryOffer.url : wrapWithSkimlinks(primaryOffer.url)
     openUrl(finalUrl, product)
     onDismiss()
   }
