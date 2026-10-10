@@ -66,8 +66,8 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const recommendedSize = showSizeRecommendation ? getRecommendedSizeLabel(product, scannedSizes, category) : null
   const hasScanned = scannedSizes != null
 
-  const platformLabel = product.platform ? PLATFORM_LABELS[product.platform] : 'AliExpress'
-  const platformColor = product.platform ? PLATFORM_COLORS[product.platform] : '#E84B35'
+  const platformLabel = product.platform ? PLATFORM_LABELS[product.platform] : 'SHEIN'
+  const platformColor = product.platform ? PLATFORM_COLORS[product.platform] : '#111827'
   const priceComparison = product.priceComparison ?? []
   const storeCount = priceComparison.length
   const hasMultiStore = storeCount > 1

@@ -222,6 +222,7 @@ export function FeedScreen({
       }
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)
+      console.log('[FITGURA] Primary Feed loaded from SHEIN. Running visual match for Temu & AliExpress...')
 
       if (requestId !== loadRequestRef.current) return
 
