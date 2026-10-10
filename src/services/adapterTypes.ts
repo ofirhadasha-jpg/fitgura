@@ -19,11 +19,6 @@ export interface CJCredentials {
   advertiserId: string
 }
 
-export interface TemuCredentials {
-  affiliateKey: string
-  trackingId: string
-}
-
 // ── Unified adapter interface ─────────────────────────────────────────────────
 // Every affiliate source implements this interface so the aggregator can
 // query them uniformly. Adapters that don't have credentials yet should
