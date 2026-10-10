@@ -463,6 +463,12 @@ export function FeedScreen({
       })
     : filtered
 
+  const sheinFirst = [...sizeSorted].sort((a, b) => {
+    const aIsShein = a.platform === 'shein' ? 0 : 1
+    const bIsShein = b.platform === 'shein' ? 0 : 1
+    return aIsShein - bIsShein
+  })
+
   console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget)
 
   return (
@@ -605,7 +611,7 @@ export function FeedScreen({
         )}
 
         <View style={feedStyles.productGrid}>
-          {sizeSorted.map((product) => {
+          {sheinFirst.map((product) => {
             const globalIdx = catalog.indexOf(product)
             return (
               <ProductCard
