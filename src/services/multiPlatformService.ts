@@ -134,20 +134,22 @@ function buildOffersForProduct(product: Product, group: Product[]): {
   const offers: Offer[] = []
   const usedPlatforms = new Set<string>()
 
-  // SHEIN as primary if we have a real SHEIN product in the cluster
+  // SHEIN is always the primary offer when available.
   const sheinProduct = group.find((p) => p.platform === 'shein')
-  if (sheinProduct) {
+  if (sheinProduct && platformUrl(sheinProduct)) {
+    const sheinUrl = platformUrl(sheinProduct)
     offers.push({
       platform: 'shein',
       label: PLATFORM_LABELS.shein,
       price: sheinProduct.price,
       currency: sheinProduct.currency,
-      url: platformUrl(sheinProduct),
+      url: sheinUrl,
     })
     usedPlatforms.add('shein')
+    console.log('[Skimlinks] Wrapped SHEIN PDP URL:', sheinUrl)
   }
 
-  // AliExpress as primary if no SHEIN product
+  // Only fall back to AliExpress as primary if NO SHEIN product exists at all.
   const aliProduct = group.find((p) => (p.platform ?? 'aliexpress') === 'aliexpress')
   if (aliProduct && offers.length === 0) {
     offers.push({
@@ -160,7 +162,7 @@ function buildOffersForProduct(product: Product, group: Product[]): {
     usedPlatforms.add('aliexpress')
   }
 
-  // Add only platform products with a direct URL. Visual matches are loaded when a product is opened.
+  // Secondary: Temu with a direct URL
   const temuProduct = group.find((p) => p.platform === 'temu')
   if (temuProduct && platformUrl(temuProduct)) {
     offers.push({
@@ -171,17 +173,6 @@ function buildOffersForProduct(product: Product, group: Product[]): {
       url: platformUrl(temuProduct),
     })
     usedPlatforms.add('temu')
-  }
-
-  if (!usedPlatforms.has('shein') && sheinProduct && platformUrl(sheinProduct)) {
-    offers.push({
-      platform: 'shein',
-      label: PLATFORM_LABELS.shein,
-      price: sheinProduct.price,
-      currency: sheinProduct.currency,
-      url: platformUrl(sheinProduct),
-    })
-    usedPlatforms.add('shein')
   }
 
   // Secondary: AliExpress if it wasn't the primary
@@ -279,14 +270,18 @@ export async function searchAllPlatformsByCategory(
   minPrice = 0,
   maxPrice = 1000,
 ): Promise<Product[]> {
-  const results = await Promise.allSettled([
+  // SHEIN is the mandatory primary data source — fetch first.
+  const sheinProducts = await sheinSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup)
+  console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
+
+  // Fetch secondary platforms in parallel for comparison only.
+  const secondaryResults = await Promise.allSettled([
     aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
-    sheinSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     temuSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
   ])
 
-  const merged: Product[] = []
-  for (const r of results) {
+  const merged: Product[] = [...sheinProducts]
+  for (const r of secondaryResults) {
     if (r.status === 'fulfilled') merged.push(...r.value)
   }
 
@@ -314,14 +309,18 @@ export async function searchAllPlatformsByQuery(
   minPrice = 0,
   maxPrice = 1000,
 ): Promise<Product[]> {
-  const results = await Promise.allSettled([
+  // SHEIN is the mandatory primary data source — fetch first.
+  const sheinProducts = await sheinSearchProducts(keywords, pageNo, pageSize)
+  console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
+
+  // Fetch secondary platforms in parallel for comparison only.
+  const secondaryResults = await Promise.allSettled([
     aliSearchProducts(keywords, pageNo, pageSize),
-    sheinSearchProducts(keywords, pageNo, pageSize),
     temuSearchProducts(keywords, pageNo, pageSize),
   ])
 
-  const merged: Product[] = []
-  for (const r of results) {
+  const merged: Product[] = [...sheinProducts]
+  for (const r of secondaryResults) {
     if (r.status === 'fulfilled') merged.push(...r.value)
   }
 
@@ -345,20 +344,30 @@ export async function searchAllPlatformDeviceAccessories(
   pageSize = 50,
   gender?: Gender,
 ): Promise<Product[]> {
-  const results = await Promise.allSettled([
+  // SHEIN is the mandatory primary data source — fetch first.
+  const sheinProducts = await sheinSearchDeviceAccessories(deviceName, pageNo, pageSize, gender)
+  console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
+
+  // Fetch secondary platforms in parallel for comparison only.
+  const secondaryResults = await Promise.allSettled([
     aliSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
-    sheinSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     temuSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
   ])
 
-  const merged: Product[] = []
-  for (const r of results) {
+  const merged: Product[] = [...sheinProducts]
+  for (const r of secondaryResults) {
     if (r.status === 'fulfilled') merged.push(...r.value)
   }
 
   const deduped = dedupByName(merged)
   const clustered = clusterProducts(deduped)
-  return ensureOffers(sortByBestSellers(clustered))
+  const sheinFirst = [...clustered].sort((a, b) => {
+    const aShein = a.platform === 'shein' ? 0 : 1
+    const bShein = b.platform === 'shein' ? 0 : 1
+    if (aShein !== bShein) return aShein - bShein
+    return (b.ordersCount ?? 0) - (a.ordersCount ?? 0)
+  })
+  return ensureOffers(sheinFirst)
 }
 
 // ── Platform display helpers (shared by UI components) ────────────────────

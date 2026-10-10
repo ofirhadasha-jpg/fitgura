@@ -113,11 +113,26 @@ function buildKeywords(category: FeedCategory, gender: Gender): string {
   return [genderWord, categoryWord].filter(Boolean).join(' ')
 }
 
+function isSheinPdpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && /(^|\.)shein\.com$/i.test(parsed.hostname) && /-p-?[a-z0-9]+\.html/i.test(parsed.pathname)
+  } catch { /* ignore */ }
+  return false
+}
+
 function withSkimlinks(products: Product[]): Product[] {
-  return products.map((p) => ({
-    ...p,
-    buyUrl: wrapWithSkimlinks(p.aliexpressUrl ?? ''),
-  }))
+  return products.map((p) => {
+    const rawUrl = p.aliexpressUrl ?? ''
+    if (!rawUrl || !isSheinPdpUrl(rawUrl)) {
+      // Don't wrap broken, empty, or category URLs — leave buyUrl empty so
+      // the aggregator can generate a fallback search link instead.
+      return p
+    }
+    const wrappedUrl = wrapWithSkimlinks(rawUrl)
+    console.log('[Skimlinks] Wrapped SHEIN PDP URL:', wrappedUrl)
+    return { ...p, buyUrl: wrappedUrl }
+  })
 }
 
 export async function searchProductsByCategory(
