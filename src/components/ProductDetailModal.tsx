@@ -8,6 +8,7 @@ import { logAffiliateClick } from '../services/analyticsService'
 import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/multiPlatformService'
 import { resolveProductImage, getFallbackImage } from '../utils/productImages'
 import { searchAllVisualMatches, getMissingPlatforms, getFallbackSearchUrl } from '../services/imageSearch'
+import { wrapWithSkimlinks } from '../utils/skimlinks'
 import type { ExactVisualMatch } from '../services/adapterTypes'
 import type { ProductPlatform } from '../types'
 
@@ -133,14 +134,22 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     setRedirectingOffer('primary')
 
     let finalUrl = primaryOffer.url
-    // Try affiliate wrapping for non-Skimlinks URLs
+
+    // If the URL is already wrapped with Skimlinks, use it as-is.
+    // For AliExpress URLs, use the AliExpress affiliate link generator.
+    // For all other platforms (SHEIN, Temu, etc.), wrap with Skimlinks.
     if (!primaryOffer.url.includes('go.skimresources') && !primaryOffer.url.includes('go.redirecting')) {
-      try {
-        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
-        const wrapped = await Promise.race([generateAffiliateLink(primaryOffer.url), timeoutPromise])
-        if (wrapped) finalUrl = wrapped
-      } catch {
-        // fall back to direct URL
+      if (primaryOffer.platform === 'aliexpress') {
+        try {
+          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
+          const wrapped = await Promise.race([generateAffiliateLink(primaryOffer.url), timeoutPromise])
+          if (wrapped) finalUrl = wrapped
+        } catch {
+          // fall back to Skimlinks wrapping
+          finalUrl = wrapWithSkimlinks(primaryOffer.url)
+        }
+      } else {
+        finalUrl = wrapWithSkimlinks(primaryOffer.url)
       }
     }
 
