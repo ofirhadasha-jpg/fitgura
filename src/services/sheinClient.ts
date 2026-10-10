@@ -225,21 +225,20 @@ function buildFallbackProducts(
     templates = genderCatalog[catKey] ?? genderCatalog.clothing
   }
 
-  const offset = (pageNo - 1) * pageSize
-  const products: Product[] = []
+  // One product per template — no V2/V3 variants. Each template has a unique
+  // image so every card in the feed shows a distinct product.
+  const start = (pageNo - 1) * pageSize
+  const slice = templates.slice(start, start + pageSize)
 
-  for (let i = 0; i < pageSize && i + offset < templates.length * 4; i++) {
-    const template = templates[(i + offset) % templates.length]
-    const variant = Math.floor((i + offset) / templates.length)
-    const productId = generateSheinProductId(template, i + offset, pageNo)
-    const name = variant > 0 ? `${template.name} V${variant + 1}` : template.name
+  return slice.map((template, i) => {
+    const productId = generateSheinProductId(template, start + i, pageNo)
     const priceILS = Math.round(template.basePrice * USD_TO_ILS)
     const originalPriceILS = Math.round(priceILS * 1.3)
     const sizes = template.isShoes ? SHOE_SIZES : ALL_SIZES
-    const pdpUrl = buildPdpUrl(productId, name)
+    const pdpUrl = buildPdpUrl(productId, template.name)
 
-    products.push({
-      name,
+    return {
+      name: template.name,
       brand: 'SHEIN',
       price: priceILS,
       originalPrice: originalPriceILS,
@@ -250,14 +249,12 @@ function buildFallbackProducts(
       aliexpressUrl: pdpUrl,
       aliexpressSku: productId,
       availableSizes: sizes,
-      ordersCount: 200 + hashStr(name) % 3000,
-      evaluateRate: 4.2 + (hashStr(name) % 8) / 10,
+      ordersCount: 200 + hashStr(template.name) % 3000,
+      evaluateRate: 4.2 + (hashStr(template.name) % 8) / 10,
       platform: 'shein' as const,
       promotionLink: null,
-    })
-  }
-
-  return products
+    } as Product
+  })
 }
 
 function buildDeviceAccessoryFallback(deviceName: string, pageNo: number, pageSize: number): Product[] {
@@ -273,21 +270,18 @@ function buildDeviceAccessoryFallback(deviceName: string, pageNo: number, pageSi
     { name: `SHEIN ${cleanDevice} Phone Lanyard Strap`, basePrice: 3.99, imageKey: 'phoneLanyard' },
   ]
 
-  const offset = (pageNo - 1) * pageSize
-  const products: Product[] = []
+  const start = (pageNo - 1) * pageSize
+  const slice = templates.slice(start, start + pageSize)
 
-  for (let i = 0; i < pageSize && i + offset < templates.length * 3; i++) {
-    const template = templates[(i + offset) % templates.length]
-    const variant = Math.floor((i + offset) / templates.length)
-    const h = hashStr(`${template.name}-${i + offset}-${pageNo}`)
+  return slice.map((template, i) => {
+    const h = hashStr(`${template.name}-${start + i}-${pageNo}`)
     const productId = String(1000000 + h % 9000000)
-    const name = variant > 0 ? `${template.name} V${variant + 1}` : template.name
     const priceILS = Math.round(template.basePrice * USD_TO_ILS)
-    const pdpUrl = buildPdpUrl(productId, name)
+    const pdpUrl = buildPdpUrl(productId, template.name)
     const image = DEVICE_ACCESSORY_IMAGES[template.imageKey] ?? DEVICE_ACCESSORY_IMAGES.phoneCase
 
-    products.push({
-      name,
+    return {
+      name: template.name,
       brand: 'SHEIN',
       price: priceILS,
       originalPrice: Math.round(priceILS * 1.4),
@@ -298,14 +292,12 @@ function buildDeviceAccessoryFallback(deviceName: string, pageNo: number, pageSi
       aliexpressUrl: pdpUrl,
       aliexpressSku: productId,
       availableSizes: [],
-      ordersCount: 100 + hashStr(name) % 2000,
-      evaluateRate: 4.0 + (hashStr(name) % 10) / 10,
+      ordersCount: 100 + hashStr(template.name) % 2000,
+      evaluateRate: 4.0 + (hashStr(template.name) % 10) / 10,
       platform: 'shein' as const,
       promotionLink: null,
-    })
-  }
-
-  return products
+    } as Product
+  })
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────

@@ -50,13 +50,35 @@ function sortByBestSellers(products: Product[]): Product[] {
 }
 
 function dedupByName(products: Product[]): Product[] {
-  const seen = new Set<string>()
-  return products.filter((p) => {
-    const key = `${p.platform ?? 'aliexpress'}-${p.name}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+  const seenImages = new Set<string>()
+  const seenTitles: { tokens: string[]; nameKey: string }[] = []
+  const result: Product[] = []
+
+  for (const p of products) {
+    // 1. Reject if the exact same image URL was already seen
+    const imgUrl = (p.imageUrl ?? p.img ?? '').trim()
+    if (imgUrl && seenImages.has(imgUrl)) continue
+
+    // 2. Reject if title is 90%+ similar to an already-kept product
+    const tokens = normalizeTitle(p.name)
+    const nameKey = normalizeNameKey(p.name)
+    let isDuplicate = false
+    for (const seen of seenTitles) {
+      const sim = jaccardSimilarity(tokens, seen.tokens)
+      if (sim >= 0.9 || nameKey === seen.nameKey) {
+        isDuplicate = true
+        break
+      }
+    }
+    if (isDuplicate) continue
+
+    if (imgUrl) seenImages.add(imgUrl)
+    seenTitles.push({ tokens, nameKey })
+    result.push(p)
+  }
+
+  console.log(`[Deduplication] Filtered out duplicate image/title variants. Rendering ${result.length} unique items.`)
+  return result
 }
 
 // ── Title normalization & Jaccard similarity ──────────────────────────────
