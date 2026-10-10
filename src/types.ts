@@ -782,11 +782,13 @@ export interface Product {
   originalPrice?: number | null
   currency?: string
   img: string
+  imageUrl?: string
   category: string
   aliexpressUrl?: string
   aliexpressSku?: string
   promotionLink?: string | null
   matchScore?: number
+  visualMatchScore?: number
   ordersCount?: number
   volume?: number
   evaluateRate?: number

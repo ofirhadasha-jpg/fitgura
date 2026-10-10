@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.temu-affiliate]
 verify_jwt = false
+
+[functions.visual-search]
+verify_jwt = false

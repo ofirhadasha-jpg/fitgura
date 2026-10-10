@@ -120,6 +120,55 @@ function loadGuestProfile(): GuestProfile | null {
   }
 }
 
+function restoreScannedSizes(profile: Record<string, unknown>): ScannedSizes | null {
+  const top = typeof profile.top_size === 'string' ? profile.top_size : null
+  const bottom = typeof profile.bottom_size === 'string' ? profile.bottom_size : null
+  if (!top && !bottom) return null
+
+  const numberOrNull = (value: unknown): number | null => typeof value === 'number' ? value : null
+  const fit = typeof profile.fit === 'string' ? profile.fit : 'Regular'
+  const gender = profile.gender === 'male' || profile.gender === 'female' ? profile.gender : 'unisex'
+  const shoeSize = typeof profile.shoe_size === 'string' ? profile.shoe_size : null
+  const bodyMetrics = {
+    estimated_height_cm: numberOrNull(profile.height_cm),
+    estimated_weight_kg: numberOrNull(profile.weight_kg),
+    chest_circumference_cm: numberOrNull(profile.chest_cm),
+    waist_circumference_cm: numberOrNull(profile.waist_cm),
+    hips_circumference_cm: numberOrNull(profile.hips_cm),
+    shoulder_width_cm: numberOrNull(profile.shoulder_cm),
+  }
+
+  return {
+    sizing: {
+      top: top ?? 'M',
+      bottom: bottom ?? '40',
+      fit,
+      bodyFrame: 'Medium',
+      confidence: 100,
+      baselineMatched: true,
+      isWeeklyUpdate: false,
+      measurementDelta: null,
+      bodyMetrics,
+    },
+    style: {
+      primaryStyle: 'Casual',
+      secondaryStyle: 'Urban',
+      dominantColors: [],
+      patternPreference: 'Solid',
+      aestheticTags: [],
+    },
+    confidence: 100,
+    preview: '',
+    top: top ?? 'M',
+    bottom: bottom ?? '40',
+    fit,
+    gender,
+    ageGroup: 'adult',
+    personBounds: { top: 2, left: 10, width: 80, height: 96 },
+    shoeSize,
+  }
+}
+
 function loadGuestFavorites(): { productId: string; productName: string }[] {
   const raw = localStorage.getItem(GUEST_FAVORITES_KEY)
   if (!raw) return []
@@ -258,14 +307,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>(() => {
-    try {
-      const saved = sessionStorage.getItem('fitgura_screen')
-      return (saved === 'onboarding' || saved === 'device') ? saved : 'splash'
-    } catch {
-      return 'splash'
-    }
-  })
+  const [screen, setScreen] = useState<Screen>('splash')
   const [wishlistItems, setWishlistItems] = useState<number[]>([])
   const [budget, setBudget] = useState<[number, number]>([0, 5000])
   const [user, setUser] = useState<User | null>(null)
@@ -302,7 +344,15 @@ export default function App() {
     void supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) return
       const u = session.user
-      const { data: profileRow } = await supabase.from('profiles').select('is_admin').eq('user_id', u.id).maybeSingle()
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('is_admin, gender, chest_cm, waist_cm, hips_cm, shoulder_cm, height_cm, weight_kg, shoe_size, top_size, bottom_size, fit')
+        .eq('user_id', u.id)
+        .maybeSingle()
+      if (profileRow) {
+        const restoredSizes = restoreScannedSizes(profileRow as Record<string, unknown>)
+        if (restoredSizes) setScannedSizes(restoredSizes)
+      }
       setUser({
         id: u.id,
         name: u.user_metadata?.full_name ?? u.email?.split('@')[0] ?? 'משתמש',
@@ -397,8 +447,7 @@ export default function App() {
   }
 
   function changeScreen(s: Screen) {
-    if (s === 'onboarding' || s === 'device') sessionStorage.setItem('fitgura_screen', s)
-    else sessionStorage.removeItem('fitgura_screen')
+    sessionStorage.removeItem('fitgura_screen')
     setScreen(s)
   }
 
@@ -649,7 +698,7 @@ export default function App() {
     <ErrorBoundary>
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
-        {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} />}
+        {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} onAuth={handleAuth} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={handleDeviceDetected} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}

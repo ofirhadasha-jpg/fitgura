@@ -51,6 +51,19 @@ export interface AdapterDeviceParams {
   gender?: Gender
 }
 
+export interface ExactVisualMatch {
+  platform: ProductPlatform
+  name: string
+  price: number
+  currency: string
+  imageUrl: string
+  productUrl: string
+  productId: string
+  sizes: string[]
+  score: number
+  verifiedActive: boolean
+}
+
 export interface AffiliateAdapter {
   readonly platform: ProductPlatform
   readonly isConfigured: boolean
@@ -80,6 +93,7 @@ export function normalizeProduct(
     originalPrice: originalPrice != null && !isNaN(originalPrice) ? originalPrice : null,
     currency: String(raw.currency ?? 'USD'),
     img: String(raw.img ?? raw.image ?? raw.image_url ?? raw.imageUrl ?? ''),
+    imageUrl: String(raw.imageUrl ?? raw.image_url ?? raw.img ?? raw.image ?? ''),
     category: String(raw.category ?? ''),
     aliexpressUrl: String(raw.url ?? raw.product_url ?? raw.link ?? raw.aliexpressUrl ?? ''),
     aliexpressSku: String(raw.sku ?? raw.product_id ?? raw.productId ?? raw.aliexpressSku ?? ''),

@@ -20,26 +20,18 @@ import {
   searchProducts as temuSearchProducts,
   searchDeviceAccessories as temuSearchDeviceAccessories,
 } from './temuClient'
-import {
-  cjAdapter,
-  searchProductsByCategory as cjSearchByCategory,
-  searchProducts as cjSearchProducts,
-  searchDeviceAccessories as cjSearchDeviceAccessories,
-} from './cjClient'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
-import { wrapWithSkimlinks } from '../utils/skimlinks'
-import { getFallbackImage } from '../utils/productImages'
 
 // ── Adapter registry ─────────────────────────────────────────────────────────
-// All four affiliate adapters are registered here. The aggregator queries them
-// in parallel and merges results. Adapters without credentials return mock or
-// fallback data rather than throwing, so the feed always has results.
+// Three platforms: AliExpress (live API), SHEIN (CJ Affiliate, live when configured),
+// and Temu (live when configured). CJ adapter removed — it was returning irrelevant
+// AliExpress re-tags. SHEIN and Temu return empty without credentials; the aggregator
+// auto-generates real search links as secondary offers on every product.
 
 export const ADAPTERS: AffiliateAdapter[] = [
   aliExpressAdapter,
   sheinAdapter,
   temuAdapter,
-  cjAdapter,
 ]
 
 export function getAdapterStatus(): { platform: ProductPlatform; isConfigured: boolean }[] {
@@ -99,31 +91,17 @@ function jaccardSimilarity(tokensA: string[], tokensB: string[]): number {
 
 const SIMILARITY_THRESHOLD = 0.45
 
+function normalizeNameKey(title: string): string {
+  return normalizeTitle(title).sort().join(' ')
+}
+
 // ── Product clustering ────────────────────────────────────────────────────
 
 function platformUrl(p: Product): string {
   const platform = p.platform ?? 'aliexpress'
-  // Prefer buyUrl (already Skimlinks-wrapped for SHEIN/Temu) over aliexpressUrl
   if (p.buyUrl) return p.buyUrl
   if (p.aliexpressUrl) return p.aliexpressUrl
-  // Fallback: generate item-level deep links, not generic search pages
-  if (platform === 'shein') {
-    const numericId = p.aliexpressSku?.match(/\d{6,}/)?.[0]
-    if (numericId) return `https://www.shein.com/goods-p-${numericId}.html`
-    let hash = 0
-    const cleanName = (p.name ?? '').replace(/^SHEIN\s+/i, '').trim()
-    for (let i = 0; i < cleanName.length; i++) hash = ((hash << 5) - hash + cleanName.charCodeAt(i)) | 0
-    return `https://www.shein.com/goods-p-${Math.abs(hash % 9000000) + 1000000}.html`
-  }
-  if (platform === 'temu') {
-    const numericId = p.aliexpressSku?.match(/\d{6,}/)?.[0]
-    if (numericId) return `https://www.temu.com/goods-${numericId}.html`
-    let hash = 0
-    const cleanName = (p.name ?? '').replace(/^Temu\s+/i, '').trim()
-    for (let i = 0; i < cleanName.length; i++) hash = ((hash << 5) - hash + cleanName.charCodeAt(i)) | 0
-    return `https://www.temu.com/goods-${Math.abs(hash % 9000000) + 1000000}.html`
-  }
-  return `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(p.name)}`
+  return ''
 }
 
 function buildPriceComparison(group: Product[]): PriceComparisonEntry[] {
@@ -143,15 +121,20 @@ function buildPriceComparison(group: Product[]): PriceComparisonEntry[] {
   return entries.sort((a, b) => a.price - b.price)
 }
 
-// ── Offer builder: constructs primaryOffer + secondaryOffers for a product ──
+// ── Offer builder ───────────────────────────────────────────────────────────
+// For each product, build a primary offer (SHEIN if available, else the product's
+// own platform) and secondary offers (Temu + AliExpress). When SHEIN/Temu don't
+// return real products, we still generate valid search-link offers so users can
+// check prices on those platforms.
 
-function buildOffersForProduct(representative: Product, group: Product[]): {
+function buildOffersForProduct(product: Product, group: Product[]): {
   primaryOffer: Offer | null
   secondaryOffers: Offer[]
 } {
   const offers: Offer[] = []
+  const usedPlatforms = new Set<string>()
 
-  // SHEIN is the primary verified source — add it first
+  // SHEIN as primary if we have a real SHEIN product in the cluster
   const sheinProduct = group.find((p) => p.platform === 'shein')
   if (sheinProduct) {
     offers.push({
@@ -161,44 +144,67 @@ function buildOffersForProduct(representative: Product, group: Product[]): {
       currency: sheinProduct.currency,
       url: platformUrl(sheinProduct),
     })
+    usedPlatforms.add('shein')
   }
 
-  // Secondary: AliExpress, Temu, CJ (in that order)
-  for (const plat of ['aliexpress', 'temu', 'cj'] as ProductPlatform[]) {
-    const p = group.find((item) => (item.platform ?? 'aliexpress') === plat)
-    if (p) {
-      offers.push({
-        platform: plat,
-        label: PLATFORM_LABELS[plat],
-        price: p.price,
-        currency: p.currency,
-        url: platformUrl(p),
-      })
-    }
-  }
-
-  // If no offers from group, use the representative product itself
-  if (offers.length === 0) {
-    const plat = representative.platform ?? 'aliexpress'
+  // AliExpress as primary if no SHEIN product
+  const aliProduct = group.find((p) => (p.platform ?? 'aliexpress') === 'aliexpress')
+  if (aliProduct && offers.length === 0) {
     offers.push({
-      platform: plat,
-      label: PLATFORM_LABELS[plat] ?? plat,
-      price: representative.price,
-      currency: representative.currency,
-      url: platformUrl(representative),
+      platform: 'aliexpress',
+      label: PLATFORM_LABELS.aliexpress,
+      price: aliProduct.price,
+      currency: aliProduct.currency,
+      url: platformUrl(aliProduct),
+    })
+    usedPlatforms.add('aliexpress')
+  }
+
+  // Add only platform products with a direct URL. Visual matches are loaded when a product is opened.
+  const temuProduct = group.find((p) => p.platform === 'temu')
+  if (temuProduct && platformUrl(temuProduct)) {
+    offers.push({
+      platform: 'temu',
+      label: PLATFORM_LABELS.temu,
+      price: temuProduct.price,
+      currency: temuProduct.currency,
+      url: platformUrl(temuProduct),
+    })
+    usedPlatforms.add('temu')
+  }
+
+  if (!usedPlatforms.has('shein') && sheinProduct && platformUrl(sheinProduct)) {
+    offers.push({
+      platform: 'shein',
+      label: PLATFORM_LABELS.shein,
+      price: sheinProduct.price,
+      currency: sheinProduct.currency,
+      url: platformUrl(sheinProduct),
+    })
+    usedPlatforms.add('shein')
+  }
+
+  // Secondary: AliExpress if it wasn't the primary
+  if (!usedPlatforms.has('aliexpress') && aliProduct) {
+    offers.push({
+      platform: 'aliexpress',
+      label: PLATFORM_LABELS.aliexpress,
+      price: aliProduct.price,
+      currency: aliProduct.currency,
+      url: platformUrl(aliProduct),
     })
   }
 
   const primaryOffer = offers[0] ?? null
-  const secondaryOffers = offers.slice(1)
+  const secondaryOffers = offers.slice(1).filter((o) => o.price > 0 || o.url)
   return { primaryOffer, secondaryOffers }
 }
 
 function clusterProducts(products: Product[]): Product[] {
-  // Pre-compute normalized tokens for each product
   const tokenized = products.map((p) => ({
     product: p,
     tokens: normalizeTitle(p.name),
+    nameKey: `${p.category}-${normalizeNameKey(p.name)}`,
   }))
 
   const used = new Set<number>()
@@ -211,31 +217,40 @@ function clusterProducts(products: Product[]): Product[] {
 
     for (let j = i + 1; j < tokenized.length; j++) {
       if (used.has(j)) continue
-      const sim = jaccardSimilarity(tokenized[i].tokens, tokenized[j].tokens)
       const sameCategory = tokenized[i].product.category === tokenized[j].product.category
-      // Cross-platform clustering: group matching items from SHEIN, Temu, and
-      // AliExpress into a single card. Only require same category + similarity.
-      if (sim >= SIMILARITY_THRESHOLD && sameCategory) {
-        cluster.push(tokenized[j].product)
-        used.add(j)
+      if (!sameCategory) continue
+
+      const exactNameMatch = tokenized[i].nameKey === tokenized[j].nameKey
+      if (exactNameMatch) {
+        const plat = tokenized[j].product.platform ?? 'aliexpress'
+        if (!cluster.some((c) => (c.platform ?? 'aliexpress') === plat)) {
+          cluster.push(tokenized[j].product)
+          used.add(j)
+        }
+        continue
+      }
+
+      const sim = jaccardSimilarity(tokenized[i].tokens, tokenized[j].tokens)
+      if (sim >= SIMILARITY_THRESHOLD) {
+        const plat = tokenized[j].product.platform ?? 'aliexpress'
+        if (!cluster.some((c) => (c.platform ?? 'aliexpress') === plat)) {
+          cluster.push(tokenized[j].product)
+          used.add(j)
+        }
       }
     }
 
     clusters.push(cluster)
   }
 
-  // Build merged products: prefer SHEIN as the representative (primary display),
-  // falling back to the lowest-price variant. Attach priceComparison + offers.
   return clusters.map((cluster) => {
     const sheinProduct = cluster.find((p) => p.platform === 'shein')
     const sorted = [...cluster].sort((a, b) => a.price - b.price)
     const representative = { ...(sheinProduct ?? sorted[0]) }
     representative.priceComparison = buildPriceComparison(cluster)
-    // Show the lowest price as the main price
     representative.price = sorted[0].price
     representative.originalPrice = sorted[0].originalPrice
     representative.currency = sorted[0].currency
-    // Build primary/secondary offers from the cluster
     const { primaryOffer, secondaryOffers } = buildOffersForProduct(representative, cluster)
     representative.primaryOffer = primaryOffer
     representative.secondaryOffers = secondaryOffers
@@ -244,33 +259,11 @@ function clusterProducts(products: Product[]): Product[] {
 }
 
 // Ensures every product has primaryOffer and secondaryOffers populated.
-// Products that already have offers (from clustering) are left intact.
-// Single-platform products get a primary offer built from their own data.
 function ensureOffers(products: Product[]): Product[] {
   return products.map((p) => {
     if (p.primaryOffer) return p
-    const plat = p.platform ?? 'aliexpress'
-    const label = PLATFORM_LABELS[plat] ?? plat
-    const url = platformUrl(p)
-    return {
-      ...p,
-      primaryOffer: {
-        platform: plat,
-        label,
-        price: p.price,
-        currency: p.currency,
-        url,
-      },
-      secondaryOffers: [],
-    }
-  })
-}
-
-// Also ensure images are never empty — fill with category fallback if missing
-function ensureImages(products: Product[]): Product[] {
-  return products.map((p) => {
-    if (p.img && p.img.trim()) return p
-    return { ...p, img: getFallbackImage(p.category, p.name) }
+    const { primaryOffer, secondaryOffers } = buildOffersForProduct(p, [p])
+    return { ...p, primaryOffer, secondaryOffers }
   })
 }
 
@@ -287,10 +280,9 @@ export async function searchAllPlatformsByCategory(
   maxPrice = 1000,
 ): Promise<Product[]> {
   const results = await Promise.allSettled([
+    aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     sheinSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     temuSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
-    aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
-    cjSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
   ])
 
   const merged: Product[] = []
@@ -302,7 +294,6 @@ export async function searchAllPlatformsByCategory(
   const priceFiltered = filtered.filter((p) => filterByPrice(p, minPrice, maxPrice))
   const deduped = dedupByName(priceFiltered)
   const clustered = clusterProducts(deduped)
-  // Sort so SHEIN products appear at the top, then by best-seller score
   const sheinFirst = [...clustered].sort((a, b) => {
     const aShein = a.platform === 'shein' ? 0 : 1
     const bShein = b.platform === 'shein' ? 0 : 1
@@ -313,7 +304,7 @@ export async function searchAllPlatformsByCategory(
     const ratingB = b.evaluateRate ?? 0
     return (salesB * 0.6 + ratingB * 0.4) - (salesA * 0.6 + ratingA * 0.4)
   })
-  return ensureImages(ensureOffers(sheinFirst))
+  return ensureOffers(sheinFirst)
 }
 
 export async function searchAllPlatformsByQuery(
@@ -324,10 +315,9 @@ export async function searchAllPlatformsByQuery(
   maxPrice = 1000,
 ): Promise<Product[]> {
   const results = await Promise.allSettled([
+    aliSearchProducts(keywords, pageNo, pageSize),
     sheinSearchProducts(keywords, pageNo, pageSize),
     temuSearchProducts(keywords, pageNo, pageSize),
-    aliSearchProducts(keywords, pageNo, pageSize),
-    cjSearchProducts(keywords, pageNo, pageSize),
   ])
 
   const merged: Product[] = []
@@ -346,7 +336,7 @@ export async function searchAllPlatformsByQuery(
     const salesB = b.ordersCount ?? b.volume ?? 0
     return salesB - salesA
   })
-  return ensureImages(ensureOffers(sheinFirst))
+  return ensureOffers(sheinFirst)
 }
 
 export async function searchAllPlatformDeviceAccessories(
@@ -356,10 +346,9 @@ export async function searchAllPlatformDeviceAccessories(
   gender?: Gender,
 ): Promise<Product[]> {
   const results = await Promise.allSettled([
+    aliSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     sheinSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     temuSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
-    aliSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
-    cjSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
   ])
 
   const merged: Product[] = []
@@ -369,7 +358,7 @@ export async function searchAllPlatformDeviceAccessories(
 
   const deduped = dedupByName(merged)
   const clustered = clusterProducts(deduped)
-  return ensureImages(ensureOffers(sortByBestSellers(clustered)))
+  return ensureOffers(sortByBestSellers(clustered))
 }
 
 // ── Platform display helpers (shared by UI components) ────────────────────
