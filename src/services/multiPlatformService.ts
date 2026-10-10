@@ -122,6 +122,7 @@ function normalizeNameKey(title: string): string {
 // sending users to a search results page.
 
 const SHEIN_PDP_RE = /-p-\d+\.html/i
+const SHEIN_PRODUCT_RE = /\/product-p-\d+\.html/i
 const ALIEXPRESS_PDP_RE = /\/item\/|product\/[a-z0-9]+$/i
 const TEMU_PDP_RE = /\/goods\/|\/p\/[a-z0-9_-]+\.html/i
 
@@ -131,6 +132,7 @@ export function isDirectPdpUrl(url: string): boolean {
   const skimlinksMatch = url.match(/[?&]url=([^&]+)/i)
   const rawUrl = skimlinksMatch ? decodeURIComponent(skimlinksMatch[1]) : url
   if (SHEIN_PDP_RE.test(rawUrl)) return true
+  if (SHEIN_PRODUCT_RE.test(rawUrl)) return true
   if (ALIEXPRESS_PDP_RE.test(rawUrl)) return true
   if (TEMU_PDP_RE.test(rawUrl)) return true
   return false
@@ -148,16 +150,16 @@ function filterToPdpProducts(products: Product[]): Product[] {
   return result
 }
 
-// Filter to high-rated products (4.5+). Products with no rating data are kept
+// Filter to high-rated products (4.0+). Products with no rating data are kept
 // so the feed isn't empty when rating info is unavailable from the API.
 function filterByHighRating(products: Product[]): Product[] {
   const result = products.filter((p) => {
     const rating = p.evaluateRate ?? 0
     if (rating === 0) return true
-    return rating >= 4.5
+    return rating >= 4.0
   })
   if (result.length < products.length) {
-    console.log(`[Rating Filter] Filtered out ${products.length - result.length} products below 4.5 rating (kept ${result.length})`)
+    console.log(`[Rating Filter] Filtered out ${products.length - result.length} products below 4.0 rating (kept ${result.length})`)
   }
   return result
 }

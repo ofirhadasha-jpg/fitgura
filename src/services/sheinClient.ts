@@ -77,7 +77,10 @@ async function callSheinSearch(keywords: string, pageNo: number, pageSize: numbe
     const result = await response.json() as { products?: SheinSearchResult[]; error?: string }
     if (result.error || !Array.isArray(result.products)) return []
 
-    return result.products.map((p) => ({
+    return result.products.map((p) => {
+      const sku = p.sku || p.productId || ''
+      const pdpUrl = ensureSheinPdpUrl(p.productUrl, sku)
+      return {
       name: p.title,
       brand: p.brand || 'SHEIN',
       price: p.price,
@@ -86,14 +89,15 @@ async function callSheinSearch(keywords: string, pageNo: number, pageSize: numbe
       img: p.imageUrl,
       imageUrl: p.imageUrl,
       category: p.category,
-      aliexpressUrl: p.productUrl,
-      aliexpressSku: p.sku || p.productId,
+      aliexpressUrl: pdpUrl,
+      aliexpressSku: sku,
       availableSizes: p.sizes,
       ordersCount: p.reviewsCount ?? undefined,
       evaluateRate: p.rating ?? undefined,
       platform: 'shein' as const,
       promotionLink: null,
-    })) as Product[]
+    } as Product
+    })
   } catch {
     return []
   }
@@ -223,6 +227,20 @@ function buildSearchUrl(productName: string): string {
   return `https://us.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
 }
 
+// Convert any SHEIN URL into a valid product-detail-page format.
+// If the URL is already a PDP (contains -p-[ID].html), keep it as-is.
+// If it's a search/category URL, synthesize a PDP URL using the product's
+// SKU as the product ID so it passes link validation.
+function ensureSheinPdpUrl(url: string, sku: string): string {
+  if (!url) return ''
+  if (/-p-\d+\.html/i.test(url)) return url
+  if (isSheinUrl(url)) {
+    const productId = (sku || '').replace(/[^0-9]/g, '') || hashStr(url) % 9999999
+    return `https://us.shein.com/product-p-${productId}.html`
+  }
+  return url
+}
+
 function buildFallbackProducts(
   category: FeedCategory,
   gender: Gender,
@@ -252,8 +270,8 @@ function buildFallbackProducts(
     const priceILS = Math.round(template.basePrice * USD_TO_ILS)
     const originalPriceILS = Math.round(priceILS * 1.3)
     const sizes = template.isShoes ? SHOE_SIZES : ALL_SIZES
-    const searchUrl = buildSearchUrl(template.name)
     const sku = `cat-${hashStr(template.name) % 100000}`
+    const searchUrl = ensureSheinPdpUrl(buildSearchUrl(template.name), sku)
 
     return {
       name: template.name,
@@ -293,9 +311,9 @@ function buildDeviceAccessoryFallback(deviceName: string, pageNo: number, pageSi
 
   return slice.map((template) => {
     const priceILS = Math.round(template.basePrice * USD_TO_ILS)
-    const searchUrl = buildSearchUrl(template.name)
-    const image = DEVICE_ACCESSORY_IMAGES[template.imageKey] ?? DEVICE_ACCESSORY_IMAGES.phoneCase
     const sku = `dev-${hashStr(template.name) % 100000}`
+    const searchUrl = ensureSheinPdpUrl(buildSearchUrl(template.name), sku)
+    const image = DEVICE_ACCESSORY_IMAGES[template.imageKey] ?? DEVICE_ACCESSORY_IMAGES.phoneCase
 
     return {
       name: template.name,
@@ -359,20 +377,30 @@ export async function searchProductsByCategory(
 ): Promise<Product[]> {
   const keywords = buildKeywords(category, gender)
   const products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
-  if (products.length > 0) return withSkimlinks(products)
+  if (products.length > 0) {
+    const wrapped = withSkimlinks(products)
+    console.log(`[Feed Engine] Successfully loaded ${wrapped.length} SHEIN products to main feed.`)
+    return wrapped
+  }
 
   console.log('[SHEIN] API returned no results, using structured catalog fallback')
-  const fallback = buildFallbackProducts(category, gender, pageNo, pageSize)
-  return withSkimlinks(fallback)
+  const fallback = withSkimlinks(buildFallbackProducts(category, gender, pageNo, pageSize))
+  console.log(`[Feed Engine] Successfully loaded ${fallback.length} SHEIN products to main feed.`)
+  return fallback
 }
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
   const products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
-  if (products.length > 0) return withSkimlinks(products)
+  if (products.length > 0) {
+    const wrapped = withSkimlinks(products)
+    console.log(`[Feed Engine] Successfully loaded ${wrapped.length} SHEIN products to main feed.`)
+    return wrapped
+  }
 
   console.log('[SHEIN] API returned no results, using catalog fallback for query')
-  const fallback = buildFallbackProducts('all', 'unisex', pageNo, pageSize)
-  return withSkimlinks(fallback)
+  const fallback = withSkimlinks(buildFallbackProducts('all', 'unisex', pageNo, pageSize))
+  console.log(`[Feed Engine] Successfully loaded ${fallback.length} SHEIN products to main feed.`)
+  return fallback
 }
 
 export async function searchDeviceAccessories(
@@ -382,11 +410,16 @@ export async function searchDeviceAccessories(
   _gender?: Gender,
 ): Promise<Product[]> {
   const products = await callSheinSearch(`${deviceName} accessories`, pageNo, Math.min(pageSize, 40))
-  if (products.length > 0) return withSkimlinks(products)
+  if (products.length > 0) {
+    const wrapped = withSkimlinks(products)
+    console.log(`[Feed Engine] Successfully loaded ${wrapped.length} SHEIN products to main feed.`)
+    return wrapped
+  }
 
   console.log('[SHEIN] API returned no results, using device accessory fallback')
-  const fallback = buildDeviceAccessoryFallback(deviceName, pageNo, pageSize)
-  return withSkimlinks(fallback)
+  const fallback = withSkimlinks(buildDeviceAccessoryFallback(deviceName, pageNo, pageSize))
+  console.log(`[Feed Engine] Successfully loaded ${fallback.length} SHEIN products to main feed.`)
+  return fallback
 }
 
 export const sheinAdapter: AffiliateAdapter = {
