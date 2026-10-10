@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'rea
 import { type Product, type ScannedSizes, type Offer, type PriceComparisonEntry } from '../types'
 import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
-import { generateAffiliateLink } from '../lib/aliexpress'
 import { logAffiliateClick } from '../services/analyticsService'
 import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/multiPlatformService'
 import { resolveProductImage, getFallbackImage } from '../utils/productImages'
@@ -57,7 +56,6 @@ export interface ProductDetailModalProps {
 
 export function ProductDetailModal({ product, scannedSizes, category, sellerSizeChart = [], visible, onDismiss }: ProductDetailModalProps) {
   const [imgError, setImgError] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
   const [redirectingOffer, setRedirectingOffer] = useState<string | null>(null)
   const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null)
   const [exactMatches, setExactMatches] = useState<ExactVisualMatch[]>([])
@@ -144,30 +142,14 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   const missingPlatforms: ProductPlatform[] = searchComplete ? getMissingPlatforms(exactMatches, productPlatform) : []
 
-  async function handlePrimaryBuy() {
+  function handlePrimaryBuy() {
     if (!primaryOffer || !primaryOffer.url) return
-    setIsRedirecting(true)
-    setRedirectingOffer('primary')
-
-    let finalUrl = primaryOffer.url
-
-    if (!finalUrl.includes('go.skimresources') && !finalUrl.includes('go.redirecting')) {
-      if (primaryOffer.platform === 'aliexpress') {
-        try {
-          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
-          const wrapped = await Promise.race([generateAffiliateLink(primaryOffer.url), timeoutPromise])
-          if (wrapped) finalUrl = wrapped
-        } catch {
-          finalUrl = wrapWithSkimlinks(primaryOffer.url)
-        }
-      } else {
-        finalUrl = wrapWithSkimlinks(primaryOffer.url)
-      }
-    }
-
+    const finalUrl = primaryOffer.url.includes('go.skimresources') || primaryOffer.url.includes('go.redirecting')
+      ? primaryOffer.url
+      : primaryOffer.platform === 'aliexpress'
+        ? wrapWithSkimlinks(primaryOffer.url)
+        : wrapWithSkimlinks(primaryOffer.url)
     openUrl(finalUrl, product)
-    setIsRedirecting(false)
-    setRedirectingOffer(null)
     onDismiss()
   }
 
@@ -304,23 +286,14 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
                 activeOpacity={0.7}
                 style={[
                   modalStyles.primaryOfferBtn,
-                  isRedirecting && redirectingOffer === 'primary' && modalStyles.primaryOfferBtnLoading,
                 ]}
-                disabled={isRedirecting && redirectingOffer === 'primary'}
                 accessibilityRole="button"
                 accessibilityLabel={`מתאים לי, המשך לרכישה ב-${primaryOffer.label}`}
               >
-                {isRedirecting && redirectingOffer === 'primary' ? (
-                  <View style={modalStyles.btnContentWrap}>
-                    <View style={modalStyles.spinner} className="fitgura-spinner" />
-                    <Text style={modalStyles.primaryOfferBtnText}>מעביר לרכישה...</Text>
-                  </View>
-                ) : (
-                  <View style={modalStyles.btnContentWrap}>
-                    <Text style={modalStyles.confirmBtnIcon}>🛒</Text>
-                    <Text style={modalStyles.primaryOfferBtnText}>מתאים לי</Text>
-                  </View>
-                )}
+                <View style={modalStyles.btnContentWrap}>
+                  <Text style={modalStyles.confirmBtnIcon}>🛒</Text>
+                  <Text style={modalStyles.primaryOfferBtnText}>מתאים לי</Text>
+                </View>
               </TouchableOpacity>
             </View>
           )}
