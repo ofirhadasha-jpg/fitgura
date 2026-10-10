@@ -81,23 +81,23 @@ async function callSheinSearch(keywords: string, pageNo: number, pageSize: numbe
       const sku = p.sku || p.productId || ''
       const pdpUrl = ensureSheinDestinationUrl(p.productUrl)
       return {
-      name: p.title,
-      brand: p.brand || 'SHEIN',
-      price: p.price,
-      originalPrice: null,
-      currency: p.currency || 'USD',
-      img: p.imageUrl,
-      imageUrl: p.imageUrl,
-      category: p.category,
-      aliexpressUrl: pdpUrl,
-      aliexpressSku: sku,
-      availableSizes: p.sizes,
-      ordersCount: p.reviewsCount ?? undefined,
-      evaluateRate: p.rating ?? undefined,
-      platform: 'shein' as const,
-      promotionLink: null,
-    } as Product
-    })
+        name: p.title,
+        brand: p.brand || 'SHEIN',
+        price: p.price,
+        originalPrice: null,
+        currency: p.currency || 'USD',
+        img: p.imageUrl,
+        imageUrl: p.imageUrl,
+        category: p.category,
+        aliexpressUrl: pdpUrl,
+        aliexpressSku: sku,
+        availableSizes: p.sizes,
+        ordersCount: p.reviewsCount ?? undefined,
+        evaluateRate: p.rating ?? undefined,
+        platform: 'shein' as const,
+        promotionLink: null,
+      } as Product
+    }).filter((p) => Boolean(p.aliexpressUrl)) as Product[]
   } catch {
     return []
   }
@@ -227,10 +227,15 @@ function buildSearchUrl(productName: string): string {
   return `https://us.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
 }
 
-// Keep real SHEIN PDPs, but never invent product IDs. A clean search URL is
-// safer than a fabricated PDP that can lead to SHEIN's OOPS page.
+function isSheinPdpUrl(url: string): boolean {
+  if (!url || !isSheinUrl(url)) return false
+  return /-p-\d+\.html(?:$|[?#])/i.test(url)
+}
+
+// Only keep real SHEIN product pages. Never invent a product ID or expose a
+// search page as if it were a single product.
 function ensureSheinDestinationUrl(url: string): string {
-  if (!url || !isSheinUrl(url)) return url
+  if (!isSheinPdpUrl(url)) return ''
   return url.split('?')[0]
 }
 
@@ -376,10 +381,9 @@ export async function searchProductsByCategory(
     return wrapped
   }
 
-  console.log('[SHEIN] API returned no results, using structured catalog fallback')
-  const fallback = withSkimlinks(buildFallbackProducts(category, gender, pageNo, pageSize))
-  console.log(`[Feed Engine] Successfully loaded ${fallback.length} SHEIN products to main feed.`)
-  return fallback
+  console.warn('[SHEIN] No verified product-detail URLs returned; skipping non-product fallback links')
+  console.log('[Feed Engine] Successfully loaded 0 SHEIN products to main feed.')
+  return []
 }
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
@@ -390,10 +394,9 @@ export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50
     return wrapped
   }
 
-  console.log('[SHEIN] API returned no results, using catalog fallback for query')
-  const fallback = withSkimlinks(buildFallbackProducts('all', 'unisex', pageNo, pageSize))
-  console.log(`[Feed Engine] Successfully loaded ${fallback.length} SHEIN products to main feed.`)
-  return fallback
+  console.warn('[SHEIN] No verified product-detail URLs returned; skipping non-product fallback links')
+  console.log('[Feed Engine] Successfully loaded 0 SHEIN products to main feed.')
+  return []
 }
 
 export async function searchDeviceAccessories(
@@ -409,10 +412,9 @@ export async function searchDeviceAccessories(
     return wrapped
   }
 
-  console.log('[SHEIN] API returned no results, using device accessory fallback')
-  const fallback = withSkimlinks(buildDeviceAccessoryFallback(deviceName, pageNo, pageSize))
-  console.log(`[Feed Engine] Successfully loaded ${fallback.length} SHEIN products to main feed.`)
-  return fallback
+  console.warn('[SHEIN] No verified product-detail URLs returned; skipping non-product fallback links')
+  console.log('[Feed Engine] Successfully loaded 0 SHEIN products to main feed.')
+  return []
 }
 
 export const sheinAdapter: AffiliateAdapter = {

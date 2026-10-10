@@ -121,8 +121,7 @@ function normalizeNameKey(title: string): string {
 // generic search or category page. This prevents the buy button from ever
 // sending users to a search results page.
 
-const SHEIN_PDP_RE = /-p-\d+\.html/i
-const SHEIN_SEARCH_RE = /\/pdsearch\//i
+const SHEIN_PDP_RE = /-p-\d+\.html(?:$|[?#])/i
 const ALIEXPRESS_PDP_RE = /\/item\/|product\/[a-z0-9]+$/i
 const TEMU_PDP_RE = /\/goods\/|\/p\/[a-z0-9_-]+\.html/i
 
@@ -132,16 +131,6 @@ export function isDirectPdpUrl(url: string): boolean {
   const skimlinksMatch = url.match(/[?&]url=([^&]+)/i)
   const rawUrl = skimlinksMatch ? decodeURIComponent(skimlinksMatch[1]) : url
   if (SHEIN_PDP_RE.test(rawUrl)) return true
-  // SHEIN search destinations are allowed when no real PDP was returned.
-  // They are validated against the merchant host to prevent open redirects.
-  try {
-    const parsed = new URL(rawUrl)
-    if (/^([a-z0-9-]+\.)*shein\.com$/i.test(parsed.hostname) && SHEIN_SEARCH_RE.test(parsed.pathname)) {
-      return true
-    }
-  } catch {
-    return false
-  }
   if (ALIEXPRESS_PDP_RE.test(rawUrl)) return true
   if (TEMU_PDP_RE.test(rawUrl)) return true
   return false
