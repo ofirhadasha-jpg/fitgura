@@ -79,7 +79,7 @@ async function callSheinSearch(keywords: string, pageNo: number, pageSize: numbe
 
     return result.products.map((p) => {
       const sku = p.sku || p.productId || ''
-      const pdpUrl = ensureSheinPdpUrl(p.productUrl, sku)
+      const pdpUrl = ensureSheinDestinationUrl(p.productUrl)
       return {
       name: p.title,
       brand: p.brand || 'SHEIN',
@@ -227,18 +227,11 @@ function buildSearchUrl(productName: string): string {
   return `https://us.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
 }
 
-// Convert any SHEIN URL into a valid product-detail-page format.
-// If the URL is already a PDP (contains -p-[ID].html), keep it as-is.
-// If it's a search/category URL, synthesize a PDP URL using the product's
-// SKU as the product ID so it passes link validation.
-function ensureSheinPdpUrl(url: string, sku: string): string {
-  if (!url) return ''
-  if (/-p-\d+\.html/i.test(url)) return url
-  if (isSheinUrl(url)) {
-    const productId = (sku || '').replace(/[^0-9]/g, '') || hashStr(url) % 9999999
-    return `https://us.shein.com/product-p-${productId}.html`
-  }
-  return url
+// Keep real SHEIN PDPs, but never invent product IDs. A clean search URL is
+// safer than a fabricated PDP that can lead to SHEIN's OOPS page.
+function ensureSheinDestinationUrl(url: string): string {
+  if (!url || !isSheinUrl(url)) return url
+  return url.split('?')[0]
 }
 
 function buildFallbackProducts(
@@ -271,7 +264,7 @@ function buildFallbackProducts(
     const originalPriceILS = Math.round(priceILS * 1.3)
     const sizes = template.isShoes ? SHOE_SIZES : ALL_SIZES
     const sku = `cat-${hashStr(template.name) % 100000}`
-    const searchUrl = ensureSheinPdpUrl(buildSearchUrl(template.name), sku)
+    const searchUrl = ensureSheinDestinationUrl(buildSearchUrl(template.name))
 
     return {
       name: template.name,
@@ -312,7 +305,7 @@ function buildDeviceAccessoryFallback(deviceName: string, pageNo: number, pageSi
   return slice.map((template) => {
     const priceILS = Math.round(template.basePrice * USD_TO_ILS)
     const sku = `dev-${hashStr(template.name) % 100000}`
-    const searchUrl = ensureSheinPdpUrl(buildSearchUrl(template.name), sku)
+    const searchUrl = ensureSheinDestinationUrl(buildSearchUrl(template.name))
     const image = DEVICE_ACCESSORY_IMAGES[template.imageKey] ?? DEVICE_ACCESSORY_IMAGES.phoneCase
 
     return {
