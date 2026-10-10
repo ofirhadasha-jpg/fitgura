@@ -13,6 +13,7 @@ import {
 import {
   searchAllPlatformsByCategory,
   searchAllPlatformDeviceAccessories,
+  type FeedFilterOptions,
 } from '../services/multiPlatformService'
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
@@ -116,7 +117,7 @@ export function FeedScreen({
     if (!latestAddedDevice) return
     let cancelled = false
     const gender: Gender = (scannedSizes?.gender as Gender) ?? 'unisex'
-    searchAllPlatformDeviceAccessories(latestAddedDevice, 1, PAGE_SIZE, gender)
+    searchAllPlatformDeviceAccessories(latestAddedDevice, 1, PAGE_SIZE, gender, { scannedSizes })
       .then((newProducts) => {
         if (cancelled || newProducts.length === 0) return
         const cleaned = newProducts.filter((p) => {
@@ -213,12 +214,12 @@ export function FeedScreen({
           remoteProducts = []
         } else {
           const deviceResults = await Promise.all(
-            accessoryDevices.map((device) => searchAllPlatformDeviceAccessories(device, page, PAGE_SIZE, gender)),
+            accessoryDevices.map((device) => searchAllPlatformDeviceAccessories(device, page, PAGE_SIZE, gender, { scannedSizes })),
           )
           remoteProducts = deviceResults.flat()
         }
       } else {
-        remoteProducts = await searchAllPlatformsByCategory(feedCategory, gender, page, PAGE_SIZE, undefined, ageGroup)
+        remoteProducts = await searchAllPlatformsByCategory(feedCategory, gender, page, PAGE_SIZE, undefined, ageGroup, 0, 1000, { scannedSizes })
       }
 
       console.log('[FeedScreen] Fetched products:', remoteProducts.length, 'page:', page, 'append:', append, 'category:', category, 'devices:', accessoryDevices)
@@ -428,17 +429,16 @@ export function FeedScreen({
     return matchSearch && matchBudget
   })
 
-  // Size-aware sorting: products that carry the user's recommended size float to the top;
-  // products that don't carry it sink to the bottom. Only applies to clothing/shoes.
-  const sizeSorted = (filter === 'all' || filter === 'clothing' || filter === 'shoes') && scannedSizes
-    ? [...filtered].sort((a, b) => {
-        const aHasSize = productCarriesUserSize(a, scannedSizes, filter)
-        const bHasSize = productCarriesUserSize(b, scannedSizes, filter)
-        if (aHasSize && !bHasSize) return -1
-        if (!aHasSize && bHasSize) return 1
-        return 0
-      })
+  // Size-aware filtering: hard-filter out products that don't carry the user's
+  // recommended size. Only applies to clothing/shoes when user has scanned sizes.
+  // The feed engine already applied this server-side, but we re-apply here as a
+  // render-time safety net (e.g. when budget slider changes the visible set).
+  const sizeFiltered = (filter === 'all' || filter === 'clothing' || filter === 'shoes') && scannedSizes
+    ? filtered.filter((p) => productCarriesUserSize(p, scannedSizes, filter))
     : filtered
+
+  // Sort by price ascending — lowest ₪ first
+  const sizeSorted = [...sizeFiltered].sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
 
   console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget)
 
