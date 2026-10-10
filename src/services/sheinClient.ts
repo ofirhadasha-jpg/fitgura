@@ -194,18 +194,9 @@ function hashStr(s: string): number {
   return Math.abs(h)
 }
 
-function generateSheinProductId(template: CatalogTemplate, index: number, page: number): string {
-  const h = hashStr(`${template.name}-${index}-${page}`)
-  return String(1000000 + h % 9000000)
-}
-
-function buildPdpUrl(productId: string, name: string): string {
-  const slug = name.toLowerCase()
-    .replace(/^shein\s+/i, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
-  return `https://www.shein.com/${slug}-p-${productId}.html`
+function buildSearchUrl(productName: string): string {
+  const keyword = productName.replace(/^SHEIN\s+/i, '').trim()
+  return `https://www.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
 }
 
 function buildFallbackProducts(
@@ -230,12 +221,12 @@ function buildFallbackProducts(
   const start = (pageNo - 1) * pageSize
   const slice = templates.slice(start, start + pageSize)
 
-  return slice.map((template, i) => {
-    const productId = generateSheinProductId(template, start + i, pageNo)
+  return slice.map((template) => {
     const priceILS = Math.round(template.basePrice * USD_TO_ILS)
     const originalPriceILS = Math.round(priceILS * 1.3)
     const sizes = template.isShoes ? SHOE_SIZES : ALL_SIZES
-    const pdpUrl = buildPdpUrl(productId, template.name)
+    const searchUrl = buildSearchUrl(template.name)
+    const sku = `cat-${hashStr(template.name) % 100000}`
 
     return {
       name: template.name,
@@ -246,8 +237,8 @@ function buildFallbackProducts(
       img: template.image,
       imageUrl: template.image,
       category: template.category,
-      aliexpressUrl: pdpUrl,
-      aliexpressSku: productId,
+      aliexpressUrl: searchUrl,
+      aliexpressSku: sku,
       availableSizes: sizes,
       ordersCount: 200 + hashStr(template.name) % 3000,
       evaluateRate: 4.2 + (hashStr(template.name) % 8) / 10,
@@ -273,12 +264,11 @@ function buildDeviceAccessoryFallback(deviceName: string, pageNo: number, pageSi
   const start = (pageNo - 1) * pageSize
   const slice = templates.slice(start, start + pageSize)
 
-  return slice.map((template, i) => {
-    const h = hashStr(`${template.name}-${start + i}-${pageNo}`)
-    const productId = String(1000000 + h % 9000000)
+  return slice.map((template) => {
     const priceILS = Math.round(template.basePrice * USD_TO_ILS)
-    const pdpUrl = buildPdpUrl(productId, template.name)
+    const searchUrl = buildSearchUrl(template.name)
     const image = DEVICE_ACCESSORY_IMAGES[template.imageKey] ?? DEVICE_ACCESSORY_IMAGES.phoneCase
+    const sku = `dev-${hashStr(template.name) % 100000}`
 
     return {
       name: template.name,
@@ -289,8 +279,8 @@ function buildDeviceAccessoryFallback(deviceName: string, pageNo: number, pageSi
       img: image,
       imageUrl: image,
       category: 'accessories',
-      aliexpressUrl: pdpUrl,
-      aliexpressSku: productId,
+      aliexpressUrl: searchUrl,
+      aliexpressSku: sku,
       availableSizes: [],
       ordersCount: 100 + hashStr(template.name) % 2000,
       evaluateRate: 4.0 + (hashStr(template.name) % 10) / 10,
@@ -303,8 +293,7 @@ function buildDeviceAccessoryFallback(deviceName: string, pageNo: number, pageSi
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export function sheinSearchUrl(productName: string): string {
-  const keyword = productName.replace(/^SHEIN\s+/i, '').trim()
-  return `https://www.shein.com/pdsearch/${encodeURIComponent(keyword)}/`
+  return buildSearchUrl(productName)
 }
 
 function buildKeywords(category: FeedCategory, gender: Gender): string {
@@ -313,10 +302,10 @@ function buildKeywords(category: FeedCategory, gender: Gender): string {
   return [genderWord, categoryWord].filter(Boolean).join(' ')
 }
 
-function isSheinPdpUrl(url: string): boolean {
+function isSheinUrl(url: string): boolean {
   try {
     const parsed = new URL(url)
-    return parsed.protocol === 'https:' && /(^|\.)shein\.com$/i.test(parsed.hostname) && /-p-?[a-z0-9]+\.html/i.test(parsed.pathname)
+    return parsed.protocol === 'https:' && /(^|\.)shein\.com$/i.test(parsed.hostname)
   } catch { /* ignore */ }
   return false
 }
@@ -324,7 +313,7 @@ function isSheinPdpUrl(url: string): boolean {
 function withSkimlinks(products: Product[]): Product[] {
   return products.map((p) => {
     const rawUrl = p.aliexpressUrl ?? ''
-    if (!rawUrl || !isSheinPdpUrl(rawUrl)) {
+    if (!rawUrl || !isSheinUrl(rawUrl)) {
       return p
     }
     const wrappedUrl = wrapWithSkimlinks(rawUrl)
