@@ -1,23 +1,12 @@
 import type { Product } from '../types'
-import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams, CJCredentials } from './adapterTypes'
+import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams } from './adapterTypes'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
 export { searchVisualMatch as searchExactVisualMatch } from './imageSearch'
 
-// SHEIN adapter — routes through CJ Affiliate's GraphQL API (SHEIN is a CJ advertiser).
-// No mock data: if credentials aren't configured, returns empty so the aggregator
-// can auto-generate SHEIN search links as secondary offers on real products.
-
-export const CJ_CREDENTIALS: CJCredentials = {
-  accessToken: '',
-  websiteId: '',
-  advertiserId: '',
-}
-
-export function setCJCredentials(creds: Partial<CJCredentials>): void {
-  Object.assign(CJ_CREDENTIALS, creds)
-}
+// SHEIN adapter — fetches real product data from SHEIN's public search API
+// via the shein-search edge function. No credentials required.
 
 const SHEIN_CATEGORIES: Record<FeedCategory, string> = {
   all: 'Fashion',
@@ -26,73 +15,51 @@ const SHEIN_CATEGORIES: Record<FeedCategory, string> = {
   accessories: 'Accessories & Jewelry',
 }
 
-const CJ_GRAPHQL_QUERY = `
-  query SearchProducts($keywords: String!, $advertiserId: String!, $page: Int, $pageSize: Int) {
-    products(
-      keywords: $keywords
-      advertiserId: $advertiserId
-      page: $page
-      pageSize: $pageSize
-    ) {
-      productId
-      title
-      brand
-      price
-      currency
-      imageUrl
-      productUrl
-      category
-      sku
-      sizes
-      rating
-      reviewsCount
-    }
-  }
-`
+interface SheinSearchResult {
+  productId: string
+  title: string
+  brand: string
+  price: number
+  currency: string
+  imageUrl: string
+  productUrl: string
+  category: string
+  sku: string
+  sizes: string[]
+  rating: number | null
+  reviewsCount: number | null
+}
 
-async function callCjGraphQL(keywords: string, pageNo: number, pageSize: number): Promise<Product[]> {
-  if (!CJ_CREDENTIALS.accessToken || !CJ_CREDENTIALS.advertiserId) return []
-
+async function callSheinSearch(keywords: string, pageNo: number, pageSize: number): Promise<Product[]> {
   try {
-    const response = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/cj-affiliate`, {
+    const response = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/shein-search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
       },
-      body: JSON.stringify({
-        action: 'graphql-search',
-        query: CJ_GRAPHQL_QUERY,
-        variables: {
-          keywords,
-          advertiserId: CJ_CREDENTIALS.advertiserId,
-          page: pageNo,
-          pageSize,
-        },
-        accessToken: CJ_CREDENTIALS.accessToken,
-      }),
+      body: JSON.stringify({ keywords, page: pageNo, pageSize }),
     })
 
     if (!response.ok) return []
 
-    const result = await response.json() as { products?: Record<string, unknown>[]; error?: string }
-    if (result.error) return []
+    const result = await response.json() as { products?: SheinSearchResult[]; error?: string }
+    if (result.error || !Array.isArray(result.products)) return []
 
-    const raw = result.products ?? []
-    return raw.map((p) => ({
-      name: String(p.title ?? p.name ?? ''),
-      brand: String(p.brand ?? 'SHEIN'),
-      price: Number(p.price ?? 0),
+    return result.products.map((p) => ({
+      name: p.title,
+      brand: p.brand || 'SHEIN',
+      price: p.price,
       originalPrice: null,
-      currency: String(p.currency ?? 'USD'),
-      img: String(p.imageUrl ?? p.img ?? ''),
-      imageUrl: String(p.imageUrl ?? p.img ?? ''),
-      category: String(p.category ?? ''),
-      aliexpressUrl: String(p.productUrl ?? p.link ?? ''),
-      aliexpressSku: String(p.sku ?? p.productId ?? ''),
-      availableSizes: (p.sizes as string[]) ?? [],
-      ordersCount: Number(p.reviewsCount ?? 0) || undefined,
-      evaluateRate: Number(p.rating ?? 0) || undefined,
+      currency: p.currency || 'USD',
+      img: p.imageUrl,
+      imageUrl: p.imageUrl,
+      category: p.category,
+      aliexpressUrl: p.productUrl,
+      aliexpressSku: p.sku || p.productId,
+      availableSizes: p.sizes,
+      ordersCount: p.reviewsCount ?? undefined,
+      evaluateRate: p.rating ?? undefined,
       platform: 'shein' as const,
       promotionLink: null,
     })) as Product[]
@@ -125,8 +92,6 @@ function withSkimlinks(products: Product[]): Product[] {
   return products.map((p) => {
     const rawUrl = p.aliexpressUrl ?? ''
     if (!rawUrl || !isSheinPdpUrl(rawUrl)) {
-      // Don't wrap broken, empty, or category URLs — leave buyUrl empty so
-      // the aggregator can generate a fallback search link instead.
       return p
     }
     const wrappedUrl = wrapWithSkimlinks(rawUrl)
@@ -144,22 +109,14 @@ export async function searchProductsByCategory(
   _ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
   const keywords = buildKeywords(category, gender)
-  try {
-    const products = await callCjGraphQL(keywords, pageNo, Math.min(pageSize, 40))
-    if (products.length > 0) return withSkimlinks(products)
-  } catch {
-    // No credentials or API error — return empty so aggregator auto-generates SHEIN offers
-  }
+  const products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
+  if (products.length > 0) return withSkimlinks(products)
   return []
 }
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
-  try {
-    const products = await callCjGraphQL(keywords, pageNo, Math.min(pageSize, 40))
-    if (products.length > 0) return withSkimlinks(products)
-  } catch {
-    // No credentials — return empty
-  }
+  const products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
+  if (products.length > 0) return withSkimlinks(products)
   return []
 }
 
@@ -169,18 +126,14 @@ export async function searchDeviceAccessories(
   pageSize = 50,
   _gender?: Gender,
 ): Promise<Product[]> {
-  try {
-    const products = await callCjGraphQL(`${deviceName} accessories`, pageNo, Math.min(pageSize, 40))
-    if (products.length > 0) return withSkimlinks(products)
-  } catch {
-    // No credentials — return empty
-  }
+  const products = await callSheinSearch(`${deviceName} accessories`, pageNo, Math.min(pageSize, 40))
+  if (products.length > 0) return withSkimlinks(products)
   return []
 }
 
 export const sheinAdapter: AffiliateAdapter = {
   platform: 'shein',
-  isConfigured: !!CJ_CREDENTIALS.accessToken,
+  isConfigured: true,
 
   async searchByCategory(params: AdapterSearchParams): Promise<Product[]> {
     return searchProductsByCategory(
