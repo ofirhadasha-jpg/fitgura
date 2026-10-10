@@ -97,14 +97,30 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   const recommendedSize: SizeRecommendation | null = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
   const hasScanned = scannedSizes != null
 
-  const primaryUrl = product.buyUrl ?? product.aliexpressUrl ?? product.primaryOffer?.url ?? ''
-  const primaryOffer: Offer | null = primaryUrl ? {
-    platform: productPlatform,
-    label: PLATFORM_LABELS[productPlatform],
-    price: product.price,
-    currency: product.currency ?? '₪',
-    url: primaryUrl,
-  } : null
+  // Use the service-built primaryOffer when available — it is the source of
+  // truth for platform-to-URL binding. Only construct a fallback if it's
+  // missing. For SHEIN products, never fall back to aliexpressUrl.
+  const primaryOffer: Offer | null = product.primaryOffer ?? (() => {
+    if (productPlatform === 'shein') {
+      const sheinUrl = product.buyUrl ?? ''
+      return sheinUrl ? {
+        platform: 'shein' as ProductPlatform,
+        label: PLATFORM_LABELS.shein,
+        price: product.price,
+        currency: product.currency ?? '₪',
+        url: sheinUrl,
+      } : null
+    }
+    const fallbackUrl = product.buyUrl ?? product.aliexpressUrl ?? ''
+    return fallbackUrl ? {
+      platform: productPlatform,
+      label: PLATFORM_LABELS[productPlatform],
+      price: product.price,
+      currency: product.currency ?? '₪',
+      url: fallbackUrl,
+    } : null
+  })()
+  const primaryUrl = primaryOffer?.url ?? ''
   const secondaryOffers: Offer[] = exactMatches.map((match) => ({
     platform: match.platform,
     label: PLATFORM_LABELS[match.platform],
@@ -113,7 +129,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     url: match.productUrl,
   }))
   const comparisonEntries: PriceComparisonEntry[] = [
-    ...(primaryOffer ? [{ platform: productPlatform, price: product.price, currency: product.currency ?? '₪', productUrl: primaryUrl, sizesAvailable: product.availableSizes ?? [], isLowestPrice: false }] : []),
+    ...(primaryOffer ? [{ platform: primaryOffer.platform, price: primaryOffer.price, currency: primaryOffer.currency ?? '₪', productUrl: primaryUrl, sizesAvailable: product.availableSizes ?? [], isLowestPrice: false }] : []),
     ...exactMatches.map((match) => ({
       platform: match.platform,
       price: match.price,
@@ -135,17 +151,13 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
     let finalUrl = primaryOffer.url
 
-    // If the URL is already wrapped with Skimlinks, use it as-is.
-    // For AliExpress URLs, use the AliExpress affiliate link generator.
-    // For all other platforms (SHEIN, Temu, etc.), wrap with Skimlinks.
-    if (!primaryOffer.url.includes('go.skimresources') && !primaryOffer.url.includes('go.redirecting')) {
+    if (!finalUrl.includes('go.skimresources') && !finalUrl.includes('go.redirecting')) {
       if (primaryOffer.platform === 'aliexpress') {
         try {
           const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
           const wrapped = await Promise.race([generateAffiliateLink(primaryOffer.url), timeoutPromise])
           if (wrapped) finalUrl = wrapped
         } catch {
-          // fall back to Skimlinks wrapping
           finalUrl = wrapWithSkimlinks(primaryOffer.url)
         }
       } else {

@@ -97,8 +97,8 @@ function normalizeNameKey(title: string): string {
 // ── Product clustering ────────────────────────────────────────────────────
 
 function platformUrl(p: Product): string {
-  const platform = p.platform ?? 'aliexpress'
   if (p.buyUrl) return p.buyUrl
+  if (p.platform === 'shein' && p.aliexpressUrl) return p.aliexpressUrl
   if (p.aliexpressUrl) return p.aliexpressUrl
   return ''
 }
@@ -119,6 +119,7 @@ function buildPriceComparison(group: Product[]): PriceComparisonEntry[] {
   })
   return entries.sort((a, b) => a.price - b.price)
 }
+
 
 // ── Offer builder ───────────────────────────────────────────────────────────
 // For each product, build a primary offer (SHEIN if available, else the product's
