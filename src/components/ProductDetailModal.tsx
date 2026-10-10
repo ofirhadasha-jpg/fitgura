@@ -7,7 +7,7 @@ import { generateAffiliateLink } from '../lib/aliexpress'
 import { logAffiliateClick } from '../services/analyticsService'
 import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/multiPlatformService'
 import { resolveProductImage, getFallbackImage } from '../utils/productImages'
-import { searchAllVisualMatches, getExclusivePlatforms } from '../services/imageSearch'
+import { searchAllVisualMatches, getMissingPlatforms, getFallbackSearchUrl } from '../services/imageSearch'
 import type { ExactVisualMatch } from '../services/adapterTypes'
 import type { ProductPlatform } from '../types'
 
@@ -63,6 +63,8 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   const [isSearchingExactMatches, setIsSearchingExactMatches] = useState(false)
   const [searchComplete, setSearchComplete] = useState(false)
 
+  const productPlatform = product.platform ?? 'shein'
+
   useEffect(() => {
     if (!visible) return
     const imageUrl = product.imageUrl ?? product.img
@@ -70,7 +72,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     setExactMatches([])
     setSearchComplete(false)
     setIsSearchingExactMatches(true)
-    void searchAllVisualMatches(imageUrl)
+    void searchAllVisualMatches(imageUrl, productPlatform)
       .then((matches) => {
         if (!cancelled) setExactMatches(matches)
       })
@@ -81,7 +83,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
         }
       })
     return () => { cancelled = true }
-  }, [visible, product.imageUrl, product.img])
+  }, [visible, product.imageUrl, product.img, productPlatform])
 
   if (!visible) return null
 
@@ -94,13 +96,13 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   const recommendedSize: SizeRecommendation | null = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
   const hasScanned = scannedSizes != null
 
-  const aliExpressUrl = product.buyUrl ?? product.aliexpressUrl ?? product.primaryOffer?.url ?? ''
-  const primaryOffer: Offer | null = aliExpressUrl ? {
-    platform: 'aliexpress',
-    label: PLATFORM_LABELS.aliexpress,
+  const primaryUrl = product.buyUrl ?? product.aliexpressUrl ?? product.primaryOffer?.url ?? ''
+  const primaryOffer: Offer | null = primaryUrl ? {
+    platform: productPlatform,
+    label: PLATFORM_LABELS[productPlatform],
     price: product.price,
-    currency: '₪',
-    url: aliExpressUrl,
+    currency: product.currency ?? '₪',
+    url: primaryUrl,
   } : null
   const secondaryOffers: Offer[] = exactMatches.map((match) => ({
     platform: match.platform,
@@ -110,11 +112,11 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
     url: match.productUrl,
   }))
   const comparisonEntries: PriceComparisonEntry[] = [
-    ...(primaryOffer ? [{ platform: 'aliexpress' as const, price: product.price, currency: '₪', productUrl: aliExpressUrl, sizesAvailable: product.availableSizes ?? [], isLowestPrice: false }] : []),
+    ...(primaryOffer ? [{ platform: productPlatform, price: product.price, currency: product.currency ?? '₪', productUrl: primaryUrl, sizesAvailable: product.availableSizes ?? [], isLowestPrice: false }] : []),
     ...exactMatches.map((match) => ({
       platform: match.platform,
       price: match.price,
-      currency: '₪',
+      currency: match.currency ?? '₪',
       productUrl: match.productUrl,
       sizesAvailable: match.sizes,
       isLowestPrice: false,
@@ -123,7 +125,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   const minComparisonPrice = comparisonEntries.length > 0 ? Math.min(...comparisonEntries.map((entry) => entry.price)) : 0
   comparisonEntries.forEach((entry) => { entry.isLowestPrice = entry.price === minComparisonPrice })
 
-  const exclusivePlatforms: ProductPlatform[] = searchComplete ? getExclusivePlatforms(exactMatches) : []
+  const missingPlatforms: ProductPlatform[] = searchComplete ? getMissingPlatforms(exactMatches, productPlatform) : []
 
   async function handlePrimaryBuy() {
     if (!primaryOffer || !primaryOffer.url) return
@@ -285,7 +287,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
                 ]}
                 disabled={isRedirecting && redirectingOffer === 'primary'}
                 accessibilityRole="button"
-                accessibilityLabel="מתאים לי, המשך לרכישה"
+                accessibilityLabel={`מתאים לי, המשך לרכישה ב-${primaryOffer.label}`}
               >
                 {isRedirecting && redirectingOffer === 'primary' ? (
                   <View style={modalStyles.btnContentWrap}>
@@ -302,7 +304,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
             </View>
           )}
 
-          {/* B. Verified exact visual matches (SHEIN / Temu) */}
+          {/* B. Verified exact visual matches (Temu / AliExpress) */}
           {isSearchingExactMatches && (
             <View style={modalStyles.secondaryOffersContainer}>
               <Text style={modalStyles.secondaryOffersHeader}>מחפש התאמות זהות לפי תמונה...</Text>
@@ -346,15 +348,25 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
               ))}
             </View>
           )}
-          {/* C. Exclusive badges for platforms where no match was found */}
-          {searchComplete && exclusivePlatforms.length > 0 && (
+          {/* C. Fallback search buttons for platforms with no visual match */}
+          {searchComplete && missingPlatforms.length > 0 && (
             <View style={modalStyles.exclusiveContainer}>
-              {exclusivePlatforms.map((plat: ProductPlatform) => (
-                <View key={plat} style={modalStyles.exclusiveBadge}>
+              {missingPlatforms.map((plat: ProductPlatform) => (
+                <TouchableOpacity
+                  key={plat}
+                  onPress={() => {
+                    const fallbackUrl = getFallbackSearchUrl(plat, product.name)
+                    if (fallbackUrl) openUrl(fallbackUrl, product)
+                  }}
+                  activeOpacity={0.6}
+                  style={[modalStyles.exclusiveBadge, { cursor: 'pointer' } as React.CSSProperties]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`חפש פריטים דומים ב-${PLATFORM_LABELS[plat]}`}
+                >
                   <Text style={modalStyles.exclusiveText}>
-                    בלעדי ב-{PLATFORM_LABELS[plat]}
+                    חפש פריטים דומים ב-{PLATFORM_LABELS[plat]}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}
@@ -409,8 +421,8 @@ const modalStyles = StyleSheet.create({
   secondaryOfferBtnText: { fontSize: 12, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   // ── exclusive badges ──
   exclusiveContainer: { gap: 6 },
-  exclusiveBadge: { backgroundColor: '#F5F0E0', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#9A9A9A', alignItems: 'center' } as React.CSSProperties,
-  exclusiveText: { fontSize: 12, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  exclusiveBadge: { backgroundColor: '#F5F0E0', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#1A1A1A', alignItems: 'center' } as React.CSSProperties,
+  exclusiveText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   // ── shared ──
   btnContentWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   confirmBtnIcon: { fontSize: 15 },

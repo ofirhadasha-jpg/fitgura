@@ -3,11 +3,12 @@ import { wrapWithSkimlinks } from '../utils/skimlinks'
 import type { ExactVisualMatch, ProductPlatform } from './adapterTypes'
 
 // ── Visual reverse image search client ────────────────────────────────────
-// Calls the `visual-search` edge function, which queries the RapidAPI Google
-// Lens endpoint (google-lens-image-search1.p.rapidapi.com/v1/google-lens) to
-// find exact PDP matches on SHEIN and Temu. Only verified, live PDP URLs with
-// a score >= 85 are returned. Unverified results are never used — the function
-// returns null so the UI can show "exclusive" badges instead of broken links.
+// When a SHEIN product is loaded, its image URL is sent to the visual-search
+// edge function (RapidAPI Google Lens). We search for exact PDP matches on
+// Temu and AliExpress — the two platforms that are NOT the primary source.
+// Verified, live PDP URLs with score >= 85 are wrapped with Skimlinks and
+// returned as secondary "שווה בדיקה" offers. Platforms with no match get
+// a fallback search-link button instead of a disabled state.
 
 function isPdpForPlatform(url: string, platform: ProductPlatform): boolean {
   try {
@@ -18,6 +19,9 @@ function isPdpForPlatform(url: string, platform: ProductPlatform): boolean {
     }
     if (platform === 'temu') {
       return /(^|\.)temu\.com$/i.test(parsed.hostname) && /(?:goods-|product)/i.test(parsed.pathname)
+    }
+    if (platform === 'aliexpress') {
+      return /(^|\.)aliexpress\.(com|us)$/i.test(parsed.hostname) && /\/item\/\d+/i.test(parsed.pathname)
     }
   } catch { /* ignore */ }
   return false
@@ -60,20 +64,41 @@ export async function searchVisualMatch(
   }
 }
 
+// Search for visual matches on all secondary platforms (temu + aliexpress).
+// The primary platform (shein) is excluded — it's the source of the image.
 export async function searchAllVisualMatches(
   imageUrl: string,
+  primaryPlatform?: ProductPlatform,
 ): Promise<ExactVisualMatch[]> {
-  const [sheinMatch, temuMatch] = await Promise.all([
-    searchVisualMatch(imageUrl, 'shein'),
-    searchVisualMatch(imageUrl, 'temu'),
-  ])
-  return [sheinMatch, temuMatch].filter((m): m is ExactVisualMatch => m !== null)
+  const secondaryPlatforms: ProductPlatform[] = ['temu', 'aliexpress'].filter(
+    (p) => p !== primaryPlatform,
+  ) as ProductPlatform[]
+
+  const matches = await Promise.all(
+    secondaryPlatforms.map((platform) => searchVisualMatch(imageUrl, platform)),
+  )
+  return matches.filter((m): m is ExactVisualMatch => m !== null)
 }
 
-// Determine which platforms were searched but returned no match,
-// so the UI can show "בלעדי ב-[Platform]" badges.
-export function getExclusivePlatforms(matches: ExactVisualMatch[]): ProductPlatform[] {
+// Platforms that had no visual match — used to render fallback search buttons.
+export function getMissingPlatforms(matches: ExactVisualMatch[], primaryPlatform?: ProductPlatform): ProductPlatform[] {
   const found = new Set(matches.map((m) => m.platform))
-  const allSearched: ProductPlatform[] = ['shein', 'temu']
-  return allSearched.filter((p) => !found.has(p))
+  const secondaryPlatforms: ProductPlatform[] = ['temu', 'aliexpress'].filter(
+    (p) => p !== primaryPlatform,
+  ) as ProductPlatform[]
+  return secondaryPlatforms.filter((p) => !found.has(p))
+}
+
+// Build a working fallback search URL for a platform, wrapped with affiliate tracking.
+export function getFallbackSearchUrl(platform: ProductPlatform, productName: string): string {
+  const cleanName = productName.replace(/^(SHEIN|Temu|AliExpress)\s+/i, '').trim()
+  let rawUrl = ''
+  if (platform === 'temu') {
+    rawUrl = `https://www.temu.com/search_result.html?search_key=${encodeURIComponent(cleanName)}`
+  } else if (platform === 'aliexpress') {
+    rawUrl = `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(cleanName)}`
+  } else if (platform === 'shein') {
+    rawUrl = `https://www.shein.com/pdsearch/${encodeURIComponent(cleanName)}/`
+  }
+  return rawUrl ? wrapWithSkimlinks(rawUrl) : ''
 }

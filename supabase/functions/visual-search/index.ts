@@ -88,6 +88,16 @@ function isTemuPdpUrl(value: unknown): value is string {
   }
 }
 
+function isAliExpressPdpUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && /(^|\.)aliexpress\.(com|us)$/i.test(url.hostname) && /\/item\/\d+/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
 function extractProductId(url: string, platform: string): string {
   try {
     const parsed = new URL(url);
@@ -97,6 +107,10 @@ function extractProductId(url: string, platform: string): string {
     }
     if (platform === 'temu') {
       const match = parsed.pathname.match(/goods-([a-z0-9]+)/i);
+      return match?.[1] ?? '';
+    }
+    if (platform === 'aliexpress') {
+      const match = parsed.pathname.match(/\/item\/(\d+)/i);
       return match?.[1] ?? '';
     }
   } catch { /* ignore */ }
@@ -180,7 +194,10 @@ async function findVisualMatches(
   const matches = await callRapidApiGoogleLens(imageUrl);
   if (matches.length === 0) return null;
 
-  const isPlatformPdp = targetPlatform === 'shein' ? isSheinPdpUrl : isTemuPdpUrl;
+  const isPlatformPdp = targetPlatform === 'shein' ? isSheinPdpUrl
+    : targetPlatform === 'temu' ? isTemuPdpUrl
+    : targetPlatform === 'aliexpress' ? isAliExpressPdpUrl
+    : (() => false);
 
   // Filter to platform PDP URLs; score by position (earlier = higher confidence)
   const scored = matches
