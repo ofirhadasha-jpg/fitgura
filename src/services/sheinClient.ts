@@ -11,23 +11,26 @@ export { searchVisualMatch as searchExactVisualMatch } from './imageSearch'
 // category URLs are ever generated.
 
 const SHEIN_CATEGORIES: Record<FeedCategory, string> = {
-  all: 'fashion clothing',
-  clothing: 'clothing dress shirt pants',
-  shoes: 'shoes sneakers boots sandals',
-  accessories: 'accessories bag jewelry sunglasses',
+  all: 'fashion',
+  clothing: 'clothing',
+  shoes: 'shoes',
+  accessories: 'accessories',
 }
 
 const STYLE_TAGS = [
-  'trending', 'new arrivals', 'casual', 'elegant', 'streetwear',
-  'minimalist', 'vintage', 'boho', 'y2k', 'preppy', 'oversized',
-  'slim fit', 'relaxed', 'classic', 'modern', 'chic',
+  'trending', 'casual', 'elegant', 'streetwear',
+  'vintage', 'boho', 'y2k', 'preppy', 'oversized',
+  'classic', 'modern', 'chic',
 ]
 
 function pickRotationTags(seed: number, count: number): string[] {
-  const shuffled = [...STYLE_TAGS].sort(() => {
-    const h = (seed + Math.random() * 1000) | 0
-    return ((h % 3) - 1)
-  })
+  // Deterministic pick based on seed — no Math.random so the same session
+  // always gets the same keywords.
+  const shuffled = [...STYLE_TAGS]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = (seed + i * 7) % (i + 1)
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
   return shuffled.slice(0, count)
 }
 
@@ -78,6 +81,7 @@ function ensureSheinDestinationUrl(url: string): string {
 
 async function callSheinSearch(keywords: string, pageNo: number, pageSize: number): Promise<Product[]> {
   try {
+    console.log(`[SHEIN] Calling edge function: keywords="${keywords}", page=${pageNo}, size=${pageSize}`)
     const response = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/shein-search`, {
       method: 'POST',
       headers: {
@@ -87,12 +91,24 @@ async function callSheinSearch(keywords: string, pageNo: number, pageSize: numbe
       body: JSON.stringify({ keywords, page: pageNo, pageSize }),
     })
 
-    if (!response.ok) return []
+    if (!response.ok) {
+      console.warn(`[SHEIN] Edge function returned HTTP ${response.status}`)
+      return []
+    }
 
     const result = await response.json() as { products?: SheinSearchResult[]; error?: string }
-    if (result.error || !Array.isArray(result.products)) return []
+    if (result.error) {
+      console.warn(`[SHEIN] Edge function error: ${result.error}`)
+      return []
+    }
+    if (!Array.isArray(result.products)) {
+      console.warn(`[SHEIN] Edge function returned non-array products`)
+      return []
+    }
 
-    return result.products.map((p) => {
+    console.log(`[SHEIN] Edge function returned ${result.products.length} raw products`)
+
+    const mapped = result.products.map((p) => {
       const sku = p.sku || p.productId || ''
       const pdpUrl = ensureSheinDestinationUrl(p.productUrl)
       return {
@@ -112,8 +128,13 @@ async function callSheinSearch(keywords: string, pageNo: number, pageSize: numbe
         platform: 'shein' as const,
         promotionLink: null,
       } as Product
-    }).filter((p) => Boolean(p.aliexpressUrl)) as Product[]
-  } catch {
+    })
+
+    const filtered = mapped.filter((p) => Boolean(p.aliexpressUrl)) as Product[]
+    console.log(`[SHEIN] After PDP filter: ${filtered.length} products (dropped ${mapped.length - filtered.length} without valid PDP URL)`)
+    return filtered
+  } catch (err) {
+    console.error(`[SHEIN] callSheinSearch exception:`, err instanceof Error ? err.message : String(err))
     return []
   }
 }
@@ -134,10 +155,12 @@ function withSkimlinks(products: Product[]): Product[] {
 // ── Public API ───────────────────────────────────────────────────────────
 
 function buildKeywords(category: FeedCategory, gender: Gender): string {
-  const categoryWord = SHEIN_CATEGORIES[category] ?? 'Fashion'
+  const categoryWord = SHEIN_CATEGORIES[category] ?? 'fashion'
   const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
-  const rotationTags = pickRotationTags(currentSessionSeed, 2)
-  return [genderWord, categoryWord, ...rotationTags].filter(Boolean).join(' ')
+  const rotationTag = pickRotationTags(currentSessionSeed, 1)[0] ?? ''
+  // Keep keywords short (2-3 words max) — SHEIN's search API returns zero
+  // results for long multi-word queries.
+  return [genderWord, categoryWord, rotationTag].filter(Boolean).join(' ')
 }
 
 export async function searchProductsByCategory(
@@ -149,28 +172,54 @@ export async function searchProductsByCategory(
   _ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
   const keywords = buildKeywords(category, gender)
-  const products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
+  let products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
+
+  // Retry with simpler keywords if the first search returned nothing.
+  // SHEIN's search can be finicky — dropping the style tag often helps.
+  if (products.length === 0) {
+    const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
+    const categoryWord = SHEIN_CATEGORIES[category] ?? 'fashion'
+    const simplerKeywords = [genderWord, categoryWord].filter(Boolean).join(' ')
+    console.log(`[SHEIN] Retry with simpler keywords: "${simplerKeywords}"`)
+    products = await callSheinSearch(simplerKeywords, pageNo, Math.min(pageSize, 40))
+  }
+
+  // Final retry with just the gender term.
+  if (products.length === 0 && gender !== 'unisex') {
+    const genderWord = gender === 'male' ? 'men' : 'women'
+    console.log(`[SHEIN] Final retry with: "${genderWord}"`)
+    products = await callSheinSearch(genderWord, pageNo, Math.min(pageSize, 40))
+  }
+
   if (products.length > 0) {
     const wrapped = withSkimlinks(products)
     console.log(`[Feed Engine] Successfully loaded ${wrapped.length} SHEIN products to main feed.`)
     return wrapped
   }
 
-  console.warn('[SHEIN] No verified product-detail URLs returned; skipping non-product fallback links')
-  console.log('[Feed Engine] Successfully loaded 0 SHEIN products to main feed.')
+  console.warn('[SHEIN] All search attempts returned 0 products')
   return []
 }
 
 export async function searchProducts(keywords: string, pageNo = 1, pageSize = 50): Promise<Product[]> {
-  const products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
+  let products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
+
+  // Retry with just the first word if the full query returned nothing.
+  if (products.length === 0) {
+    const firstWord = keywords.split(' ')[0]
+    if (firstWord && firstWord !== keywords) {
+      console.log(`[SHEIN] Retry with first word: "${firstWord}"`)
+      products = await callSheinSearch(firstWord, pageNo, Math.min(pageSize, 40))
+    }
+  }
+
   if (products.length > 0) {
     const wrapped = withSkimlinks(products)
     console.log(`[Feed Engine] Successfully loaded ${wrapped.length} SHEIN products to main feed.`)
     return wrapped
   }
 
-  console.warn('[SHEIN] No verified product-detail URLs returned; skipping non-product fallback links')
-  console.log('[Feed Engine] Successfully loaded 0 SHEIN products to main feed.')
+  console.warn('[SHEIN] All search attempts returned 0 products')
   return []
 }
 
@@ -180,15 +229,27 @@ export async function searchDeviceAccessories(
   pageSize = 50,
   _gender?: Gender,
 ): Promise<Product[]> {
-  const products = await callSheinSearch(`${deviceName} accessories`, pageNo, Math.min(pageSize, 40))
+  // Try the full query first, then simplify.
+  let products = await callSheinSearch(`${deviceName} accessories`, pageNo, Math.min(pageSize, 40))
+
+  if (products.length === 0) {
+    const cleanDevice = deviceName.replace(/^\w+\s+/, '').trim()
+    console.log(`[SHEIN] Retry device search with: "${cleanDevice} case"`)
+    products = await callSheinSearch(`${cleanDevice} case`, pageNo, Math.min(pageSize, 40))
+  }
+
+  if (products.length === 0) {
+    console.log(`[SHEIN] Retry device search with: "phone accessories"`)
+    products = await callSheinSearch('phone accessories', pageNo, Math.min(pageSize, 40))
+  }
+
   if (products.length > 0) {
     const wrapped = withSkimlinks(products)
     console.log(`[Feed Engine] Successfully loaded ${wrapped.length} SHEIN products to main feed.`)
     return wrapped
   }
 
-  console.warn('[SHEIN] No verified product-detail URLs returned; skipping non-product fallback links')
-  console.log('[Feed Engine] Successfully loaded 0 SHEIN products to main feed.')
+  console.warn('[SHEIN] All device accessory search attempts returned 0 products')
   return []
 }
 
