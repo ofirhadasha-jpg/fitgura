@@ -18,6 +18,7 @@ import {
 import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type SizeRegion } from '../utils/sizeConverter'
 import { supabase } from '../lib/supabase'
 import SizingAccuracyUpgrade from '../components/SizingAccuracyUpgrade'
+import { runAutonomousGalleryScan } from '../services/galleryScannerService'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
@@ -269,10 +270,19 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [galleryError, setGalleryError] = useState<string | null>(null)
   const [lastAutoScan, setLastAutoScan] = useState<string | null>(null)
   const [nextScanDate, setNextScanDate] = useState<string>(formatNextScanDate())
+  const [galleryScanSuccess, setGalleryScanSuccess] = useState<string | null>(null)
+  const [galleryScanAccuracy, setGalleryScanAccuracy] = useState<number | null>(null)
 
   function handleAutoScan() {
     if (autoScanning) return
+    setGalleryScanSuccess(null)
     galleryMultiUploadRef.current?.click()
+  }
+
+  function handleGrantGalleryAccess() {
+    setGalleryAccess('granted')
+    setGalleryScanSuccess(null)
+    setTimeout(() => galleryMultiUploadRef.current?.click(), 100)
   }
 
   async function handleGalleryMultiUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -281,58 +291,43 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     if (files.length === 0) return
 
     setGalleryError(null)
+    setGalleryScanSuccess(null)
     setAutoScanning(true)
     setAutoScanProgress(0)
-    setAutoScanPhase('סורק את הגלריה שלך...')
-
-    const phaseInterval = setInterval(() => {
-      setAutoScanProgress((p) => {
-        if (p < 30) { setAutoScanPhase('סורק את הגלריה שלך...'); return p + 3 }
-        if (p < 55) { setAutoScanPhase('מחפש תמונות שלך מהזמן האחרון...'); return p + 3 }
-        if (p < 80) { setAutoScanPhase('מזהה פנים ומנתח מידות...'); return p + 3 }
-        if (p < 95) { setAutoScanPhase('משווה עם המידות הקיימות...'); return p + 3 }
-        clearInterval(phaseInterval)
-        return p
-      })
-    }, 80)
+    setAutoScanPhase('מבקש גישה לגלריה...')
 
     try {
-      for (const photo of files) {
-        const { analysis, preview } = await analyzeBodyImage(photo)
-        const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
-        const prevSizing = scannedSizes?.sizing ?? null
-        const delta = prevSizing ? computeDelta(prevSizing, aiSizes.sizing) : null
-        aiSizes.sizing.baselineMatched = true
-        aiSizes.sizing.isWeeklyUpdate = true
-        aiSizes.sizing.measurementDelta = delta
-        setScannedSizes(aiSizes)
-        setProfTop(aiSizes.sizing.top)
-        setProfBottom(aiSizes.sizing.bottom)
-        setProfFit(aiSizes.sizing.fit)
-        const ts = formatTimestamp(new Date())
-        const entry: ScanEntry = {
-          id: nextScanId(),
-          date: ts.date,
-          time: ts.time,
-          top: aiSizes.sizing.top,
-          bottom: aiSizes.sizing.bottom,
-          fit: aiSizes.sizing.fit,
-          confidence: aiSizes.sizing.confidence,
-          photoUrl: preview,
-          source: 'זוהה אוטומטית מהגלריה',
-          isBaseline: false,
-          delta,
-        }
-        setScanGallery((prev) => [entry, ...prev])
+      const result = await runAutonomousGalleryScan({
+        files,
+        baselinePhotoUrl: profilePhotoUrl,
+        currentSizes: scannedSizes,
+        existingGallery: scanGallery,
+        userId: user?.id ?? null,
+        onProgress: (update) => {
+          setAutoScanProgress(update.progress)
+          setAutoScanPhase(update.message)
+        },
+      })
+
+      if (result.mergedSizes) {
+        setScannedSizes(result.mergedSizes)
+        setProfTop(result.mergedSizes.sizing.top)
+        setProfBottom(result.mergedSizes.sizing.bottom)
+        setProfFit(result.mergedSizes.sizing.fit)
+        setScanGallery(result.entries)
+        setLastAutoScan(formatLastScanDate())
+        setNextScanDate(formatNextScanDate())
+        setGalleryScanAccuracy(result.accuracy)
+        setGalleryScanSuccess(`התגלו ${result.matchedCount} תמונות מתאימות! הדיוק עודכן ל-${result.accuracy}%`)
+        showPhotoToast(`הדיוק עודכן ל-${result.accuracy}%`)
+      } else {
+        setGalleryError('לא נמצאו תמונות מתאימות בגלריה שלך')
       }
-      setLastAutoScan(formatLastScanDate())
-      setNextScanDate(formatNextScanDate())
     } catch (err) {
       setGalleryError(err instanceof Error ? err.message : 'הסריקה נכשלה')
     } finally {
-      clearInterval(phaseInterval)
       setAutoScanProgress(100)
-      setTimeout(() => { setAutoScanning(false); setAutoScanProgress(0); setAutoScanPhase('') }, 800)
+      setTimeout(() => { setAutoScanning(false); setAutoScanProgress(0); setAutoScanPhase('') }, 1000)
     }
   }
 
@@ -918,7 +913,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   <Text style={profStyles.galleryAccessText}>גישה אושרה</Text>
                 </View>
               ) : galleryAccess === 'denied' ? (
-                <TouchableOpacity onPress={() => setGalleryAccess('granted')} activeOpacity={0.7}>
+                <TouchableOpacity onPress={handleGrantGalleryAccess} activeOpacity={0.7}>
                   <View style={[profStyles.galleryAccessBadge, { backgroundColor: '#FFFACC' }]}>
                     <Text style={{ fontSize: 12 }}>⚠️</Text>
                     <Text style={[profStyles.galleryAccessText, { color: '#1A1A1A' }]}>אשר גישה</Text>
@@ -942,7 +937,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => setGalleryAccess('granted')}
+                onPress={handleGrantGalleryAccess}
                 activeOpacity={0.8}
                 style={profStyles.galleryAccessGrantBtn}
               >
@@ -962,6 +957,20 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                 <View style={[profStyles.autoScanBarFill, { width: `${autoScanProgress}%` }]} />
               </View>
               <Text style={profStyles.autoScanPct}>{Math.round(autoScanProgress)}%</Text>
+            </View>
+          )}
+
+          {galleryScanSuccess && !autoScanning && (
+            <View style={profStyles.galleryScanSuccessBox}>
+              <View style={profStyles.galleryScanSuccessHeader}>
+                <Text style={{ fontSize: 22 }}>✅</Text>
+                <Text style={profStyles.galleryScanSuccessTitle}>{galleryScanSuccess}</Text>
+              </View>
+              {galleryScanAccuracy != null && (
+                <View style={profStyles.galleryScanAccuracyBar}>
+                  <View style={[profStyles.galleryScanAccuracyFill, { width: `${galleryScanAccuracy}%` }]} />
+                </View>
+              )}
             </View>
           )}
 
@@ -1388,6 +1397,11 @@ const profStyles = StyleSheet.create({
   autoScanBar: { width: '100%', height: 8, backgroundColor: '#F5F0E0', borderRadius: 4, overflow: 'hidden', borderWidth: 1, borderColor: '#1A1A1A' },
   autoScanBarFill: { height: '100%', backgroundColor: '#FFE566', borderRadius: 4 },
   autoScanPct: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  galleryScanSuccessBox: { backgroundColor: '#E0FFF0', borderRadius: 12 as any, padding: 14, marginBottom: 12, borderWidth: 1.5, borderColor: '#00CC52', boxShadow: '2px 2px 0 #1A1A1A' as any },
+  galleryScanSuccessHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  galleryScanSuccessTitle: { fontSize: 14, fontWeight: '700', color: '#00CC52', flex: 1, textAlign: 'right', fontFamily: "'Permanent Marker', cursive" },
+  galleryScanAccuracyBar: { height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: '#F5F0E0', borderWidth: 1, borderColor: '#1A1A1A' },
+  galleryScanAccuracyFill: { height: '100%', backgroundColor: '#00FF66', borderRadius: 5 },
   scanNowBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#00FF66', borderRadius: 12 as any, paddingVertical: 13, marginBottom: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any },
   scanNowBtnText: { color: '#1A1A1A', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
   lastScanInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#E0FFF0', borderRadius: 12 as any, padding: 12, marginBottom: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any },
