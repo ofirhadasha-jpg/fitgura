@@ -58,8 +58,8 @@ const DEMOGRAPHIC_POSITIVE: Record<Demographic, string[]> = {
 const DEMOGRAPHIC_REJECT: Record<Demographic, RegExp> = {
   baby: /\b(plus size|maternity|sexy|lingerie|men'?s suit|men'?s shirt)\b/i,
   kids: /\b(plus size|maternity|sexy|lingerie|men'?s suit|women'?s dress)\b/i,
-  girls: /\b(plus size|maternity|sexy|lingerie|men'?s|boys|boy'?s)\b/i,
-  boys: /\b(plus size|maternity|sexy|lingerie|women'?s|girls|girl'?s)\b/i,
+  girls: /\b(plus size|maternity|sexy|lingerie|women|womens|woman|ladies|men|mens|man|adult|boys|boy'?s)\b/i,
+  boys: /\b(plus size|maternity|sexy|lingerie|women|womens|woman|ladies|men|mens|man|adult|girls|girl'?s)\b/i,
   women: /\b(plus size|maternity|baby|infant|toddler|kids|children|girl'?s|boy'?s)\b/i,
   men: /\b(plus size|maternity|baby|infant|toddler|kids|children|girl'?s|boy'?s)\b/i,
 }

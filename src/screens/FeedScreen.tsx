@@ -205,7 +205,7 @@ export function FeedScreen({
         ? (selectedDeviceRef.current ? [selectedDeviceRef.current] : Array.from(new Set(registeredDevices)))
         : []
 
-      console.log(`[Feed] Fetching: gender=${gender}, category=${category}, page=${page}, devices=${accessoryDevices.length}`)
+      console.log(`[Feed] Fetching: demographic=${ageGroup}/${gender}, platforms=SHEIN+AliExpress+Temu, category=${category}, page=${page}, devices=${accessoryDevices.length}`)
 
       let remoteProducts: Product[]
 
@@ -441,6 +441,7 @@ export function FeedScreen({
     if (!isBabyOrChild && (isFemaleRender || isMaleRender) && BOTH_GENDERS_RENDER_REGEX.test(name)) return false
     // 2. Category Validation — render-time double-check
     if (filter === 'clothing' && FOOTWEAR_RENDER_REGEX.test(name)) return false
+    if (isBabyOrChild && /\b(women|womens|woman|ladies|men|mens|man|maternity|lingerie|plus size)\b/i.test(name)) return false
     if (filter === 'shoes') {
       if (APPAREL_RENDER_REGEX.test(name) && !FOOTWEAR_RENDER_REGEX.test(name)) return false
     }

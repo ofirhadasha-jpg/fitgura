@@ -162,7 +162,7 @@ function getAgeQueryPool(ageGroup: AgeGroupFilter): { clothing: readonly string[
 const AGE_REJECT_KEYWORDS: Record<string, RegExp> = {
   baby: /\b(plus size|maternity|adult|sexy|lingerie|men'?s|women'?s)\b/i,
   toddler: /\b(plus size|maternity|adult|sexy|lingerie|men'?s|women'?s)\b/i,
-  child: /\b(plus size|maternity|sexy|lingerie)\b/i,
+  child: /\b(plus size|maternity|sexy|lingerie|women|womens|woman|ladies|men|mens|man|adult)\b/i,
   teen: /\b(plus size|maternity|baby|infant|toddler)\b/i,
 }
 

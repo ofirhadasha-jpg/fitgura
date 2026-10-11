@@ -23,6 +23,7 @@ const LEGACY_GUEST_FAVORITES_KEY = 'fitgura_guest_favorites'
 
 interface GuestProfile {
   gender: 'male' | 'female' | 'unisex'
+  ageGroup: ScannedSizes['ageGroup']
   chest: number | null
   waist: number | null
   hips: number | null
@@ -41,6 +42,7 @@ function saveGuestProfile(sizes: ScannedSizes | null, preferredRegion: SizeRegio
   if (!sizes) return
   const profile: GuestProfile = {
     gender: sizes.gender ?? 'unisex',
+    ageGroup: sizes.ageGroup ?? 'adult',
     chest: sizes.sizing.bodyMetrics?.chest_circumference_cm ?? null,
     waist: sizes.sizing.bodyMetrics?.waist_circumference_cm ?? null,
     hips: sizes.sizing.bodyMetrics?.hips_circumference_cm ?? null,
@@ -128,6 +130,11 @@ function restoreScannedSizes(profile: Record<string, unknown>): ScannedSizes | n
   const numberOrNull = (value: unknown): number | null => typeof value === 'number' ? value : null
   const fit = typeof profile.fit === 'string' ? profile.fit : 'Regular'
   const gender = profile.gender === 'male' || profile.gender === 'female' ? profile.gender : 'unisex'
+  const savedUserSizes = profile.user_sizes && typeof profile.user_sizes === 'object' ? profile.user_sizes as Record<string, unknown> : null
+  const savedAgeGroup = profile.ageGroup ?? profile.age_group ?? savedUserSizes?.age_group
+  const ageGroup = savedAgeGroup === 'baby' || savedAgeGroup === 'toddler' || savedAgeGroup === 'child' || savedAgeGroup === 'teen' || savedAgeGroup === 'adult'
+    ? savedAgeGroup
+    : 'adult'
   const shoeSize = typeof profile.shoe_size === 'string' ? profile.shoe_size : null
   const bodyMetrics = {
     estimated_height_cm: numberOrNull(profile.height_cm),
@@ -163,7 +170,7 @@ function restoreScannedSizes(profile: Record<string, unknown>): ScannedSizes | n
     bottom: bottom ?? '40',
     fit,
     gender,
-    ageGroup: 'adult',
+    ageGroup,
     personBounds: { top: 2, left: 10, width: 80, height: 96 },
     shoeSize,
   }
@@ -242,6 +249,7 @@ async function migrateGuestData(userId: string) {
         bottom_size: guestProfile.bottomSize,
         fit: guestProfile.fit,
         preferred_region: guestProfile.preferredRegion ?? 'EU',
+        user_sizes: { age_group: guestProfile.ageGroup },
         registered_device: deviceName,
         registered_devices: deviceName ? [deviceName] : [],
         ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
@@ -346,7 +354,7 @@ export default function App() {
       const u = session.user
       const { data: profileRow } = await supabase
         .from('profiles')
-        .select('is_admin, gender, chest_cm, waist_cm, hips_cm, shoulder_cm, height_cm, weight_kg, shoe_size, top_size, bottom_size, fit')
+        .select('is_admin, gender, chest_cm, waist_cm, hips_cm, shoulder_cm, height_cm, weight_kg, shoe_size, top_size, bottom_size, fit, user_sizes')
         .eq('user_id', u.id)
         .maybeSingle()
       if (profileRow) {
@@ -543,6 +551,7 @@ export default function App() {
         fit: scannedSizes.sizing.fit ?? null,
         preferred_region: preferredRegion,
         user_sizes: {
+          age_group: scannedSizes.ageGroup,
           shirt: scannedSizes.sizing.top ?? 'M',
           pants: scannedSizes.sizing.bottom ?? '40',
           shoes: scannedSizes.shoeSize ?? '42',
