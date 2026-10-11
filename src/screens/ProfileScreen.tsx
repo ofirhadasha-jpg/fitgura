@@ -17,6 +17,7 @@ import {
 } from '../types'
 import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type SizeRegion } from '../utils/sizeConverter'
 import { supabase } from '../lib/supabase'
+import SizingAccuracyUpgrade from '../components/SizingAccuracyUpgrade'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
@@ -450,14 +451,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         },
       }
       setScannedSizes(updated)
-      console.log('[ProfileScreen] Successfully saved edited measurements:', {
-        top: profTop,
-        bottom: profBottom,
-        fit: profFit,
-        shoe: profShoe,
-        gender: scannedSizes.gender,
-        bodyMetrics: metrics,
-      })
+      showPhotoToast('המידות נשמרו בהצלחה')
     }
   }
 
@@ -471,6 +465,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         ...scannedSizes,
         sizing: { ...scannedSizes.sizing, bodyMetrics: metrics },
       })
+      showPhotoToast('מידות הגוף נשמרו')
     }
   }
 
@@ -484,6 +479,67 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         ...scannedSizes,
         sizing: { ...scannedSizes.sizing, bodyMetrics: metrics },
       })
+      showPhotoToast('מידות הגוף נשמרו')
+    }
+  }
+
+  function handleProfChestChange(val: string) {
+    if (!scannedSizes?.sizing.bodyMetrics) return
+    const n = Number(val)
+    if (n > 0) {
+      setScannedSizes({
+        ...scannedSizes,
+        sizing: {
+          ...scannedSizes.sizing,
+          bodyMetrics: { ...scannedSizes.sizing.bodyMetrics, chest_circumference_cm: n },
+        },
+      })
+      showPhotoToast('מידות הגוף נשמרו')
+    }
+  }
+
+  function handleProfWaistChange(val: string) {
+    if (!scannedSizes?.sizing.bodyMetrics) return
+    const n = Number(val)
+    if (n > 0) {
+      setScannedSizes({
+        ...scannedSizes,
+        sizing: {
+          ...scannedSizes.sizing,
+          bodyMetrics: { ...scannedSizes.sizing.bodyMetrics, waist_circumference_cm: n },
+        },
+      })
+      showPhotoToast('מידות הגוף נשמרו')
+    }
+  }
+
+  function handleProfHipsChange(val: string) {
+    if (!scannedSizes?.sizing.bodyMetrics) return
+    const n = Number(val)
+    if (n > 0) {
+      setScannedSizes({
+        ...scannedSizes,
+        sizing: {
+          ...scannedSizes.sizing,
+          bodyMetrics: { ...scannedSizes.sizing.bodyMetrics, hips_circumference_cm: n },
+        },
+      })
+      showPhotoToast('מידות הגוף נשמרו')
+    }
+  }
+
+  function handleProfShoulderChange(val: string) {
+    if (!scannedSizes?.sizing.bodyMetrics) return
+    const n = Number(val)
+    if (n > 0) {
+      setScannedSizes({
+        ...scannedSizes,
+        sizing: {
+          ...scannedSizes.sizing,
+          bodyMetrics: { ...scannedSizes.sizing.bodyMetrics, shoulder_width_cm: n },
+        },
+      })
+      showPhotoToast('מידות הגוף נשמרו')
     }
   }
 
@@ -773,10 +829,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
               {[
                 { label: 'גובה', value: scannedSizes.sizing.bodyMetrics.estimated_height_cm, unit: 'ס"מ', onChange: handleProfHeightChange },
                 { label: 'משקל', value: scannedSizes.sizing.bodyMetrics.estimated_weight_kg, unit: 'ק"ג', onChange: handleProfWeightChange },
-                { label: 'חזה', value: scannedSizes.sizing.bodyMetrics.chest_circumference_cm, unit: 'ס"מ' },
-                { label: 'מותן', value: scannedSizes.sizing.bodyMetrics.waist_circumference_cm, unit: 'ס"מ' },
-                { label: 'ירכיים', value: scannedSizes.sizing.bodyMetrics.hips_circumference_cm, unit: 'ס"מ' },
-                { label: 'כתפיים', value: scannedSizes.sizing.bodyMetrics.shoulder_width_cm, unit: 'ס"מ' },
+                { label: 'חזה', value: scannedSizes.sizing.bodyMetrics.chest_circumference_cm, unit: 'ס"מ', onChange: handleProfChestChange },
+                { label: 'מותן', value: scannedSizes.sizing.bodyMetrics.waist_circumference_cm, unit: 'ס"מ', onChange: handleProfWaistChange },
+                { label: 'ירכיים', value: scannedSizes.sizing.bodyMetrics.hips_circumference_cm, unit: 'ס"מ', onChange: handleProfHipsChange },
+                { label: 'כתפיים', value: scannedSizes.sizing.bodyMetrics.shoulder_width_cm, unit: 'ס"מ', onChange: handleProfShoulderChange },
               ].map(({ label, value, unit, onChange }) => (
                 <View key={label} style={profStyles.bodyMetricItem}>
                   <View style={profStyles.bodyMetricFieldRow}>
@@ -836,26 +892,15 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <Text style={profStyles.devicesNote}>Fitgura ישאב התאמות לכל מכשיר ברשימה</Text>
         </View>
 
-        {/* Multi-photo precision recommendation card */}
-        <View style={profStyles.precisionCard}>
-          <View style={profStyles.precisionIconWrap}>
-            <Text style={{ fontSize: 28 }}>📸</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={profStyles.precisionTitle}>לדיוק מירבי במידות</Text>
-            <Text style={profStyles.precisionSub}>
-              מומלץ להעלות תמונות נוספות מזוויות שונות (פרופיל, גב) להצלבת מידע והגעה להתאמה מוחלטת
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => galleryUploadRef.current?.click()}
-            activeOpacity={0.8}
-            style={profStyles.precisionUploadBtn}
-          >
-            <Text style={{ fontSize: 16 }}>📷</Text>
-            <Text style={profStyles.precisionUploadBtnText}>העלאת תמונה נוספת</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Sizing accuracy upgrade — guided multi-photo flow */}
+        <SizingAccuracyUpgrade
+          user={user}
+          scannedSizes={scannedSizes}
+          setScannedSizes={setScannedSizes}
+          scanGallery={scanGallery}
+          setScanGallery={setScanGallery}
+          baselinePhotoUrl={profilePhotoUrl}
+        />
 
         {/* AI scan gallery */}
         <View style={profStyles.card}>
@@ -1447,12 +1492,6 @@ const profStyles = StyleSheet.create({
   formSubmitBtn: { padding: 16, borderRadius: 12 as any, backgroundColor: '#00FF66', alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any },
   formSubmitBtnDisabled: { backgroundColor: '#F5F0E0' },
   formSubmitBtnText: { color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
-  precisionCard: { backgroundColor: '#FFFACC', borderRadius: 12 as any, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any },
-  precisionIconWrap: { width: 48, height: 48, borderRadius: 8 as any, backgroundColor: '#FFE566', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
-  precisionTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
-  precisionSub: { fontSize: 12, color: '#2D2D2D', lineHeight: 18, marginTop: 4, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  precisionUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1A1A1A', borderRadius: 8 as any, paddingVertical: 10, paddingHorizontal: 14, flexShrink: 0, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' as any },
-  precisionUploadBtnText: { color: '#FFE566', fontSize: 12, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
   bodyMetricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   bodyMetricItem: { width: '31%', minWidth: 96, backgroundColor: '#FFFEF5', borderRadius: 8 as any, padding: 10, borderWidth: 1.5, borderColor: '#9A9A9A', boxShadow: '2px 2px 0 #1A1A1A' as any },
   bodyMetricFieldRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
