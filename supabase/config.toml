@@ -13,5 +13,8 @@ verify_jwt = false
 [functions.shein-search]
 verify_jwt = false
 
+[functions.temu-search]
+verify_jwt = false
+
 [functions.visual-search]
 verify_jwt = false

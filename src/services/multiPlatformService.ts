@@ -135,6 +135,7 @@ const SHEIN_PDP_RE = /-p-\d+\.html(?:$|[?#])/i
 const SHEIN_SEARCH_RE = /\/pdsearch\//i
 const ALIEXPRESS_PDP_RE = /\/item\/|product\/[a-z0-9]+$/i
 const TEMU_PDP_RE = /\/goods\/|\/p\/[a-z0-9_-]+\.html/i
+const TEMU_SEARCH_RE = /search_result\.html/i
 
 export function isDirectPdpUrl(url: string): boolean {
   if (!url) return false
@@ -145,6 +146,7 @@ export function isDirectPdpUrl(url: string): boolean {
   if (SHEIN_SEARCH_RE.test(rawUrl)) return true
   if (ALIEXPRESS_PDP_RE.test(rawUrl)) return true
   if (TEMU_PDP_RE.test(rawUrl)) return true
+  if (TEMU_SEARCH_RE.test(rawUrl)) return true
   return false
 }
 
