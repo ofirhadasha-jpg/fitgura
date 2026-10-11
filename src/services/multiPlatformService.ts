@@ -124,12 +124,15 @@ function normalizeNameKey(title: string): string {
   return normalizeTitle(title).sort().join(' ')
 }
 
-// ── PDP validation ───────────────────────────────────────────────────────
-// A direct Product Detail Page URL contains a specific product ID, not a
-// generic search or category page. This prevents the buy button from ever
-// sending users to a search results page.
+// ── PDP / search validation ───────────────────────────────────────────────
+// A valid destination URL is either a direct Product Detail Page (contains
+// a specific product ID) or a SHEIN search results page (/pdsearch/).
+// SHEIN search URLs are used by the curated catalog: each product's title
+// is turned into a search URL so the image, title, and destination all
+// describe the same item.
 
 const SHEIN_PDP_RE = /-p-\d+\.html(?:$|[?#])/i
+const SHEIN_SEARCH_RE = /\/pdsearch\//i
 const ALIEXPRESS_PDP_RE = /\/item\/|product\/[a-z0-9]+$/i
 const TEMU_PDP_RE = /\/goods\/|\/p\/[a-z0-9_-]+\.html/i
 
@@ -139,6 +142,7 @@ export function isDirectPdpUrl(url: string): boolean {
   const skimlinksMatch = url.match(/[?&]url=([^&]+)/i)
   const rawUrl = skimlinksMatch ? decodeURIComponent(skimlinksMatch[1]) : url
   if (SHEIN_PDP_RE.test(rawUrl)) return true
+  if (SHEIN_SEARCH_RE.test(rawUrl)) return true
   if (ALIEXPRESS_PDP_RE.test(rawUrl)) return true
   if (TEMU_PDP_RE.test(rawUrl)) return true
   return false

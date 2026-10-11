@@ -97,8 +97,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   // Use the service-built primaryOffer when available — it is the source of
   // truth for platform-to-URL binding. Only construct a fallback if it's
-  // missing AND the URL is a verified direct product page. We never fall back
-  // to generic search/category URLs.
+  // missing AND the URL is a verified PDP or SHEIN search URL.
   const primaryOffer: Offer | null = product.primaryOffer ?? (() => {
     if (productPlatform === 'shein') {
       const sheinUrl = product.buyUrl ?? ''
@@ -152,12 +151,12 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   function handlePrimaryBuy() {
     if (!primaryOffer || !primaryOffer.url) return
     if (!isDirectPdpUrl(primaryOffer.url)) {
-      console.warn('[BUY BUTTON] Rejected non-PDP URL:', primaryOffer.url)
+      console.warn('[BUY BUTTON] Rejected non-PDP/search URL:', primaryOffer.url)
       return
     }
     const alreadyWrapped = primaryOffer.url.includes('go.skimlinks') || primaryOffer.url.includes('go.skimresources') || primaryOffer.url.includes('go.redirecting')
     const finalUrl = alreadyWrapped ? primaryOffer.url : wrapWithSkimlinks(primaryOffer.url)
-    console.log('[BUY BUTTON] Opening Exact PDP:', primaryOffer.url)
+    console.log('[BUY BUTTON] Opening destination:', primaryOffer.url)
     openUrl(finalUrl, product)
     onDismiss()
   }

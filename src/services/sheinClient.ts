@@ -65,15 +65,17 @@ function isSheinUrl(url: string): boolean {
   return false
 }
 
-function isSheinPdpUrl(url: string): boolean {
+function isSheinDestinationUrl(url: string): boolean {
   if (!url || !isSheinUrl(url)) return false
-  return /-p-\d+\.html(?:$|[?#])/i.test(url)
+  // Accept both direct product pages and search result pages.
+  // The curated catalog uses /pdsearch/ URLs derived from product titles.
+  return /-p-\d+\.html(?:$|[?#])/i.test(url) || /\/pdsearch\//i.test(url)
 }
 
-// Only keep real SHEIN product pages. Products without a verified PDP URL
-// containing -p-[NUMERIC_ID].html are discarded entirely.
+// Only keep real SHEIN destination URLs — either a product page or a
+// search results page. Products without a valid URL are discarded.
 function ensureSheinDestinationUrl(url: string): string {
-  if (!isSheinPdpUrl(url)) return ''
+  if (!isSheinDestinationUrl(url)) return ''
   return url.split('?')[0]
 }
 
