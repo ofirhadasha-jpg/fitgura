@@ -59,7 +59,9 @@ export default function SizingAccuracyUpgrade({ user, scannedSizes, setScannedSi
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [showSourceChoice, setShowSourceChoice] = useState(false)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const targetSlotRef = useRef(2)
 
   const uploadedPhotoCount = Math.min(3, Math.max(1, scanGallery.length || (baselinePhotoUrl ? 1 : 0)))
@@ -154,7 +156,17 @@ export default function SizingAccuracyUpgrade({ user, scannedSizes, setScannedSi
   function openUpload(slot: number) {
     if (complete || uploading) return
     targetSlotRef.current = slot
-    inputRef.current?.click()
+    setShowSourceChoice(true)
+  }
+
+  function chooseCamera() {
+    setShowSourceChoice(false)
+    cameraInputRef.current?.click()
+  }
+
+  function chooseGallery() {
+    setShowSourceChoice(false)
+    galleryInputRef.current?.click()
   }
 
   return (
@@ -195,7 +207,31 @@ export default function SizingAccuracyUpgrade({ user, scannedSizes, setScannedSi
         <View style={styles.overlay}>
           <TouchableOpacity onPress={() => !uploading && setVisible(false)} activeOpacity={1} style={styles.backdrop} />
           <View style={styles.panel}>
-            <input ref={inputRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleUpload} />
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleUpload} />
+            <input ref={galleryInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleUpload} />
+            {showSourceChoice && (
+              <View style={styles.sourceChoiceOverlay}>
+                <TouchableOpacity onPress={() => setShowSourceChoice(false)} activeOpacity={1} style={styles.sourceChoiceBackdrop} />
+                <View style={styles.sourceChoiceBox}>
+                  <View style={styles.sourceChoiceHeader}>
+                    <Text style={{ fontSize: 20 }}>📷</Text>
+                    <Text style={styles.sourceChoiceTitle}>בחר מקור תמונה</Text>
+                  </View>
+                  <View style={styles.sourceChoiceRow}>
+                    <TouchableOpacity onPress={chooseCamera} activeOpacity={0.7} style={styles.sourceChoiceBtn}>
+                      <Text style={{ fontSize: 26 }}>📸</Text>
+                      <Text style={styles.sourceChoiceLabel}>מצלמה</Text>
+                      <Text style={styles.sourceChoiceSub}>צלם עכשיו</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={chooseGallery} activeOpacity={0.7} style={[styles.sourceChoiceBtn, { borderLeftWidth: 1, borderLeftColor: '#1A1A1A' }]}>
+                      <Text style={{ fontSize: 26 }}>🖼️</Text>
+                      <Text style={styles.sourceChoiceLabel}>הקבצים שלי</Text>
+                      <Text style={styles.sourceChoiceSub}>בחר תמונה</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
             <View style={styles.panelHeader}>
               <View>
                 <Text style={styles.panelTitle}>שדרוג דיוק המידות</Text>
@@ -256,9 +292,9 @@ const styles = StyleSheet.create({
   openButton: { backgroundColor: '#1A1A1A', borderRadius: 9 as any, paddingVertical: 11, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' as any },
   completeButton: { backgroundColor: '#00CC52', boxShadow: '2px 2px 0 #1A1A1A' as any },
   openButtonText: { color: '#FFE566', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 350, justifyContent: 'flex-end' },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 350, justifyContent: 'center', alignItems: 'center' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.62)' },
-  panel: { backgroundColor: '#FFFEF5', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 18, maxHeight: '92%', borderWidth: 2, borderColor: '#1A1A1A' } as any,
+  panel: { backgroundColor: '#FFFEF5', borderRadius: 24, padding: 18, width: '92%', maxHeight: '88%', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any } as any,
   panelHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 },
   panelTitle: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', textAlign: 'right', fontFamily: "'Permanent Marker', cursive" },
   panelSub: { fontSize: 12, color: '#4A4A4A', marginTop: 4, textAlign: 'right', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
@@ -293,4 +329,13 @@ const styles = StyleSheet.create({
   successBox: { backgroundColor: '#E0FFF0', borderRadius: 10 as any, padding: 11, marginTop: 10, borderWidth: 1.5, borderColor: '#00CC52' },
   successTitle: { fontSize: 16, color: '#00CC52', fontWeight: '800', textAlign: 'right', fontFamily: "'Permanent Marker', cursive" },
   successSub: { fontSize: 11, color: '#1A1A1A', textAlign: 'right', marginTop: 3, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sourceChoiceOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
+  sourceChoiceBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.5)' },
+  sourceChoiceBox: { backgroundColor: '#FFFEF5', borderRadius: 16, padding: 16, width: '82%', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any },
+  sourceChoiceHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, justifyContent: 'center' },
+  sourceChoiceTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  sourceChoiceRow: { flexDirection: 'row' },
+  sourceChoiceBtn: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 18, backgroundColor: '#FFFACC', borderRadius: 12 },
+  sourceChoiceLabel: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  sourceChoiceSub: { fontSize: 11, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })
