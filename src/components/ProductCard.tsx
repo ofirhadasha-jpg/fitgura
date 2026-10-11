@@ -107,7 +107,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
           <View style={cardStyles.aiBadgeDot} />
           <Text style={cardStyles.aiBadgeText}>AI Match</Text>
         </View>
-        {product.platform && !hasMultiStore && (
+        {product.platform && (
           <View style={[cardStyles.platformBadge, { backgroundColor: platformColor } as React.CSSProperties]}>
             <Text style={cardStyles.platformBadgeText}>{platformLabel}</Text>
           </View>
@@ -252,7 +252,7 @@ const cardStyles = StyleSheet.create({
   sizeBadgeText: { fontSize: 10, fontWeight: '700', color: '#1A1A1A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Permanent Marker', cursive" },
   platformBadge: { position: 'absolute', top: 8, right: 8, borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   platformBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
-  multiStoreBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#00CC52', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  multiStoreBadge: { position: 'absolute', top: 34, right: 8, backgroundColor: '#00CC52', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   multiStoreBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
   lowestPriceChip: { backgroundColor: '#E0FFF0', borderRadius: 8, paddingVertical: 2, paddingHorizontal: 6, alignSelf: 'flex-start', marginTop: 3, borderWidth: 1, borderColor: '#00CC52' } as React.CSSProperties,
   lowestPriceText: { fontSize: 10, fontWeight: '700', color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
