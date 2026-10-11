@@ -1,11 +1,10 @@
 // SHEIN product search edge function.
-// SHEIN blocks direct API calls and renders products client-side, but the
-// SSR HTML includes embedded JSON in <script> tags (Next.js/Nuxt hydration data)
-// that contains full product info. This function:
-//  1. Tries the internal search API (sometimes works from edge IPs)
-//  2. Falls back to fetching the search page HTML and extracting products
-//     from embedded JSON blobs + regex-based PDP link extraction
-//  3. Falls back to category landing pages (Women, Men, etc.)
+// SHEIN blocks all server-side HTTP access with aggressive bot protection
+// (CAPTCHA challenges on every page — search, category, PDP, API endpoints).
+// This function tries live scraping first, then falls back to a curated
+// product catalog stored in the shein_products Supabase table.
+
+import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,18 +12,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-interface RawProduct {
-  goods_id: string;
-  goods_name: string;
-  goods_url_name: string;
-  goods_img: string;
-  goods_thumb: string;
-  retail_price: { amountWithSymbol: string } | null;
-  salePrice: { amountWithSymbol: string } | null;
-  unit_price: { amountWithSymbol: string } | null;
-  brand: string | null;
-  cat_name: string | null;
-  attr_value_list: { attr_value: string }[] | null;
+interface CatalogProduct {
+  productId: string;
+  title: string;
+  brand: string;
+  price: number;
+  currency: string;
+  imageUrl: string;
+  productUrl: string;
+  category: string;
+  sku: string;
+  sizes: string[];
+  rating: number | null;
+  reviewsCount: number | null;
 }
 
 function okResponse(body: Record<string, unknown>): Response {
@@ -38,447 +38,195 @@ function errorResponse(message: string): Response {
   return okResponse({ error: message, products: [] });
 }
 
-function extractPrice(priceObj: { amountWithSymbol: string } | null | undefined): number {
-  if (!priceObj?.amountWithSymbol) return 0;
-  const cleaned = priceObj.amountWithSymbol.replace(/[^0-9.]/g, "");
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : num;
-}
+// ── Live scraping attempt ───────────────────────────────────────────────────
+// Tries to fetch SHEIN pages directly. This will almost certainly fail due
+// to SHEIN's bot protection, but we try anyway in case the protection is
+// temporarily down or the IP is not flagged.
 
-function extractSizes(attrList: { attr_value: string }[] | null | undefined): string[] {
-  if (!Array.isArray(attrList)) return [];
-  const sizes = new Set<string>();
-  for (const attr of attrList) {
-    if (!attr?.attr_value) continue;
-    const val = attr.attr_value.toUpperCase();
-    if (/^(XS|S|M|L|XL|2XL|3XL|4XL|5XL|XXL|XXXL|XXXXL)$/.test(val)) {
-      sizes.add(val.replace("XXL", "2XL").replace("XXXL", "3XL").replace("XXXXL", "4XL"));
-    }
-  }
-  return Array.from(sizes);
-}
-
-function buildPdpUrl(goodsId: string, goodsUrlName: string, goodsName: string): string {
-  const slug = goodsUrlName || goodsName?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "product";
-  return `https://us.shein.com/${slug}-p-${goodsId}.html`;
-}
-
-function normalizeImage(img: string | undefined): string {
-  if (!img) return "";
-  if (img.startsWith("//")) return `https:${img}`;
-  if (img.startsWith("http://")) return img.replace("http://", "https://");
-  return img;
-}
-
-function normalizeRawProduct(value: unknown): RawProduct | null {
-  if (!value || typeof value !== "object") return null;
-  const source = value as Record<string, unknown>;
-  const goodsId = String(source.goods_id ?? source.goodsId ?? source.product_id ?? source.productId ?? "").trim();
-  if (!goodsId) return null;
-
-  const toPriceObject = (price: unknown): { amountWithSymbol: string } | null => {
-    if (typeof price === "string" || typeof price === "number") return { amountWithSymbol: String(price) };
-    if (price && typeof price === "object") {
-      const amount = (price as Record<string, unknown>).amountWithSymbol ?? (price as Record<string, unknown>).amount;
-      return amount == null ? null : { amountWithSymbol: String(amount) };
-    }
-    return null;
+async function tryLiveScrape(keywords: string, page: number, pageSize: number): Promise<CatalogProduct[]> {
+  const searchUrl = `https://us.shein.com/pdsearch/${encodeURIComponent(keywords)}/?page=${page}`;
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml",
+    "Accept-Language": "en-US,en;q=0.9",
   };
 
-  return {
-    goods_id: goodsId,
-    goods_name: String(source.goods_name ?? source.goodsName ?? source.title ?? "").trim(),
-    goods_url_name: String(source.goods_url_name ?? source.goodsUrlName ?? source.url_name ?? "").trim(),
-    goods_img: String(source.goods_img ?? source.goodsImg ?? source.image_url ?? source.imageUrl ?? ""),
-    goods_thumb: String(source.goods_thumb ?? source.goodsThumb ?? source.thumbnail ?? ""),
-    retail_price: toPriceObject(source.retail_price ?? source.retailPrice),
-    salePrice: toPriceObject(source.salePrice ?? source.sale_price),
-    unit_price: toPriceObject(source.unit_price ?? source.unitPrice),
-    brand: source.brand == null ? null : String(source.brand),
-    cat_name: source.cat_name == null ? null : String(source.cat_name),
-    attr_value_list: Array.isArray(source.attr_value_list) ? source.attr_value_list as { attr_value: string }[] : null,
-  };
-}
-
-// Deep-search any JSON structure for arrays of product-like objects.
-function deepSearchProducts(node: unknown, depth: number): RawProduct[] {
-  if (depth > 10) return [];
-  if (Array.isArray(node)) {
-    const products = node.map(normalizeRawProduct).filter((p): p is RawProduct => p !== null);
-    if (products.length > 0) return products;
-    for (const item of node) {
-      const result = deepSearchProducts(item, depth + 1);
-      if (result.length > 0) return result;
-    }
-  } else if (node && typeof node === "object") {
-    for (const value of Object.values(node as Record<string, unknown>)) {
-      const result = deepSearchProducts(value, depth + 1);
-      if (result.length > 0) return result;
-    }
-  }
-  return [];
-}
-
-const BROWSER_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Sec-Fetch-Dest": "document",
-  "Sec-Fetch-Mode": "navigate",
-  "Sec-Fetch-Site": "none",
-  "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="121", "Google Chrome";v="121"',
-  "Sec-Ch-Ua-Mobile": "?0",
-  "Sec-Ch-Ua-Platform": '"Windows"',
-  "Upgrade-Insecure-Requests": "1",
-};
-
-// ── Strategy 1: Try SHEIN's internal search API ────────────────────────────
-async function searchViaApi(keywords: string, page: number, pageSize: number): Promise<RawProduct[]> {
-  const apiUrls = [
-    `https://us.shein.com/productapi/search/v3/search?keyword=${encodeURIComponent(keywords)}&page_num=${page}&page_size=${pageSize}&language=en&currency=USD&country=US`,
-    `https://www.shein.com/productapi/search/v3/search?keyword=${encodeURIComponent(keywords)}&page_num=${page}&page_size=${pageSize}&language=en&currency=USD&country=US`,
-  ];
-
-  for (const url of apiUrls) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          ...BROWSER_HEADERS,
-          "Accept": "application/json, text/plain, */*",
-          "Referer": "https://us.shein.com/",
-        },
-      });
-      if (!response.ok) {
-        console.log(`[SHEIN] API ${response.status}: ${url.substring(0, 70)}`);
-        continue;
-      }
-      const text = await response.text();
-      if (!text || text.length < 20) continue;
-      let data: Record<string, unknown>;
-      try { data = JSON.parse(text); } catch { continue; }
-      const products = deepSearchProducts(data, 0);
-      if (products.length > 0) {
-        console.log(`[SHEIN] API success: ${products.length} products`);
-        return products;
-      }
-    } catch (err) {
-      console.log(`[SHEIN] API error: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-  return [];
-}
-
-// ── Strategy 2: Fetch HTML page and extract embedded JSON ──────────────────
-// SHEIN's SSR HTML contains <script> tags with large JSON blobs that hold
-// product data for client-side hydration. We extract and parse those.
-
-function extractJsonFromScripts(html: string): RawProduct[] {
-  const products = new Map<string, RawProduct>();
-
-  // Approach A: Find all <script> tags containing JSON with goods_id fields.
-  // SHEIN embeds data like: window.__INITIAL_STATE__ = {...} or <script type="application/json">...
-  const scriptRe = /<script[^>]*>([\s\S]*?)<\/script>/gi;
-  let scriptMatch: RegExpExecArray | null;
-  while ((scriptMatch = scriptRe.exec(html)) !== null) {
-    const content = scriptMatch[1];
-    if (!content || content.length < 50) continue;
-    // Only process scripts that mention goods_id or product_id
-    if (!content.includes("goods_id") && !content.includes("goodsId") && !content.includes("product_id")) continue;
-
-    // Try to parse the entire script content as JSON
-    const parsed = tryParseJson(content);
-    if (parsed) {
-      const found = deepSearchProducts(parsed, 0);
-      for (const p of found) {
-        if (!products.has(p.goods_id)) products.set(p.goods_id, p);
-      }
-    }
-
-    // Also try extracting individual JSON objects with goods_id from the script
-    // using regex — handles cases where the JSON is embedded in a JS assignment.
-    const goodsObjRe = /\{[^{}]*"goods_id"\s*:\s*"?(\d+)"?[^}]*\}/gi;
-    let objMatch: RegExpExecArray | null;
-    while ((objMatch = goodsObjRe.exec(content)) !== null) {
-      const objStr = objMatch[0];
-      const parsedObj = tryParseJson(objStr);
-      if (parsedObj) {
-        const product = normalizeRawProduct(parsedObj);
-        if (product && !products.has(product.goods_id)) products.set(product.goods_id, product);
-      }
-    }
-  }
-
-  // Approach B: Search the entire HTML for JSON arrays containing goods_id.
-  // SHEIN sometimes embeds product lists directly in the HTML body.
-  const inlineJsonRe = /\{[^{}]*"goods_id"\s*:\s*"?(\d+)"?[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi;
-  let inlineMatch: RegExpExecArray | null;
-  while ((inlineMatch = inlineJsonRe.exec(html)) !== null) {
-    const parsed = tryParseJson(inlineMatch[0]);
-    if (parsed) {
-      const product = normalizeRawProduct(parsed);
-      if (product && !products.has(product.goods_id)) products.set(product.goods_id, product);
-    }
-  }
-
-  if (products.size > 0) {
-    console.log(`[SHEIN] Extracted ${products.size} products from embedded JSON`);
-  }
-  return Array.from(products.values());
-}
-
-function tryParseJson(str: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(str);
-  } catch {
-    // Try to find the first { and last } — sometimes the script has JS around the JSON
-    const start = str.indexOf("{");
-    const end = str.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(str.substring(start, end + 1));
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-}
-
-// ── Strategy 3: Regex-based PDP link extraction from HTML ──────────────────
-const PDP_LINK_RE = /href="([^"]*-p-(\d+)\.html)"/gi;
-
-function extractPdpLinks(html: string): Map<string, { slug: string; url: string }> {
-  const links = new Map<string, { slug: string; url: string }>();
-  let m: RegExpExecArray | null;
-  PDP_LINK_RE.lastIndex = 0;
-  while ((m = PDP_LINK_RE.exec(html)) !== null) {
-    const href = m[1];
-    const goodsId = m[2];
-    if (!goodsId || links.has(goodsId)) continue;
-    const slugMatch = href.match(/\/([^/]+?)-p-\d+\.html/);
-    links.set(goodsId, { slug: slugMatch ? slugMatch[1] : "product", url: href });
-  }
-  return links;
-}
-
-function extractNamesFromHtml(html: string): Map<string, string> {
-  const nameMap = new Map<string, string>();
-  let m: RegExpExecArray | null;
-  const patterns = [
-    /aria-label="([^"]+)"[^>]*>\s*<a[^>]*href="[^"]*-p-(\d+)\.html/gi,
-    /<a[^>]*title="([^"]+)"[^>]*href="[^"]*-p-(\d+)\.html/gi,
-    /<a[^>]*href="[^"]*-p-(\d+)\.html[^"]*"[^>]*>([^<]{10,200})<\/a>/gi,
-    /"goods_id"\s*:\s*"?(\d+)"?[^}]*?"goods_name"\s*:\s*"([^"]{3,200})"/gi,
-    /"goods_name"\s*:\s*"([^"]{3,200})"[^}]*?"goods_id"\s*:\s*"?(\d+)"?/gi,
-  ];
-  for (const re of patterns) {
-    while ((m = re.exec(html)) !== null) {
-      const name = m[1] || m[2];
-      const id = m[2] || m[1];
-      // For patterns where group 1 is name and group 2 is id
-      if (re === patterns[0] || re === patterns[1]) {
-        if (m[1] && m[2] && !nameMap.has(m[2])) nameMap.set(m[2], m[1].trim());
-      } else if (re === patterns[2]) {
-        if (m[2] && m[1] && !nameMap.has(m[1])) nameMap.set(m[1], m[2].trim());
-      } else {
-        if (m[1] && m[2] && !nameMap.has(m[2])) nameMap.set(m[2], m[1].trim());
-      }
-    }
-  }
-  return nameMap;
-}
-
-function extractImagesFromHtml(html: string): Map<string, string> {
-  const imgMap = new Map<string, string>();
-  let m: RegExpExecArray | null;
-  const patterns = [
-    /<a[^>]*href="[^"]*-p-(\d+)\.html[\s\S]{0,800}?src=["'](\/\/[^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi,
-    /<a[^>]*href="[^"]*-p-(\d+)\.html[\s\S]{0,800}?data-src=["'](\/\/[^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi,
-    /src=["'](\/\/img\.ltwebstatic\.com[^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["'][\s\S]{0,300}?href="[^"]*-p-(\d+)\.html/gi,
-    /"goods_id"\s*:\s*"?(\d+)"?[^}]*?"goods_img"\s*:\s*"(\/\/[^"]+)"/gi,
-    /"goods_img"\s*:\s*"(\/\/img\.ltwebstatic\.com[^"]+)"/gi,
-    /"goods_id"\s*:\s*"?(\d+)"?[^}]*?"goods_thumb"\s*:\s*"(\/\/[^"]+)"/gi,
-  ];
-  for (const re of patterns) {
-    while ((m = re.exec(html)) !== null) {
-      let id: string, img: string;
-      if (re === patterns[2]) { id = m[2]; img = m[1]; }
-      else if (re === patterns[4]) { continue; } // standalone goods_img without id — skip
-      else { id = m[1]; img = m[2]; }
-      if (id && img && !imgMap.has(id)) imgMap.set(id, normalizeImage(img));
-    }
-  }
-  return imgMap;
-}
-
-function extractPricesFromHtml(html: string): Map<string, number> {
-  const priceMap = new Map<string, number>();
-  let m: RegExpExecArray | null;
-  const patterns = [
-    /<a[^>]*href="[^"]*-p-(\d+)\.html[\s\S]{0,1000}?\$([0-9]+\.?[0-9]*)/gi,
-    /"goods_id"\s*:\s*"?(\d+)"?[^}]*?"retail_price"[^}]*?"amountWithSymbol"\s*:\s*"\$?([0-9]+\.?[0-9]*)"/gi,
-    /"goods_id"\s*:\s*"?(\d+)"?[^}]*?"salePrice"[^}]*?"amountWithSymbol"\s*:\s*"\$?([0-9]+\.?[0-9]*)"/gi,
-  ];
-  for (const re of patterns) {
-    while ((m = re.exec(html)) !== null) {
-      const num = parseFloat(m[2]);
-      if (m[1] && !isNaN(num) && !priceMap.has(m[1])) priceMap.set(m[1], num);
-    }
-  }
-  return priceMap;
-}
-
-async function scrapeSearchPage(keywords: string, page: number, pageSize: number): Promise<RawProduct[]> {
-  const searchUrls = [
-    `https://us.shein.com/pdsearch/${encodeURIComponent(keywords)}/?page=${page}`,
-    `https://www.shein.com/pdsearch/${encodeURIComponent(keywords)}/?page=${page}`,
-  ];
-
-  for (const searchUrl of searchUrls) {
-    try {
-      console.log(`[SHEIN] Scraping: ${searchUrl.substring(0, 80)}`);
-      const response = await fetch(searchUrl, { headers: BROWSER_HEADERS });
-      if (!response.ok) {
-        console.log(`[SHEIN] Scrape ${response.status}: ${searchUrl.substring(0, 60)}`);
-        continue;
-      }
-
-      const html = await response.text();
-      console.log(`[SHEIN] HTML length: ${html.length}, contains goods_id: ${html.includes("goods_id")}, contains -p-: ${html.includes("-p-")}`);
-
-      if (html.length < 500) {
-        console.log(`[SHEIN] HTML too short, likely a challenge page`);
-        continue;
-      }
-
-      // Strategy A: Extract products from embedded JSON
-      const jsonProducts = extractJsonFromScripts(html);
-      if (jsonProducts.length > 0) {
-        return jsonProducts.slice(0, pageSize);
-      }
-
-      // Strategy B: Regex-based extraction from HTML structure
-      const pdpLinks = extractPdpLinks(html);
-      console.log(`[SHEIN] Found ${pdpLinks.size} PDP links`);
-      if (pdpLinks.size === 0) continue;
-
-      const nameMap = extractNamesFromHtml(html);
-      const imgMap = extractImagesFromHtml(html);
-      const priceMap = extractPricesFromHtml(html);
-
-      const products: RawProduct[] = [];
-      for (const [goodsId, linkInfo] of pdpLinks) {
-        products.push({
-          goods_id: goodsId,
-          goods_name: nameMap.get(goodsId) || linkInfo.slug.replace(/-/g, " "),
-          goods_url_name: linkInfo.slug,
-          goods_img: imgMap.get(goodsId) ?? "",
-          goods_thumb: imgMap.get(goodsId) ?? "",
-          retail_price: priceMap.has(goodsId) ? { amountWithSymbol: `$${priceMap.get(goodsId)!.toFixed(2)}` } : null,
-          salePrice: null,
-          unit_price: null,
-          brand: "SHEIN",
-          cat_name: null,
-          attr_value_list: null,
-        });
-        if (products.length >= pageSize) break;
-      }
-
-      if (products.length > 0) {
-        console.log(`[SHEIN] Regex extraction got ${products.length} products`);
-        return products;
-      }
-    } catch (err) {
-      console.log(`[SHEIN] Scrape error: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
-  return [];
-}
-
-// ── Strategy 3: Category page fallback ─────────────────────────────────────
-// If search returns nothing, try browsing a category page directly.
-const CATEGORY_PAGES: Record<string, string> = {
-  "women": "https://us.shein.com/Women-Dresses-c-1727.html",
-  "men": "https://us.shein.com/Men-Clothing-c-1970.html",
-  "women clothing": "https://us.shein.com/Women-Dresses-c-1727.html",
-  "men clothing": "https://us.shein.com/Men-Clothing-c-1970.html",
-  "shoes": "https://us.shein.com/Women-Shoes-c-1752.html",
-  "women shoes": "https://us.shein.com/Women-Shoes-c-1752.html",
-  "men shoes": "https://us.shein.com/Men-Shoes-c-2132.html",
-  "accessories": "https://us.shein.com/Women-Accessories-c-2031.html",
-};
-
-async function scrapeCategoryPage(keywords: string, pageSize: number): Promise<RawProduct[]> {
-  const categoryUrl = CATEGORY_PAGES[keywords.toLowerCase().trim()];
-  if (!categoryUrl) return [];
-
-  try {
-    console.log(`[SHEIN] Trying category page: ${categoryUrl}`);
-    const response = await fetch(categoryUrl, { headers: BROWSER_HEADERS });
-    if (!response.ok) {
-      console.log(`[SHEIN] Category page ${response.status}`);
+    const response = await fetch(searchUrl, { headers, redirect: "manual" });
+    // SHEIN returns 302 to /risk/challenge — a non-redirect 200 means we got through
+    if (response.status !== 200) {
+      console.log(`[SHEIN] Live scrape blocked: HTTP ${response.status}`);
       return [];
     }
     const html = await response.text();
-    console.log(`[SHEIN] Category HTML length: ${html.length}`);
-
-    // Try embedded JSON first
-    const jsonProducts = extractJsonFromScripts(html);
-    if (jsonProducts.length > 0) return jsonProducts.slice(0, pageSize);
-
-    // Regex fallback
-    const pdpLinks = extractPdpLinks(html);
-    if (pdpLinks.size === 0) return [];
-    const nameMap = extractNamesFromHtml(html);
-    const imgMap = extractImagesFromHtml(html);
-    const priceMap = extractPricesFromHtml(html);
-
-    const products: RawProduct[] = [];
-    for (const [goodsId, linkInfo] of pdpLinks) {
-      products.push({
-        goods_id: goodsId,
-        goods_name: nameMap.get(goodsId) || linkInfo.slug.replace(/-/g, " "),
-        goods_url_name: linkInfo.slug,
-        goods_img: imgMap.get(goodsId) ?? "",
-        goods_thumb: imgMap.get(goodsId) ?? "",
-        retail_price: priceMap.has(goodsId) ? { amountWithSymbol: `$${priceMap.get(goodsId)!.toFixed(2)}` } : null,
-        salePrice: null,
-        unit_price: null,
-        brand: "SHEIN",
-        cat_name: null,
-        attr_value_list: null,
-      });
-      if (products.length >= pageSize) break;
+    if (html.includes("risk/challenge") || html.includes("captcha")) {
+      console.log(`[SHEIN] Live scrape got challenge page`);
+      return [];
     }
-    console.log(`[SHEIN] Category page got ${products.length} products`);
+    // If we somehow got through, extract products from embedded JSON
+    const products = extractProductsFromHtml(html, pageSize);
+    if (products.length > 0) {
+      console.log(`[SHEIN] Live scrape succeeded: ${products.length} products`);
+    }
     return products;
   } catch (err) {
-    console.log(`[SHEIN] Category page error: ${err instanceof Error ? err.message : String(err)}`);
+    console.log(`[SHEIN] Live scrape error: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
 }
 
-// ── Cache ───────────────────────────────────────────────────────────────────
-interface CacheEntry {
-  payload: Record<string, unknown>;
-  expiresAt: number;
-}
-const responseCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 10 * 60 * 1000;
+function extractProductsFromHtml(html: string, pageSize: number): CatalogProduct[] {
+  // Extract product data from embedded JSON in script tags
+  const products: CatalogProduct[] = [];
+  const goodsIdRe = /"goods_id"\s*:\s*"?(\d+)"?[^}]*?"goods_name"\s*:\s*"([^"]+)"/gi;
+  let m: RegExpExecArray | null;
+  while ((m = goodsIdRe.exec(html)) !== null && products.length < pageSize) {
+    const goodsId = m[1];
+    const name = m[2];
+    // Try to find price and image near this product
+    const nearbyHtml = html.substring(Math.max(0, m.index - 200), m.index + 2000);
+    const priceMatch = nearbyHtml.match(/"retail_price"[^}]*?"amountWithSymbol"\s*:\s*"\$?([0-9.]+)"/);
+    const imgMatch = nearbyHtml.match(/"goods_img"\s*:\s*"(\/\/[^"]+)"/);
+    const urlNameMatch = nearbyHtml.match(/"goods_url_name"\s*:\s*"([^"]+)"/);
 
-function getCached(key: string): Record<string, unknown> | null {
-  const entry = responseCache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiresAt) { responseCache.delete(key); return null; }
-  return entry.payload;
+    products.push({
+      productId: goodsId,
+      title: name,
+      brand: "SHEIN",
+      price: priceMatch ? parseFloat(priceMatch[1]) : 0,
+      currency: "USD",
+      imageUrl: imgMatch ? `https:${imgMatch[1]}` : "",
+      productUrl: `https://us.shein.com/${urlNameMatch?.[1] || "product"}-p-${goodsId}.html`,
+      category: "",
+      sku: goodsId,
+      sizes: [],
+      rating: null,
+      reviewsCount: null,
+    });
+  }
+  return products;
 }
 
-function setCached(key: string, payload: Record<string, unknown>): void {
-  responseCache.set(key, { payload, expiresAt: Date.now() + CACHE_TTL_MS });
+// ── Supabase catalog fallback ───────────────────────────────────────────────
+
+function getSupabaseClient() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) {
+    console.error("[SHEIN] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    return null;
+  }
+  return createClient(url, key);
+}
+
+// Map search keywords to catalog categories and genders
+function parseKeywords(keywords: string): { category: string | null; gender: string | null; terms: string[] } {
+  const lower = keywords.toLowerCase();
+  let category: string | null = null;
+  let gender: string | null = null;
+
+  if (/\b(dress|dresses|clothing|shirt|pants|jeans|jacket|coat|top|blouse|blazer|skirt|sweater|hoodie|knit)\b/.test(lower)) {
+    category = "clothing";
+  }
+  if (/\b(shoe|shoes|sneaker|sneakers|boot|boots|sandal|sandals|heel|heels|footwear)\b/.test(lower)) {
+    category = "shoes";
+  }
+  if (/\b(accessory|accessories|case|charger|cable|watch|band|phone|earbuds|gadget)\b/.test(lower)) {
+    category = "accessories";
+  }
+
+  if (/\b(women|woman|female|girl|lady|women\'s)\b/.test(lower)) {
+    gender = "women";
+  }
+  if (/\b(men|man|male|boy|men\'s)\b/.test(lower)) {
+    gender = "men";
+  }
+
+  const terms = lower.split(/\s+/).filter((t) => t.length >= 2);
+  return { category, gender, terms };
+}
+
+async function fetchFromCatalog(
+  keywords: string,
+  page: number,
+  pageSize: number
+): Promise<CatalogProduct[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+
+  const { category, gender, terms } = parseKeywords(keywords);
+
+  let query = supabase
+    .from("shein_products")
+    .select("goods_id, title, brand, price, original_price, currency, image_url, product_url, category, gender, sizes, search_keywords");
+
+  // Filter by category if detected
+  if (category) {
+    query = query.eq("category", category);
+  }
+
+  // Filter by gender if detected (but also include unisex)
+  if (gender) {
+    query = query.in("gender", [gender, "unisex"]);
+  }
+
+  // Pagination
+  const offset = (page - 1) * pageSize;
+  query = query.range(offset, offset + pageSize - 1);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error(`[SHEIN] Catalog query error: ${error.message}`);
+    return [];
+  }
+
+  if (!data || data.length === 0) {
+    // If no results with category/gender filter, try without filters
+    console.log(`[SHEIN] No catalog results with filters, trying unfiltered...`);
+    const { data: allData, error: allError } = await supabase
+      .from("shein_products")
+      .select("goods_id, title, brand, price, original_price, currency, image_url, product_url, category, gender, sizes, search_keywords")
+      .range(offset, offset + pageSize - 1);
+
+    if (allError || !allData) return [];
+    return allData.map(rowToProduct);
+  }
+
+  // If we have search terms, sort by keyword match relevance
+  if (terms.length > 0) {
+    const sorted = [...data].sort((a, b) => {
+      const aKeywords = (a.search_keywords || []).join(" ");
+      const bKeywords = (b.search_keywords || []).join(" ");
+      const aScore = terms.filter((t) => aKeywords.includes(t)).length;
+      const bScore = terms.filter((t) => bKeywords.includes(t)).length;
+      return bScore - aScore;
+    });
+    return sorted.map(rowToProduct);
+  }
+
+  return data.map(rowToProduct);
+}
+
+function rowToProduct(row: Record<string, unknown>): CatalogProduct {
+  return {
+    productId: String(row.goods_id ?? ""),
+    title: String(row.title ?? ""),
+    brand: String(row.brand ?? "SHEIN"),
+    price: Number(row.price ?? 0),
+    currency: String(row.currency ?? "USD"),
+    imageUrl: String(row.image_url ?? ""),
+    productUrl: String(row.product_url ?? ""),
+    category: String(row.category ?? ""),
+    sku: String(row.goods_id ?? ""),
+    sizes: Array.isArray(row.sizes) ? row.sizes as string[] : [],
+    rating: null,
+    reviewsCount: null,
+  };
 }
 
 // ── Main handler ────────────────────────────────────────────────────────────
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -495,60 +243,26 @@ Deno.serve(async (req: Request) => {
 
     if (!keywords) return errorResponse("keywords is required");
 
-    const cacheKey = `${keywords}|${page}|${pageSize}`;
-    const cached = getCached(cacheKey);
-    if (cached) {
-      console.log(`[SHEIN] Cache HIT for "${keywords}"`);
-      return okResponse({ ...cached, cached: true });
-    }
-
     console.log(`[SHEIN] Search: keywords="${keywords}", page=${page}, pageSize=${pageSize}`);
 
-    // 1. Try internal API
-    let rawProducts = await searchViaApi(keywords, page, pageSize);
-    console.log(`[SHEIN] API: ${rawProducts.length} products`);
-
-    // 2. Fall back to HTML scraping (search page)
-    if (rawProducts.length === 0) {
-      rawProducts = await scrapeSearchPage(keywords, page, pageSize);
-      console.log(`[SHEIN] Search scrape: ${rawProducts.length} products`);
+    // 1. Try live scraping (will almost certainly fail due to bot protection)
+    let products = await tryLiveScrape(keywords, page, pageSize);
+    if (products.length > 0) {
+      console.log(`[SHEIN] Live scrape returned ${products.length} products`);
+      return okResponse({ products, count: products.length, source: "live" });
     }
 
-    // 3. Fall back to category page
-    if (rawProducts.length === 0) {
-      rawProducts = await scrapeCategoryPage(keywords, pageSize);
-      console.log(`[SHEIN] Category page: ${rawProducts.length} products`);
+    // 2. Fall back to curated catalog in Supabase
+    console.log(`[SHEIN] Live scrape failed, falling back to catalog...`);
+    products = await fetchFromCatalog(keywords, page, pageSize);
+    console.log(`[SHEIN] Catalog returned ${products.length} products`);
+
+    if (products.length === 0) {
+      console.warn(`[SHEIN] No products found for "${keywords}" in catalog`);
+      return okResponse({ products: [], count: 0, source: "empty" });
     }
 
-    if (rawProducts.length === 0) {
-      console.warn(`[SHEIN] No products found for "${keywords}" via any method`);
-      return okResponse({ products: [], count: 0 });
-    }
-
-    const products = rawProducts.map((p) => {
-      const pdpUrl = buildPdpUrl(p.goods_id, p.goods_url_name, p.goods_name);
-      const price = extractPrice(p.retail_price) || extractPrice(p.salePrice) || extractPrice(p.unit_price);
-      const imageUrl = normalizeImage(p.goods_img || p.goods_thumb || "");
-      return {
-        productId: p.goods_id,
-        title: p.goods_name ?? "",
-        brand: p.brand ?? "SHEIN",
-        price,
-        currency: "USD",
-        imageUrl,
-        productUrl: pdpUrl,
-        category: p.cat_name ?? "",
-        sku: p.goods_id,
-        sizes: extractSizes(p.attr_value_list),
-        rating: null,
-        reviewsCount: null,
-      };
-    });
-
-    const payload = { products, count: products.length };
-    setCached(cacheKey, payload);
-    console.log(`[SHEIN] Returning ${products.length} products for "${keywords}"`);
-    return okResponse(payload);
+    return okResponse({ products, count: products.length, source: "catalog" });
   } catch (err) {
     console.error("[SHEIN] Edge function error:", err);
     return errorResponse(err instanceof Error ? err.message : "Search failed");
