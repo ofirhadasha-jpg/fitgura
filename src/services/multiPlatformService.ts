@@ -361,30 +361,41 @@ export async function searchAllPlatformsByCategory(
   minPrice = 0,
   maxPrice = 1000,
 ): Promise<Product[]> {
-  // SHEIN is the mandatory primary data source — fetch first.
+  // SHEIN is the sole primary feed source. AliExpress and Temu are fetched
+  // only to attach price-comparison offers to SHEIN products — they never
+  // appear as standalone feed items.
   const sheinProducts = await sheinSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup)
   console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
 
-  // Fetch secondary platforms in parallel for comparison only.
+  if (sheinProducts.length === 0) {
+    console.warn('[Feed] SHEIN returned 0 products — feed will be empty rather than falling back to AliExpress')
+    return []
+  }
+
+  // Fetch secondary platforms in parallel for comparison offers only.
   const secondaryResults = await Promise.allSettled([
     aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     temuSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
   ])
 
-  const merged: Product[] = [...sheinProducts]
+  const comparisonPool: Product[] = []
   for (const r of secondaryResults) {
-    if (r.status === 'fulfilled') merged.push(...r.value)
+    if (r.status === 'fulfilled') comparisonPool.push(...r.value)
   }
 
-  const filtered = filterProducts(merged, category, gender, ageGroup)
+  // Cluster SHEIN products with comparison items to build price comparisons,
+  // then keep only SHEIN products as feed entries.
+  const filtered = filterProducts(sheinProducts, category, gender, ageGroup)
   const priceFiltered = filtered.filter((p) => filterByPrice(p, minPrice, maxPrice))
   const highRated = filterByHighRating(priceFiltered)
   const pdpOnly = filterToPdpProducts(highRated)
   const deduped = dedupByName(pdpOnly)
-  const clustered = clusterProducts(deduped)
-  const bestSellerRanked = sortByBestSellers(clustered)
+  // Attach comparison offers from AliExpress/Temu to SHEIN products.
+  const clustered = clusterProducts([...deduped, ...comparisonPool])
+  const sheinOnly = clustered.filter((p) => p.platform === 'shein')
+  const bestSellerRanked = sortByBestSellers(sheinOnly)
   const priceSorted = sortByPlatformThenPrice(bestSellerRanked)
-  console.log('[Feed Ranking] Sorted feed: SHEIN priority first, followed by multi-supplier best-sellers (4*+ rated, high volume).')
+  console.log('[Feed Ranking] Feed contains SHEIN products only; AliExpress/Temu used for price comparison.')
   return ensureOffers(priceSorted)
 }
 
@@ -395,29 +406,35 @@ export async function searchAllPlatformsByQuery(
   minPrice = 0,
   maxPrice = 1000,
 ): Promise<Product[]> {
-  // SHEIN is the mandatory primary data source — fetch first.
+  // SHEIN is the sole primary feed source.
   const sheinProducts = await sheinSearchProducts(keywords, pageNo, pageSize)
   console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
 
-  // Fetch secondary platforms in parallel for comparison only.
+  if (sheinProducts.length === 0) {
+    console.warn('[Feed] SHEIN returned 0 products — feed will be empty rather than falling back to AliExpress')
+    return []
+  }
+
+  // Fetch secondary platforms for comparison offers only.
   const secondaryResults = await Promise.allSettled([
     aliSearchProducts(keywords, pageNo, pageSize),
     temuSearchProducts(keywords, pageNo, pageSize),
   ])
 
-  const merged: Product[] = [...sheinProducts]
+  const comparisonPool: Product[] = []
   for (const r of secondaryResults) {
-    if (r.status === 'fulfilled') merged.push(...r.value)
+    if (r.status === 'fulfilled') comparisonPool.push(...r.value)
   }
 
-  const priceFiltered = merged.filter((p) => filterByPrice(p, minPrice, maxPrice))
+  const priceFiltered = sheinProducts.filter((p) => filterByPrice(p, minPrice, maxPrice))
   const highRated = filterByHighRating(priceFiltered)
   const pdpOnly = filterToPdpProducts(highRated)
   const deduped = dedupByName(pdpOnly)
-  const clustered = clusterProducts(deduped)
-  const bestSellerRanked = sortByBestSellers(clustered)
+  const clustered = clusterProducts([...deduped, ...comparisonPool])
+  const sheinOnly = clustered.filter((p) => p.platform === 'shein')
+  const bestSellerRanked = sortByBestSellers(sheinOnly)
   const priceSorted = sortByPlatformThenPrice(bestSellerRanked)
-  console.log('[Feed Ranking] Sorted feed: SHEIN priority first, followed by multi-supplier best-sellers (4*+ rated, high volume).')
+  console.log('[Feed Ranking] Feed contains SHEIN products only; AliExpress/Temu used for price comparison.')
   return ensureOffers(priceSorted)
 }
 
@@ -427,27 +444,33 @@ export async function searchAllPlatformDeviceAccessories(
   pageSize = 50,
   gender?: Gender,
 ): Promise<Product[]> {
-  // SHEIN is the mandatory primary data source — fetch first.
+  // SHEIN is the sole primary feed source.
   const sheinProducts = await sheinSearchDeviceAccessories(deviceName, pageNo, pageSize, gender)
   console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
 
-  // Fetch secondary platforms in parallel for comparison only.
+  if (sheinProducts.length === 0) {
+    console.warn('[Feed] SHEIN returned 0 products — feed will be empty rather than falling back to AliExpress')
+    return []
+  }
+
+  // Fetch secondary platforms for comparison offers only.
   const secondaryResults = await Promise.allSettled([
     aliSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
     temuSearchDeviceAccessories(deviceName, pageNo, pageSize, gender),
   ])
 
-  const merged: Product[] = [...sheinProducts]
+  const comparisonPool: Product[] = []
   for (const r of secondaryResults) {
-    if (r.status === 'fulfilled') merged.push(...r.value)
+    if (r.status === 'fulfilled') comparisonPool.push(...r.value)
   }
 
-  const pdpOnly = filterToPdpProducts(merged)
+  const pdpOnly = filterToPdpProducts(sheinProducts)
   const deduped = dedupByName(pdpOnly)
-  const clustered = clusterProducts(deduped)
-  const bestSellerRanked = sortByBestSellers(clustered)
+  const clustered = clusterProducts([...deduped, ...comparisonPool])
+  const sheinOnly = clustered.filter((p) => p.platform === 'shein')
+  const bestSellerRanked = sortByBestSellers(sheinOnly)
   const priceSorted = sortByPlatformThenPrice(bestSellerRanked)
-  console.log('[Feed Ranking] Sorted feed: SHEIN priority first, followed by multi-supplier best-sellers (4*+ rated, high volume).')
+  console.log('[Feed Ranking] Feed contains SHEIN products only; AliExpress/Temu used for price comparison.')
   return ensureOffers(priceSorted)
 }
 
