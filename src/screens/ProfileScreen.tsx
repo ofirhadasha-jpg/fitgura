@@ -698,7 +698,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
         {/* Remove confirmation modal */}
         {showRemoveConfirm && (
-          <View style={profStyles.sheetOverlay}>
+          <View style={profStyles.confirmOverlay}>
             <TouchableOpacity onPress={() => setShowRemoveConfirm(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
             <View style={profStyles.confirmSheet}>
               <Text style={profStyles.confirmTitle}>הסרת תמונה</Text>
@@ -1516,7 +1516,8 @@ const profStyles = StyleSheet.create({
   photoErrorText: { fontSize: 12, color: '#1A1A1A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   photoToast: { position: 'absolute', bottom: 90, left: 20, right: 20, backgroundColor: '#00CC52', borderRadius: 12 as any, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', zIndex: 300, elevation: 5, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any },
   photoToastText: { color: '#FFFEF5', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
-  confirmSheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, gap: 16, borderWidth: 2, borderColor: '#1A1A1A' } as any,
+  confirmOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 } as any,
+  confirmSheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 24, padding: 28, gap: 16, borderWidth: 2, borderColor: '#1A1A1A', width: '100%', maxWidth: 380, boxShadow: '4px 4px 0 #1A1A1A' } as any,
   confirmTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   confirmDesc: { fontSize: 14, color: '#4A4A4A', lineHeight: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   confirmActionsRow: { flexDirection: 'row', gap: 10 },
