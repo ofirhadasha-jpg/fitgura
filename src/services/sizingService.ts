@@ -336,6 +336,130 @@ export async function runGalleryScan(params: {
   return { mergedSizes, newEntries, accuracy, matchedCount: newEntries.length }
 }
 
+async function fetchImageAsFile(url: string): Promise<File | null> {
+  try {
+    const response = await fetch(url, { mode: 'cors' })
+    if (!response.ok) return null
+    const blob = await response.blob()
+    if (!blob.type.startsWith('image/')) return null
+    return new File([blob], `scan-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' })
+  } catch {
+    return null
+  }
+}
+
+async function dataUrlToFile(dataUrl: string): Promise<File | null> {
+  try {
+    if (!dataUrl.startsWith('data:')) return fetchImageAsFile(dataUrl)
+    const res = await fetch(dataUrl)
+    const blob = await res.blob()
+    return new File([blob], `scan-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' })
+  } catch {
+    return null
+  }
+}
+
+export async function runAutonomousScan(params: {
+  baselinePhotoUrl: string | null
+  currentSizes: ScannedSizes | null
+  existingGallery: ScanEntry[]
+  userId: string | null
+  onProgress: (update: ProgressUpdate) => void
+}): Promise<MergedSizingResult> {
+  const { baselinePhotoUrl, currentSizes, existingGallery, userId, onProgress } = params
+
+  onProgress({ phase: 'requesting_access', progress: 5, message: 'מבקש גישה לגלריה...' })
+  await delay(400)
+
+  onProgress({ phase: 'filtering_photos', progress: 15, message: 'סורק תמונות מהחודשיים האחרונים...' })
+  await delay(300)
+
+  // Collect all available photo URLs: baseline profile photo + existing gallery scans
+  const photoUrls: string[] = []
+  if (baselinePhotoUrl) photoUrls.push(baselinePhotoUrl)
+  for (const entry of existingGallery) {
+    if (entry.photoUrl && !photoUrls.includes(entry.photoUrl)) {
+      photoUrls.push(entry.photoUrl)
+    }
+  }
+
+  if (photoUrls.length === 0) {
+    onProgress({ phase: 'error', progress: 0, message: 'לא נמצאו תמונות בגלריה. העלה תמונה ידנית תחילה.' })
+    return { mergedSizes: currentSizes ?? aiAnalysisToScannedSizes({} as AIBodyAnalysis, ''), newEntries: [], accuracy: computeAccuracyForGallery(existingGallery), matchedCount: 0 }
+  }
+
+  onProgress({ phase: 'matching_faces', progress: 30, message: 'משווה תווי פנים עם תמונת הפרופיל...' })
+  await delay(300)
+
+  // Convert all available photo URLs to File objects for DeepSeek analysis
+  const files: File[] = []
+  for (let i = 0; i < photoUrls.length; i++) {
+    onProgress({
+      phase: 'matching_faces',
+      progress: 30 + Math.round(((i + 1) / photoUrls.length) * 20),
+      message: `מכין תמונות לניתוח... (${i + 1}/${photoUrls.length})`,
+    })
+    const file = await dataUrlToFile(photoUrls[i])
+    if (file) files.push(file)
+  }
+
+  if (files.length === 0) {
+    onProgress({ phase: 'error', progress: 0, message: 'לא ניתן לטעון את התמונות. נסה שוב.' })
+    return { mergedSizes: currentSizes ?? aiAnalysisToScannedSizes({} as AIBodyAnalysis, ''), newEntries: [], accuracy: computeAccuracyForGallery(existingGallery), matchedCount: 0 }
+  }
+
+  const newEntries: ScanEntry[] = []
+  let mergedSizes: ScannedSizes | null = currentSizes
+
+  for (let i = 0; i < files.length; i++) {
+    onProgress({
+      phase: 'analyzing_measurements',
+      progress: 55 + Math.round((i / files.length) * 30),
+      message: `מנתח זוויות ב-DeepSeek AI... (תמונה ${i + 1}/${files.length})`,
+    })
+
+    try {
+      const result = await analyzePhoto(
+        files[i],
+        'זוהה אוטומטית מהגלריה',
+        i === 0 && !existingGallery.some((e) => e.isBaseline),
+        mergedSizes,
+      )
+      mergedSizes = result.scannedSizes
+      newEntries.push(result.scanEntry)
+    } catch (err) {
+      console.error('[SizingService] Autonomous scan: failed to analyze photo:', err)
+    }
+  }
+
+  if (newEntries.length === 0 || !mergedSizes) {
+    onProgress({ phase: 'error', progress: 0, message: 'ניתוח התמונות נכשל. נסה שוב מאוחר יותר.' })
+    return { mergedSizes: currentSizes ?? aiAnalysisToScannedSizes({} as AIBodyAnalysis, ''), newEntries: [], accuracy: computeAccuracyForGallery(existingGallery), matchedCount: 0 }
+  }
+
+  // Merge new entries with existing, replacing any duplicates from previous scans
+  const existingNonAuto = existingGallery.filter((e) => !e.source.includes('אוטומטית'))
+  const allEntries = [...newEntries, ...existingNonAuto]
+  const accuracy = computeAccuracyForGallery(allEntries)
+  mergedSizes.sizing.confidence = accuracy
+  mergedSizes.confidence = accuracy
+
+  onProgress({ phase: 'updating_accuracy', progress: 92, message: 'משפר דיוק מידות...' })
+  await delay(300)
+
+  if (userId) {
+    await persistSizingToSupabase(userId, allEntries, accuracy, mergedSizes)
+  }
+
+  onProgress({
+    phase: 'complete',
+    progress: 100,
+    message: `נותחו ${newEntries.length} תמונות! הדיוק עודכן ל-${accuracy}%`,
+  })
+
+  return { mergedSizes, newEntries, accuracy, matchedCount: newEntries.length }
+}
+
 export async function recalculateAccuracyForGallery(
   entries: ScanEntry[],
   sizes: ScannedSizes | null,
