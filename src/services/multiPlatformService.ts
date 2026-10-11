@@ -40,13 +40,21 @@ export function getAdapterStatus(): { platform: ProductPlatform; isConfigured: b
 // ── Sorting & dedup ───────────────────────────────────────────────────────
 
 function sortByBestSellers(products: Product[]): Product[] {
-  return [...products].sort((a, b) => {
-    const salesA = a.ordersCount ?? a.volume ?? 0
-    const salesB = b.ordersCount ?? b.volume ?? 0
-    const ratingA = a.evaluateRate ?? 0
-    const ratingB = b.evaluateRate ?? 0
-    return (salesB * 0.6 + ratingB * 0.4) - (salesA * 0.6 + ratingA * 0.4)
-  })
+  // Rank by popularity within each platform group so SHEIN items don't
+  // get displaced by high-volume AliExpress/Temu products.
+  const shein = products.filter((p) => p.platform === 'shein')
+  const others = products.filter((p) => p.platform !== 'shein')
+
+  const rankByPopularity = (items: Product[]): Product[] =>
+    [...items].sort((a, b) => {
+      const salesA = a.ordersCount ?? a.volume ?? 0
+      const salesB = b.ordersCount ?? b.volume ?? 0
+      const ratingA = a.evaluateRate ?? 0
+      const ratingB = b.evaluateRate ?? 0
+      return (salesB * 0.6 + ratingB * 0.4) - (salesA * 0.6 + ratingA * 0.4)
+    })
+
+  return [...rankByPopularity(shein), ...rankByPopularity(others)]
 }
 
 function dedupByName(products: Product[]): Product[] {
@@ -371,7 +379,9 @@ export async function searchAllPlatformsByCategory(
   const pdpOnly = filterToPdpProducts(highRated)
   const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
-  const priceSorted = sortByPriceAscending(clustered)
+  const bestSellerRanked = sortByBestSellers(clustered)
+  const priceSorted = sortByPriceAscending(bestSellerRanked)
+  console.log('[Feed Ranking] Sorted feed: SHEIN priority first, followed by multi-supplier best-sellers (4*+ rated, high volume).')
   return ensureOffers(priceSorted)
 }
 
@@ -402,7 +412,9 @@ export async function searchAllPlatformsByQuery(
   const pdpOnly = filterToPdpProducts(highRated)
   const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
-  const priceSorted = sortByPriceAscending(clustered)
+  const bestSellerRanked = sortByBestSellers(clustered)
+  const priceSorted = sortByPriceAscending(bestSellerRanked)
+  console.log('[Feed Ranking] Sorted feed: SHEIN priority first, followed by multi-supplier best-sellers (4*+ rated, high volume).')
   return ensureOffers(priceSorted)
 }
 
@@ -430,7 +442,9 @@ export async function searchAllPlatformDeviceAccessories(
   const pdpOnly = filterToPdpProducts(merged)
   const deduped = dedupByName(pdpOnly)
   const clustered = clusterProducts(deduped)
-  const priceSorted = sortByPriceAscending(clustered)
+  const bestSellerRanked = sortByBestSellers(clustered)
+  const priceSorted = sortByPriceAscending(bestSellerRanked)
+  console.log('[Feed Ranking] Sorted feed: SHEIN priority first, followed by multi-supplier best-sellers (4*+ rated, high volume).')
   return ensureOffers(priceSorted)
 }
 
