@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import type { ScanEntry, ScannedSizes, User } from '../types'
-import { aiAnalysisToScannedSizes, analyzeBodyImage, computeDelta, formatTimestamp, nextScanId } from '../types'
+import { computeDelta } from '../types'
 import { supabase } from '../lib/supabase'
+import { analyzePhoto, computeAccuracy, persistSizingToSupabase } from '../services/sizingService'
 
 interface SizingAccuracyUpgradeProps {
   user: User | null
@@ -11,40 +12,6 @@ interface SizingAccuracyUpgradeProps {
   scanGallery: ScanEntry[]
   setScanGallery: (gallery: ScanEntry[] | ((previous: ScanEntry[]) => ScanEntry[])) => void
   baselinePhotoUrl: string | null
-}
-
-const MAX_ACCURACY = 100
-
-function accuracyForPhotoCount(photoCount: number, scannerConfidence: number): number {
-  if (photoCount >= 3) return Math.max(98, Math.min(MAX_ACCURACY, scannerConfidence))
-  if (photoCount >= 2 && scannerConfidence >= 95) return 98
-  if (photoCount >= 2) return 85
-  return 72
-}
-
-function mergeMeasurements(previous: ScannedSizes | null, next: ScannedSizes): ScannedSizes {
-  if (!previous?.sizing.bodyMetrics || !next.sizing.bodyMetrics) return next
-  const prev = previous.sizing.bodyMetrics
-  const nextM = next.sizing.bodyMetrics
-  const avg = (a: number | null, b: number | null): number | null => {
-    if (a == null) return b
-    if (b == null) return a
-    return Math.round(((a + b) / 2) * 10) / 10
-  }
-  return {
-    ...next,
-    sizing: {
-      ...next.sizing,
-      bodyMetrics: {
-        estimated_height_cm: avg(prev.estimated_height_cm, nextM.estimated_height_cm),
-        estimated_weight_kg: avg(prev.estimated_weight_kg, nextM.estimated_weight_kg),
-        chest_circumference_cm: avg(prev.chest_circumference_cm, nextM.chest_circumference_cm),
-        waist_circumference_cm: avg(prev.waist_circumference_cm, nextM.waist_circumference_cm),
-        hips_circumference_cm: avg(prev.hips_circumference_cm, nextM.hips_circumference_cm),
-        shoulder_width_cm: avg(prev.shoulder_width_cm, nextM.shoulder_width_cm),
-      },
-    },
-  }
 }
 
 function getFeedback(accuracy: number): string {
@@ -93,14 +60,6 @@ export default function SizingAccuracyUpgrade({ user, scannedSizes, setScannedSi
     { slot: 3, title: 'תמונה 3: צילום צד + חפץ ייחוס', description: 'למשל כרטיס אשראי — אופציונלי', complete: uploadedPhotoCount >= 3 },
   ], [uploadedPhotoCount])
 
-  async function persistProgress(nextAccuracy: number, nextGallery: ScanEntry[]) {
-    if (!user) return
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .upsert({ user_id: user.id, sizing_accuracy: nextAccuracy, gallery_scans: nextGallery }, { onConflict: 'user_id' })
-    if (updateError) console.error('[SizingAccuracyUpgrade] Failed to save sizing progress:', updateError)
-  }
-
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -111,11 +70,9 @@ export default function SizingAccuracyUpgrade({ user, scannedSizes, setScannedSi
     const timer = setInterval(() => setProgress((value) => Math.min(92, value + 4)), 120)
 
     try {
-      const { analysis, preview } = await analyzeBodyImage(file)
-      const scanned = aiAnalysisToScannedSizes(analysis, preview)
-      const merged = mergeMeasurements(scannedSizes, scanned)
-      const confidence = Math.round((analysis.sizing_profile?.confidence_score ?? scanned.confidence / 100) * 100)
-      const nextAccuracy = accuracyForPhotoCount(nextSlot, confidence)
+      const result = await analyzePhoto(file, nextSlot === 2 ? 'שדרוג דיוק — צילום צד' : 'שדרוג דיוק — חפץ ייחוס', false, scannedSizes)
+      const merged = result.scannedSizes
+      const nextAccuracy = computeAccuracy(nextSlot, result.rawConfidence)
       const previousSizing = scannedSizes?.sizing ?? null
       const delta = previousSizing ? computeDelta(previousSizing, merged.sizing) : null
       merged.sizing.baselineMatched = true
@@ -123,24 +80,12 @@ export default function SizingAccuracyUpgrade({ user, scannedSizes, setScannedSi
       merged.sizing.confidence = nextAccuracy
       merged.confidence = nextAccuracy
       setScannedSizes(merged)
-      const timestamp = formatTimestamp(new Date())
-      const entry: ScanEntry = {
-        id: nextScanId(),
-        date: timestamp.date,
-        time: timestamp.time,
-        top: merged.sizing.top,
-        bottom: merged.sizing.bottom,
-        fit: merged.sizing.fit,
-        confidence: nextAccuracy,
-        photoUrl: preview,
-        source: nextSlot === 2 ? 'שדרוג דיוק — צילום צד' : 'שדרוג דיוק — חפץ ייחוס',
-        isBaseline: false,
-        delta,
-      }
-      const nextGallery = [entry, ...scanGallery]
+      const nextGallery = [result.scanEntry, ...scanGallery]
       setScanGallery(nextGallery)
       setAccuracy(nextAccuracy)
-      await persistProgress(nextAccuracy, nextGallery)
+      if (user) {
+        await persistSizingToSupabase(user.id, nextGallery, nextAccuracy, merged)
+      }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'הסריקה נכשלה. נסה שוב.')
     } finally {

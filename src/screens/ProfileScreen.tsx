@@ -18,7 +18,7 @@ import {
 import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type SizeRegion } from '../utils/sizeConverter'
 import { supabase } from '../lib/supabase'
 import SizingAccuracyUpgrade from '../components/SizingAccuracyUpgrade'
-import { runAutonomousGalleryScan, recalculateAccuracy } from '../services/galleryScannerService'
+import { runGalleryScan, analyzePhoto, recalculateAccuracyForGallery, computeAccuracyForGallery } from '../services/sizingService'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
@@ -204,7 +204,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     setScanGallery((prev) => {
       const next = prev.filter((s) => s.id !== scanId)
       void (async () => {
-        const newAccuracy = await recalculateAccuracy(next, user?.id ?? null)
+        const newAccuracy = await recalculateAccuracyForGallery(next, scannedSizes, user?.id ?? null)
         setGalleryScanAccuracy(newAccuracy)
         if (scannedSizes) {
           setScannedSizes({ ...scannedSizes, confidence: newAccuracy, sizing: { ...scannedSizes.sizing, confidence: newAccuracy } })
@@ -273,6 +273,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [showDevCameraChoice, setShowDevCameraChoice] = useState(false)
 
   const galleryUploadRef = useRef<HTMLInputElement>(null)
+  const galleryScanInputRef = useRef<HTMLInputElement>(null)
   const [autoScanning, setAutoScanning] = useState(false)
   const [autoScanProgress, setAutoScanProgress] = useState(0)
   const [autoScanPhase, setAutoScanPhase] = useState('')
@@ -282,8 +283,24 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [galleryScanSuccess, setGalleryScanSuccess] = useState<string | null>(null)
   const [galleryScanAccuracy, setGalleryScanAccuracy] = useState<number | null>(null)
 
-  async function handleAutoScan() {
+  function handleAutoScan() {
     if (autoScanning) return
+    setGalleryError(null)
+    setGalleryScanSuccess(null)
+    galleryScanInputRef.current?.click()
+  }
+
+  function handleGrantGalleryAccess() {
+    setGalleryAccess('granted')
+    setGalleryScanSuccess(null)
+    void handleAutoScan()
+  }
+
+  async function handleGalleryScanUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (files.length === 0) return
+
     setGalleryError(null)
     setGalleryScanSuccess(null)
     setAutoScanning(true)
@@ -291,7 +308,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     setAutoScanPhase('מבקש גישה לגלריה...')
 
     try {
-      const result = await runAutonomousGalleryScan({
+      const result = await runGalleryScan({
+        files,
         baselinePhotoUrl: profilePhotoUrl,
         currentSizes: scannedSizes,
         existingGallery: scanGallery,
@@ -302,27 +320,27 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         },
       })
 
-      setScanGallery(result.entries)
-      setLastAutoScan(formatLastScanDate())
-      setNextScanDate(formatNextScanDate())
-      setGalleryScanAccuracy(result.accuracy)
-      if (scannedSizes) {
-        setScannedSizes({ ...scannedSizes, confidence: result.accuracy, sizing: { ...scannedSizes.sizing, confidence: result.accuracy } })
+      if (result.matchedCount > 0 && result.mergedSizes) {
+        const allEntries = [...result.newEntries, ...scanGallery]
+        setScannedSizes(result.mergedSizes)
+        setProfTop(result.mergedSizes.sizing.top)
+        setProfBottom(result.mergedSizes.sizing.bottom)
+        setProfFit(result.mergedSizes.sizing.fit)
+        setScanGallery(allEntries)
+        setLastAutoScan(formatLastScanDate())
+        setNextScanDate(formatNextScanDate())
+        setGalleryScanAccuracy(result.accuracy)
+        setGalleryScanSuccess(`התגלו ${result.matchedCount} תמונות מתאימות! הדיוק עודכן ל-${result.accuracy}%`)
+        showPhotoToast(`הדיוק עודכן ל-${result.accuracy}%`)
+      } else {
+        setGalleryError('לא נמצאו תמונות מתאימות בגלריה שלך')
       }
-      setGalleryScanSuccess(`התגלו ${result.matchedCount} תמונות מתאימות! הדיוק עודכן ל-${result.accuracy}%`)
-      showPhotoToast(`הדיוק עודכן ל-${result.accuracy}%`)
     } catch (err) {
       setGalleryError(err instanceof Error ? err.message : 'הסריקה נכשלה')
     } finally {
       setAutoScanProgress(100)
       setTimeout(() => { setAutoScanning(false); setAutoScanProgress(0); setAutoScanPhase('') }, 1000)
     }
-  }
-
-  function handleGrantGalleryAccess() {
-    setGalleryAccess('granted')
-    setGalleryScanSuccess(null)
-    void handleAutoScan()
   }
 
   async function handleManualUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -338,34 +356,20 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }, 60)
 
     try {
-      const { analysis, preview } = await analyzeBodyImage(file)
-      const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
-      const prevSizing = scannedSizes?.sizing ?? null
-      const delta = prevSizing ? computeDelta(prevSizing, aiSizes.sizing) : null
-      aiSizes.sizing.baselineMatched = true
-      aiSizes.sizing.isWeeklyUpdate = true
-      aiSizes.sizing.measurementDelta = delta
-      setScannedSizes(aiSizes)
-      setProfTop(aiSizes.sizing.top)
-      setProfBottom(aiSizes.sizing.bottom)
-      setProfFit(aiSizes.sizing.fit)
-      const ts = formatTimestamp(new Date())
-      const entry: ScanEntry = {
-        id: nextScanId(),
-        date: ts.date,
-        time: ts.time,
-        top: aiSizes.sizing.top,
-        bottom: aiSizes.sizing.bottom,
-        fit: aiSizes.sizing.fit,
-        confidence: aiSizes.sizing.confidence,
-        photoUrl: preview,
-        source: 'הועלתה ידנית',
-        isBaseline: false,
-        delta,
-      }
-      setScanGallery((prev) => [entry, ...prev])
+      const result = await analyzePhoto(file, 'הועלתה ידנית', false, scannedSizes)
+      const updatedSizes = result.scannedSizes
+      updatedSizes.sizing.isWeeklyUpdate = true
+      setScannedSizes(updatedSizes)
+      setProfTop(updatedSizes.sizing.top)
+      setProfBottom(updatedSizes.sizing.bottom)
+      setProfFit(updatedSizes.sizing.fit)
+      setScanGallery((prev) => [result.scanEntry, ...prev])
       setLastAutoScan(formatLastScanDate())
       setNextScanDate(formatNextScanDate())
+      const allEntries = [result.scanEntry, ...scanGallery]
+      const accuracy = computeAccuracyForGallery(allEntries)
+      setGalleryScanAccuracy(accuracy)
+      showPhotoToast(`הדיוק עודכן ל-${accuracy}%`)
     } catch (err) {
       setGalleryError(err instanceof Error ? err.message : 'ניתוח נכשל')
     } finally {
@@ -894,6 +898,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         {/* AI scan gallery */}
         <View style={profStyles.card}>
           <input ref={galleryUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleManualUpload} />
+          <input ref={galleryScanInputRef} type="file" accept="image/*" multiple style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleGalleryScanUpload} />
           <View style={profStyles.galleryHeader}>
             <View>
               <Text style={profStyles.galleryTitle}>🖼️ גלריית סריקות AI</Text>
