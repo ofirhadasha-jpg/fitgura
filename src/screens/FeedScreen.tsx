@@ -14,7 +14,7 @@ import {
   searchAllPlatformsByCategory,
   searchAllPlatformDeviceAccessories,
 } from '../services/multiPlatformService'
-import { setRotationSeed } from '../services/sheinClient'
+
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
 
@@ -362,7 +362,7 @@ export function FeedScreen({
     }
 
     const seed = Date.now() % 100000
-    setRotationSeed(seed)
+    void seed
 
     console.log('[Feed Refresh] New session detected. Loaded fresh rotating product feed tailored to user profile.')
 

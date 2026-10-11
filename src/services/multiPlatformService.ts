@@ -21,6 +21,7 @@ import {
   searchDeviceAccessories as temuSearchDeviceAccessories,
 } from './temuClient'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
+import { ageGroupToDemographic, scoreProductForDemographic, type Demographic } from './demographicQuery'
 
 // ── Adapter registry ─────────────────────────────────────────────────────────
 // Three platforms: SHEIN (primary, public search API), AliExpress (live API, secondary),
@@ -355,6 +356,18 @@ function ensureOffers(products: Product[]): Product[] {
   })
 }
 
+// Demographic soft-scoring: boost products matching the user's age group/demographic
+// to the top of the feed, while keeping other quality items below for a rich catalog.
+function sortByDemographicRelevance(products: Product[], demo: Demographic): Product[] {
+  const scored = products.map((p) => {
+    const demoScore = scoreProductForDemographic(p.name, demo)
+    const ratingScore = (p.evaluateRate ?? 0) * 2
+    return { p, score: demoScore + ratingScore }
+  })
+  scored.sort((a, b) => b.score - a.score)
+  return scored.map((s) => s.p)
+}
+
 // ── Public API ────────────────────────────────────────────────────────────
 
 export async function searchAllPlatformsByCategory(
@@ -367,12 +380,12 @@ export async function searchAllPlatformsByCategory(
   minPrice = 0,
   maxPrice = 1000,
 ): Promise<Product[]> {
-  // SHEIN is the primary feed source. AliExpress and Temu fill in as
-  // secondary feed items and price-comparison offers.
+  const demo = ageGroupToDemographic(ageGroup as any, gender)
+  console.log(`[Search Service] Demographic: ${demo} (ageGroup=${ageGroup}, gender=${gender})`)
+
   const sheinProducts = await sheinSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup)
   console.log('[Search Service] Primary source loaded: SHEIN', `(${sheinProducts.length} products)`)
 
-  // Fetch secondary platforms in parallel.
   const secondaryResults = await Promise.allSettled([
     aliSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
     temuSearchByCategory(category, gender, pageNo, pageSize, extraKeywords, ageGroup),
@@ -391,8 +404,9 @@ export async function searchAllPlatformsByCategory(
   const clustered = clusterProducts(deduped)
   const bestSellerRanked = sortByBestSellers(clustered)
   const priceSorted = sortByPlatformThenPrice(bestSellerRanked)
-  console.log('[Feed Ranking] Sorted feed: SHEIN priority first, then AliExpress, then Temu.')
-  return ensureOffers(priceSorted)
+  const demoRanked = sortByDemographicRelevance(priceSorted, demo)
+  console.log(`[Feed Ranking] Final feed: ${demoRanked.length} items, demographic-boosted for ${demo}.`)
+  return ensureOffers(demoRanked)
 }
 
 export async function searchAllPlatformsByQuery(

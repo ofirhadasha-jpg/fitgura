@@ -3,6 +3,7 @@ import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, Adapter
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
+import { ageGroupToDemographic, getDemographicAnchorQuery, getDemographicFallbackQueries, scoreProductForDemographic } from './demographicQuery'
 export { searchVisualMatch as searchExactVisualMatch } from './imageSearch'
 
 // SHEIN adapter — fetches real product data from SHEIN's public search API
@@ -15,29 +16,6 @@ const SHEIN_CATEGORIES: Record<FeedCategory, string> = {
   clothing: 'clothing',
   shoes: 'shoes',
   accessories: 'accessories',
-}
-
-const STYLE_TAGS = [
-  'trending', 'casual', 'elegant', 'streetwear',
-  'vintage', 'boho', 'y2k', 'preppy', 'oversized',
-  'classic', 'modern', 'chic',
-]
-
-function pickRotationTags(seed: number, count: number): string[] {
-  // Deterministic pick based on seed — no Math.random so the same session
-  // always gets the same keywords.
-  const shuffled = [...STYLE_TAGS]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = (seed + i * 7) % (i + 1)
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
-  return shuffled.slice(0, count)
-}
-
-let currentSessionSeed = Date.now() % 100000
-
-export function setRotationSeed(seed: number): void {
-  currentSessionSeed = seed
 }
 
 interface SheinSearchResult {
@@ -156,13 +134,9 @@ function withSkimlinks(products: Product[]): Product[] {
 
 // ── Public API ───────────────────────────────────────────────────────────
 
-function buildKeywords(category: FeedCategory, gender: Gender): string {
-  const categoryWord = SHEIN_CATEGORIES[category] ?? 'fashion'
-  const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
-  const rotationTag = pickRotationTags(currentSessionSeed, 1)[0] ?? ''
-  // Keep keywords short (2-3 words max) — SHEIN's search API returns zero
-  // results for long multi-word queries.
-  return [genderWord, categoryWord, rotationTag].filter(Boolean).join(' ')
+function buildKeywords(category: FeedCategory, _gender: Gender, ageGroup: AgeGroupFilter = 'adult', gender: Gender = 'unisex'): string {
+  const demo = ageGroupToDemographic(ageGroup as any, gender)
+  return getDemographicAnchorQuery(demo, category)
 }
 
 export async function searchProductsByCategory(
@@ -171,31 +145,29 @@ export async function searchProductsByCategory(
   pageNo: number,
   pageSize: number,
   _extraKeywords?: string,
-  _ageGroup: AgeGroupFilter = 'adult',
+  ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
-  const keywords = buildKeywords(category, gender)
+  const keywords = buildKeywords(category, gender, ageGroup, gender)
   let products = await callSheinSearch(keywords, pageNo, Math.min(pageSize, 40))
 
-  // Retry with simpler keywords if the first search returned nothing.
-  // SHEIN's search can be finicky — dropping the style tag often helps.
-  if (products.length === 0) {
-    const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
-    const categoryWord = SHEIN_CATEGORIES[category] ?? 'fashion'
-    const simplerKeywords = [genderWord, categoryWord].filter(Boolean).join(' ')
-    console.log(`[SHEIN] Retry with simpler keywords: "${simplerKeywords}"`)
-    products = await callSheinSearch(simplerKeywords, pageNo, Math.min(pageSize, 40))
-  }
-
-  // Final retry with just the gender term.
-  if (products.length === 0 && gender !== 'unisex') {
-    const genderWord = gender === 'male' ? 'men' : 'women'
-    console.log(`[SHEIN] Final retry with: "${genderWord}"`)
-    products = await callSheinSearch(genderWord, pageNo, Math.min(pageSize, 40))
+  // Fallback relaxation: if <15 results, progressively try broader queries
+  const fallbacks = getDemographicFallbackQueries(ageGroupToDemographic(ageGroup as any, gender))
+  let fallbackIdx = 0
+  while (products.length < 15 && fallbackIdx < fallbacks.length) {
+    const fbQuery = fallbacks[fallbackIdx]
+    console.log(`[SHEIN] Fallback retry (${products.length} results so far): "${fbQuery}"`)
+    const more = await callSheinSearch(fbQuery, pageNo, Math.min(pageSize, 40))
+    products = [...products, ...more]
+    fallbackIdx++
   }
 
   if (products.length > 0) {
-    const wrapped = withSkimlinks(products)
-    console.log(`[Feed Engine] Successfully loaded ${wrapped.length} SHEIN products to main feed.`)
+    const demo = ageGroupToDemographic(ageGroup as any, gender)
+    const scored = products.map((p) => ({ p, score: scoreProductForDemographic(p.name, demo) }))
+    scored.sort((a, b) => b.score - a.score)
+    const sorted = scored.map((s) => s.p)
+    const wrapped = withSkimlinks(sorted)
+    console.log(`[Feed Engine] Successfully loaded ${wrapped.length} SHEIN products to main feed (demographic: ${demo}).`)
     return wrapped
   }
 

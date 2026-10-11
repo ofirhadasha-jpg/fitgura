@@ -3,6 +3,7 @@ import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, Adapter
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
+import { ageGroupToDemographic, getDemographicAnchorQuery, getDemographicFallbackQueries, scoreProductForDemographic } from './demographicQuery'
 export { searchVisualMatch as searchExactVisualMatch } from './imageSearch'
 
 const TEMU_CATEGORIES: Record<FeedCategory, string> = {
@@ -117,10 +118,9 @@ function withSkimlinks(products: Product[]): Product[] {
   })
 }
 
-function buildKeywords(category: FeedCategory, gender: Gender, extraKeywords?: string): string {
-  const categoryWord = TEMU_CATEGORIES[category] ?? 'fashion'
-  const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
-  return [genderWord, categoryWord, extraKeywords].filter(Boolean).join(' ')
+function buildKeywords(category: FeedCategory, _gender: Gender, ageGroup: AgeGroupFilter = 'adult', gender: Gender = 'unisex'): string {
+  const demo = ageGroupToDemographic(ageGroup as any, gender)
+  return getDemographicAnchorQuery(demo, category)
 }
 
 export async function searchProductsByCategory(
@@ -129,28 +129,28 @@ export async function searchProductsByCategory(
   pageNo: number,
   pageSize: number,
   _extraKeywords?: string,
-  _ageGroup: AgeGroupFilter = 'adult',
+  ageGroup: AgeGroupFilter = 'adult',
 ): Promise<Product[]> {
-  const keywords = buildKeywords(category, gender)
+  const keywords = buildKeywords(category, gender, ageGroup, gender)
   let products = await callTemuSearch(keywords, pageNo, Math.min(pageSize, 40))
 
-  if (products.length === 0) {
-    const genderWord = gender === 'male' ? 'men' : gender === 'female' ? 'women' : ''
-    const categoryWord = TEMU_CATEGORIES[category] ?? 'fashion'
-    const simplerKeywords = [genderWord, categoryWord].filter(Boolean).join(' ')
-    console.log(`[TEMU] Retry with simpler keywords: "${simplerKeywords}"`)
-    products = await callTemuSearch(simplerKeywords, pageNo, Math.min(pageSize, 40))
-  }
-
-  if (products.length === 0 && gender !== 'unisex') {
-    const genderWord = gender === 'male' ? 'men' : 'women'
-    console.log(`[TEMU] Final retry with: "${genderWord}"`)
-    products = await callTemuSearch(genderWord, pageNo, Math.min(pageSize, 40))
+  const fallbacks = getDemographicFallbackQueries(ageGroupToDemographic(ageGroup as any, gender))
+  let fallbackIdx = 0
+  while (products.length < 15 && fallbackIdx < fallbacks.length) {
+    const fbQuery = fallbacks[fallbackIdx]
+    console.log(`[TEMU] Fallback retry (${products.length} results so far): "${fbQuery}"`)
+    const more = await callTemuSearch(fbQuery, pageNo, Math.min(pageSize, 40))
+    products = [...products, ...more]
+    fallbackIdx++
   }
 
   if (products.length > 0) {
-    const wrapped = withSkimlinks(products)
-    console.log(`[Feed Engine] Successfully loaded ${wrapped.length} Temu products to main feed.`)
+    const demo = ageGroupToDemographic(ageGroup as any, gender)
+    const scored = products.map((p) => ({ p, score: scoreProductForDemographic(p.name, demo) }))
+    scored.sort((a, b) => b.score - a.score)
+    const sorted = scored.map((s) => s.p)
+    const wrapped = withSkimlinks(sorted)
+    console.log(`[Feed Engine] Successfully loaded ${wrapped.length} Temu products to main feed (demographic: ${demo}).`)
     return wrapped
   }
 

@@ -2,6 +2,7 @@ import { fetchAliExpressProducts, fetchProductDetails, generateAffiliateLink as 
 import type { Product, AgeGroup } from '../types'
 import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams, AliExpressCredentials } from './adapterTypes'
 import { getFallbackImage } from '../utils/productImages'
+import { ageGroupToDemographic, getDemographicAnchorQuery, scoreProductForDemographic, DEMOGRAPHIC_REJECT } from './demographicQuery'
 
 export type Gender = 'male' | 'female' | 'unisex'
 export type FeedCategory = 'all' | 'clothing' | 'shoes' | 'accessories'
@@ -239,18 +240,8 @@ export function filterProducts(
 }
 
 function getQueryPool(category: FeedCategory, gender: Gender, ageGroup: AgeGroupFilter = 'adult'): { clothing: readonly string[]; shoes: readonly string[] } {
-  const agePool = getAgeQueryPool(ageGroup)
-  if (agePool) return agePool
-  const clothing = gender === 'female'
-    ? TOP_ALIEXPRESS_QUERIES.female.clothing
-    : gender === 'male'
-      ? TOP_ALIEXPRESS_QUERIES.male.clothing
-      : CLOTHING_SUBQUERIES_UNISEX
-  const shoes = gender === 'female'
-    ? TOP_ALIEXPRESS_QUERIES.female.shoes
-    : gender === 'male'
-      ? TOP_ALIEXPRESS_QUERIES.male.shoes
-      : SHOES_SUBQUERIES_UNISEX
+  const clothing = getAnchorQueries(ageGroup, gender, 'clothing')
+  const shoes = getAnchorQueries(ageGroup, gender, 'shoes')
   return { clothing, shoes }
 }
 
@@ -316,7 +307,10 @@ async function aggregateBatch(
 
   const deduped = dedupById(collected)
   const filtered = filterProducts(deduped, category, gender, ageGroup)
-  return sortByBestSellers(filtered)
+  const demo = ageGroupToDemographic(ageGroup as any, gender)
+  const scored = filtered.map((p) => ({ p, score: scoreProductForDemographic(p.name, demo) }))
+  scored.sort((a, b) => b.score - a.score)
+  return scored.map((s) => s.p)
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
