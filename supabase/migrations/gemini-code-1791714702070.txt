@@ -1,0 +1,28 @@
+MASTER TASK: Implement, integrate, and verify the complete Fitgura multi-supplier affiliate engine. Work iteratively across all modules until all requirements are fully satisfied, tested, and working seamlessly without errors:
+
+1. MULTI-PLATFORM ARCHITECTURE & ABSOLUTE SHEIN PRIORITY:
+   - Configure the feed to aggregate products from SHEIN (Mandatory Primary Supplier), AliExpress, and Temu.
+   - SHEIN products must ALWAYS appear at the very top of the feed, followed by top-tier AliExpress and Temu items.
+
+2. BEST-SELLER RANKING & QUALITY FILTERING (4+ STARS):
+   - Sort products within each platform primarily by popularity, sales volume, and "best-seller" metrics.
+   - Strictly filter out any items below 4.0 stars. Ensure high customer satisfaction and positive reviews.
+
+3. MASSIVE INITIAL BATCH & DYNAMIC SESSION REFRESH:
+   - Increase initial load batch size to 50-100+ items on app mount so the feed opens full, vibrant, and packed with variety.
+   - Implement session re-entry cache invalidation to ensure the feed dynamically refreshes with fresh items every time the user re-enters the app.
+
+4. STRICT DIRECT PDP & SKIMLINKS AFFILIATE WRAPPING:
+   - Every SHEIN product must link directly to its exact Product Detail Page (PDP) using verified numeric IDs (`-p-[ID].html`).
+   - ABSOLUTELY NO generic category or search fallback URLs for primary product click actions.
+   - Wrap all valid direct PDP URLs securely with Skimlinks (`go.skimresources.com`). Drop any item that lacks a secure direct link to prevent any "Oops" error pages.
+
+5. ADVANCED DEDUPLICATION & FLEXIBLE SIZING:
+   - Eliminate V2/V3 variant spam by deduplicating items based on identical image URLs and normalized titles.
+   - Use user size profiles as a smart preference/badge rather than a rigid blocker, ensuring the catalog remains rich and the feed is never empty.
+   - Sort items from lowest to highest price (₪) as part of the secondary sorting layer.
+
+6. SELF-TEST & VERIFICATION:
+   - Run a full code integrity check across all adapters, services, and UI components (`sheinAdapter.ts`, `multiPlatformService.ts`, `FeedScreen.tsx`, `ProductCard.tsx`).
+   - Verify that console logs confirm successful multi-supplier loading, strict SHEIN priority, price sorting, and direct Skimlinks routing.
+   - Ensure zero build errors, zero empty states, and flawless UX execution.

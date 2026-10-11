@@ -1,0 +1,10 @@
+CRITICAL REQUIREMENT: Clicking "מתאים לי" or any SHEIN product card MUST redirect the user DIRECTLY to the exact SHEIN Product Detail Page (PDP) wrapped in Skimlinks.
+
+1. DIRECT PDP LINKING ONLY:
+   - Every SHEIN product card and button must be strictly bound to its exact Product Detail Page URL (e.g., containing `-p-[NUMERIC_ID].html`).
+   - ABSOLUTELY FORBIDDEN: Do not open category pages, search results pages, or AliExpress when a user clicks a SHEIN product. If an exact PDP URL is missing, filter the product out entirely.
+
+2. MANDATORY SKIMLINKS WRAPPING:
+   - Every direct SHEIN PDP URL must be wrapped with Skimlinks before assignment:
+     `https://go.skimresources.com?id=YOUR_PUBLISHER_ID&xs=1&url=${encodeURIComponent(exactPdpUrl)}`
+   - Ensure `window.open(wrappedUrl, '_blank')` opens the exact target product page cleanly in a new tab.

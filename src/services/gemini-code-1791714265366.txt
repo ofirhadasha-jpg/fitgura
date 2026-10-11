@@ -1,0 +1,16 @@
+CRITICAL FIX: The filter rules are currently too restrictive, causing the feed to return very few products or look empty! SHEIN has a massive catalog, and the feed must be full, rich, and diverse.
+
+Please update `sheinAdapter.ts` and the feed filtering logic:
+
+1. RELAX STRICT SIZE MATCHING TO PREVENT EMPTY FEED:
+   - Do NOT completely discard products if they don't match an exact user size profile. 
+   - Instead, prioritize items that match the user's size (adding a "מתאים לך" / Size Match badge), but KEEP other great SHEIN products in the feed so the catalog remains full and diverse.
+
+2. ALLOW BROAD STYLE & CATEGORY VARIETY:
+   - Ensure the query pulls a wide variety of clothing categories (dresses, tops, pants, outerwear, accessories) and styles to populate a vibrant, full feed.
+
+3. KEEP LOWEST-TO-HIGHEST PRICE SORTING:
+   - Keep the sorting strictly ascending by price (₪) so the cheapest items appear first, but ensure hundreds of items flow smoothly into the feed.
+
+4. SAFE DIRECT PDP & SKIMLINKS:
+   - Maintain the requirement that every rendered product links directly to its exact SHEIN PDP URL via Skimlinks, ensuring zero "Oops" pages while keeping the feed fully stocked.

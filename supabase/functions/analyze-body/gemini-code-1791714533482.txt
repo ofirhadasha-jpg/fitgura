@@ -1,0 +1,18 @@
+Please implement a smart multi-tier ranking and sorting algorithm for the multi-supplier feed (SHEIN, AliExpress, Temu):
+
+1. ABSOLUTE PLATFORM PRIORITY (SHEIN FIRST):
+   - The feed must ALWAYS place SHEIN products at the very top of the list. 
+   - AliExpress and Temu products follow after SHEIN items, ensuring SHEIN is always the primary showcased supplier.
+
+2. POPULARITY & BEST-SELLER RANKING PER PLATFORM:
+   - Within each platform's group, sort products primarily by popularity and sales volume (e.g., high order counts, "best-seller" flags, or high purchase frequency metrics available in the item data).
+   - The most-purchased and trendiest items must appear first.
+
+3. STRICT QUALITY & RATING FILTER (4+ STARS):
+   - Filter out any product with a rating below 4.0 stars (or 4.5+ where available). Only include items with high customer satisfaction and positive review ratios relevant to each platform.
+
+4. SECONDARY SORTING (PRICE & RELEVANCE):
+   - After ranking by popularity and ratings, apply secondary sorting (such as ascending price or size-match relevance) so users get the best value among the top-rated best-sellers.
+
+5. LOGGING:
+   - Add console log: `[Feed Ranking] Sorted feed: SHEIN priority first, followed by multi-supplier best-sellers (4*+ rated, high volume).`

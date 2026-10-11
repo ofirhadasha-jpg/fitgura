@@ -1,0 +1,15 @@
+CRITICAL UPDATE: Maximize initial feed capacity and multi-supplier catalog richness! 
+
+Since Fitgura integrates multiple platforms (SHEIN as primary, alongside AliExpress and Temu), please remove any artificial limits on product count and load a massive, diverse batch right on initial app mount:
+
+1. INCREASE INITIAL FETCH & BATCH SIZE:
+   - Expand the initial pagination/fetch limit in `multiPlatformService.ts` and feed controllers from a small batch (e.g., 10-20 items) to a rich batch of 50-100+ items on the very first load.
+   - Ensure the feed immediately opens fully stocked, vibrant, and packed with variety.
+
+2. MULTI-SUPPLIER AGGREGATION:
+   - Seamlessly combine products from SHEIN (prioritized at the top), AliExpress, and Temu into the main feed to provide maximum style, price, and category choices.
+   - Respect platform policies while fully utilizing available catalog items without throttling.
+
+3. MAINTAIN SMART SORTING & SAFE URLS:
+   - Keep the ascending price sorting (lowest to highest) active across the entire large batch of products.
+   - Ensure all SHEIN items maintain direct, verified PDP links wrapped securely in Skimlinks, preventing any "Oops" pages while keeping the catalog massive.
