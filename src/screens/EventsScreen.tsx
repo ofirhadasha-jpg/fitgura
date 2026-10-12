@@ -2,12 +2,12 @@ import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
 import { BottomNav } from '../components'
 import {
-  type Screen, type FitEvent, type Platform,
+  type Screen, type FitEvent, type Platform, type FamilyMember,
   PLATFORMS, PRESET_EVENTS,
   daysUntil, daysUntilRecurring, nextRecurringDate, formatDate, nextEventId,
 } from '../types'
 
-export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; isAdmin?: boolean }) {
+export function EventsScreen({ onNav, isAdmin, familyMembers = [] }: { onNav: (s: Screen) => void; isAdmin?: boolean; familyMembers?: FamilyMember[] }) {
   const yr = new Date().getFullYear()
   const mo = (n: number) => String(new Date().getMonth() + n).padStart(2, '0')
 
@@ -27,6 +27,7 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [newRecurring, setNewRecurring] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [newProfileId, setNewProfileId] = useState<string | null>(null)
 
   const sorted = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
@@ -52,10 +53,10 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
     if (!newName || !newDate || newPlatforms.length === 0) return
     setEvents((prev) => [
       ...prev,
-      { id: nextEventId(), name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bgColor: newBg, isRecurring: newRecurring },
+      { id: nextEventId(), name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bgColor: newBg, isRecurring: newRecurring, profileId: newProfileId },
     ])
     setShowAdd(false)
-    setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#FFE566'); setNewBg('#FFFACC'); setNewRecurring(false)
+    setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#FFE566'); setNewBg('#FFFACC'); setNewRecurring(false); setNewProfileId(null)
   }
 
   function removeEvent(id: number) {
@@ -119,6 +120,11 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                       <View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                           <Text style={evStyles.eventName}>{ev.name}</Text>
+                          {ev.profileId && (
+                            <View style={evStyles.profileBadge}>
+                              <Text style={evStyles.profileBadgeText}>{familyMembers.find((m) => m.id === ev.profileId)?.name ?? 'פרופיל'}</Text>
+                            </View>
+                          )}
                           {recurring && (
                             <View style={evStyles.recurringBadge}>
                               <Text style={evStyles.recurringBadgeText}>🔁 חוזרת</Text>
@@ -247,6 +253,31 @@ export function EventsScreen({ onNav, isAdmin }: { onNav: (s: Screen) => void; i
                   style={evStyles.dateInput}
                 />
               </View>
+
+              {familyMembers.length > 0 && (
+                <View>
+                  <Text style={evStyles.inputLabel}>פרופיל משפחתי</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => setNewProfileId(null)}
+                      activeOpacity={0.7}
+                      style={[evStyles.profileOptionBtn, { borderColor: newProfileId === null ? '#1A1A1A' : '#9A9A9A', backgroundColor: newProfileId === null ? '#FFFACC' : '#FFFEF5' }]}
+                    >
+                      <Text style={{ fontSize: 13, color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" }}>הכל</Text>
+                    </TouchableOpacity>
+                    {familyMembers.map((m) => (
+                      <TouchableOpacity
+                        key={m.id}
+                        onPress={() => setNewProfileId(m.id)}
+                        activeOpacity={0.7}
+                        style={[evStyles.profileOptionBtn, { borderColor: newProfileId === m.id ? '#1A1A1A' : '#9A9A9A', backgroundColor: newProfileId === m.id ? '#FFFACC' : '#FFFEF5' }]}
+                      >
+                        <Text style={{ fontSize: 13, color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" }}>{m.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
 
               <View style={evStyles.recurringRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -485,4 +516,7 @@ const evStyles = StyleSheet.create({
   toggleKnob: { position: 'absolute', top: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFEF5', borderWidth: 1, borderColor: '#1A1A1A' } as React.CSSProperties,
   recurringBadge: { backgroundColor: '#E0FFF0', borderWidth: 1.5, borderColor: '#00CC52', borderRadius: 8, paddingVertical: 2, paddingHorizontal: 8 } as React.CSSProperties,
   recurringBadgeText: { fontSize: 10, fontWeight: '700', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
+  profileBadge: { backgroundColor: '#E5F0FF', borderWidth: 1.5, borderColor: '#1A1A1A', borderRadius: 8, paddingVertical: 2, paddingHorizontal: 8 } as React.CSSProperties,
+  profileBadgeText: { fontSize: 10, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  profileOptionBtn: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5 } as React.CSSProperties,
 })

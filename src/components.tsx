@@ -30,11 +30,10 @@ export function LinearGradient({ colors, start, end, style, children }: {
 
 export function BottomNav({ current, onNav, isAdmin }: { current: Screen; onNav: (s: Screen) => void; isAdmin?: boolean }) {
   const items: { screen: Screen; icon: string; label: string }[] = [
-    { screen: 'hub', icon: '🏠', label: 'בית' },
-    { screen: 'events', icon: '🗓️', label: 'אירועים' },
-    { screen: 'wishlist', icon: '❤️', label: 'שמורים' },
+    { screen: 'hub', icon: '🏠', label: 'הבית' },
+    { screen: 'events', icon: '📅', label: 'אירועים' },
     ...(isAdmin ? [{ screen: 'admin' as Screen, icon: '⚙️', label: 'ניהול' }] : []),
-    { screen: 'profile', icon: '🤖', label: 'פרופיל' },
+    { screen: 'profile', icon: '👤', label: 'פרופילים' },
   ]
 
   return (

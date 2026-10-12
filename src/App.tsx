@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product } from './types'
+import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product, FamilyMember } from './types'
 import type { SizeRegion } from './utils/sizeConverter'
 import { AuthModal } from './components'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
@@ -11,7 +11,7 @@ import { FeedScreen } from './screens/FeedScreen'
 import { SizingHubScreen } from './screens/SizingHubScreen'
 import { EventsScreen } from './screens/EventsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
-import { WishlistScreen } from './screens/WishlistScreen'
+
 import { AdminDashboard } from './pages/AdminDashboard'
 import { startSession, endSession, updateLastSeen } from './services/trackingService'
 import { getUnreadCount } from './services/notificationService'
@@ -334,6 +334,8 @@ export default function App() {
   const [registeredDevices, setRegisteredDevices] = useState<string[]>(() => loadGuestDevices())
   const [latestAddedDevice, setLatestAddedDevice] = useState<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
+  const [activeProfileId, setActiveProfileId] = useState<string>('self')
 
   useEffect(() => {
     if (!user) return
@@ -711,15 +713,11 @@ export default function App() {
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} onAuth={handleAuth} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('hub')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('hub')} onDetected={handleDeviceDetected} />}
-        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} />}
+        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} wishlistItems={wishlistItems} feedCatalog={feedCatalog} budget={budget} onToggleWishlist={handleWishlistToggle} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
 
-        {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} />}
-        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} />}
-        {screen === 'wishlist' && (
-          <WishlistScreen onNav={changeScreen} wishlistItems={wishlistItems} budget={budget} catalog={feedCatalog} isAdmin={user?.is_admin === true} />
-        )}
-
+        {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} familyMembers={familyMembers} />}
+        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} />}
         {screen === 'admin' && <AdminDashboard onNav={changeScreen} />}
 
         {authModal && (

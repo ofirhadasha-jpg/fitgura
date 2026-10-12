@@ -5,6 +5,7 @@ import {
   type Screen, type User, type UserDevice,
   type DeviceIdentificationResult,
   type DetectedDevice, type ScannedSizes, type ScanEntry, type GalleryAccessState,
+  type FamilyMember, type FamilyCategory,
   TOP_SIZES, BOTTOM_SIZES, FIT_TYPES, SHOE_SIZES_EU,
   getBottomSizesForGender,
   computeBodyMetricsFromSizes,
@@ -22,7 +23,7 @@ import { runAutonomousScan, analyzePhoto, recalculateAccuracyForGallery, compute
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices, onAddDevice, onRemoveDevice }: {
+export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices, onAddDevice, onRemoveDevice, familyMembers, setFamilyMembers, activeProfileId, setActiveProfileId }: {
   onNav: (s: Screen) => void
   user: User | null
   onSignOut: () => void
@@ -38,6 +39,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   registeredDevices: string[]
   onAddDevice: (deviceName: string) => void
   onRemoveDevice: (deviceName: string) => void
+  familyMembers: FamilyMember[]
+  setFamilyMembers: (m: FamilyMember[] | ((prev: FamilyMember[]) => FamilyMember[])) => void
+  activeProfileId: string
+  setActiveProfileId: (id: string) => void
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -285,6 +290,63 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [previewProcessing, setPreviewProcessing] = useState(false)
   const [currentAccuracy, setCurrentAccuracy] = useState<number>(72)
+
+  // Family member management
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [newMemberName, setNewMemberName] = useState('')
+  const [newMemberCategory, setNewMemberCategory] = useState<FamilyCategory>('self')
+
+  const CATEGORY_LABELS: Record<FamilyCategory, string> = {
+    self: 'אני',
+    partner: 'א/ת זוג',
+    child: 'ילד/ה',
+    baby: 'תינוק/ת',
+  }
+  const CATEGORY_EMOJIS: Record<FamilyCategory, string> = {
+    self: '🧑',
+    partner: '💑',
+    child: '🧒',
+    baby: '👶',
+  }
+
+  function handleAddMember() {
+    const name = newMemberName.trim()
+    if (!name) return
+    const id = `member_${Date.now()}`
+    const newMember: FamilyMember = {
+      id,
+      name,
+      category: newMemberCategory,
+      scannedSizes: null,
+      scanGallery: [],
+      accuracy: 0,
+      photoUrl: null,
+      wardrobe: [],
+    }
+    setFamilyMembers((prev) => [...prev, newMember])
+    setActiveProfileId(id)
+    setShowAddMember(false)
+    setNewMemberName('')
+    setNewMemberCategory('self')
+  }
+
+  function handleRemoveMember(id: string) {
+    setFamilyMembers((prev) => prev.filter((m) => m.id !== id))
+    if (activeProfileId === id) setActiveProfileId('self')
+  }
+
+  function handleSelectMember(id: string) {
+    setActiveProfileId(id)
+    const member = familyMembers.find((m) => m.id === id)
+    if (member) {
+      setProfTop(member.scannedSizes?.sizing.top ?? 'M')
+      setProfBottom(member.scannedSizes?.sizing.bottom ?? '48')
+      setProfFit(member.scannedSizes?.sizing.fit ?? 'Regular')
+      setProfShoe(member.scannedSizes?.shoeSize ?? '42')
+      setProfilePhotoUrl(member.photoUrl)
+      setCurrentAccuracy(member.accuracy)
+    }
+  }
 
   async function handleAutoScan() {
     if (autoScanning) return
@@ -714,6 +776,45 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 14 }}>
+        {/* Family Profile Selector */}
+        <View style={profStyles.card}>
+          <View style={profStyles.familyHeader}>
+            <Text style={profStyles.sizesTitle}>👤 פרופילים משפחתיים</Text>
+            <TouchableOpacity
+              onPress={() => setShowAddMember(true)}
+              activeOpacity={0.7}
+              style={profStyles.addMemberBtn}
+            >
+              <Text style={profStyles.addMemberBtnText}>+ הוסף</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 2 }}>
+            <TouchableOpacity
+              onPress={() => handleSelectMember('self')}
+              activeOpacity={0.7}
+              style={[profStyles.memberChip, activeProfileId === 'self' && profStyles.memberChipActive]}
+            >
+              <Text style={{ fontSize: 28 }}>🧑</Text>
+              <Text style={[profStyles.memberChipName, activeProfileId === 'self' && profStyles.memberChipNameActive]}>{user?.name ?? 'אני'}</Text>
+              {activeProfileId === 'self' && <Text style={profStyles.memberChipBadge}>●</Text>}
+            </TouchableOpacity>
+            {familyMembers.map((m) => (
+              <TouchableOpacity
+                key={m.id}
+                onPress={() => handleSelectMember(m.id)}
+                activeOpacity={0.7}
+                style={[profStyles.memberChip, activeProfileId === m.id && profStyles.memberChipActive]}
+              >
+                <Text style={{ fontSize: 28 }}>{CATEGORY_EMOJIS[m.category]}</Text>
+                <Text style={[profStyles.memberChipName, activeProfileId === m.id && profStyles.memberChipNameActive]}>{m.name}</Text>
+                <TouchableOpacity onPress={() => handleRemoveMember(m.id)} activeOpacity={0.7} style={profStyles.memberRemoveBtn}>
+                  <Text style={{ fontSize: 10, color: '#9A9A9A' }}>✕</Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         {/* Profile photo management */}
         <View style={profStyles.card}>
           <Text style={profStyles.sizesTitle}>📸 תמונת פרופיל / סריקת גוף</Text>
@@ -1255,6 +1356,57 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         processing={previewProcessing}
       />
 
+      {/* Add Family Member Modal */}
+      {showAddMember && (
+        <View style={profStyles.sheetOverlay}>
+          <TouchableOpacity onPress={() => setShowAddMember(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
+          <View style={profStyles.sheet}>
+            <View style={profStyles.sheetHeaderRow}>
+              <Text style={profStyles.sheetTitle}>הוסף פרופיל משפחתי</Text>
+              <TouchableOpacity onPress={() => setShowAddMember(false)} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
+                <Text style={{ color: '#4A4A4A', fontSize: 15 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ gap: 16 }}>
+              <View>
+                <Text style={profStyles.formLabel}>שם הפרופיל</Text>
+                <TextInput
+                  value={newMemberName}
+                  onChangeText={setNewMemberName}
+                  placeholder="לדוגמה: אלה, אשתי, תינוק..."
+                  style={profStyles.formInput}
+                />
+              </View>
+              <View>
+                <Text style={profStyles.formLabel}>קטגוריה</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {(Object.keys(CATEGORY_LABELS) as FamilyCategory[]).map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      onPress={() => setNewMemberCategory(cat)}
+                      activeOpacity={0.7}
+                      style={[profStyles.typeBtn, newMemberCategory === cat && profStyles.typeBtnActive]}
+                    >
+                      <Text style={[profStyles.typeBtnText, newMemberCategory === cat && profStyles.typeBtnTextActive]}>
+                        {CATEGORY_EMOJIS[cat]} {CATEGORY_LABELS[cat]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={handleAddMember}
+                disabled={!newMemberName.trim()}
+                activeOpacity={0.8}
+                style={[profStyles.formSubmitBtn, !newMemberName.trim() && profStyles.formSubmitBtnDisabled]}
+              >
+                <Text style={profStyles.formSubmitBtnText}>הוסף פרופיל</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       <BottomNav current="profile" onNav={onNav} isAdmin={user?.is_admin === true} />
     </View>
   )
@@ -1505,4 +1657,13 @@ const profStyles = StyleSheet.create({
   manualUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F5F0E0', borderRadius: 12 as any, paddingVertical: 13, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any },
   manualUploadBtnText: { color: '#1A1A1A', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
   thumbRemoveBtn: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(26,26,26,0.75)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFFEF5' },
+  familyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  addMemberBtn: { backgroundColor: '#00FF66', borderRadius: 8 as any, paddingVertical: 7, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any },
+  addMemberBtnText: { color: '#1A1A1A', fontSize: 13, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  memberChip: { alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 as any, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5', minWidth: 80 },
+  memberChipActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566', boxShadow: '2px 2px 0 #1A1A1A' as any },
+  memberChipName: { fontSize: 12, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  memberChipNameActive: { color: '#1A1A1A' },
+  memberChipBadge: { fontSize: 10, color: '#00CC52', fontWeight: '700' },
+  memberRemoveBtn: { position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#9A9A9A' },
 })

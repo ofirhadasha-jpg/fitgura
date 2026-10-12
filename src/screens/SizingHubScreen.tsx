@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image 
 import { BottomNav } from '../components'
 import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
 import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
-import type { Screen, User, ScannedSizes, ScanEntry } from '../types'
+import type { Screen, User, ScannedSizes, ScanEntry, Product } from '../types'
 import { supabase } from '../lib/supabase'
 import SizingResultModal, { type WardrobeItem, type FitBreakdown } from '../components/SizingResultModal'
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
@@ -22,13 +22,17 @@ function wrapAffiliateUrl(url: string): string {
   }
 }
 
-export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery }: {
+export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist }: {
   onNav: (s: Screen) => void
   user: User | null
   scannedSizes: ScannedSizes | null
   setScannedSizes?: (s: ScannedSizes | null) => void
   scanGallery?: ScanEntry[]
   setScanGallery?: (entries: ScanEntry[]) => void
+  wishlistItems?: number[]
+  feedCatalog?: Product[]
+  budget?: [number, number]
+  onToggleWishlist?: (idx: number) => void
 }) {
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -300,6 +304,45 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
 
         <View style={styles.wardrobeSection}>
           <Text style={styles.wardrobeTitle}>הארון שלי</Text>
+
+          {/* Saved products from feed */}
+          {wishlistItems && feedCatalog && wishlistItems.length > 0 && (
+            <View style={{ gap: 10, marginBottom: 12 }}>
+              <Text style={styles.savedSectionLabel}>❤️ מוצרים שמורים ({wishlistItems.length})</Text>
+              {wishlistItems.map((idx) => {
+                const p = feedCatalog[idx]
+                if (!p) return null
+                const inBudget = !budget || (p.price >= budget[0] && p.price <= budget[1])
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => onToggleWishlist?.(idx)}
+                    activeOpacity={0.7}
+                    style={[styles.wardrobeItem, { opacity: inBudget ? 1 : 0.6 }]}
+                  >
+                    <View style={styles.wardrobeThumbWrap}>
+                      <Image
+                        source={{ uri: `https://images.unsplash.com/${p.img}?w=80&h=80&fit=crop&auto=format` }}
+                        style={styles.wardrobeThumb}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.wardrobeItemName} numberOfLines={2}>{p.name}</Text>
+                      <View style={styles.wardrobeMetaRow}>
+                        <View style={styles.wardrobeStoreBadge}>
+                          <Text style={styles.wardrobeStoreText}>{p.brand}</Text>
+                        </View>
+                        <Text style={[styles.wardrobePriceText, { color: inBudget ? '#1A1A1A' : '#9A9A9A' }]}>₪{p.price}</Text>
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 20 }}>❤️</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          )}
+
+          {/* Analyzed wardrobe items */}
           {wardrobe.length === 0 ? (
             <View style={styles.wardrobeEmpty}>
               <Text style={{ fontSize: 32 }}>👔</Text>
@@ -404,6 +447,7 @@ const styles = StyleSheet.create({
   guideStepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#1A1A1A', color: '#FFE566', textAlign: 'center', textAlignVertical: 'center', fontSize: 13, fontWeight: '800', lineHeight: 26 },
   guideStepText: { fontSize: 14, color: '#1A1A1A', flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   wardrobeSection: { gap: 10 },
+  savedSectionLabel: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   wardrobeTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   wardrobeEmpty: { alignItems: 'center', gap: 8, paddingVertical: 32, backgroundColor: '#FFFEF5', borderRadius: 14, borderWidth: 1.5, borderColor: '#9A9A9A' },
   wardrobeEmptyText: { fontSize: 15, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Permanent Marker', cursive" },

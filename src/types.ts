@@ -1,7 +1,7 @@
 import { usToEuPants, euToUsPants } from './utils/sizeConverter'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
 
-export type Screen = 'splash' | 'onboarding' | 'device' | 'feed' | 'hub' | 'events' | 'profile' | 'wishlist' | 'admin'
+export type Screen = 'splash' | 'onboarding' | 'device' | 'feed' | 'hub' | 'events' | 'profile' | 'admin'
 
 export interface FitEvent {
   id: number
@@ -12,6 +12,31 @@ export interface FitEvent {
   color: string
   bgColor: string
   isRecurring?: boolean
+  profileId?: string | null
+}
+
+export type FamilyCategory = 'self' | 'partner' | 'child' | 'baby'
+
+export interface FamilyMember {
+  id: string
+  name: string
+  category: FamilyCategory
+  scannedSizes: ScannedSizes | null
+  scanGallery: ScanEntry[]
+  accuracy: number
+  photoUrl: string | null
+  wardrobe: WardrobeEntry[]
+}
+
+export interface WardrobeEntry {
+  id: string
+  productUrl: string
+  productName: string
+  productImage: string | null
+  price: string | null
+  platform: string
+  recommendedSize: string
+  matchPercentage: number
 }
 
 export interface Platform {
