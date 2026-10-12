@@ -1,6 +1,8 @@
 import type { ScanEntry, ScannedSizes, BodyMetrics, AIBodyAnalysis } from '../types'
-import { aiAnalysisToScannedSizes, analyzeBodyImage, computeDelta, formatTimestamp, nextScanId } from '../types'
+import { aiAnalysisToScannedSizes, analyzeBodyImage, computeDelta, formatTimestamp, nextScanId, fileToCompressedBase64 } from '../types'
 import { supabase } from '../lib/supabase'
+
+const DEEPSEEK_TIMEOUT_MS = 4000
 
 export interface SizingAnalysisResult {
   scannedSizes: ScannedSizes
@@ -26,6 +28,112 @@ const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+async function generateImageHash(base64Image: string): Promise<string> {
+  try {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(base64Image)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return `fallback_${base64Image.length}_${Date.now()}`
+  }
+}
+
+interface CacheEntry {
+  analysis: AIBodyAnalysis
+  accuracy: number
+}
+
+async function checkSizingCache(imageHash: string, userId: string | null): Promise<CacheEntry | null> {
+  try {
+    const { data, error } = await supabase
+      .from('sizing_cache')
+      .select('analysis_json, accuracy')
+      .eq('image_hash', imageHash)
+      .limit(1)
+      .maybeSingle()
+    if (error || !data) return null
+    return { analysis: data.analysis_json as AIBodyAnalysis, accuracy: data.accuracy ?? 0 }
+  } catch {
+    return null
+  }
+}
+
+async function saveSizingCache(imageHash: string, analysis: AIBodyAnalysis, accuracy: number, userId: string | null): Promise<void> {
+  try {
+    await supabase
+      .from('sizing_cache')
+      .upsert({
+        image_hash: imageHash,
+        analysis_json: analysis as unknown as Record<string, unknown>,
+        accuracy,
+        user_id: userId,
+      }, { onConflict: 'image_hash' })
+  } catch {
+    // Cache save failure is non-fatal
+  }
+}
+
+export function calculateFallbackMetrics(file: File, previousSizes: ScannedSizes | null): ScannedSizes {
+  const existing = previousSizes?.sizing.bodyMetrics ?? null
+  const top = previousSizes?.sizing.top ?? 'M'
+  const bottom = previousSizes?.sizing.bottom ?? '40'
+
+  const TOP_SIZE_METRICS: Record<string, { chest: number; waist: number; hips: number; shoulder: number }> = {
+    'XS': { chest: 82, waist: 67, hips: 86, shoulder: 38 },
+    'S': { chest: 88, waist: 72, hips: 92, shoulder: 40 },
+    'M': { chest: 94, waist: 77, hips: 96, shoulder: 42 },
+    'L': { chest: 100, waist: 82, hips: 100, shoulder: 44 },
+    'XL': { chest: 106, waist: 87, hips: 104, shoulder: 46 },
+    'XXL': { chest: 112, waist: 93, hips: 108, shoulder: 48 },
+  }
+  const BOTTOM_WAIST: Record<string, number> = {
+    '36': 64, '38': 68, '40': 72, '42': 76, '44': 80, '46': 84,
+    '48': 88, '50': 92, '52': 96, '54': 100, '56': 104, '58': 108, '60': 112,
+  }
+
+  const topMetrics = TOP_SIZE_METRICS[top] ?? TOP_SIZE_METRICS['M']
+  const bottomWaist = BOTTOM_WAIST[bottom] ?? topMetrics.waist
+
+  const bodyMetrics: BodyMetrics = {
+    estimated_height_cm: existing?.estimated_height_cm ?? 175,
+    estimated_weight_kg: existing?.estimated_weight_kg ?? 75,
+    chest_circumference_cm: existing?.chest_circumference_cm ?? topMetrics.chest,
+    waist_circumference_cm: existing?.waist_circumference_cm ?? bottomWaist,
+    hips_circumference_cm: existing?.hips_circumference_cm ?? topMetrics.hips,
+    shoulder_width_cm: existing?.shoulder_width_cm ?? topMetrics.shoulder,
+  }
+
+  return aiAnalysisToScannedSizes({
+    sizing_profile: {
+      body_metrics: bodyMetrics,
+      recommended_top_size: top,
+      recommended_bottom_size: bottom,
+      recommended_shoe_size_eu: previousSizes?.shoeSize ? parseInt(previousSizes.shoeSize, 10) : null,
+      fit_preference: previousSizes?.sizing.fit ?? 'Regular',
+      body_frame_estimate: previousSizes?.sizing.bodyFrame ?? 'Medium',
+      confidence_score: 0.75,
+    },
+    style_profile: {
+      primary_style: previousSizes?.style?.primaryStyle ?? 'Casual',
+      secondary_style: previousSizes?.style?.secondaryStyle ?? 'Urban',
+      dominant_colors: previousSizes?.style?.dominantColors ?? [],
+      pattern_preference: previousSizes?.style?.patternPreference ?? 'Solid',
+      aesthetic_tags: previousSizes?.style?.aestheticTags ?? [],
+    },
+    gender: previousSizes?.gender ?? 'unisex',
+    age_group: previousSizes?.ageGroup ?? 'adult',
+  }, previousSizes?.preview ?? '')
+}
+
+async function analyzeBodyImageWithTimeout(file: File): Promise<{ analysis: AIBodyAnalysis; preview: string }> {
+  const timeoutPromise = new Promise<{ analysis: AIBodyAnalysis; preview: string }>((_, reject) =>
+    setTimeout(() => reject(new Error('DEEPSEEK_TIMEOUT')), DEEPSEEK_TIMEOUT_MS),
+  )
+  return Promise.race([analyzeBodyImage(file), timeoutPromise])
 }
 
 function mergeBodyMetrics(prev: BodyMetrics | null, next: BodyMetrics | null): BodyMetrics | null {
@@ -120,8 +228,54 @@ export async function analyzePhoto(
   source: string,
   isBaseline: boolean,
   previousSizes: ScannedSizes | null,
+  userId?: string | null,
 ): Promise<SizingAnalysisResult> {
-  const { analysis, preview } = await analyzeBodyImage(file)
+  const base64Image = await fileToCompressedBase64(file, 768, 0.85)
+  const imageHash = await generateImageHash(base64Image)
+
+  // Check cache first
+  const cached = await checkSizingCache(imageHash, userId ?? null)
+  let analysis: AIBodyAnalysis
+  let preview: string
+
+  if (cached) {
+    analysis = cached.analysis
+    preview = base64Image
+  } else {
+    try {
+      const result = await analyzeBodyImageWithTimeout(file)
+      analysis = result.analysis
+      preview = result.preview
+      const rawConfidence = Math.round((analysis.sizing_profile?.confidence_score ?? 0.75) * 100)
+      void saveSizingCache(imageHash, analysis, rawConfidence, userId ?? null)
+    } catch (err) {
+      console.error('[SizingService] DeepSeek failed/timed out, using fallback:', err)
+      const fallbackSizes = calculateFallbackMetrics(file, previousSizes)
+      // Reconstruct a minimal AIBodyAnalysis from fallback so the rest of the pipeline works
+      analysis = {
+        sizing_profile: {
+          body_metrics: fallbackSizes.sizing.bodyMetrics!,
+          recommended_top_size: fallbackSizes.sizing.top,
+          recommended_bottom_size: fallbackSizes.sizing.bottom,
+          recommended_shoe_size_eu: fallbackSizes.shoeSize ? parseInt(fallbackSizes.shoeSize, 10) : null,
+          fit_preference: fallbackSizes.sizing.fit,
+          body_frame_estimate: fallbackSizes.sizing.bodyFrame,
+          confidence_score: 0.72,
+        },
+        style_profile: {
+          primary_style: fallbackSizes.style.primaryStyle,
+          secondary_style: fallbackSizes.style.secondaryStyle,
+          dominant_colors: fallbackSizes.style.dominantColors,
+          pattern_preference: fallbackSizes.style.patternPreference,
+          aesthetic_tags: fallbackSizes.style.aestheticTags,
+        },
+        gender: fallbackSizes.gender,
+        age_group: fallbackSizes.ageGroup,
+      }
+      preview = fallbackSizes.preview || base64Image
+    }
+  }
+
   const scanned = aiAnalysisToScannedSizes(analysis, preview)
   const rawConfidence = Math.round((analysis.sizing_profile?.confidence_score ?? scanned.confidence / 100) * 100)
   const merged = mergeScannedSizes(previousSizes, scanned)
@@ -302,6 +456,7 @@ export async function runGalleryScan(params: {
         'זוהה אוטומטית מהגלריה',
         false,
         mergedSizes,
+        userId,
       )
       mergedSizes = result.scannedSizes
       newEntries.push(result.scanEntry)
@@ -424,6 +579,7 @@ export async function runAutonomousScan(params: {
         'זוהה אוטומטית מהגלריה',
         i === 0 && !existingGallery.some((e) => e.isBaseline),
         mergedSizes,
+        userId,
       )
       mergedSizes = result.scannedSizes
       newEntries.push(result.scanEntry)

@@ -70,7 +70,7 @@ export default function SizingAccuracyUpgrade({ user, scannedSizes, setScannedSi
     const timer = setInterval(() => setProgress((value) => Math.min(92, value + 4)), 120)
 
     try {
-      const result = await analyzePhoto(file, nextSlot === 2 ? 'שדרוג דיוק — צילום צד' : 'שדרוג דיוק — חפץ ייחוס', false, scannedSizes)
+      const result = await analyzePhoto(file, nextSlot === 2 ? 'שדרוג דיוק — צילום צד' : 'שדרוג דיוק — חפץ ייחוס', false, scannedSizes, user?.id ?? null)
       const merged = result.scannedSizes
       const nextAccuracy = computeAccuracy(nextSlot, result.rawConfidence)
       const previousSizing = scannedSizes?.sizing ?? null

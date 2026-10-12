@@ -18,6 +18,8 @@ import {
 import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type SizeRegion } from '../utils/sizeConverter'
 import { supabase } from '../lib/supabase'
 import SizingAccuracyUpgrade from '../components/SizingAccuracyUpgrade'
+import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
+import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
 import { runAutonomousScan, analyzePhoto, recalculateAccuracyForGallery, computeAccuracyForGallery } from '../services/sizingService'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
@@ -281,6 +283,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [nextScanDate, setNextScanDate] = useState<string>(formatNextScanDate())
   const [galleryScanSuccess, setGalleryScanSuccess] = useState<string | null>(null)
   const [galleryScanAccuracy, setGalleryScanAccuracy] = useState<number | null>(null)
+  const [previewPhotos, setPreviewPhotos] = useState<PreviewablePhoto[]>([])
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewProcessing, setPreviewProcessing] = useState(false)
+  const [currentAccuracy, setCurrentAccuracy] = useState<number>(72)
 
   async function handleAutoScan() {
     if (autoScanning) return
@@ -291,38 +297,118 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     setAutoScanPhase('מבקש גישה לגלריה...')
 
     try {
-      const result = await runAutonomousScan({
-        baselinePhotoUrl: profilePhotoUrl,
-        currentSizes: scannedSizes,
-        existingGallery: scanGallery,
-        userId: user?.id ?? null,
-        onProgress: (update) => {
-          setAutoScanProgress(update.progress)
-          setAutoScanPhase(update.message)
-        },
-      })
+      // Collect available photo URLs for local preview (no DeepSeek yet)
+      const photoUrls: string[] = []
+      if (profilePhotoUrl) photoUrls.push(profilePhotoUrl)
+      for (const entry of scanGallery) {
+        if (entry.photoUrl && !photoUrls.includes(entry.photoUrl)) {
+          photoUrls.push(entry.photoUrl)
+        }
+      }
 
-      if (result.matchedCount > 0 && result.mergedSizes) {
+      if (photoUrls.length === 0) {
+        setGalleryError('לא נמצאו תמונות בגלריה. העלה תמונה ידנית תחילה.')
+        setAutoScanning(false)
+        setAutoScanProgress(0)
+        return
+      }
+
+      setAutoScanPhase('סורק תמונות מהחודשיים האחרונים...')
+
+      // Build previewable photos from available URLs
+      const photos: PreviewablePhoto[] = []
+      for (let i = 0; i < Math.min(photoUrls.length, 3); i++) {
+        try {
+          const res = await fetch(photoUrls[i])
+          const blob = await res.blob()
+          const file = new File([blob], `preview-${i}.jpg`, { type: blob.type || 'image/jpeg' })
+          photos.push({ id: `photo_${i}_${Date.now()}`, url: photoUrls[i], file })
+        } catch {
+          // Skip photos that fail to load
+        }
+      }
+
+      setAutoScanning(false)
+      setAutoScanProgress(0)
+      setAutoScanPhase('')
+
+      if (photos.length === 0) {
+        setGalleryError('לא ניתן לטעון את התמונות. נסה שוב.')
+        return
+      }
+
+      setPreviewPhotos(photos)
+      setShowPreviewModal(true)
+    } catch (err) {
+      setGalleryError(err instanceof Error ? err.message : 'הסריקה נכשלה')
+      setAutoScanning(false)
+      setAutoScanProgress(0)
+    }
+  }
+
+  async function handleApprovePreviewPhotos(approved: PreviewablePhoto[]) {
+    setShowPreviewModal(false)
+    setPreviewProcessing(true)
+    setAutoScanning(true)
+    setAutoScanProgress(10)
+    setAutoScanPhase('DeepSeek AI מנתח את התמונות שאישרת...')
+
+    try {
+      const newEntries: ScanEntry[] = []
+      let mergedSizes: ScannedSizes | null = scannedSizes
+
+      for (let i = 0; i < approved.length; i++) {
+        setAutoScanProgress(20 + Math.round((i / approved.length) * 60))
+        setAutoScanPhase(`מנתח זוויות ב-DeepSeek AI... (תמונה ${i + 1}/${approved.length})`)
+
+        try {
+          const result = await analyzePhoto(
+            approved[i].file,
+            'זוהה אוטומטית מהגלריה',
+            i === 0 && !scanGallery.some((e) => e.isBaseline),
+            mergedSizes,
+            user?.id ?? null,
+          )
+          mergedSizes = result.scannedSizes
+          newEntries.push(result.scanEntry)
+        } catch (err) {
+          console.error('[ProfileScreen] Preview-approved photo analysis failed:', err)
+        }
+      }
+
+      if (newEntries.length > 0 && mergedSizes) {
         const existingNonAuto = scanGallery.filter((e) => !e.source.includes('אוטומטית'))
-        const allEntries = [...result.newEntries, ...existingNonAuto]
-        setScannedSizes(result.mergedSizes)
-        setProfTop(result.mergedSizes.sizing.top)
-        setProfBottom(result.mergedSizes.sizing.bottom)
-        setProfFit(result.mergedSizes.sizing.fit)
+        const allEntries = [...newEntries, ...existingNonAuto]
+        const accuracy = computeAccuracyForGallery(allEntries)
+        mergedSizes.sizing.confidence = accuracy
+        mergedSizes.confidence = accuracy
+
+        setScannedSizes(mergedSizes)
+        setProfTop(mergedSizes.sizing.top)
+        setProfBottom(mergedSizes.sizing.bottom)
+        setProfFit(mergedSizes.sizing.fit)
         setScanGallery(allEntries)
         setLastAutoScan(formatLastScanDate())
         setNextScanDate(formatNextScanDate())
-        setGalleryScanAccuracy(result.accuracy)
-        setGalleryScanSuccess(`נותחו ${result.matchedCount} תמונות! הדיוק עודכן ל-${result.accuracy}%`)
-        showPhotoToast(`הדיוק עודכן ל-${result.accuracy}%`)
+        setGalleryScanAccuracy(accuracy)
+        setCurrentAccuracy(accuracy)
+        setGalleryScanSuccess(`נותחו ${newEntries.length} תמונות! הדיוק עודכן ל-${accuracy}%`)
+        showPhotoToast(`הדיוק עודכן ל-${accuracy}%`)
+
+        if (user) {
+          const { persistSizingToSupabase } = await import('../services/sizingService')
+          await persistSizingToSupabase(user.id, allEntries, accuracy, mergedSizes)
+        }
       } else {
-        setGalleryError('לא נמצאו תמונות לניתוח. העלה תמונה ידנית תחילה.')
+        setGalleryError('ניתוח התמונות נכשל. נסה שוב מאוחר יותר.')
       }
     } catch (err) {
       setGalleryError(err instanceof Error ? err.message : 'הסריקה נכשלה')
     } finally {
-      setAutoScanProgress(100)
-      setTimeout(() => { setAutoScanning(false); setAutoScanProgress(0); setAutoScanPhase('') }, 1000)
+      setPreviewProcessing(false)
+      setAutoScanning(false)
+      setAutoScanProgress(0)
+      setAutoScanPhase('')
     }
   }
 
@@ -345,7 +431,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }, 60)
 
     try {
-      const result = await analyzePhoto(file, 'הועלתה ידנית', false, scannedSizes)
+      const result = await analyzePhoto(file, 'הועלתה ידנית', false, scannedSizes, user?.id ?? null)
       const updatedSizes = result.scannedSizes
       updatedSizes.sizing.isWeeklyUpdate = true
       setScannedSizes(updatedSizes)
@@ -874,6 +960,13 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <Text style={profStyles.devicesNote}>Fitgura ישאב התאמות לכל מכשיר ברשימה</Text>
         </View>
 
+        {/* Contextual upsell banner — upgrade accuracy to 95%+ */}
+        <ContextualUpsellBanner
+          accuracy={currentAccuracy}
+          onTrigger={handleGrantGalleryAccess}
+          variant="profile"
+        />
+
         {/* Sizing accuracy upgrade — guided multi-photo flow */}
         <SizingAccuracyUpgrade
           user={user}
@@ -1288,6 +1381,15 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           </View>
         </View>
       )}
+
+      {/* Gallery Preview Modal — user controls which photos go to DeepSeek */}
+      <GalleryPreviewModal
+        visible={showPreviewModal}
+        photos={previewPhotos}
+        onApprove={handleApprovePreviewPhotos}
+        onCancel={() => { setShowPreviewModal(false); setPreviewPhotos([]) }}
+        processing={previewProcessing}
+      />
 
       <BottomNav current="profile" onNav={onNav} isAdmin={user?.is_admin === true} />
     </View>

@@ -17,6 +17,7 @@ import {
 
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
+import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
 
 const PAGE_SIZE = 50
 
@@ -111,6 +112,19 @@ export function FeedScreen({
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const selectedDeviceRef = useRef<string | null>(null)
   const [pendingNewDevice, setPendingNewDevice] = useState<string | null>(null)
+  const [sizingAccuracy, setSizingAccuracy] = useState<number>(72)
+
+  useEffect(() => {
+    if (!user) return
+    void (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('sizing_accuracy')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (typeof data?.sizing_accuracy === 'number') setSizingAccuracy(data.sizing_accuracy)
+    })()
+  }, [user?.id])
 
   // When a new device is added (from any screen), fetch its accessories and prepend to the catalog
   useEffect(() => {
@@ -615,7 +629,25 @@ export function FeedScreen({
         )}
 
         <View style={feedStyles.productGrid}>
-          {sheinFirst.map((product) => {
+          {sheinFirst.slice(0, 6).map((product) => {
+            const globalIdx = catalog.indexOf(product)
+            return (
+              <ProductCard
+                key={globalIdx}
+                product={product}
+                inWishlist={wishlistItems.includes(globalIdx)}
+                onToggleWishlist={() => onToggleWishlist(globalIdx)}
+                scannedSizes={scannedSizes}
+                category={filter}
+              />
+            )
+          })}
+        </View>
+
+        <ContextualUpsellBanner accuracy={sizingAccuracy} onTrigger={() => onNav('profile')} variant="feed" />
+
+        <View style={feedStyles.productGrid}>
+          {sheinFirst.slice(6).map((product) => {
             const globalIdx = catalog.indexOf(product)
             return (
               <ProductCard
