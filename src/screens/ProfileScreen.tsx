@@ -298,6 +298,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   // Family member management
   const [showAddMember, setShowAddMember] = useState(false)
   const [showFamilyAuthGate, setShowFamilyAuthGate] = useState(false)
+  const [gatePos, setGatePos] = useState<{ x: number; y: number } | null>(null)
   const [newMemberName, setNewMemberName] = useState('')
   const [newMemberCategory, setNewMemberCategory] = useState<FamilyCategory>('self')
   const [inviteLoading, setInviteLoading] = useState<string | null>(null)
@@ -311,8 +312,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }, [reopenAddMemberSignal, user])
 
-  function handleAddMemberPress() {
+  function handleAddMemberPress(e: React.MouseEvent) {
     if (!user) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      setGatePos({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
       setShowFamilyAuthGate(true)
       return
     }
@@ -1490,30 +1493,40 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       {showFamilyAuthGate && (
         <View style={profStyles.sheetOverlay}>
           <TouchableOpacity onPress={() => setShowFamilyAuthGate(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
-          <View style={profStyles.sheet}>
+          <View
+            style={[
+              profStyles.gatePopover,
+              gatePos
+                ? {
+                    left: Math.max(16, Math.min(gatePos.x - 160, (typeof window !== 'undefined' ? window.innerWidth : 390) - 336)),
+                    top: Math.max(80, Math.min(gatePos.y - 140, (typeof window !== 'undefined' ? window.innerHeight : 844) - 300)),
+                  } as React.CSSProperties
+                : {},
+            ]}
+          >
             <View style={profStyles.sheetHeaderRow}>
-              <Text style={profStyles.sheetTitle}>רוצה לנהל את המידות של כל המשפחה במקום אחד? 👨‍👩‍👧‍👦</Text>
+              <Text style={[profStyles.sheetTitle, { fontSize: 16, flex: 1 }]}>רוצה לנהל את המידות של כל המשפחה במקום אחד? 👨‍👩‍👧‍👦</Text>
               <TouchableOpacity onPress={() => setShowFamilyAuthGate(false)} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
                 <Text style={{ color: '#4A4A4A', fontSize: 15 }}>✕</Text>
               </TouchableOpacity>
             </View>
-            <View style={{ gap: 20 }}>
-              <Text style={[profStyles.sheetDesc, { fontSize: 14, lineHeight: 22 }]}>
+            <View style={{ gap: 16 }}>
+              <Text style={[profStyles.sheetDesc, { fontSize: 13, lineHeight: 20 }]}>
                 הרשמה קצרה תאפשר לך לשמור ארון משפחתי, לקבל המלצות גודל מדויקות ולשתף קישורי עדכון מאובטחים עם בני המשפחה ✨
               </Text>
               <TouchableOpacity
                 onPress={handleAuthGateLogin}
                 activeOpacity={0.8}
-                style={[profStyles.formSubmitBtn, { backgroundColor: '#00FF66' }]}
+                style={[profStyles.formSubmitBtn, { backgroundColor: '#00FF66', paddingVertical: 13 }]}
               >
-                <Text style={profStyles.formSubmitBtnText}>התחבר / הירשם עכשיו 🚀</Text>
+                <Text style={[profStyles.formSubmitBtnText, { fontSize: 14 }]}>התחבר / הירשם עכשיו 🚀</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowFamilyAuthGate(false)}
                 activeOpacity={0.7}
-                style={[profStyles.confirmCancelBtn, { flex: 1 }]}
+                style={[profStyles.confirmCancelBtn, { flex: 1, paddingVertical: 12 }]}
               >
-                <Text style={profStyles.confirmCancelBtnText}>המשך כאיש קשר יחיד (אורח)</Text>
+                <Text style={[profStyles.confirmCancelBtnText, { fontSize: 13 }]}>המשך כאיש קשר יחיד (אורח)</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1719,6 +1732,7 @@ const profStyles = StyleSheet.create({
   familyCTABadge: { backgroundColor: '#FFE566', borderRadius: 8 as any, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#1A1A1A' },
   familyCTABadgeText: { fontSize: 11, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, justifyContent: 'flex-end' },
+  gatePopover: { position: 'absolute', width: 320, backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 20, padding: 24, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, zIndex: 201 } as any,
   sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
   sheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, maxHeight: '85%', borderWidth: 2, borderColor: '#1A1A1A' } as any,
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
