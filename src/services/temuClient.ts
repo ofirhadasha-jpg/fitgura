@@ -6,6 +6,8 @@ import { wrapWithSkimlinks } from '../utils/skimlinks'
 import { ageGroupToDemographic, getDemographicAnchorQuery, getDemographicFallbackQueries, scoreProductForDemographic } from './demographicQuery'
 export { searchVisualMatch as searchExactVisualMatch } from './imageSearch'
 
+const USD_TO_ILS_RATE = 3.7
+
 const TEMU_CATEGORIES: Record<FeedCategory, string> = {
   all: 'fashion',
   clothing: 'clothing',
@@ -44,6 +46,9 @@ function isTemuDestinationUrl(url: string): boolean {
 
 function ensureTemuDestinationUrl(url: string): string {
   if (!isTemuDestinationUrl(url)) return ''
+  // Preserve query params for search URLs — the search_key param is essential.
+  // For PDP URLs (/goods/ or /p/), query params are not needed.
+  if (/search_result\.html/i.test(url)) return url
   return url.split('?')[0] || url
 }
 
@@ -82,9 +87,9 @@ async function callTemuSearch(keywords: string, pageNo: number, pageSize: number
       return {
         name: p.title,
         brand: p.brand || 'Temu',
-        price: p.price,
+        price: p.currency === 'USD' ? Math.round(p.price * USD_TO_ILS_RATE) : p.price,
         originalPrice: null,
-        currency: p.currency || 'USD',
+        currency: '₪',
         img: p.imageUrl,
         imageUrl: p.imageUrl,
         category: p.category,
