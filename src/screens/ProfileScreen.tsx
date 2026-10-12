@@ -303,6 +303,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [newMemberCategory, setNewMemberCategory] = useState<FamilyCategory>('self')
   const [inviteLoading, setInviteLoading] = useState<string | null>(null)
   const [inviteToast, setInviteToast] = useState<string | null>(null)
+  const [shareModal, setShareModal] = useState<{ url: string; memberName: string } | null>(null)
+  const [copySuccess, setCopySuccess] = useState(false)
 
   // Reopen add-member sheet automatically after successful auth
   useEffect(() => {
@@ -399,18 +401,25 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         throw new Error(errBody.error ?? 'Failed to generate invite')
       }
       const data = await res.json()
-      if (data.inviteUrl) {
-        const shareData = {
-          title: 'פיטגורה - עדכון מידות',
-          text: `היי ${member.name}! עדכן/י את המידות שלך בפיטגורה 📲`,
-          url: data.inviteUrl,
-        }
-        if (navigator.share) {
-          await navigator.share(shareData)
+      if (data.token) {
+        const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
+        const inviteUrl = `${appDomain}/?invite=${data.token}#update-profile?token=${data.token}`
+        const shareText = `היי! הנה קישור מאובטח לעדכון המידות שלך בפיטגורה. התמונות נשארות אצלך בטלפון בלבד! 🔒`
+        const shareTitle = 'פיטגורה - עדכון מידות משפחתי ✨'
+
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          try {
+            await navigator.share({
+              title: shareTitle,
+              text: shareText,
+              url: inviteUrl,
+            })
+          } catch (shareErr) {
+            if (shareErr instanceof Error && shareErr.name === 'AbortError') return
+            setShareModal({ url: inviteUrl, memberName: member.name })
+          }
         } else {
-          await navigator.clipboard.writeText(data.inviteUrl)
-          setInviteToast('הקישור הועתק ללוח! הדבק אותו ושלח לבן המשפחה 📋')
-          setTimeout(() => setInviteToast(null), 3500)
+          setShareModal({ url: inviteUrl, memberName: member.name })
         }
       }
     } catch (err) {
@@ -419,6 +428,32 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     } finally {
       setInviteLoading(null)
     }
+  }
+
+  async function handleCopyInviteLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopySuccess(true)
+      setInviteToast('הקישור הועתק בהצלחה! ✨')
+      setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = url
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      try { document.execCommand('copy') } catch { /* ignore */ }
+      document.body.removeChild(textarea)
+      setCopySuccess(true)
+      setInviteToast('הקישור הועתק בהצלחה! ✨')
+      setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
+    }
+  }
+
+  function handleWhatsAppShare(url: string, memberName: string) {
+    const text = encodeURIComponent(`פיטגורה - עדכון מידות משפחתי ✨\nהיי ${memberName}! הנה קישור מאובטח לעדכון המידות שלך בפיטגורה. התמונות נשארות אצלך בטלפון בלבד! 🔒\n${url}`)
+    window.open(`https://wa.me/?text=${text}`, '_blank')
   }
 
   function handleSelectMember(id: string) {
@@ -1018,6 +1053,52 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         {inviteToast && (
           <View style={profStyles.photoToast}>
             <Text style={profStyles.photoToastText}>📋 {inviteToast}</Text>
+          </View>
+        )}
+
+        {/* Share fallback modal — shown when Web Share API is not available */}
+        {shareModal && (
+          <View style={profStyles.gateOverlay}>
+            <TouchableOpacity onPress={() => { setShareModal(null); setCopySuccess(false) }} activeOpacity={1} style={profStyles.sheetBackdrop} />
+            <View style={profStyles.shareModalSheet}>
+              <View style={profStyles.sheetHeaderRow}>
+                <Text style={[profStyles.sheetTitle, { fontSize: 17 }]}>שתף קישור עדכון מידות ✨</Text>
+                <TouchableOpacity onPress={() => { setShareModal(null); setCopySuccess(false) }} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
+                  <Text style={{ color: '#4A4A4A', fontSize: 15 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ gap: 16 }}>
+                <View style={profStyles.shareLinkBox}>
+                  <Text style={profStyles.shareLinkText} numberOfLines={2}>{shareModal.url}</Text>
+                </View>
+                <Text style={[profStyles.sheetDesc, { fontSize: 13, lineHeight: 20 }]}>
+                  היי {shareModal.memberName}! הנה קישור מאובטח לעדכון המידות שלך בפיטגורה. התמונות נשארות אצלך בטלפון בלבד! 🔒
+                </Text>
+                <TouchableOpacity
+                  onPress={() => handleCopyInviteLink(shareModal.url)}
+                  activeOpacity={0.8}
+                  style={[profStyles.formSubmitBtn, { backgroundColor: copySuccess ? '#00CC52' : '#00FF66', paddingVertical: 14 }]}
+                >
+                  <Text style={[profStyles.formSubmitBtnText, { fontSize: 15 }]}>
+                    {copySuccess ? 'הועתק! ✅' : 'העתק קישור 📋'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleWhatsAppShare(shareModal.url, shareModal.memberName)}
+                  activeOpacity={0.8}
+                  style={[profStyles.formSubmitBtn, { backgroundColor: '#25D366', paddingVertical: 14 }]}
+                >
+                  <Text style={[profStyles.formSubmitBtnText, { fontSize: 15, color: '#FFFFFF' }]}>שתף בוואטסאפ 🟢</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { setShareModal(null); setCopySuccess(false) }}
+                  activeOpacity={0.7}
+                  style={[profStyles.confirmCancelBtn, { paddingVertical: 12 }]}
+                >
+                  <Text style={profStyles.confirmCancelBtnText}>סגור</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         )}
 
@@ -1742,6 +1823,9 @@ const profStyles = StyleSheet.create({
   sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, justifyContent: 'flex-end' },
   gateOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200 } as any,
   gatePopover: { position: 'absolute', width: 320, backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 20, padding: 24, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, zIndex: 201 } as any,
+  shareModalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 24, padding: 28, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '0 -4px 0 #1A1A1A' as any, zIndex: 201 } as any,
+  shareLinkBox: { backgroundColor: '#F5F0E0', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#9A9A9A' },
+  shareLinkText: { fontSize: 12, color: '#4A4A4A', fontFamily: "'Noto Sans Hebrew', sans-serif", lineHeight: 18 },
   sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
   sheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, maxHeight: '85%', borderWidth: 2, borderColor: '#1A1A1A' } as any,
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

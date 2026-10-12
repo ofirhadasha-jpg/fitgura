@@ -456,12 +456,16 @@ export default function App() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  // Check for invite link in URL hash on mount
+  // Check for invite link in URL on mount (supports both #invite= and ?token= formats)
   useEffect(() => {
     const hash = window.location.hash
-    const inviteMatch = hash.match(/invite=([a-f0-9-]+)/i)
-    if (inviteMatch?.[1]) {
-      setInviteToken(inviteMatch[1])
+    const hashInviteMatch = hash.match(/invite=([a-f0-9-]+)/i)
+    const hashTokenMatch = hash.match(/token=([a-f0-9-]+)/i)
+    const queryParams = new URLSearchParams(window.location.search)
+    const queryToken = queryParams.get('token')
+    const token = hashInviteMatch?.[1] ?? hashTokenMatch?.[1] ?? queryToken
+    if (token) {
+      setInviteToken(token)
     }
   }, [])
 
