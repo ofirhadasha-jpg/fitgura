@@ -1,0 +1,20 @@
+Please implement the final 2 missing components for the Sizing & Privacy Pipeline (`ContextualUpsellBanner.tsx` and `GalleryPreviewModal.tsx`):
+
+1. CONTEXTUAL UPSELL BANNER (In Feed & Profile):
+   - Create a clean, highly engaging banner component (`ContextualUpsellBanner`) to be embedded inside the main Feed (between product rows) and inside the User Profile screen.
+   - Text: "רוצה שהמידות שלך יהיו מדויקות ב-95%+ באופן אוטומטי בלי למדוד כלום? ✨"
+   - Subtext: "הורד את אחוז הטעויות במידות בלחיצה אחת דרך הגלריה שלך."
+   - Action Button: "דיוק אוטומטי מהגלריה 📸" -> Triggers the Gallery Permission & Scan flow.
+
+2. USER CONTROL & PREVIEW MODAL (Pre-DeepSeek Processing):
+   - When the local gallery scan identifies matching user photos (from the last 60 days), DO NOT automatically send them to DeepSeek yet.
+   - Open a translucent preview modal (`GalleryPreviewModal`) showing:
+     * Title: "מצאנו X תמונות שמתאימות לניתוח המידות שלך! 📸"
+     * Thumbnails of the 2-3 locally matched photos (with an 'X' button on each image so the user can remove any photo they prefer not to analyze).
+     * Privacy assurance note: "רק התמונות שתאשר ישלחו לניתוח המידות המאובטח ב-DeepSeek AI."
+     * Action Buttons:
+       1. Green Button: "אשר ושלח לדיוק ב-DeepSeek ✨" -> Executes DeepSeek Vision API analysis and updates accuracy to 95%+.
+       2. Secondary Button: "ביטול" / "בחירה ידנית".
+
+3. SINGLE PIPELINE SYNCHRONIZATION:
+   - Ensure the updated accuracy percentage, photos, and calculated body metrics from this modal directly update the Supabase profile and trigger a soft-scored refresh of the main product feed across SHEIN, AliExpress, and Temu.

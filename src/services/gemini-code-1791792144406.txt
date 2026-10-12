@@ -1,0 +1,20 @@
+Please refactor the Onboarding Flow and Sizing Engine to implement Progressive Disclosure with a Robust Caching & Fallback Pipeline:
+
+1. PROGRESSIVE ONBOARDING FLOW REORDER:
+   - Step 1: Initial Photo Scan / Baseline Input -> Quick initial result.
+   - Step 2: Immediate Transition to Product Feed / Profile Confirmation -> Show instant value (Aha Moment) with personalized items.
+   - Step 3 (Opt-in inside Profile/Wizard): Contextual banner for "Upgrade Accuracy to 95%+" -> Triggers Gallery Access and Autonomous Scan only when the user desires it.
+
+2. SMART DEEPSEEK CACHING ENGINE:
+   - Before firing DeepSeek API calls, generate an image hash and check Supabase / Local Storage cache (`sizing_cache`).
+   - If image/metrics exist in cache, return results immediately without making an API call.
+
+3. HARD TIMEOUT & OPTIMISTIC UI:
+   - Wrap all DeepSeek Vision API calls in a 4-second race-condition timeout (`Promise.race`).
+   - Instantly show optimistic metric updates on the UI while DeepSeek processes in the background.
+
+4. AUTOMATIC FALLBACK ON API FAILURE / TIMEOUT:
+   - If DeepSeek API fails, times out, or hits rate limits:
+     * DO NOT freeze or show infinite loading spinners.
+     * Gracefully fallback to the built-in heuristic body estimation engine (`calculateFallbackMetrics()`).
+     * Set accuracy gauge smoothly and allow the user to continue seamlessly without any blockage.
