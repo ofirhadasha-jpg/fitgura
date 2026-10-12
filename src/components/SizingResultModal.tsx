@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
 import type { FamilyMember } from '../types'
 
@@ -66,6 +66,8 @@ interface SizingResultModalProps {
   saving?: boolean
   familyMembers?: FamilyMember[]
   userName?: string | null
+  profileName?: string | null
+  defaultProfileId?: string | null
 }
 
 export default function SizingResultModal({
@@ -84,9 +86,15 @@ export default function SizingResultModal({
   saving,
   familyMembers = [],
   userName,
+  profileName,
+  defaultProfileId,
 }: SizingResultModalProps) {
-  const [selectedProfileId, setSelectedProfileId] = useState<string>('self')
+  const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
   const [showProfileSelector, setShowProfileSelector] = useState(false)
+
+  useEffect(() => {
+    if (defaultProfileId) setSelectedProfileId(defaultProfileId)
+  }, [defaultProfileId])
 
   if (!visible) return null
 
@@ -114,7 +122,7 @@ export default function SizingResultModal({
       <TouchableOpacity onPress={onClose} activeOpacity={1} style={styles.backdrop} />
       <View style={styles.panel}>
         <View style={styles.header}>
-          <Text style={styles.title}>תוצאת ניתוח מידה</Text>
+          <Text style={styles.title}>{profileName ? `תוצאת ניתוח מידה עבור ${profileName}` : 'תוצאת ניתוח מידה'}</Text>
           {matchPercentage >= 90 && (
             <View style={styles.fitBadge}>
               <Text style={styles.fitBadgeText}>בול בשבילך! 👌</Text>

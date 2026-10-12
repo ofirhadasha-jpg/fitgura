@@ -56,6 +56,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     affiliateUrl: string
     originalUrl: string
   } | null>(null)
+  const [resultProfileName, setResultProfileName] = useState<string | null>(null)
+  const [resultDefaultProfileId, setResultDefaultProfileId] = useState<string | null>(null)
+  const [wardrobeFilter, setWardrobeFilter] = useState<string>('all')
 
   const [galleryPhotos, setGalleryPhotos] = useState<PreviewablePhoto[]>([])
   const [galleryModalVisible, setGalleryModalVisible] = useState(false)
@@ -308,6 +311,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       setPendingResult(null)
       return
     }
+
+    setResultProfileName(targetMember.name)
+    setResultDefaultProfileId(profileId)
 
     void (async () => {
       const trimmed = url.trim()
@@ -648,6 +654,36 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         <View style={styles.wardrobeSection}>
           <Text style={styles.wardrobeTitle}>הארון שלי</Text>
 
+          {/* Profile filter pills */}
+          {wardrobe.length > 0 && (familyMembers?.length ?? 0) > 0 && (
+            <View style={styles.wardrobeFilterRow}>
+              <TouchableOpacity
+                onPress={() => setWardrobeFilter('all')}
+                activeOpacity={0.7}
+                style={[styles.wardrobeFilterPill, wardrobeFilter === 'all' && styles.wardrobeFilterPillActive]}
+              >
+                <Text style={[styles.wardrobeFilterPillText, wardrobeFilter === 'all' && styles.wardrobeFilterPillTextActive]}>הכל 🛍️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setWardrobeFilter('self')}
+                activeOpacity={0.7}
+                style={[styles.wardrobeFilterPill, wardrobeFilter === 'self' && styles.wardrobeFilterPillActive]}
+              >
+                <Text style={[styles.wardrobeFilterPillText, wardrobeFilter === 'self' && styles.wardrobeFilterPillTextActive]}>{user?.name ?? 'אני'} 👤</Text>
+              </TouchableOpacity>
+              {familyMembers.map((m) => (
+                <TouchableOpacity
+                  key={m.id}
+                  onPress={() => setWardrobeFilter(m.id)}
+                  activeOpacity={0.7}
+                  style={[styles.wardrobeFilterPill, wardrobeFilter === m.id && styles.wardrobeFilterPillActive]}
+                >
+                  <Text style={[styles.wardrobeFilterPillText, wardrobeFilter === m.id && styles.wardrobeFilterPillTextActive]}>{m.name} {m.category === 'partner' ? '💍' : m.category === 'child' ? '🧒' : m.category === 'baby' ? '👶' : '👤'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           {/* Saved products from feed */}
           {wishlistItems && feedCatalog && wishlistItems.length > 0 && (
             <View style={{ gap: 10, marginBottom: 12 }}>
@@ -686,7 +722,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           )}
 
           {/* Analyzed wardrobe items */}
-          {wardrobe.length === 0 ? (
+          {(() => {
+            const filteredWardrobe = wardrobeFilter === 'all'
+              ? wardrobe
+              : wardrobeFilter === 'self'
+                ? wardrobe.filter((w) => !w.profileId)
+                : wardrobe.filter((w) => w.profileId === wardrobeFilter)
+            return filteredWardrobe.length === 0 ? (
             <View style={styles.wardrobeEmpty}>
               <Text style={{ fontSize: 32 }}>👔</Text>
               <Text style={styles.wardrobeEmptyText}>עדיין לא ניתחת מוצרים</Text>
@@ -694,7 +736,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
             </View>
           ) : (
             <View style={{ gap: 10 }}>
-              {wardrobe.map((item) => {
+              {filteredWardrobe.map((item) => {
                 const decodedName = decodeHtmlEntities(item.productName)
                 const expanded = expandedWardrobe.has(item.id)
                 const baseSize = getWardrobeBaseSize(item)
@@ -792,7 +834,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                 )
               })}
             </View>
-          )}
+          )
+          })()}
         </View>
 
         {deleteTarget && (
@@ -850,11 +893,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           matchPercentage={result.matchPercentage}
           fitBreakdown={result.fitBreakdown}
           affiliateUrl={result.affiliateUrl}
-          onClose={() => { setResult(null); setOverrideMismatch(false) }}
+          onClose={() => { setResult(null); setResultProfileName(null); setResultDefaultProfileId(null); setOverrideMismatch(false) }}
           onBuy={handleBuy}
           onSave={handleSaveToWardrobe}
           familyMembers={familyMembers ?? []}
           userName={user?.name}
+          profileName={resultProfileName}
+          defaultProfileId={resultDefaultProfileId}
         />
       )}
 
@@ -939,6 +984,11 @@ const styles = StyleSheet.create({
   guideStepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#1A1A1A', color: '#FFE566', textAlign: 'center', textAlignVertical: 'center', fontSize: 13, fontWeight: '800', lineHeight: 26 },
   guideStepText: { fontSize: 14, color: '#1A1A1A', flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   wardrobeSection: { gap: 10 },
+  wardrobeFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  wardrobeFilterPill: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' } as any,
+  wardrobeFilterPillActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566' },
+  wardrobeFilterPillText: { fontSize: 13, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeFilterPillTextActive: { color: '#1A1A1A', fontWeight: '700' },
   savedSectionLabel: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   wardrobeTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   wardrobeEmpty: { alignItems: 'center', gap: 8, paddingVertical: 32, backgroundColor: '#FFFEF5', borderRadius: 14, borderWidth: 1.5, borderColor: '#9A9A9A' },
