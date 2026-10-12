@@ -312,10 +312,17 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }, [reopenAddMemberSignal, user])
 
-  function handleAddMemberPress(e: React.MouseEvent) {
+  const addMemberBtnRef = useRef<View>(null)
+
+  function handleAddMemberPress() {
     if (!user) {
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-      setGatePos({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+      const el = (addMemberBtnRef.current as unknown as HTMLElement | null)
+      if (el) {
+        const rect = el.getBoundingClientRect()
+        setGatePos({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+      } else {
+        setGatePos(null)
+      }
       setShowFamilyAuthGate(true)
       return
     }
@@ -894,6 +901,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.familyHeader}>
             <Text style={profStyles.sizesTitle}>👤 פרופילים משפחתיים</Text>
             <TouchableOpacity
+              ref={addMemberBtnRef}
               onPress={handleAddMemberPress}
               activeOpacity={0.7}
               style={profStyles.addMemberBtn}
@@ -1491,7 +1499,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
       {/* Add Family Member Modal */}
       {showFamilyAuthGate && (
-        <View style={profStyles.sheetOverlay}>
+        <View style={profStyles.gateOverlay}>
           <TouchableOpacity onPress={() => setShowFamilyAuthGate(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
           <View
             style={[
@@ -1501,7 +1509,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                     left: Math.max(16, Math.min(gatePos.x - 160, (typeof window !== 'undefined' ? window.innerWidth : 390) - 336)),
                     top: Math.max(80, Math.min(gatePos.y - 140, (typeof window !== 'undefined' ? window.innerHeight : 844) - 300)),
                   } as React.CSSProperties
-                : {},
+                : ({} as React.CSSProperties),
             ]}
           >
             <View style={profStyles.sheetHeaderRow}>
@@ -1732,6 +1740,7 @@ const profStyles = StyleSheet.create({
   familyCTABadge: { backgroundColor: '#FFE566', borderRadius: 8 as any, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#1A1A1A' },
   familyCTABadgeText: { fontSize: 11, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, justifyContent: 'flex-end' },
+  gateOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200 } as any,
   gatePopover: { position: 'absolute', width: 320, backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 20, padding: 24, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, zIndex: 201 } as any,
   sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
   sheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, maxHeight: '85%', borderWidth: 2, borderColor: '#1A1A1A' } as any,
