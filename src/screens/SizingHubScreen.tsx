@@ -5,7 +5,7 @@ import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
 import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
 import type { Screen, User, ScannedSizes, ScanEntry, Product, FamilyMember } from '../types'
 import { supabase } from '../lib/supabase'
-import SizingResultModal, { type WardrobeItem, type FitBreakdown } from '../components/SizingResultModal'
+import SizingResultModal, { type WardrobeItem, type FitBreakdown, decodeHtmlEntities } from '../components/SizingResultModal'
 import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type CategoryMismatch, type SmartMatch } from '../components/CategoryMismatchModal'
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
@@ -40,6 +40,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const [analyzing, setAnalyzing] = useState(false)
   const [accuracy, setAccuracy] = useState(72)
   const [wardrobe, setWardrobe] = useState<WardrobeItem[]>([])
+  const [expandedWardrobe, setExpandedWardrobe] = useState<Set<string>>(new Set())
   const [result, setResult] = useState<{
     visible: boolean
     productName: string
@@ -92,6 +93,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         matchPercentage: row.match_percentage as number ?? 0,
         fitBreakdown: row.fit_breakdown as FitBreakdown | null,
         affiliateUrl: row.affiliate_url as string ?? row.product_url as string,
+        profileId: row.profile_id as string | null,
       })))
     } catch {
       // Non-fatal
@@ -226,6 +228,40 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
 
   function handleBuy(affiliateUrl: string) {
     window.open(affiliateUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  function toggleWardrobeExpand(id: string) {
+    setExpandedWardrobe((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function getWardrobeBaseSize(item: WardrobeItem): string {
+    if (item.profileId && familyMembers) {
+      const m = familyMembers.find((f) => f.id === item.profileId)
+      if (m?.scannedSizes?.sizing.top) return m.scannedSizes.sizing.top
+    }
+    return scannedSizes?.sizing.top ?? '-'
+  }
+
+  function getWardrobeProfileTag(item: WardrobeItem): string {
+    if (item.profileId && familyMembers) {
+      const m = familyMembers.find((f) => f.id === item.profileId)
+      if (m) return `\u05de\u05d9\u05d5\u05e2\u05d3 \u05e2\u05d1\u05d5\u05e8: ${m.name}`
+    }
+    return `\u05de\u05d9\u05d5\u05e2\u05d3 \u05e2\u05d1\u05d5\u05e8: ${user?.name ?? '\u05d0\u05e0\u05d9'}`
+  }
+
+  function getWardrobeBuyerInsights(item: WardrobeItem): string {
+    if (!item.fitBreakdown) return '\u05e0\u05d9\u05ea\u05d5\u05d7 \u05d1\u05d9\u05e7\u05d5\u05e8\u05d5\u05ea \u05e7\u05d5\u05e0\u05d9\u05dd: \u05d0\u05d9\u05df \u05e0\u05ea\u05d5\u05e0\u05d9\u05dd \u05d6\u05de\u05d9\u05e0\u05d9\u05dd'
+    const scores = [item.fitBreakdown.chest.score, item.fitBreakdown.waist.score, item.fitBreakdown.length.score]
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length
+    if (avg >= 85) return '\u05e0\u05d9\u05ea\u05d5\u05d7 \u05d1\u05d9\u05e7\u05d5\u05e8\u05d5\u05ea \u05e7\u05d5\u05e0\u05d9\u05dd: \u05d4\u05de\u05d9\u05d3\u05d5\u05ea \u05de\u05d3\u05d5\u05d9\u05e7\u05d5\u05ea, \u05de\u05d5\u05de\u05dc\u05e5 \u05dc\u05d4\u05d6\u05de\u05d9\u05df \u05d1\u05de\u05d9\u05d3\u05d4 \u05d4\u05e8\u05d2\u05d9\u05dc\u05d4'
+    if (item.fitBreakdown.chest.score < 85) return `\u05e0\u05d9\u05ea\u05d5\u05d7 \u05d1\u05d9\u05e7\u05d5\u05e8\u05d5\u05ea \u05e7\u05d5\u05e0\u05d9\u05dd: ${Math.round(100 - item.fitBreakdown.chest.score)}% \u05de\u05d3\u05d5\u05d5\u05d7\u05d9\u05dd \u05e9\u05d4\u05d2\u05d6\u05e8\u05d4 \u05e6\u05e8\u05d4, \u05de\u05d5\u05de\u05dc\u05e5 \u05dc\u05e7\u05d7\u05ea \u05de\u05d9\u05d3\u05d4 \u05de\u05e2\u05dc`
+    return '\u05e0\u05d9\u05ea\u05d5\u05d7 \u05d1\u05d9\u05e7\u05d5\u05e8\u05d5\u05ea \u05e7\u05d5\u05e0\u05d9\u05dd: \u05d7\u05dc\u05e7 \u05de\u05d4\u05e7\u05d5\u05e0\u05d9\u05dd \u05de\u05de\u05dc\u05d9\u05e6\u05d9\u05dd \u05dc\u05e7\u05d7\u05ea \u05de\u05d9\u05d3\u05d4 \u05de\u05e2\u05dc'
   }
 
   function handleMismatchSwitch(profileId: string) {
@@ -521,39 +557,96 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
             </View>
           ) : (
             <View style={{ gap: 10 }}>
-              {wardrobe.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => window.open(item.affiliateUrl, '_blank', 'noopener,noreferrer')}
-                  activeOpacity={0.7}
-                  style={styles.wardrobeItem}
-                >
-                  <View style={styles.wardrobeThumbWrap}>
-                    {item.productImage ? (
-                      <Image source={{ uri: item.productImage }} style={styles.wardrobeThumb} />
-                    ) : (
-                      <View style={styles.wardrobeThumbPlaceholder}>
-                        <Text style={styles.wardrobeThumbPlaceholderText}>👕</Text>
+              {wardrobe.map((item) => {
+                const decodedName = decodeHtmlEntities(item.productName)
+                const expanded = expandedWardrobe.has(item.id)
+                const baseSize = getWardrobeBaseSize(item)
+                const profileTag = getWardrobeProfileTag(item)
+                const buyerInsights = getWardrobeBuyerInsights(item)
+                return (
+                  <View key={item.id} style={styles.wardrobeCard}>
+                    <View style={styles.wardrobeItemRow}>
+                      <View style={styles.wardrobeThumbWrap}>
+                        {item.productImage ? (
+                          <Image source={{ uri: item.productImage }} style={styles.wardrobeThumb} />
+                        ) : (
+                          <View style={styles.wardrobeThumbPlaceholder}>
+                            <Text style={styles.wardrobeThumbPlaceholderText}>👕</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.wardrobeItemName} numberOfLines={2}>{decodedName}</Text>
+                        <View style={styles.wardrobeMetaRow}>
+                          <View style={styles.wardrobeStoreBadge}>
+                            <Text style={styles.wardrobeStoreText}>{item.platform}</Text>
+                          </View>
+                          {item.price && (
+                            <Text style={styles.wardrobePriceText}>{item.price}</Text>
+                          )}
+                        </View>
+                      </View>
+                      <View style={styles.wardrobeSizeBadge}>
+                        <Text style={styles.wardrobeSizeText}>{item.recommendedSize}</Text>
+                        <Text style={styles.wardrobeMatchText}>{item.matchPercentage}%</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => toggleWardrobeExpand(item.id)}
+                      activeOpacity={0.7}
+                      style={styles.wardrobeExpandBtn}
+                    >
+                      <Text style={styles.wardrobeExpandBtnText}>
+                        {expanded ? 'הסתר פרטי התאמה 🔼' : 'הצג פרטי התאמה 🔽'}
+                      </Text>
+                    </TouchableOpacity>
+                    {expanded && (
+                      <View style={styles.wardrobeExpanded}>
+                        <View style={styles.wardrobeDetailRow}>
+                          <Text style={styles.wardrobeDetailLabel}>המידה הרגילה שלך:</Text>
+                          <Text style={styles.wardrobeDetailValue}>{baseSize}</Text>
+                        </View>
+                        <View style={styles.wardrobeDetailRow}>
+                          <Text style={styles.wardrobeDetailLabel}>המידה לבחירה ב-{item.platform}:</Text>
+                          <Text style={styles.wardrobeDetailValue}>{item.recommendedSize}</Text>
+                        </View>
+                        {item.fitBreakdown && (
+                          <View style={styles.wardrobeBreakdownSection}>
+                            <Text style={styles.wardrobeBreakdownTitle}>טבלת מידות והתאמה</Text>
+                            {[
+                              { label: 'חזה', data: item.fitBreakdown.chest },
+                              { label: 'מותן', data: item.fitBreakdown.waist },
+                              { label: 'אורך', data: item.fitBreakdown.length },
+                            ].map(({ label, data }) => (
+                              <View key={label} style={styles.wardrobeBreakdownRow}>
+                                <Text style={styles.wardrobeBreakdownLabel}>{label}</Text>
+                                <Text style={styles.wardrobeBreakdownFit}>{data.fit}</Text>
+                                <View style={styles.wardrobeBreakdownScoreBar}>
+                                  <View style={[styles.wardrobeBreakdownScoreFill, { width: `${data.score}%`, backgroundColor: data.score >= 85 ? '#00CC52' : '#FFE566' }]} />
+                                </View>
+                                <Text style={styles.wardrobeBreakdownScoreText}>{data.score}%</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                        <View style={styles.wardrobeInsightsBox}>
+                          <Text style={styles.wardrobeInsightsText}>{buyerInsights}</Text>
+                        </View>
+                        <View style={styles.wardrobeProfileTag}>
+                          <Text style={styles.wardrobeProfileTagText}>{profileTag}</Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => window.open(item.affiliateUrl, '_blank', 'noopener,noreferrer')}
+                          activeOpacity={0.8}
+                          style={styles.wardrobeBuyBtn}
+                        >
+                          <Text style={styles.wardrobeBuyBtnText}>קנה עכשיו במידה {item.recommendedSize} 🛒</Text>
+                        </TouchableOpacity>
                       </View>
                     )}
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.wardrobeItemName} numberOfLines={2}>{item.productName}</Text>
-                    <View style={styles.wardrobeMetaRow}>
-                      <View style={styles.wardrobeStoreBadge}>
-                        <Text style={styles.wardrobeStoreText}>{item.platform}</Text>
-                      </View>
-                      {item.price && (
-                        <Text style={styles.wardrobePriceText}>{item.price}</Text>
-                      )}
-                    </View>
-                  </View>
-                  <View style={styles.wardrobeSizeBadge}>
-                    <Text style={styles.wardrobeSizeText}>{item.recommendedSize}</Text>
-                    <Text style={styles.wardrobeMatchText}>{item.matchPercentage}%</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                )
+              })}
             </View>
           )}
         </View>
@@ -647,4 +740,26 @@ const styles = StyleSheet.create({
   wardrobeSizeBadge: { backgroundColor: '#E0FFF0', borderRadius: 10, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#00CC52', alignItems: 'center' },
   wardrobeSizeText: { fontSize: 16, fontWeight: '800', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
   wardrobeMatchText: { fontSize: 11, color: '#00CC52', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeCard: { backgroundColor: '#FFFEF5', borderRadius: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, overflow: 'hidden' as any } as any,
+  wardrobeItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
+  wardrobeExpandBtn: { paddingVertical: 8, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#E5E0CC', backgroundColor: '#FFFACC' },
+  wardrobeExpandBtnText: { fontSize: 12, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeExpanded: { padding: 12, gap: 8, backgroundColor: '#FFFEF5' },
+  wardrobeDetailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  wardrobeDetailLabel: { fontSize: 13, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeDetailValue: { fontSize: 14, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  wardrobeBreakdownSection: { gap: 6, marginTop: 4 },
+  wardrobeBreakdownTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  wardrobeBreakdownRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  wardrobeBreakdownLabel: { fontSize: 12, color: '#4A4A4A', width: 50, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeBreakdownFit: { fontSize: 11, color: '#1A1A1A', width: 55, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeBreakdownScoreBar: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#F5F0E0', overflow: 'hidden' as any },
+  wardrobeBreakdownScoreFill: { height: '100%', borderRadius: 3 },
+  wardrobeBreakdownScoreText: { fontSize: 11, fontWeight: '700', color: '#4A4A4A', width: 34, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeInsightsBox: { backgroundColor: '#FFFACC', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#FFE566' },
+  wardrobeInsightsText: { fontSize: 12, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", lineHeight: 18 },
+  wardrobeProfileTag: { alignSelf: 'flex-start', backgroundColor: '#E0F2FE', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, borderColor: '#0891B2' },
+  wardrobeProfileTagText: { fontSize: 12, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeBuyBtn: { backgroundColor: '#00CC52', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, marginTop: 4 } as any,
+  wardrobeBuyBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
 })

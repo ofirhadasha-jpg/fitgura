@@ -19,6 +19,7 @@ export interface WardrobeItem {
   matchPercentage: number
   fitBreakdown: FitBreakdown | null
   affiliateUrl: string
+  profileId?: string | null
 }
 
 export interface SaveProfileOption {
@@ -26,7 +27,7 @@ export interface SaveProfileOption {
   name: string
 }
 
-function decodeHtmlEntities(text: string): string {
+export function decodeHtmlEntities(text: string): string {
   if (!text) return text
   const entities: Record<string, string> = {
     '&#39;': "'",
