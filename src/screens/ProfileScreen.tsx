@@ -279,6 +279,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [showDevCameraChoice, setShowDevCameraChoice] = useState(false)
 
   const galleryUploadRef = useRef<HTMLInputElement>(null)
+  const autoScanInputRef = useRef<HTMLInputElement>(null)
   const [autoScanning, setAutoScanning] = useState(false)
   const [autoScanProgress, setAutoScanProgress] = useState(0)
   const [autoScanPhase, setAutoScanPhase] = useState('')
@@ -403,40 +404,74 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     if (autoScanning) return
     setGalleryError(null)
     setGalleryScanSuccess(null)
-    setAutoScanning(true)
-    setAutoScanProgress(0)
-    setAutoScanPhase('מבקש גישה לגלריה...')
 
-    try {
-      // Collect available photo URLs for local preview (no DeepSeek yet)
-      const photoUrls: string[] = []
-      if (profilePhotoUrl) photoUrls.push(profilePhotoUrl)
-      for (const entry of scanGallery) {
-        if (entry.photoUrl && !photoUrls.includes(entry.photoUrl)) {
-          photoUrls.push(entry.photoUrl)
-        }
+    // Collect available photo URLs for local preview (no DeepSeek yet)
+    const photoUrls: string[] = []
+    if (profilePhotoUrl) photoUrls.push(profilePhotoUrl)
+    for (const entry of scanGallery) {
+      if (entry.photoUrl && !photoUrls.includes(entry.photoUrl)) {
+        photoUrls.push(entry.photoUrl)
       }
+    }
 
-      if (photoUrls.length === 0) {
-        setGalleryError('לא נמצאו תמונות בגלריה. העלה תמונה ידנית תחילה.')
+    if (photoUrls.length > 0) {
+      // Existing photos — open preview modal directly
+      setAutoScanning(true)
+      setAutoScanProgress(0)
+      setAutoScanPhase('טוען תמונות...')
+
+      try {
+        const photos: PreviewablePhoto[] = []
+        for (let i = 0; i < Math.min(photoUrls.length, 3); i++) {
+          try {
+            const res = await fetch(photoUrls[i])
+            const blob = await res.blob()
+            const file = new File([blob], `preview-${i}.jpg`, { type: blob.type || 'image/jpeg' })
+            photos.push({ id: `photo_${i}_${Date.now()}`, url: photoUrls[i], file })
+          } catch {
+            // Skip photos that fail to load
+          }
+        }
+
         setAutoScanning(false)
         setAutoScanProgress(0)
-        return
-      }
+        setAutoScanPhase('')
 
-      setAutoScanPhase('סורק תמונות מהחודשיים האחרונים...')
-
-      // Build previewable photos from available URLs
-      const photos: PreviewablePhoto[] = []
-      for (let i = 0; i < Math.min(photoUrls.length, 3); i++) {
-        try {
-          const res = await fetch(photoUrls[i])
-          const blob = await res.blob()
-          const file = new File([blob], `preview-${i}.jpg`, { type: blob.type || 'image/jpeg' })
-          photos.push({ id: `photo_${i}_${Date.now()}`, url: photoUrls[i], file })
-        } catch {
-          // Skip photos that fail to load
+        if (photos.length === 0) {
+          setGalleryError('לא ניתן לטעון את התמונות. נסה שוב.')
+          return
         }
+
+        setPreviewPhotos(photos)
+        setShowPreviewModal(true)
+      } catch (err) {
+        setGalleryError(err instanceof Error ? err.message : 'הסריקה נכשלה')
+        setAutoScanning(false)
+        setAutoScanProgress(0)
+      }
+    } else {
+      // No existing photos — open the photo picker directly
+      showPhotoToast('בחר 2-3 תמונות מהגלריה שלך לניתוח הדיוק ✨')
+      autoScanInputRef.current?.click()
+    }
+  }
+
+  async function handleAutoScanFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    e.target.value = ''
+
+    setGalleryError(null)
+    setAutoScanning(true)
+    setAutoScanProgress(0)
+    setAutoScanPhase('טוען תמונות...')
+
+    try {
+      const photos: PreviewablePhoto[] = []
+      for (let i = 0; i < Math.min(files.length, 3); i++) {
+        const file = files[i]
+        const url = URL.createObjectURL(file)
+        photos.push({ id: `scan_${i}_${Date.now()}`, url, file })
       }
 
       setAutoScanning(false)
@@ -1083,6 +1118,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         {/* PATH 2: MANUAL PHOTO UPLOAD */}
         <View style={profStyles.card}>
           <input ref={galleryUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleManualUpload} />
+          <input ref={autoScanInputRef} type="file" accept="image/*" multiple style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleAutoScanFileSelect} />
           <Text style={profStyles.sizesTitle}>העלאת תמונה ידנית</Text>
           <Text style={profStyles.regionSub}>העלה תמונה ספציפית במקום לאשר גישה לגלריה</Text>
           <TouchableOpacity
