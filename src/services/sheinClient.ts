@@ -6,6 +6,8 @@ import { wrapWithSkimlinks } from '../utils/skimlinks'
 import { ageGroupToDemographic, getDemographicAnchorQuery, getDemographicFallbackQueries, scoreProductForDemographic } from './demographicQuery'
 export { searchVisualMatch as searchExactVisualMatch } from './imageSearch'
 
+const USD_TO_ILS_RATE = 3.7
+
 // SHEIN adapter — fetches real product data from SHEIN's public search API
 // via the shein-search edge function. Products without a verified direct PDP
 // URL (-p-[NUMERIC_ID].html) are discarded entirely. No fallback search or
@@ -94,9 +96,9 @@ async function callSheinSearch(keywords: string, pageNo: number, pageSize: numbe
       return {
         name: p.title,
         brand: p.brand || 'SHEIN',
-        price: p.price,
+        price: p.currency === 'USD' ? Math.round(p.price * USD_TO_ILS_RATE) : p.price,
         originalPrice: null,
-        currency: p.currency || 'USD',
+        currency: '₪',
         img: p.imageUrl,
         imageUrl: p.imageUrl,
         category: p.category,

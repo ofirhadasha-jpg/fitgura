@@ -8,9 +8,11 @@ import { ProductDetailModal } from './ProductDetailModal'
 import { resolveProductImage } from '../utils/productImages'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
-  const symbol = currency ?? '₪'
+  const isUSD = currency === 'USD'
+  const symbol = isUSD || !currency || currency === 'ILS' ? '₪' : currency
   const safePrice = typeof price === 'number' && !isNaN(price) ? price : 0
-  return `${symbol}${safePrice.toLocaleString()}`
+  const displayPrice = isUSD ? Math.round(safePrice * 3.7) : safePrice
+  return `${symbol}${displayPrice.toLocaleString()}`
 }
 
 function normalizeProductImageUrl(imageUrl: string | null | undefined): string | null {

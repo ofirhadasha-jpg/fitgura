@@ -12,9 +12,11 @@ import type { ExactVisualMatch } from '../services/adapterTypes'
 import type { ProductPlatform } from '../types'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
-  const symbol = currency ?? '₪'
+  const isUSD = currency === 'USD'
+  const symbol = isUSD || !currency || currency === 'ILS' ? '₪' : currency
   const safePrice = typeof price === 'number' && !isNaN(price) ? price : 0
-  return `${symbol}${safePrice.toLocaleString()}`
+  const displayPrice = isUSD ? Math.round(safePrice * 3.7) : safePrice
+  return `${symbol}${displayPrice.toLocaleString()}`
 }
 
 const FOOTWEAR_RE = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
