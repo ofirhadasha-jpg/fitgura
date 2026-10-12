@@ -168,6 +168,9 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           <Text style={styles.successBody}>
             המידות של {profileInfo?.member_name ?? 'בן המשפחה'} עודכנו בפרופיל המשפחתי.
           </Text>
+          {scannedSizes?.sizing.bodyMetrics?.estimated_height_cm != null && (
+            <View style={styles.sizeBadge}><Text style={styles.sizeBadgeLabel}>גובה</Text><Text style={styles.sizeBadgeValue}>{scannedSizes.sizing.bodyMetrics.estimated_height_cm} ס"מ</Text></View>
+          )}
           {scannedSizes && (
             <View style={styles.sizesSummary}>
               <View style={styles.sizeBadge}><Text style={styles.sizeBadgeLabel}>חולצה</Text><Text style={styles.sizeBadgeValue}>{scannedSizes.sizing.top}</Text></View>
@@ -176,7 +179,7 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
               <View style={styles.sizeBadge}><Text style={styles.sizeBadgeLabel}>דיוק</Text><Text style={styles.sizeBadgeValue}>{scannedSizes.confidence}%</Text></View>
             </View>
           )}
-          <Text style={styles.privacyNote}>🔒 התמונות נשארו אצלך בטלפון בלבד. רק המידות נשלחו.</Text>
+          <Text style={styles.privacyNote}>המידות עודכנו בהצלחה! התמונות נמחקו מהזיכרון המקומי 🔒</Text>
         </View>
       </View>
     )
@@ -193,10 +196,11 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
 
           <View style={styles.profileBanner}>
             <Text style={styles.profileEmoji}>
-              {profileInfo?.category === 'baby' ? '👶' : profileInfo?.category === 'child' ? '🧒' : '💑'}
+              {profileInfo?.category === 'baby' ? '👶' : profileInfo?.category === 'child' ? '🧒' : profileInfo?.category === 'partner' ? '💖' : '💑'}
             </Text>
             <View>
-              <Text style={styles.profileName}>{profileInfo?.member_name ?? 'בן משפחה'}</Text>
+              <Text style={styles.profileContextLabel}>עדכון מידות עבור:</Text>
+              <Text style={styles.profileName}>{profileInfo?.member_name ?? 'בן משפחה'} {profileInfo?.category === 'partner' ? '💖' : ''}</Text>
               <Text style={styles.profileCategory}>
                 {profileInfo?.category === 'partner' ? 'פרופיל זוגי' : profileInfo?.category === 'child' ? 'פרופיל ילד/ה' : profileInfo?.category === 'baby' ? 'פרופיל תינוק' : 'פרופיל משפחתי'}
               </Text>
@@ -268,6 +272,7 @@ const styles = StyleSheet.create({
   appSub: { fontSize: 14, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   profileBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFACC', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#FFE566', width: '100%' },
   profileEmoji: { fontSize: 36 },
+  profileContextLabel: { fontSize: 12, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   profileName: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   profileCategory: { fontSize: 13, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   privacyBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#E0FFF0', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#00CC52', width: '100%' },

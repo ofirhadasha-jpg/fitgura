@@ -171,7 +171,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // --- SUBMIT REMOTE UPDATE ---
-    // Updates family profile metrics using the invite token
+    // Updates family profile metrics using the invite token via spec-compliant function
     if (action === "submit") {
       const {
         token,
@@ -197,22 +197,26 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Build JSONB metrics payload — ONLY metric columns, no names/ownership
+      const metrics: Record<string, unknown> = {};
+      if (topSize != null) metrics.top_size = topSize;
+      if (bottomSize != null) metrics.bottom_size = bottomSize;
+      if (shoeSize != null) metrics.shoe_size = shoeSize;
+      if (fit != null) metrics.fit = fit;
+      if (heightCm != null) metrics.height_cm = heightCm;
+      if (weightKg != null) metrics.weight_kg = weightKg;
+      if (chestCm != null) metrics.chest_cm = chestCm;
+      if (waistCm != null) metrics.waist_cm = waistCm;
+      if (hipsCm != null) metrics.hips_cm = hipsCm;
+      if (shoulderCm != null) metrics.shoulder_cm = shoulderCm;
+      if (accuracy != null) metrics.accuracy = accuracy;
+      if (gender != null) metrics.gender = gender;
+      if (ageGroup != null) metrics.age_group = ageGroup;
+
       const { data, error } = await supabase
-        .rpc("update_family_profile_remote", {
+        .rpc("update_profile_metrics_via_token", {
           p_token: token,
-          p_top_size: topSize ?? null,
-          p_bottom_size: bottomSize ?? null,
-          p_shoe_size: shoeSize ?? null,
-          p_fit: fit ?? null,
-          p_height_cm: heightCm ?? null,
-          p_weight_kg: weightKg ?? null,
-          p_chest_cm: chestCm ?? null,
-          p_waist_cm: waistCm ?? null,
-          p_hips_cm: hipsCm ?? null,
-          p_shoulder_cm: shoulderCm ?? null,
-          p_accuracy: accuracy ?? null,
-          p_gender: gender ?? null,
-          p_age_group: ageGroup ?? null,
+          p_metrics: metrics,
         });
 
       if (error || !data) {
