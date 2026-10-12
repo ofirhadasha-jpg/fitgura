@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
 export interface PreviewablePhoto {
   id: string
   url: string
-  file: File
+  file?: File
 }
 
 interface GalleryPreviewModalProps {

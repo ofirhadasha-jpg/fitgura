@@ -393,10 +393,28 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   }
 
   function handleUpsellTrigger() {
+    if (scanGallery && scanGallery.length > 0) {
+      const existingPhotos: PreviewablePhoto[] = scanGallery.slice(0, 6).map((entry) => ({
+        id: `existing_${entry.id}`,
+        url: entry.photoUrl,
+      }))
+      setGalleryPhotos(existingPhotos)
+      setGalleryModalVisible(true)
+      return
+    }
     galleryInputRef.current?.click()
   }
 
   function handleGallerySync() {
+    if (scanGallery && scanGallery.length > 0) {
+      const existingPhotos: PreviewablePhoto[] = scanGallery.slice(0, 6).map((entry) => ({
+        id: `existing_${entry.id}`,
+        url: entry.photoUrl,
+      }))
+      setGalleryPhotos(existingPhotos)
+      setGalleryModalVisible(true)
+      return
+    }
     setGalleryToast(true)
     setTimeout(() => setGalleryToast(false), 2500)
     galleryInputRef.current?.click()
@@ -418,16 +436,22 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   }
 
   async function handleGalleryApprove(approved: PreviewablePhoto[]) {
+    const newFiles = approved.filter((p) => p.file).map((p) => p.file!)
+
+    if (newFiles.length === 0) {
+      setGalleryModalVisible(false)
+      return
+    }
+
     setGalleryProcessing(true)
 
     try {
-      const files = approved.map((p) => p.file)
       const existingEntries = scanGallery ?? []
 
       const baselinePhotoUrl = scannedSizes?.preview ?? scanGallery?.find((e) => e.isBaseline)?.photoUrl ?? null
 
       const scanResult: MergedSizingResult = await runGalleryScan({
-        files,
+        files: newFiles,
         baselinePhotoUrl,
         currentSizes: scannedSizes,
         existingGallery: existingEntries,
@@ -452,7 +476,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   }
 
   function handleGalleryCancel() {
-    galleryPhotos.forEach((p) => URL.revokeObjectURL(p.url))
+    galleryPhotos.forEach((p) => {
+      if (p.file) URL.revokeObjectURL(p.url)
+    })
     setGalleryPhotos([])
     setGalleryModalVisible(false)
   }
