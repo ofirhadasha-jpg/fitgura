@@ -8,6 +8,7 @@ import { SplashScreen } from './screens/SplashScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
 import { DeviceDetectionScreen } from './screens/DeviceDetectionScreen'
 import { FeedScreen } from './screens/FeedScreen'
+import { SizingHubScreen } from './screens/SizingHubScreen'
 import { EventsScreen } from './screens/EventsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { WishlistScreen } from './screens/WishlistScreen'
@@ -368,7 +369,7 @@ export default function App() {
         avatar: u.user_metadata?.avatar_url ? 'G' : '✉',
         is_admin: profileRow?.is_admin === true,
       })
-      setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+      setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'hub' : prev)
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -397,7 +398,7 @@ export default function App() {
 
         // Navigate to feed on SIGNED_IN or INITIAL_SESSION (covers Google OAuth redirect)
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'feed' : prev)
+          setScreen((prev) => (prev === 'splash' || prev === 'onboarding' || prev === 'device') ? 'hub' : prev)
         }
 
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
@@ -520,7 +521,7 @@ export default function App() {
       showToast('הפריט נשמר ב-Wishlist שלך! 💚')
     }
     setAuthModal(null)
-    changeScreen('feed')
+    changeScreen('hub')
   }
 
   useEffect(() => {
@@ -708,8 +709,9 @@ export default function App() {
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} onAuth={handleAuth} />}
-        {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('device')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
-        {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('feed')} onDetected={handleDeviceDetected} />}
+        {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('hub')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
+        {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('hub')} onDetected={handleDeviceDetected} />}
+        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} />}

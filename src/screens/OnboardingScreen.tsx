@@ -19,10 +19,10 @@ import {
 
 const PENDING_SCAN_KEY = 'fitgura_pending_scan'
 
-type OnboardStep = 'upload' | 'scanning' | 'result' | 'gallery-access'
+type OnboardStep = 'metrics' | 'upload' | 'scanning' | 'result' | 'gallery-access'
 
 export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAccess }: { onNext: () => void; onScanned: (s: ScannedSizes) => void; onGalleryAdd: (g: ScanEntry[]) => void; onGalleryAccess: (granted: boolean) => void }) {
-  const [step, setStep] = useState<OnboardStep>('upload')
+  const [step, setStep] = useState<OnboardStep>('metrics')
   const [scanProgress, setScanProgress] = useState(0)
   const [dragOver, setDragOver] = useState(false)
   const [sizes, setSizes] = useState<ScannedSizes | null>(null)
@@ -31,6 +31,10 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   const previewUrlRef = useRef<string | null>(null)
 
   const [scanError, setScanError] = useState<string | null>(null)
+  const [baseAge, setBaseAge] = useState('')
+  const [baseGender, setBaseGender] = useState<'male' | 'female' | 'unisex'>('unisex')
+  const [baseHeight, setBaseHeight] = useState('')
+  const [baseWeight, setBaseWeight] = useState('')
   const [faceMissing, setFaceMissing] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -168,18 +172,18 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       {/* Header */}
       <View style={obStyles.header}>
         <View style={obStyles.progressRow}>
-          {(['upload', 'scanning', 'result', 'gallery-access'] as OnboardStep[]).map((_s, i) => {
-            const stepOrder = ['upload', 'scanning', 'result', 'gallery-access']
+          {(['metrics', 'upload', 'scanning', 'result', 'gallery-access'] as OnboardStep[]).map((_s, i) => {
+            const stepOrder = ['metrics', 'upload', 'scanning', 'result', 'gallery-access']
             const currentIdx = stepOrder.indexOf(step)
             const barColor = i <= currentIdx ? (step === 'gallery-access' && i === currentIdx ? '#FFE566' : i < currentIdx ? '#00FF66' : '#FFE566') : 'rgba(26,26,26,0.1)'
             return <View key={i} style={[obStyles.progressBar, { backgroundColor: barColor }]} />
           })}
         </View>
         <Text style={obStyles.headerTitle}>
-          {step === 'upload' ? 'סריקת AI אישית' : step === 'scanning' ? 'סורק מידות...' : step === 'result' ? 'סריקה הושלמה ✓' : 'גישה לגלריה'}
+          {step === 'metrics' ? 'פרטים בסיסיים' : step === 'upload' ? 'סריקת AI אישית' : step === 'scanning' ? 'סורק מידות...' : step === 'result' ? 'סריקה הושלמה ✓' : 'גישה לגלריה'}
         </Text>
         <Text style={obStyles.headerSub}>
-          {step === 'upload' ? 'העלה תמונה וה-AI ימצא את המידה המדויקת שלך' : step === 'scanning' ? 'בינה מלאכותית מנתחת את מבנה הגוף שלך' : step === 'result' ? 'אישור מידות ופרופיל מוכן' : 'אישור גישה לגלריה לעדכון אוטומטי של מידות'}
+          {step === 'metrics' ? 'כמה פרטים בסיסיים ונתחיל' : step === 'upload' ? 'העלה תמונה וה-AI ימצא את המידה המדויקת שלך' : step === 'scanning' ? 'בינה מלאכותית מנתחת את מבנה הגוף שלך' : step === 'result' ? 'אישור מידות ופרופיל מוכן' : 'אישור גישה לגלריה לעדכון אוטומטי של מידות'}
         </Text>
       </View>
 
@@ -210,6 +214,114 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       )}
 
       <View style={{ flex: 1, padding: 24, gap: 20 }}>
+        {step === 'metrics' && (
+          <View style={{ gap: 16 }}>
+            <View style={obStyles.scanInfoCard}>
+              <Text style={obStyles.scanInfoTitle}>בוא נתחיל</Text>
+              <Text style={{ fontSize: 14, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
+                כמה פרטים בסיסיים וה-AI ידע להתאים מידות בדיוק עבורך
+              </Text>
+            </View>
+
+            <View style={{ gap: 14 }}>
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 6, fontFamily: "'Permanent Marker', cursive" }}>גיל</Text>
+                <TextInput
+                  value={baseAge}
+                  onChangeText={setBaseAge}
+                  placeholder="25"
+                  keyboardType="numeric"
+                  style={obStyles.metricsInput}
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 6, fontFamily: "'Permanent Marker', cursive" }}>מגדר / קטגוריה</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {[
+                    { key: 'male', label: 'גבר' },
+                    { key: 'female', label: 'אישה' },
+                    { key: 'unisex', label: 'אוניסקס' },
+                  ].map(({ key, label }) => (
+                    <TouchableOpacity
+                      key={key}
+                      onPress={() => setBaseGender(key as 'male' | 'female' | 'unisex')}
+                      activeOpacity={0.7}
+                      style={[obStyles.genderBtn, baseGender === key && obStyles.genderBtnActive]}
+                    >
+                      <Text style={[obStyles.genderBtnText, baseGender === key && obStyles.genderBtnTextActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 6, fontFamily: "'Permanent Marker', cursive" }}>גובה (ס"מ)</Text>
+                  <TextInput
+                    value={baseHeight}
+                    onChangeText={setBaseHeight}
+                    placeholder="175"
+                    keyboardType="numeric"
+                    style={obStyles.metricsInput}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 6, fontFamily: "'Permanent Marker', cursive" }}>משקל (ק"ג)</Text>
+                  <TextInput
+                    value={baseWeight}
+                    onChangeText={setBaseWeight}
+                    placeholder="75"
+                    keyboardType="numeric"
+                    style={obStyles.metricsInput}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                const h = Number(baseHeight) || 175
+                const w = Number(baseWeight) || 75
+                const age = Number(baseAge) || 25
+                const ageGroup = age <= 2 ? 'baby' : age <= 5 ? 'toddler' : age <= 12 ? 'child' : age <= 18 ? 'teen' : 'adult'
+                const metrics = computeBodyMetricsFromHeightWeight(h, w, null)
+                const initialSizes: ScannedSizes = {
+                  sizing: {
+                    top: 'M',
+                    bottom: '40',
+                    fit: 'Regular',
+                    bodyFrame: 'Medium',
+                    confidence: 0,
+                    baselineMatched: false,
+                    isWeeklyUpdate: false,
+                    measurementDelta: null,
+                    bodyMetrics: metrics,
+                  },
+                  style: { primaryStyle: 'Casual', secondaryStyle: 'Urban', dominantColors: [], patternPreference: 'Solid', aestheticTags: [] },
+                  confidence: 0,
+                  preview: '',
+                  top: 'M',
+                  bottom: '40',
+                  fit: 'Regular',
+                  gender: baseGender,
+                  ageGroup,
+                  personBounds: { top: 2, left: 10, width: 80, height: 96 },
+                  shoeSize: '42',
+                }
+                setSizes(initialSizes)
+                onScanned(initialSizes)
+                setStep('upload')
+              }}
+              disabled={!baseAge || !baseHeight || !baseWeight}
+              activeOpacity={0.8}
+              style={[obStyles.cameraBtn, (!baseAge || !baseHeight || !baseWeight) && { opacity: 0.5 }]}
+            >
+              <Text style={obStyles.cameraBtnText}>המשך לסריקה →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {step === 'upload' && (
           <>
             <BenefitCarousel />
@@ -1220,4 +1332,9 @@ const obStyles = StyleSheet.create({
   cameraSwitchBtn: { width: 54, height: 54, borderRadius: 8, backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
   cameraSnapBtn: { width: 72, height: 72, borderRadius: 40, backgroundColor: '#FFFEF5', borderWidth: 4, borderColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
   cameraSnapInner: { width: 56, height: 56, borderRadius: 30, backgroundColor: '#00FF66', borderWidth: 2, borderColor: '#1A1A1A' },
+  metricsInput: { backgroundColor: '#FFFACC', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#1A1A1A', fontSize: 16, color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  genderBtn: { flex: 1, backgroundColor: '#F5F0E0', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
+  genderBtnActive: { backgroundColor: '#FFFACC', borderColor: '#FFE566' },
+  genderBtnText: { fontSize: 15, fontWeight: '600', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  genderBtnTextActive: { color: '#1A1A1A' },
 })

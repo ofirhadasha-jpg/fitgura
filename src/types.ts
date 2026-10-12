@@ -1,7 +1,7 @@
 import { usToEuPants, euToUsPants } from './utils/sizeConverter'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
 
-export type Screen = 'splash' | 'onboarding' | 'device' | 'feed' | 'events' | 'profile' | 'wishlist' | 'admin'
+export type Screen = 'splash' | 'onboarding' | 'device' | 'feed' | 'hub' | 'events' | 'profile' | 'wishlist' | 'admin'
 
 export interface FitEvent {
   id: number
