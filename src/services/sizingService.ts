@@ -145,8 +145,8 @@ function mergeBodyMetrics(prev: BodyMetrics | null, next: BodyMetrics | null): B
     return Math.round(((a + b) / 2) * 10) / 10
   }
   return {
-    estimated_height_cm: avg(prev.estimated_height_cm, next.estimated_height_cm),
-    estimated_weight_kg: avg(prev.estimated_weight_kg, next.estimated_weight_kg),
+    estimated_height_cm: prev.estimated_height_cm ?? next.estimated_height_cm,
+    estimated_weight_kg: prev.estimated_weight_kg ?? next.estimated_weight_kg,
     chest_circumference_cm: avg(prev.chest_circumference_cm, next.chest_circumference_cm),
     waist_circumference_cm: avg(prev.waist_circumference_cm, next.waist_circumference_cm),
     hips_circumference_cm: avg(prev.hips_circumference_cm, next.hips_circumference_cm),

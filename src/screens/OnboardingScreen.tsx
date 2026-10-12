@@ -99,18 +99,31 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
       if (previewUrlRef.current?.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
       previewUrlRef.current = preview
       const aiSizes = aiAnalysisToScannedSizes(analysis, preview)
-      setSizes(aiSizes)
-      onScanned(aiSizes)
+      const enteredHeight = Number(baseHeight) || 175
+      const enteredWeight = Number(baseWeight) || 75
+      const preservedMetrics: BodyMetrics = {
+        ...(aiSizes.sizing.bodyMetrics ?? computeBodyMetricsFromHeightWeight(enteredHeight, enteredWeight, null)),
+        estimated_height_cm: enteredHeight,
+        estimated_weight_kg: enteredWeight,
+      }
+      const finalSizes: ScannedSizes = {
+        ...aiSizes,
+        gender: baseGender,
+        ageGroup: sizes?.ageGroup ?? aiSizes.ageGroup,
+        sizing: { ...aiSizes.sizing, bodyMetrics: preservedMetrics },
+      }
+      setSizes(finalSizes)
+      onScanned(finalSizes)
       setFaceMissing(analysis.face_detected === false)
       const ts = formatTimestamp(new Date())
       const baselineEntry: ScanEntry = {
         id: nextScanId(),
         date: ts.date,
         time: ts.time,
-        top: aiSizes.sizing.top,
-        bottom: aiSizes.sizing.bottom,
-        fit: aiSizes.sizing.fit,
-        confidence: aiSizes.sizing.confidence,
+        top: finalSizes.sizing.top,
+        bottom: finalSizes.sizing.bottom,
+        fit: finalSizes.sizing.fit,
+        confidence: finalSizes.sizing.confidence,
         photoUrl: preview,
         source: 'תמונת הרשמה',
         isBaseline: true,
@@ -386,14 +399,14 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
             <TouchableOpacity
               onPress={() => {
                 const fallback: ScannedSizes = {
-                  sizing: { top: 'M', bottom: '40', fit: 'Regular', bodyFrame: 'Medium', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: null },
+                  sizing: { top: 'M', bottom: '40', fit: 'Regular', bodyFrame: 'Medium', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: computeBodyMetricsFromHeightWeight(Number(baseHeight), Number(baseWeight), null) },
                   style: { primaryStyle: 'Casual', secondaryStyle: 'Urban', dominantColors: [], patternPreference: 'Solid', aestheticTags: [] },
                   confidence: 0,
                   preview: '',
                   top: 'M',
                   bottom: '40',
                   fit: 'Regular',
-                  gender: 'unisex',
+                  gender: baseGender,
                   ageGroup: 'adult',
                   personBounds: { top: 2, left: 10, width: 80, height: 96 },
                   shoeSize: '42',
