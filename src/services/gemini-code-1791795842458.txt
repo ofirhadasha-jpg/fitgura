@@ -1,0 +1,18 @@
+REQUIRE FACE DETECTION ON FIRST PHOTO & STRICT GALLERY DEDUPLICATION
+
+As shown in the attached screenshot, the gallery scanner currently returns duplicates of the exact same baseline photo. Please implement strict face detection and deduplication:
+
+1. MANDATORY FACE DETECTION ON BASELINE PHOTO:
+   - When a user uploads their initial profile/baseline photo during onboarding, run a local face detection check (e.g., using lightweight face detection / canvas feature extraction).
+   - If NO face is detected in the uploaded photo:
+     * Prevent progression.
+     * Show warning: "לא זוהו פנים בתמונה. אנא העלה תמונה ברורה שבה רואים אותך כדי שנוכל להתאים את המידות ולמצוא תמונות נוספות שלך ✨"
+   - Extract and save the user's face embedding / landmark fingerprint as `user_face_signature`.
+
+2. STRICT GALLERY SCAN & DEDUPLICATION:
+   - When scanning gallery photos, match candidates against `user_face_signature` so only photos of the SAME person are selected.
+   - DEDUPLICATION FILTER: Explicitly filter out any photo that matches the baseline image's file hash, base64 signature, or URL.
+   - Ensure the 2-3 photos displayed in `GalleryPreviewModal` are DISTINCT, DIFFERENT photos taken from the user's gallery.
+
+3. SEND TO DEEPSEEK:
+   - Send only the unique, user-approved distinct photos to DeepSeek Vision for body metric analysis.
