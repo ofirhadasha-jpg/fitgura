@@ -10,6 +10,7 @@ import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
 import { SKIMLINKS_PUBLISHER_ID } from '../lib/config'
+import { isNativePlatform, getGalleryPhotos, fetchPhotoAsFile } from '../services/nativeGalleryBridge'
 
 const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' as any
 
@@ -392,7 +393,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     setPendingResult(null)
   }
 
-  function handleUpsellTrigger() {
+  async function handleUpsellTrigger() {
     if (scanGallery && scanGallery.length > 0) {
       const existingPhotos: PreviewablePhoto[] = scanGallery.slice(0, 6).map((entry) => ({
         id: `existing_${entry.id}`,
@@ -402,10 +403,36 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       setGalleryModalVisible(true)
       return
     }
+    if (isNativePlatform()) {
+      await handleNativeGallerySync()
+      return
+    }
     galleryInputRef.current?.click()
   }
 
-  function handleGallerySync() {
+  async function handleNativeGallerySync() {
+    setGalleryToast(true)
+    setTimeout(() => setGalleryToast(false), 2500)
+    const nativePhotos = await getGalleryPhotos(6)
+    if (nativePhotos.length === 0) {
+      galleryInputRef.current?.click()
+      return
+    }
+    const photosWithFiles = await Promise.all(
+      nativePhotos.map(async (np) => {
+        const file = await fetchPhotoAsFile(np.url)
+        return {
+          id: np.id,
+          url: file ? URL.createObjectURL(file) : np.url,
+          file: file ?? undefined,
+        } as PreviewablePhoto
+      })
+    )
+    setGalleryPhotos(photosWithFiles.filter((p) => p.file))
+    setGalleryModalVisible(true)
+  }
+
+  async function handleGallerySync() {
     if (scanGallery && scanGallery.length > 0) {
       const existingPhotos: PreviewablePhoto[] = scanGallery.slice(0, 6).map((entry) => ({
         id: `existing_${entry.id}`,
@@ -413,6 +440,10 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       }))
       setGalleryPhotos(existingPhotos)
       setGalleryModalVisible(true)
+      return
+    }
+    if (isNativePlatform()) {
+      await handleNativeGallerySync()
       return
     }
     setGalleryToast(true)

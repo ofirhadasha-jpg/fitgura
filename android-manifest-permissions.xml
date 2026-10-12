@@ -1,0 +1,25 @@
+<!--
+  Android Manifest Permissions for Capacitor
+  ============================================
+  When you run `npx cap add android`, Capacitor generates the native
+  android/ directory. Add these permission lines inside the
+  <manifest> tag of android/app/src/main/AndroidManifest.xml:
+
+  READ_MEDIA_IMAGES — Android 13+ (API 33+): granular photo access
+  READ_EXTERNAL_STORAGE — Android 12 and below: legacy photo access
+  ACCESS_MEDIA_LOCATION — required to read EXIF/metadata from photos
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Android 13+ (API 33+): granular media permissions -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Android 12 and below: legacy storage permission -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Required to read photo metadata (EXIF, location) -->
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+
+</manifest>

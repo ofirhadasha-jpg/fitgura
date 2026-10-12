@@ -7,9 +7,17 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:add:android": "npx cap add android",
+    "cap:run:android": "npm run cap:sync && npx cap run android",
+    "cap:open:android": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor-community/media": "^9.1.0",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "@expo/react-native-action-sheet": "^4.1.1",
     "@supabase/supabase-js": "^2.112.4",
     "playwright": "^1.64.0",

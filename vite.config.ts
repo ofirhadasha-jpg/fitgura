@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
       ],
     },
     optimizeDeps: {
-      exclude: ['react-native'],
+      exclude: ['react-native', '@capacitor-community/media'],
     },
     server: {
       host: '0.0.0.0',
