@@ -10,6 +10,7 @@ import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
 import { SKIMLINKS_PUBLISHER_ID } from '../lib/config'
+import { buildComparisonAffiliateUrl, buildGoogleLensUrl, ensureAffiliateWrapped } from '../services/affiliateService'
 import { isNativePlatform, getGalleryPhotos, fetchPhotoAsFile, getGalleryPermissionGranted, setGalleryPermissionGranted, requestGalleryPermissions } from '../services/nativeGalleryBridge'
 
 const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' as any
@@ -244,7 +245,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   }
 
   function handleBuy(affiliateUrl: string) {
-    window.open(affiliateUrl, '_blank', 'noopener,noreferrer')
+    window.open(ensureAffiliateWrapped(affiliateUrl), '_blank', 'noopener,noreferrer')
   }
 
   async function handleDeleteWardrobeItem(id: string) {
@@ -822,12 +823,36 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                           <Text style={styles.wardrobeProfileTagText}>{profileTag}</Text>
                         </View>
                         <TouchableOpacity
-                          onPress={() => window.open(item.affiliateUrl, '_blank', 'noopener,noreferrer')}
+                          onPress={() => window.open(ensureAffiliateWrapped(item.affiliateUrl), '_blank', 'noopener,noreferrer')}
                           activeOpacity={0.8}
                           style={styles.wardrobeBuyBtn}
                         >
                           <Text style={styles.wardrobeBuyBtnText}>קנה עכשיו במידה {item.recommendedSize} 🛒</Text>
                         </TouchableOpacity>
+                        <View style={styles.wardrobeComparisonRow}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              const url = buildComparisonAffiliateUrl(decodeHtmlEntities(item.productName))
+                              if (url) window.open(url, '_blank', 'noopener,noreferrer')
+                            }}
+                            activeOpacity={0.8}
+                            style={styles.wardrobeCompareAffBtn}
+                          >
+                            <Text style={styles.wardrobeCompareAffBtnText}>מצא באליאקספרס / SHEIN 🛒</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => {
+                              if (item.productImage) {
+                                const lensUrl = buildGoogleLensUrl(item.productImage)
+                                if (lensUrl) window.open(lensUrl, '_blank', 'noopener,noreferrer')
+                              }
+                            }}
+                            activeOpacity={0.8}
+                            style={styles.wardrobeCompareLensBtn}
+                          >
+                            <Text style={styles.wardrobeCompareLensBtnText}>חפש תמונה בגוגל לנס 🔍</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     )}
                   </View>
@@ -1029,6 +1054,11 @@ const styles = StyleSheet.create({
   wardrobeProfileTagText: { fontSize: 12, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   wardrobeBuyBtn: { backgroundColor: '#00CC52', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, marginTop: 4 } as any,
   wardrobeBuyBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
+  wardrobeComparisonRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
+  wardrobeCompareAffBtn: { flex: 1, backgroundColor: '#0891B2', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as any,
+  wardrobeCompareAffBtnText: { color: '#FFFEF5', fontSize: 11, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
+  wardrobeCompareLensBtn: { flex: 1, backgroundColor: '#FFFEF5', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#4A4A4A' } as any,
+  wardrobeCompareLensBtnText: { color: '#4A4A4A', fontSize: 11, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   wardrobeDeleteBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 4 },
   wardrobeDeleteBtnText: { fontSize: 16 },
   deleteOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 500, justifyContent: 'center', alignItems: 'center' },

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
 import type { FamilyMember } from '../types'
+import { buildComparisonAffiliateUrl, buildGoogleLensUrl } from '../services/affiliateService'
 
 export interface FitBreakdown {
   chest: { fit: string; score: number }
@@ -186,6 +187,31 @@ export default function SizingResultModal({
           <Text style={styles.buyBtnText}>🛒 קנה עכשיו במידה {recommendedSize}</Text>
         </TouchableOpacity>
 
+        <View style={styles.comparisonRow}>
+          <TouchableOpacity
+            onPress={() => {
+              const url = buildComparisonAffiliateUrl(decodedName)
+              if (url) window.open(url, '_blank', 'noopener,noreferrer')
+            }}
+            activeOpacity={0.8}
+            style={styles.compareAffiliateBtn}
+          >
+            <Text style={styles.compareAffiliateBtnText}>מצא באליאקספרס / SHEIN 🛒</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (productImage) {
+                const lensUrl = buildGoogleLensUrl(productImage)
+                if (lensUrl) window.open(lensUrl, '_blank', 'noopener,noreferrer')
+              }
+            }}
+            activeOpacity={0.8}
+            style={styles.compareLensBtn}
+          >
+            <Text style={styles.compareLensBtnText}>חפש תמונה בגוגל לנס 🔍</Text>
+          </TouchableOpacity>
+        </View>
+
         {onSave && (
           <View>
             {profileOptions.length > 1 && (
@@ -267,6 +293,11 @@ const styles = StyleSheet.create({
   breakdownScoreText: { fontSize: 11, fontWeight: '700', color: '#4A4A4A', width: 34, textAlign: 'left', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   buyBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, marginBottom: 8 } as any,
   buyBtnText: { color: '#1A1A1A', fontSize: 16, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
+  comparisonRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  compareAffiliateBtn: { flex: 1, backgroundColor: '#0891B2', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as any,
+  compareAffiliateBtnText: { color: '#FFFEF5', fontSize: 12, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
+  compareLensBtn: { flex: 1, backgroundColor: '#FFFEF5', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#4A4A4A' } as any,
+  compareLensBtnText: { color: '#4A4A4A', fontSize: 12, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   profileToggleBtn: { alignSelf: 'center', marginBottom: 8, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#E0F2FE', borderWidth: 1, borderColor: '#0891B2' },
   profileToggleText: { fontSize: 13, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   profileSelectorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 10 },
