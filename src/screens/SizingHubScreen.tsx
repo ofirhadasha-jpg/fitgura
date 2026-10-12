@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image 
 import { BottomNav } from '../components'
 import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
 import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
-import type { Screen, User, ScannedSizes, ScanEntry, Product } from '../types'
+import type { Screen, User, ScannedSizes, ScanEntry, Product, FamilyMember } from '../types'
 import { supabase } from '../lib/supabase'
 import SizingResultModal, { type WardrobeItem, type FitBreakdown } from '../components/SizingResultModal'
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
@@ -22,7 +22,7 @@ function wrapAffiliateUrl(url: string): string {
   }
 }
 
-export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist }: {
+export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers }: {
   onNav: (s: Screen) => void
   user: User | null
   scannedSizes: ScannedSizes | null
@@ -33,6 +33,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   feedCatalog?: Product[]
   budget?: [number, number]
   onToggleWishlist?: (idx: number) => void
+  familyMembers?: FamilyMember[]
 }) {
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -131,7 +132,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     }
   }
 
-  async function handleSaveToWardrobe() {
+  async function handleSaveToWardrobe(profileId: string) {
     if (!result) return
     try {
       const { error } = await supabase
@@ -147,6 +148,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           fit_breakdown: result.fitBreakdown,
           affiliate_url: result.affiliateUrl,
           user_id: user?.id ?? null,
+          profile_id: profileId === 'self' ? null : profileId,
         })
       if (error) console.error('[SizingHub] Save failed:', error)
       else void loadWardrobe()
@@ -405,6 +407,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           onClose={() => setResult(null)}
           onBuy={handleBuy}
           onSave={handleSaveToWardrobe}
+          familyMembers={familyMembers ?? []}
+          userName={user?.name}
         />
       )}
 

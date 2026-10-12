@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
+import type { FamilyMember } from '../types'
 
 export interface FitBreakdown {
   chest: { fit: string; score: number }
@@ -20,6 +21,34 @@ export interface WardrobeItem {
   affiliateUrl: string
 }
 
+export interface SaveProfileOption {
+  id: string
+  name: string
+}
+
+function decodeHtmlEntities(text: string): string {
+  if (!text) return text
+  const entities: Record<string, string> = {
+    '&#39;': "'",
+    '&apos;': "'",
+    '&quot;': '"',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&nbsp;': ' ',
+    '&#x27;': "'",
+    '&#x2F;': '/',
+    '&#47;': '/',
+  }
+  let decoded = text
+  for (const [entity, char] of Object.entries(entities)) {
+    decoded = decoded.split(entity).join(char)
+  }
+  decoded = decoded.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)))
+  return decoded
+}
+
 interface SizingResultModalProps {
   visible: boolean
   productName: string
@@ -32,8 +61,10 @@ interface SizingResultModalProps {
   affiliateUrl: string
   onClose: () => void
   onBuy: (url: string) => void
-  onSave?: () => void
+  onSave?: (profileId: string) => void
   saving?: boolean
+  familyMembers?: FamilyMember[]
+  userName?: string | null
 }
 
 export default function SizingResultModal({
@@ -50,10 +81,32 @@ export default function SizingResultModal({
   onBuy,
   onSave,
   saving,
+  familyMembers = [],
+  userName,
 }: SizingResultModalProps) {
+  const [selectedProfileId, setSelectedProfileId] = useState<string>('self')
+  const [showProfileSelector, setShowProfileSelector] = useState(false)
+
   if (!visible) return null
 
   const matchColor = matchPercentage >= 90 ? '#00CC52' : matchPercentage >= 75 ? '#FFE566' : '#F59E0B'
+  const decodedName = decodeHtmlEntities(productName)
+
+  const profileOptions: SaveProfileOption[] = [
+    { id: 'self', name: userName ?? 'אני' },
+    ...familyMembers.map((m) => ({ id: m.id, name: m.name })),
+  ]
+
+  const selectedProfile = profileOptions.find((p) => p.id === selectedProfileId)
+  const saveBtnText = saving
+    ? 'שומר...'
+    : selectedProfileId === 'self'
+      ? 'שמור בארון שלי'
+      : `שמור בארון של ${selectedProfile?.name ?? ''}`
+
+  function handleSave() {
+    onSave?.(selectedProfileId)
+  }
 
   return (
     <View style={styles.overlay}>
@@ -77,7 +130,7 @@ export default function SizingResultModal({
           </View>
         )}
 
-        <Text style={styles.productName}>{productName}</Text>
+        <Text style={styles.productName}>{decodedName}</Text>
         <View style={styles.productMetaRow}>
           <View style={styles.platformBadge}>
             <Text style={styles.platformText}>{platform}</Text>
@@ -125,14 +178,49 @@ export default function SizingResultModal({
         </TouchableOpacity>
 
         {onSave && (
-          <TouchableOpacity
-            onPress={onSave}
-            disabled={saving}
-            activeOpacity={0.7}
-            style={[styles.saveBtn, saving && styles.btnDisabled]}
-          >
-            <Text style={styles.saveBtnText}>{saving ? 'שומר...' : 'שמור בארון שלי'}</Text>
-          </TouchableOpacity>
+          <View>
+            {profileOptions.length > 1 && (
+              <TouchableOpacity
+                onPress={() => setShowProfileSelector((v) => !v)}
+                activeOpacity={0.7}
+                style={styles.profileToggleBtn}
+              >
+                <Text style={styles.profileToggleText}>
+                  למי לשמור? {selectedProfile?.name ?? 'אני'} {showProfileSelector ? '▲' : '▼'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {showProfileSelector && profileOptions.length > 1 && (
+              <View style={styles.profileSelectorRow}>
+                {profileOptions.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    onPress={() => { setSelectedProfileId(opt.id); setShowProfileSelector(false) }}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.profileOptionBtn,
+                      selectedProfileId === opt.id && styles.profileOptionBtnActive,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.profileOptionText,
+                      selectedProfileId === opt.id && styles.profileOptionTextActive,
+                    ]}>
+                      {opt.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={saving}
+              activeOpacity={0.7}
+              style={[styles.saveBtn, saving && styles.btnDisabled]}
+            >
+              <Text style={styles.saveBtnText}>{saveBtnText}</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </View>
@@ -170,6 +258,13 @@ const styles = StyleSheet.create({
   breakdownScoreText: { fontSize: 11, fontWeight: '700', color: '#4A4A4A', width: 34, textAlign: 'left', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   buyBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, marginBottom: 8 } as any,
   buyBtnText: { color: '#1A1A1A', fontSize: 16, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
+  profileToggleBtn: { alignSelf: 'center', marginBottom: 8, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#E0F2FE', borderWidth: 1, borderColor: '#0891B2' },
+  profileToggleText: { fontSize: 13, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  profileSelectorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 10 },
+  profileOptionBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' } as any,
+  profileOptionBtnActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566' },
+  profileOptionText: { fontSize: 12, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  profileOptionTextActive: { color: '#1A1A1A', fontWeight: '700' },
   saveBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
   saveBtnText: { color: '#4A4A4A', fontSize: 14, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   btnDisabled: { opacity: 0.5 },
