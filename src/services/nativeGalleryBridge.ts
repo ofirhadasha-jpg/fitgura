@@ -43,9 +43,13 @@ export function getPlatform(): 'android' | 'ios' | 'web' {
   return 'web'
 }
 
+const MEDIA_PLUGIN_ID = '@capacitor-community/media'
+const PREFERENCES_PLUGIN_ID = '@capacitor/preferences'
+
 async function loadMediaPlugin(): Promise<any | null> {
+  if (!isNativePlatform()) return null
   try {
-    const mod = await import('@capacitor-community/media')
+    const mod = await import(/* @vite-ignore */ MEDIA_PLUGIN_ID)
     return mod.Media
   } catch {
     return null
@@ -53,8 +57,9 @@ async function loadMediaPlugin(): Promise<any | null> {
 }
 
 async function loadPreferences(): Promise<any | null> {
+  if (!isNativePlatform()) return null
   try {
-    const mod = await import('@capacitor/preferences')
+    const mod = await import(/* @vite-ignore */ PREFERENCES_PLUGIN_ID)
     return mod.Preferences
   } catch {
     return null
