@@ -1,20 +1,2 @@
-[functions.analyze-body]
-verify_jwt = false
-
-[functions.identify-device]
-verify_jwt = false
-
-[functions.aliexpress-search]
-verify_jwt = false
-
-[functions.smart-recommend]
-verify_jwt = false
-
-[functions.shein-search]
-verify_jwt = false
-
-[functions.temu-search]
-verify_jwt = false
-
-[functions.visual-search]
+[functions.analyze-product]
 verify_jwt = false

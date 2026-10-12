@@ -1,26 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { BottomNav } from '../components'
-import type { Screen, User, ScannedSizes } from '../types'
+import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
+import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
+import type { Screen, User, ScannedSizes, ScanEntry } from '../types'
 import { supabase } from '../lib/supabase'
 import SizingResultModal, { type WardrobeItem, type FitBreakdown } from '../components/SizingResultModal'
-import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
+import { analyzeProductUrl } from '../services/analyzeProductUrl'
+import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
 import { SKIMLINKS_PUBLISHER_ID } from '../lib/config'
 
 const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' as any
-
-function detectPlatform(url: string): string {
-  const lower = url.toLowerCase()
-  if (lower.includes('shein')) return 'SHEIN'
-  if (lower.includes('aliexpress')) return 'AliExpress'
-  if (lower.includes('temu')) return 'Temu'
-  if (lower.includes('zara')) return 'ZARA'
-  if (lower.includes('hm.com') || lower.includes('h&m')) return 'H&M'
-  if (lower.includes('asos')) return 'ASOS'
-  if (lower.includes('amazon')) return 'Amazon'
-  if (lower.includes('nike')) return 'Nike'
-  return 'חנות אונליין'
-}
 
 function wrapAffiliateUrl(url: string): string {
   if (!SKIMLINKS_PUBLISHER_ID) return url
@@ -32,21 +22,13 @@ function wrapAffiliateUrl(url: string): string {
   }
 }
 
-function extractProductName(url: string): string {
-  try {
-    const u = new URL(url)
-    const parts = u.pathname.split('/').filter(Boolean)
-    const last = parts[parts.length - 1] ?? ''
-    return decodeURIComponent(last.replace(/[-_]/g, ' ').replace(/\.\w+$/, '')).slice(0, 60) || 'מוצר'
-  } catch {
-    return 'מוצר משנותף'
-  }
-}
-
-export function SizingHubScreen({ onNav, user, scannedSizes }: {
+export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery }: {
   onNav: (s: Screen) => void
   user: User | null
   scannedSizes: ScannedSizes | null
+  setScannedSizes?: (s: ScannedSizes | null) => void
+  scanGallery?: ScanEntry[]
+  setScanGallery?: (entries: ScanEntry[]) => void
 }) {
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -63,6 +45,11 @@ export function SizingHubScreen({ onNav, user, scannedSizes }: {
     affiliateUrl: string
     originalUrl: string
   } | null>(null)
+
+  const [galleryPhotos, setGalleryPhotos] = useState<PreviewablePhoto[]>([])
+  const [galleryModalVisible, setGalleryModalVisible] = useState(false)
+  const [galleryProcessing, setGalleryProcessing] = useState(false)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user) return
@@ -113,34 +100,25 @@ export function SizingHubScreen({ onNav, user, scannedSizes }: {
     setAnalyzing(true)
 
     try {
-      const platform = detectPlatform(trimmed)
-      const productName = extractProductName(trimmed)
+      const analysisResult = await analyzeProductUrl(trimmed, scannedSizes, accuracy)
       const affiliateUrl = wrapAffiliateUrl(trimmed)
-
-      const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-      const recommended = calculateRecommendedSize(scannedSizes, [], 'clothing', productName, availableSizes) ?? 'M'
-
-      const matchPct = accuracy >= 95 ? 97 : accuracy >= 85 ? 90 : 82
-
-      const breakdown: FitBreakdown = {
-        chest: { fit: 'התאמה מדויקת', score: matchPct },
-        waist: { fit: 'התאמה טובה', score: Math.max(75, matchPct - 5) },
-        length: { fit: 'התאמה מלאה', score: Math.max(80, matchPct - 2) },
-      }
 
       setResult({
         visible: true,
-        productName,
-        productImage: null,
-        platform,
-        recommendedSize: recommended,
-        matchPercentage: matchPct,
-        fitBreakdown: breakdown,
+        productName: analysisResult.productName,
+        productImage: analysisResult.productImage,
+        platform: analysisResult.platform,
+        recommendedSize: analysisResult.recommendedSize,
+        matchPercentage: analysisResult.matchPercentage,
+        fitBreakdown: analysisResult.fitBreakdown,
         affiliateUrl,
         originalUrl: trimmed,
       })
     } catch (err) {
       console.error('[SizingHub] Analysis failed:', err)
+      if (err instanceof Error && err.message === 'NO_PROFILE') {
+        onNav('profile')
+      }
     } finally {
       setAnalyzing(false)
     }
@@ -174,8 +152,76 @@ export function SizingHubScreen({ onNav, user, scannedSizes }: {
     window.open(affiliateUrl, '_blank', 'noopener,noreferrer')
   }
 
+  function handleUpsellTrigger() {
+    galleryInputRef.current?.click()
+  }
+
+  function handleGalleryFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+
+    const photos: PreviewablePhoto[] = files.slice(0, 6).map((file, i) => ({
+      id: `gallery_${i}_${Date.now()}`,
+      url: URL.createObjectURL(file),
+      file,
+    }))
+
+    setGalleryPhotos(photos)
+    setGalleryModalVisible(true)
+    e.target.value = ''
+  }
+
+  async function handleGalleryApprove(approved: PreviewablePhoto[]) {
+    setGalleryProcessing(true)
+
+    try {
+      const files = approved.map((p) => p.file)
+      const existingEntries = scanGallery ?? []
+
+      const baselinePhotoUrl = scannedSizes?.preview ?? scanGallery?.find((e) => e.isBaseline)?.photoUrl ?? null
+
+      const scanResult: MergedSizingResult = await runGalleryScan({
+        files,
+        baselinePhotoUrl,
+        currentSizes: scannedSizes,
+        existingGallery: existingEntries,
+        userId: user?.id ?? null,
+        onProgress: () => {},
+      })
+
+      if (setScannedSizes) setScannedSizes(scanResult.mergedSizes)
+      if (setScanGallery) setScanGallery(scanResult.newEntries)
+
+      if (user?.id) {
+        await persistSizingToSupabase(user.id, scanResult.newEntries, scanResult.accuracy, scanResult.mergedSizes)
+      }
+
+      setAccuracy(scanResult.accuracy)
+      setGalleryModalVisible(false)
+    } catch (err) {
+      console.error('[SizingHub] Gallery scan failed:', err)
+    } finally {
+      setGalleryProcessing(false)
+    }
+  }
+
+  function handleGalleryCancel() {
+    galleryPhotos.forEach((p) => URL.revokeObjectURL(p.url))
+    setGalleryPhotos([])
+    setGalleryModalVisible(false)
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE }}>
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }}
+        onChange={handleGalleryFileSelect}
+      />
+
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.profileSection}>
@@ -196,6 +242,10 @@ export function SizingHubScreen({ onNav, user, scannedSizes }: {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 100 }}>
         <Text style={styles.hubTitle}>פיטגורה</Text>
         <Text style={styles.hubSub}>נתח מידה לכל מוצר מכל חנות</Text>
+
+        {accuracy < 95 && (
+          <ContextualUpsellBanner accuracy={accuracy} onTrigger={handleUpsellTrigger} variant="feed" />
+        )}
 
         <View style={styles.urlCard}>
           <Text style={styles.urlLabel}>הדבק קישור למוצר מכל חנות:</Text>
@@ -296,6 +346,14 @@ export function SizingHubScreen({ onNav, user, scannedSizes }: {
           onSave={handleSaveToWardrobe}
         />
       )}
+
+      <GalleryPreviewModal
+        visible={galleryModalVisible}
+        photos={galleryPhotos}
+        onApprove={handleGalleryApprove}
+        onCancel={handleGalleryCancel}
+        processing={galleryProcessing}
+      />
     </View>
   )
 }
