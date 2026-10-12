@@ -17,27 +17,27 @@ export default function ContextualUpsellBanner({ accuracy, onTrigger, variant = 
       <View style={styles.iconWrap}>
         <Text style={styles.icon}>✨</Text>
       </View>
-      <View style={styles.textWrap}>
-        <Text style={styles.title}>רוצה שהמידות שלך יהיו מדויקות ב-95%+ באופן אוטומטי בלי למדוד כלום? ✨</Text>
-        <Text style={styles.subtext}>הורד את אחוז הטעויות במידות בלחיצה אחת דרך הגלריה שלך.</Text>
-      </View>
+      <Text style={styles.title}>רוצה שהמידות שלך יהיו מדויקות ב-95%+ באופן אוטומטי בלי למדוד כלום?</Text>
       <TouchableOpacity onPress={onTrigger} activeOpacity={0.8} style={styles.ctaBtn}>
-        <Text style={styles.ctaText}>דיוק אוטומטי מהגלריה 📸</Text>
+        <Text style={styles.ctaText}>דיוק אוטומטי מהגלריה</Text>
       </TouchableOpacity>
+      <Text style={styles.subtext}>הורד את אחוז הטעויות במידות בלחיצה אחת דרך הגלריה שלך.</Text>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   banner: {
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: 'row',
+    position: 'relative',
+    borderRadius: 18,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    flexDirection: 'column',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
-    boxShadow: '3px 3px 0 #1A1A1A' as any,
+    boxShadow: '4px 4px 0 #1A1A1A' as any,
   } as any,
   feedVariant: {
     backgroundColor: '#FFFACC',
@@ -47,48 +47,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFEF5',
   },
   iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: '#FFE566',
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-  },
-  icon: { fontSize: 24 },
-  textWrap: { flex: 1, gap: 4 },
+    boxShadow: '2px 2px 0 #1A1A1A' as any,
+  } as any,
+  icon: { fontSize: 28 },
   title: {
-    fontSize: 15,
-    fontWeight: '700',
+    width: '100%',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#1A1A1A',
-    textAlign: 'right',
-    lineHeight: 20,
-    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
+    textAlign: 'center',
+    lineHeight: 28,
+    fontFamily: "'Permanent Marker', 'Noto Sans Hebrew', cursive",
   },
   subtext: {
-    fontSize: 13,
-    color: '#4A4A4A',
-    textAlign: 'right',
-    lineHeight: 18,
+    width: '100%',
+    fontSize: 15,
+    color: '#5B5B5B',
+    textAlign: 'center',
+    lineHeight: 22,
     fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
   },
   ctaBtn: {
+    minWidth: 210,
     backgroundColor: '#1A1A1A',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 20,
     borderWidth: 1.5,
     borderColor: '#1A1A1A',
-    boxShadow: '2px 2px 0 #FFE566' as any,
-    flexShrink: 0,
+    boxShadow: '3px 3px 0 #FFE566' as any,
   } as any,
   ctaText: {
     color: '#FFE566',
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
     textAlign: 'center',
-    fontFamily: "'Permanent Marker', cursive",
+    fontFamily: "'Permanent Marker', 'Noto Sans Hebrew', cursive",
   },
 })
