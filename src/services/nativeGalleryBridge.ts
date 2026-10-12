@@ -1,30 +1,109 @@
-import { Capacitor } from '@capacitor/core'
-
 export interface NativePhoto {
   id: string
   url: string
   file?: File
 }
 
+const PERMISSION_KEY = 'gallery_permission_granted'
+
+type CapacitorLike = {
+  isNativePlatform?: () => boolean
+  getPlatform?: () => string
+}
+
+function getCapacitor(): CapacitorLike | null {
+  try {
+    if (typeof window !== 'undefined') {
+      const cap = (window as any).Capacitor
+      if (cap && typeof cap === 'object') return cap as CapacitorLike
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
 export function isNativePlatform(): boolean {
-  return Capacitor.isNativePlatform()
+  try {
+    const cap = getCapacitor()
+    return !!cap?.isNativePlatform?.()
+  } catch {
+    return false
+  }
 }
 
 export function getPlatform(): 'android' | 'ios' | 'web' {
-  return Capacitor.getPlatform() as 'android' | 'ios' | 'web'
+  try {
+    const cap = getCapacitor()
+    const p = cap?.getPlatform?.()
+    if (p === 'android' || p === 'ios') return p
+  } catch {
+    // ignore
+  }
+  return 'web'
 }
 
-async function loadMediaPlugin() {
-  const { Media } = await import('@capacitor-community/media')
-  return Media
+async function loadMediaPlugin(): Promise<any | null> {
+  try {
+    const mod = await import('@capacitor-community/media')
+    return mod.Media
+  } catch {
+    return null
+  }
+}
+
+async function loadPreferences(): Promise<any | null> {
+  try {
+    const mod = await import('@capacitor/preferences')
+    return mod.Preferences
+  } catch {
+    return null
+  }
+}
+
+export async function getGalleryPermissionGranted(): Promise<boolean> {
+  const Preferences = await loadPreferences()
+  if (Preferences) {
+    try {
+      const { value } = await Preferences.get({ key: PERMISSION_KEY })
+      return value === 'true'
+    } catch {
+      // fall through to localStorage
+    }
+  }
+  try {
+    return localStorage.getItem(PERMISSION_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export async function setGalleryPermissionGranted(granted: boolean): Promise<void> {
+  const Preferences = await loadPreferences()
+  if (Preferences) {
+    try {
+      await Preferences.set({ key: PERMISSION_KEY, value: granted ? 'true' : 'false' })
+      return
+    } catch {
+      // fall through to localStorage
+    }
+  }
+  try {
+    localStorage.setItem(PERMISSION_KEY, granted ? 'true' : 'false')
+  } catch {
+    // ignore
+  }
 }
 
 export async function requestGalleryPermissions(): Promise<boolean> {
   if (!isNativePlatform()) return false
+  const Media = await loadMediaPlugin()
+  if (!Media) return false
   try {
-    const Media = await loadMediaPlugin()
     const result = await Media.requestPermissions()
-    return result.photos === 'granted' || result.photos === 'limited'
+    const granted = result.photos === 'granted' || result.photos === 'limited'
+    if (granted) await setGalleryPermissionGranted(true)
+    return granted
   } catch {
     return false
   }
@@ -33,11 +112,15 @@ export async function requestGalleryPermissions(): Promise<boolean> {
 export async function getGalleryPhotos(limit: number = 6): Promise<NativePhoto[]> {
   if (!isNativePlatform()) return []
 
-  try {
-    const granted = await requestGalleryPermissions()
-    if (!granted) return []
+  const Media = await loadMediaPlugin()
+  if (!Media) return []
 
-    const Media = await loadMediaPlugin()
+  try {
+    const alreadyGranted = await getGalleryPermissionGranted()
+    if (!alreadyGranted) {
+      const granted = await requestGalleryPermissions()
+      if (!granted) return []
+    }
 
     const albums = await Media.getAlbums()
     if (!albums.albums || albums.albums.length === 0) return []

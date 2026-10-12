@@ -10,7 +10,7 @@ import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
 import { SKIMLINKS_PUBLISHER_ID } from '../lib/config'
-import { isNativePlatform, getGalleryPhotos, fetchPhotoAsFile } from '../services/nativeGalleryBridge'
+import { isNativePlatform, getGalleryPhotos, fetchPhotoAsFile, getGalleryPermissionGranted, setGalleryPermissionGranted, requestGalleryPermissions } from '../services/nativeGalleryBridge'
 
 const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' as any
 
@@ -65,6 +65,16 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const [pendingResult, setPendingResult] = useState<typeof result>(null)
   const [overrideMismatch, setOverrideMismatch] = useState(false)
   const [galleryToast, setGalleryToast] = useState(false)
+  const [galleryPermissionGranted, setGalleryPermissionGrantedState] = useState(false)
+  const [showPermissionModal, setShowPermissionModal] = useState(false)
+  const [permissionCallback, setPermissionCallback] = useState<(() => void) | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      const granted = await getGalleryPermissionGranted()
+      setGalleryPermissionGrantedState(granted)
+    })()
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -403,36 +413,61 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       setGalleryModalVisible(true)
       return
     }
-    if (isNativePlatform()) {
-      await handleNativeGallerySync()
+    await initiateGallerySync()
+  }
+
+  async function initiateGallerySync() {
+    if (galleryPermissionGranted) {
+      await silentGalleryScan()
       return
     }
+    setShowPermissionModal(true)
+    setPermissionCallback(() => () => { void performGalleryAccess() })
+  }
+
+  async function performGalleryAccess() {
+    if (isNativePlatform()) {
+      const granted = await requestGalleryPermissions()
+      if (granted) {
+        setGalleryPermissionGrantedState(true)
+        await setGalleryPermissionGranted(true)
+        await silentGalleryScan()
+      }
+      return
+    }
+    setGalleryPermissionGrantedState(true)
+    await setGalleryPermissionGranted(true)
+    setGalleryToast(true)
+    setTimeout(() => setGalleryToast(false), 2500)
     galleryInputRef.current?.click()
   }
 
-  async function handleNativeGallerySync() {
-    setGalleryToast(true)
-    setTimeout(() => setGalleryToast(false), 2500)
-    const nativePhotos = await getGalleryPhotos(6)
-    if (nativePhotos.length === 0) {
-      galleryInputRef.current?.click()
+  async function silentGalleryScan() {
+    if (isNativePlatform()) {
+      const nativePhotos = await getGalleryPhotos(6)
+      if (nativePhotos.length === 0) {
+        setGalleryToast(true)
+        setTimeout(() => setGalleryToast(false), 2500)
+        galleryInputRef.current?.click()
+        return
+      }
+      const photosWithFiles = await Promise.all(
+        nativePhotos.map(async (np) => {
+          const file = await fetchPhotoAsFile(np.url)
+          return {
+            id: np.id,
+            url: file ? URL.createObjectURL(file) : np.url,
+            file: file ?? undefined,
+          } as PreviewablePhoto
+        })
+      )
+      const valid = photosWithFiles.filter((p) => p.file)
+      if (valid.length > 0) {
+        setGalleryPhotos(valid)
+        setGalleryModalVisible(true)
+      }
       return
     }
-    const photosWithFiles = await Promise.all(
-      nativePhotos.map(async (np) => {
-        const file = await fetchPhotoAsFile(np.url)
-        return {
-          id: np.id,
-          url: file ? URL.createObjectURL(file) : np.url,
-          file: file ?? undefined,
-        } as PreviewablePhoto
-      })
-    )
-    setGalleryPhotos(photosWithFiles.filter((p) => p.file))
-    setGalleryModalVisible(true)
-  }
-
-  async function handleGallerySync() {
     if (scanGallery && scanGallery.length > 0) {
       const existingPhotos: PreviewablePhoto[] = scanGallery.slice(0, 6).map((entry) => ({
         id: `existing_${entry.id}`,
@@ -442,13 +477,26 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       setGalleryModalVisible(true)
       return
     }
-    if (isNativePlatform()) {
-      await handleNativeGallerySync()
-      return
-    }
     setGalleryToast(true)
     setTimeout(() => setGalleryToast(false), 2500)
     galleryInputRef.current?.click()
+  }
+
+  async function handleNativeGallerySync() {
+    await silentGalleryScan()
+  }
+
+  async function handleGallerySync() {
+    if (scanGallery && scanGallery.length > 0 && !galleryPermissionGranted) {
+      const existingPhotos: PreviewablePhoto[] = scanGallery.slice(0, 6).map((entry) => ({
+        id: `existing_${entry.id}`,
+        url: entry.photoUrl,
+      }))
+      setGalleryPhotos(existingPhotos)
+      setGalleryModalVisible(true)
+      return
+    }
+    await initiateGallerySync()
   }
 
   function handleGalleryFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -827,6 +875,38 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         onCancel={handleGalleryCancel}
         processing={galleryProcessing}
       />
+
+      {showPermissionModal && (
+        <View style={styles.permissionOverlay}>
+          <TouchableOpacity onPress={() => setShowPermissionModal(false)} activeOpacity={1} style={styles.permissionBackdrop} />
+          <View style={styles.permissionDialog}>
+            <Text style={styles.permissionIcon}>📸</Text>
+            <Text style={styles.permissionTitle}>גישה לגלריה</Text>
+            <Text style={styles.permissionDesc}>
+              כדי להתאים מידות באופן אוטומטי, פיטגורה צריכה גישה לתמונות במכשיר. התמונות נשארות בטלפון בלבד! 🔒
+            </Text>
+            <View style={styles.permissionBtns}>
+              <TouchableOpacity
+                onPress={() => setShowPermissionModal(false)}
+                activeOpacity={0.7}
+                style={styles.permissionCancelBtn}
+              >
+                <Text style={styles.permissionCancelBtnText}>ביטול</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowPermissionModal(false)
+                  permissionCallback?.()
+                }}
+                activeOpacity={0.7}
+                style={styles.permissionGrantBtn}
+              >
+                <Text style={styles.permissionGrantBtnText}>אפשר גישה 🔒</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
@@ -916,4 +996,15 @@ const styles = StyleSheet.create({
   gallerySyncBtnText: { color: '#FFFEF5', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
   galleryToast: { position: 'absolute', bottom: 90, left: 20, right: 20, backgroundColor: '#1A1A1A', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center', zIndex: 600, boxShadow: '2px 2px 0 #0891B2' as any } as any,
   galleryToastText: { color: '#FFE566', fontSize: 14, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  permissionOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 550, justifyContent: 'center', alignItems: 'center' },
+  permissionBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
+  permissionDialog: { backgroundColor: '#FFFEF5', borderRadius: 20, padding: 28, width: '88%', maxWidth: 400, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 14 } as any,
+  permissionIcon: { fontSize: 40 },
+  permissionTitle: { fontSize: 19, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Permanent Marker', cursive" },
+  permissionDesc: { fontSize: 14, color: '#4A4A4A', textAlign: 'center', lineHeight: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  permissionBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  permissionCancelBtn: { flex: 1, backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
+  permissionCancelBtnText: { fontSize: 14, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  permissionGrantBtn: { flex: 1, backgroundColor: '#0891B2', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  permissionGrantBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
 })
