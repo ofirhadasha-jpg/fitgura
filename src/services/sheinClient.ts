@@ -1,7 +1,7 @@
 import type { Product } from '../types'
 import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams } from './adapterTypes'
 import type { Gender, FeedCategory, AgeGroupFilter } from './aliexpressClient'
-import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
+import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY, getFeedSeed } from '../lib/config'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
 import { ageGroupToDemographic, getDemographicAnchorQuery, getDemographicFallbackQueries, scoreProductForDemographic } from './demographicQuery'
 export { searchVisualMatch as searchExactVisualMatch } from './imageSearch'
@@ -70,7 +70,7 @@ async function callSheinSearch(keywords: string, pageNo: number, pageSize: numbe
         'Content-Type': 'application/json',
         Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
       },
-      body: JSON.stringify({ keywords, page: pageNo, pageSize }),
+      body: JSON.stringify({ keywords, page: pageNo, pageSize, seed: getFeedSeed() }),
     })
 
     if (!response.ok) {

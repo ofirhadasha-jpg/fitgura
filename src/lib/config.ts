@@ -7,3 +7,17 @@ export const EDGE_FUNCTION_URL = SUPABASE_URL
 export const EDGE_FUNCTION_ANON_KEY = SUPABASE_ANON_KEY
 
 export const SKIMLINKS_PUBLISHER_ID = import.meta.env.VITE_SKIMLINKS_PUBLISHER_ID ?? ''
+
+// Per-session random seed for feed rotation. Generated once per app open
+// so the same user sees a different product order each visit, while
+// pagination within a single session stays consistent.
+export function getFeedSeed(): number {
+  const KEY = 'fitgura_feed_seed'
+  try {
+    const stored = sessionStorage.getItem(KEY)
+    if (stored) return parseInt(stored, 10)
+  } catch { /* ignore */ }
+  const seed = Math.floor(Math.random() * 100000)
+  try { sessionStorage.setItem(KEY, String(seed)) } catch { /* ignore */ }
+  return seed
+}

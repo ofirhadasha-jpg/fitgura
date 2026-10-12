@@ -349,6 +349,7 @@ export function FeedScreen({
     hasInitiallyLoaded.current = true
 
     const SESSION_KEY = 'fitgura_session_id'
+    const SEED_KEY = 'fitgura_feed_seed'
     let isNewSession = false
     try {
       const stored = sessionStorage.getItem(SESSION_KEY)
@@ -357,6 +358,8 @@ export function FeedScreen({
         isNewSession = true
         sessionStorage.setItem(SESSION_KEY, currentSession)
       }
+      // Clear the feed seed so a new random order is generated for this session
+      sessionStorage.removeItem(SEED_KEY)
     } catch {
       isNewSession = true
     }

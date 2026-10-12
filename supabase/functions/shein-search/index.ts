@@ -359,19 +359,35 @@ function parseKeywords(keywords: string): { category: string | null; gender: str
   return { category, gender, terms };
 }
 
+function shuffleArray<T>(arr: T[], seed: number): T[] {
+  const result = [...arr];
+  let s = seed;
+  for (let i = result.length - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280;
+    const j = Math.floor((s / 233280) * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 async function fetchFromCatalog(
   keywords: string,
   page: number,
-  pageSize: number
+  pageSize: number,
+  seed: number
 ): Promise<CatalogProduct[]> {
   const supabase = getSupabaseClient();
   if (!supabase) return [];
 
   const { category, gender, terms } = parseKeywords(keywords);
 
+  // Fetch a larger pool than needed so we can shuffle and paginate
+  const poolSize = Math.min(pageSize * 5, 200);
+
   let query = supabase
     .from("shein_products")
-    .select("goods_id, title, brand, price, original_price, currency, image_url, product_url, category, gender, sizes, search_keywords");
+    .select("goods_id, title, brand, price, original_price, currency, image_url, product_url, category, gender, sizes, search_keywords")
+    .limit(poolSize);
 
   if (category) {
     query = query.eq("category", category);
@@ -380,9 +396,6 @@ async function fetchFromCatalog(
   if (gender) {
     query = query.in("gender", [gender, "unisex"]);
   }
-
-  const offset = (page - 1) * pageSize;
-  query = query.range(offset, offset + pageSize - 1);
 
   const { data, error } = await query;
 
@@ -396,24 +409,43 @@ async function fetchFromCatalog(
     const { data: allData, error: allError } = await supabase
       .from("shein_products")
       .select("goods_id, title, brand, price, original_price, currency, image_url, product_url, category, gender, sizes, search_keywords")
-      .range(offset, offset + pageSize - 1);
+      .limit(poolSize);
 
     if (allError || !allData) return [];
-    return allData.map(rowToProduct);
+    const shuffled = shuffleArray(allData, seed);
+    const offset = (page - 1) * pageSize;
+    return shuffled.slice(offset, offset + pageSize).map(rowToProduct);
   }
 
+  // Sort by keyword relevance first, then shuffle within relevance tiers
   if (terms.length > 0) {
-    const sorted = [...data].sort((a, b) => {
-      const aKeywords = (a.search_keywords || []).join(" ");
-      const bKeywords = (b.search_keywords || []).join(" ");
-      const aScore = terms.filter((t) => aKeywords.includes(t)).length;
-      const bScore = terms.filter((t) => bKeywords.includes(t)).length;
-      return bScore - aScore;
+    const scored = data.map((item) => {
+      const kw = (item.search_keywords || []).join(" ");
+      const score = terms.filter((t) => kw.includes(t)).length;
+      return { item, score };
     });
-    return sorted.map(rowToProduct);
+    scored.sort((a, b) => b.score - a.score);
+
+    // Group by score tier and shuffle within each tier
+    const tiered: Record<number, typeof scored> = {};
+    for (const s of scored) {
+      const tier = s.score;
+      if (!tiered[tier]) tiered[tier] = [];
+      tiered[tier].push(s);
+    }
+    const shuffled: typeof scored = [];
+    for (const tier of Object.keys(tiered).sort((a, b) => Number(b) - Number(a))) {
+      shuffled.push(...shuffleArray(tiered[Number(tier)], seed + Number(tier)));
+    }
+
+    const offset = (page - 1) * pageSize;
+    return shuffled.slice(offset, offset + pageSize).map((s) => rowToProduct(s.item));
   }
 
-  return data.map(rowToProduct);
+  // No keyword terms — pure shuffle
+  const shuffled = shuffleArray(data, seed);
+  const offset = (page - 1) * pageSize;
+  return shuffled.slice(offset, offset + pageSize).map(rowToProduct);
 }
 
 function rowToProduct(row: Record<string, unknown>): CatalogProduct {
@@ -444,14 +476,15 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const body = await req.json() as { keywords?: string; page?: number; pageSize?: number };
+    const body = await req.json() as { keywords?: string; page?: number; pageSize?: number; seed?: number };
     const keywords = (body.keywords ?? "").trim();
     const page = Math.max(1, Math.min(body.page ?? 1, 100));
     const pageSize = Math.min(body.pageSize ?? 40, 80);
+    const seed = body.seed ?? Math.floor(Math.random() * 100000);
 
     if (!keywords) return errorResponse("keywords is required");
 
-    console.log(`[SHEIN] Search: keywords="${keywords}", page=${page}, pageSize=${pageSize}`);
+    console.log(`[SHEIN] Search: keywords="${keywords}", page=${page}, pageSize=${pageSize}, seed=${seed}`);
 
     // 1. Try JSON search API
     let products = await trySearchApi(keywords, page, pageSize);
@@ -473,7 +506,7 @@ Deno.serve(async (req: Request) => {
 
     // 4. Fall back to curated catalog
     console.log(`[SHEIN] All live attempts failed, falling back to catalog...`);
-    products = await fetchFromCatalog(keywords, page, pageSize);
+    products = await fetchFromCatalog(keywords, page, pageSize, seed);
     console.log(`[SHEIN] Catalog returned ${products.length} products`);
 
     if (products.length === 0) {
