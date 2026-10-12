@@ -15,6 +15,7 @@ import { ProfileScreen } from './screens/ProfileScreen'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { startSession, endSession, updateLastSeen } from './services/trackingService'
 import { getUnreadCount } from './services/notificationService'
+import { shouldRunPeriodicScan, runPeriodicGrowthCheck, type GrowthDetection } from './services/growthDetection'
 
 const GUEST_PROFILE_KEY = 'fitgura_guest_profile'
 const GUEST_FAVORITES_KEY = 'fitgura_favorites'
@@ -336,6 +337,7 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
   const [activeProfileId, setActiveProfileId] = useState<string>('self')
+  const [growthAlerts, setGrowthAlerts] = useState<GrowthDetection[]>([])
 
   useEffect(() => {
     if (!user) return
@@ -706,6 +708,38 @@ export default function App() {
     })()
   }, [user?.id])
 
+  // Periodic background growth scan — runs on app launch if 30 days have passed
+  useEffect(() => {
+    if (!shouldRunPeriodicScan()) return
+    if (familyMembers.length === 0) return
+
+    const timer = setTimeout(() => {
+      const { detections, updatedMembers } = runPeriodicGrowthCheck(familyMembers, scannedSizes)
+      if (detections.length > 0) {
+        setGrowthAlerts(detections)
+        setFamilyMembers(updatedMembers)
+      }
+    }, 2000)
+
+    return () => clearTimeout(timer)
+  }, [familyMembers, scannedSizes])
+
+  function handleApproveGrowth(detection: GrowthDetection) {
+    setFamilyMembers((prev) =>
+      prev.map((m) =>
+        m.id === detection.member.id
+          ? { ...m, scannedSizes: detection.newSizes, accuracy: detection.newSizes.confidence }
+          : m,
+      ),
+    )
+    setGrowthAlerts((prev) => prev.filter((d) => d.member.id !== detection.member.id))
+    showToast(`המידות של ${detection.member.name} עודכנו בהצלחה ✨`)
+  }
+
+  function handleDismissGrowth(detection: GrowthDetection) {
+    setGrowthAlerts((prev) => prev.filter((d) => d.member.id !== detection.member.id))
+  }
+
   return (
     <ErrorBoundary>
     <View style={styles.outer}>
@@ -725,6 +759,32 @@ export default function App() {
             onAuth={handleAuth}
             onDismiss={() => setAuthModal(null)}
           />
+        )}
+
+        {growthAlerts.length > 0 && (
+          <View style={styles.growthBannerOverlay}>
+            {growthAlerts.map((d) => (
+              <View key={d.member.id} style={styles.growthBanner}>
+                <Text style={styles.growthBannerText}>{d.message}</Text>
+                <View style={styles.growthBannerActions}>
+                  <TouchableOpacity
+                    onPress={() => handleApproveGrowth(d)}
+                    activeOpacity={0.8}
+                    style={styles.growthApproveBtn}
+                  >
+                    <Text style={styles.growthApproveBtnText}>אישור עדכון ✨</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDismissGrowth(d)}
+                    activeOpacity={0.7}
+                    style={styles.growthDismissBtn}
+                  >
+                    <Text style={styles.growthDismissBtnText}>לא עכשיו</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
         )}
 
         {toast && (
@@ -778,4 +838,47 @@ const styles = StyleSheet.create({
   } as React.CSSProperties,
   toastEmoji: { fontSize: 20 },
   toastText: { fontWeight: '700', fontSize: 16, color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  growthBannerOverlay: {
+    position: 'absolute',
+    bottom: 100,
+    left: 16,
+    right: 16,
+    zIndex: 210,
+    gap: 8,
+  } as React.CSSProperties,
+  growthBanner: {
+    backgroundColor: '#E0FFF0',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderWidth: 2,
+    borderColor: '#1A1A1A',
+    boxShadow: '3px 3px 0 #00CC52',
+  } as React.CSSProperties,
+  growthBannerText: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 22,
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
+    marginBottom: 10,
+  },
+  growthBannerActions: { flexDirection: 'row', gap: 8 },
+  growthApproveBtn: {
+    backgroundColor: '#00FF66',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: '#1A1A1A',
+  } as React.CSSProperties,
+  growthApproveBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  growthDismissBtn: {
+    backgroundColor: '#FFFEF5',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: '#9A9A9A',
+  } as React.CSSProperties,
+  growthDismissBtnText: { fontSize: 14, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })
