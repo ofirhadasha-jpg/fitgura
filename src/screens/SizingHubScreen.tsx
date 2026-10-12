@@ -248,7 +248,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         )}
 
         <View style={styles.urlCard}>
-          <Text style={styles.urlLabel}>הדבק קישור למוצר מכל חנות:</Text>
+          <Text style={styles.urlLabel}>מצאת משהו שווה ברשת? שים פה לינק ונפצח לך את המידה 🕵️‍♂️✨</Text>
           <View style={styles.platformRow}>
             {['SHEIN', 'AliExpress', 'Temu', 'Zara'].map((p) => (
               <View key={p} style={styles.platformChip}><Text style={styles.platformChipText}>{p}</Text></View>
@@ -257,7 +257,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           <TextInput
             value={url}
             onChangeText={setUrl}
-            placeholder="https://www.shein.co.il/..."
+            placeholder="הדבק קישור משיין, עליאקספרס, Temu, זארה..."
             style={styles.urlInput}
             autoCapitalize="none"
             autoCorrect={false}
@@ -268,7 +268,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
             activeOpacity={0.8}
             style={[styles.analyzeBtn, (analyzing || !url.trim()) && styles.btnDisabled]}
           >
-            <Text style={styles.analyzeBtnText}>{analyzing ? 'מנתח...' : 'נתח מידה ✨'}</Text>
+            <Text style={styles.analyzeBtnText}>{analyzing ? 'מנתח...' : 'פצח לי מידה ✨'}</Text>
           </TouchableOpacity>
         </View>
 

@@ -196,7 +196,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
           {step === 'metrics' ? 'פרטים בסיסיים' : step === 'upload' ? 'סריקת AI אישית' : step === 'scanning' ? 'סורק מידות...' : step === 'result' ? 'סריקה הושלמה ✓' : 'גישה לגלריה'}
         </Text>
         <Text style={obStyles.headerSub}>
-          {step === 'metrics' ? 'כמה פרטים בסיסיים ונתחיל' : step === 'upload' ? 'העלה תמונה וה-AI ימצא את המידה המדויקת שלך' : step === 'scanning' ? 'בינה מלאכותית מנתחת את מבנה הגוף שלך' : step === 'result' ? 'אישור מידות ופרופיל מוכן' : 'אישור גישה לגלריה לעדכון אוטומטי של מידות'}
+          {step === 'metrics' ? 'כמה פרטים בסיסיים וה-AI ידע להתאים לך מידות בול בדיוק עבורך ✨' : step === 'upload' ? 'העלה תמונה וה-AI ימצא את המידה המדויקת שלך' : step === 'scanning' ? 'בינה מלאכותית מנתחת את מבנה הגוף שלך' : step === 'result' ? 'אישור מידות ופרופיל מוכן' : 'אישור גישה לגלריה לעדכון אוטומטי של מידות'}
         </Text>
       </View>
 
@@ -232,7 +232,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
             <View style={obStyles.scanInfoCard}>
               <Text style={obStyles.scanInfoTitle}>בוא נתחיל</Text>
               <Text style={{ fontSize: 14, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
-                כמה פרטים בסיסיים וה-AI ידע להתאים מידות בדיוק עבורך
+                כמה פרטים בסיסיים וה-AI ידע להתאים לך מידות בול בדיוק עבורך ✨
               </Text>
             </View>
 
@@ -278,6 +278,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                     keyboardType="numeric"
                     style={obStyles.metricsInput}
                   />
+                  <Text style={{ fontSize: 12, color: '#6B6B6B', marginTop: 4, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>עם או בלי עקבים? 😉</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 6, fontFamily: "'Permanent Marker', cursive" }}>משקל (ק"ג)</Text>
@@ -288,6 +289,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                     keyboardType="numeric"
                     style={obStyles.metricsInput}
                   />
+                  <Text style={{ fontSize: 12, color: '#6B6B6B', marginTop: 4, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>ששש... מבטיחים לא לגלות לאף אחד! 🤫🔒</Text>
                 </View>
               </View>
             </View>

@@ -56,7 +56,7 @@ export default function GalleryPreviewModal({
         </View>
 
         <Text style={styles.privacyNote}>
-          רק התמונות שתאשר ישלחו לניתוח המידות המאובטח ב-DeepSeek AI.
+          אל דאגה, התמונות נשארות אצלך בטלפון. ה-AI רק מציץ, מודד ונעלם 🙈🔒
         </Text>
 
         <View style={styles.thumbRow}>
@@ -94,7 +94,7 @@ export default function GalleryPreviewModal({
             activeOpacity={0.8}
             style={[styles.approveBtn, (processing || count === 0) && styles.btnDisabled]}
           >
-            <Text style={styles.approveBtnText}>אשר ושלח לדיוק ב-DeepSeek ✨</Text>
+            <Text style={styles.approveBtnText}>אשר ושלח לדיוק AI ✨</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onCancel}

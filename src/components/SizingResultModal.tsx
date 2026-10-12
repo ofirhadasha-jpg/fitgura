@@ -58,6 +58,11 @@ export default function SizingResultModal({
       <View style={styles.panel}>
         <View style={styles.header}>
           <Text style={styles.title}>תוצאת ניתוח מידה</Text>
+          {matchPercentage >= 90 && (
+            <View style={styles.fitBadge}>
+              <Text style={styles.fitBadgeText}>בול בשבילך! 👌</Text>
+            </View>
+          )}
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
             <Text style={styles.closeText}>×</Text>
           </TouchableOpacity>
@@ -80,7 +85,7 @@ export default function SizingResultModal({
           <View style={styles.matchBar}>
             <View style={[styles.matchBarFill, { width: `${matchPercentage}%`, backgroundColor: matchColor }]} />
           </View>
-          <Text style={[styles.matchPct, { color: matchColor }]}>{matchPercentage}% התאמה</Text>
+          <Text style={[styles.matchPct, { color: matchColor }]}>{matchPercentage >= 90 ? `מידה ${recommendedSize} תונח עלייך מושלם` : `${matchPercentage}% התאמה`}</Text>
         </View>
 
         {fitBreakdown && (
@@ -158,4 +163,6 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
   saveBtnText: { color: '#4A4A4A', fontSize: 14, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   btnDisabled: { opacity: 0.5 },
+  fitBadge: { backgroundColor: '#00CC52', borderRadius: 10, paddingVertical: 4, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#1A1A1A', marginTop: 8, alignSelf: 'center' },
+  fitBadgeText: { fontSize: 13, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
 })
