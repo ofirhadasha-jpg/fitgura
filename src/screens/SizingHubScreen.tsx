@@ -6,6 +6,7 @@ import GalleryPreviewModal, { type PreviewablePhoto } from '../components/Galler
 import type { Screen, User, ScannedSizes, ScanEntry, Product, FamilyMember } from '../types'
 import { supabase } from '../lib/supabase'
 import SizingResultModal, { type WardrobeItem, type FitBreakdown } from '../components/SizingResultModal'
+import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type CategoryMismatch } from '../components/CategoryMismatchModal'
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
 import { SKIMLINKS_PUBLISHER_ID } from '../lib/config'
@@ -56,6 +57,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const [galleryModalVisible, setGalleryModalVisible] = useState(false)
   const [galleryProcessing, setGalleryProcessing] = useState(false)
   const galleryInputRef = useRef<HTMLInputElement>(null)
+  const [mismatch, setMismatch] = useState<CategoryMismatch | null>(null)
+  const [pendingResult, setPendingResult] = useState<typeof result>(null)
+  const [overrideMismatch, setOverrideMismatch] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -110,7 +114,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       const analysisResult = await analyzeProductUrl(trimmed, scannedSizes, accuracy)
       const affiliateUrl = wrapAffiliateUrl(trimmed)
 
-      setResult({
+      const newResult = {
         visible: true,
         productName: analysisResult.productName,
         productImage: analysisResult.productImage,
@@ -121,7 +125,24 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         fitBreakdown: analysisResult.fitBreakdown,
         affiliateUrl,
         originalUrl: trimmed,
-      })
+      }
+
+      const productTarget = detectProductTarget(analysisResult.productName, analysisResult.category, trimmed)
+      const detected = checkCategoryMismatch(
+        productTarget,
+        scannedSizes.gender,
+        scannedSizes.ageGroup,
+        user?.name ?? 'אני',
+        familyMembers ?? [],
+      )
+
+      if (detected && !overrideMismatch) {
+        setPendingResult(newResult)
+        setMismatch(detected)
+        setResult(null)
+      } else {
+        setResult(newResult)
+      }
     } catch (err) {
       console.error('[SizingHub] Analysis failed:', err)
       if (err instanceof Error && err.message === 'NO_PROFILE') {
@@ -160,6 +181,62 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
 
   function handleBuy(affiliateUrl: string) {
     window.open(affiliateUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  function handleMismatchSwitch(profileId: string) {
+    const targetMember = (familyMembers ?? []).find((m) => m.id === profileId)
+    if (!targetMember?.scannedSizes) {
+      setMismatch(null)
+      setPendingResult(null)
+      return
+    }
+
+    void (async () => {
+      const trimmed = url.trim()
+      if (!trimmed || !pendingResult) {
+        setMismatch(null)
+        return
+      }
+
+      setAnalyzing(true)
+      try {
+        const reanalysis = await analyzeProductUrl(trimmed, targetMember.scannedSizes, targetMember.accuracy)
+        const affiliateUrl = wrapAffiliateUrl(trimmed)
+        setResult({
+          visible: true,
+          productName: reanalysis.productName,
+          productImage: reanalysis.productImage,
+          price: reanalysis.price,
+          platform: reanalysis.platform,
+          recommendedSize: reanalysis.recommendedSize,
+          matchPercentage: reanalysis.matchPercentage,
+          fitBreakdown: reanalysis.fitBreakdown,
+          affiliateUrl,
+          originalUrl: trimmed,
+        })
+      } catch (err) {
+        console.error('[SizingHub] Re-analysis for switched profile failed:', err)
+      } finally {
+        setAnalyzing(false)
+      }
+    })()
+
+    setMismatch(null)
+    setPendingResult(null)
+  }
+
+  function handleMismatchOverride() {
+    setOverrideMismatch(true)
+    if (pendingResult) {
+      setResult(pendingResult)
+    }
+    setMismatch(null)
+    setPendingResult(null)
+  }
+
+  function handleMismatchClose() {
+    setMismatch(null)
+    setPendingResult(null)
   }
 
   function handleUpsellTrigger() {
@@ -404,13 +481,21 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           matchPercentage={result.matchPercentage}
           fitBreakdown={result.fitBreakdown}
           affiliateUrl={result.affiliateUrl}
-          onClose={() => setResult(null)}
+          onClose={() => { setResult(null); setOverrideMismatch(false) }}
           onBuy={handleBuy}
           onSave={handleSaveToWardrobe}
           familyMembers={familyMembers ?? []}
           userName={user?.name}
         />
       )}
+
+      <CategoryMismatchModal
+        visible={mismatch !== null}
+        mismatch={mismatch}
+        onSwitchProfile={handleMismatchSwitch}
+        onOverride={handleMismatchOverride}
+        onClose={handleMismatchClose}
+      />
 
       <GalleryPreviewModal
         visible={galleryModalVisible}
