@@ -323,6 +323,7 @@ export default function App() {
   const [budget, setBudget] = useState<[number, number]>([0, 5000])
   const [user, setUser] = useState<User | null>(null)
   const [authModal, setAuthModal] = useState<{ pendingIdx: number } | null>(null)
+  const [pendingFamilyAdd, setPendingFamilyAdd] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [detectedDevice, setDetectedDevice] = useState<DetectedDevice | null>(null)
   const [scannedSizes, setScannedSizes] = useState<ScannedSizes | null>(null)
@@ -530,13 +531,19 @@ export default function App() {
   }, [wishlistItems, user, feedCatalog])
 
   function handleAuth(loggedInUser: User) {
+    const wasFamilyAdd = authModal?.pendingIdx === -1
     setUser(loggedInUser)
-    if (authModal) {
+    if (authModal && authModal.pendingIdx >= 0) {
       setWishlistItems((prev) => prev.includes(authModal.pendingIdx) ? prev : [...prev, authModal.pendingIdx])
       showToast('הפריט נשמר ב-Wishlist שלך! 💚')
     }
+    if (wasFamilyAdd) {
+      setPendingFamilyAdd((n) => n + 1)
+      changeScreen('profile')
+    } else {
+      changeScreen('hub')
+    }
     setAuthModal(null)
-    changeScreen('hub')
   }
 
   useEffect(() => {
@@ -766,13 +773,20 @@ export default function App() {
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} familyMembers={familyMembers} />}
-        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} />}
+        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} onRequestAuth={() => { setPendingFamilyAdd(1); setAuthModal({ pendingIdx: -1 }) }} reopenAddMemberSignal={pendingFamilyAdd} />}
         {screen === 'admin' && <AdminDashboard onNav={changeScreen} />}
 
-        {authModal && (
+        {authModal && authModal.pendingIdx >= 0 && (
           <AuthModal
             onAuth={handleAuth}
             onDismiss={() => setAuthModal(null)}
+          />
+        )}
+
+        {authModal && authModal.pendingIdx < 0 && (
+          <AuthModal
+            onAuth={handleAuth}
+            onDismiss={() => { setAuthModal(null); setPendingFamilyAdd(0) }}
           />
         )}
 

@@ -24,7 +24,7 @@ import { runAutonomousScan, analyzePhoto, recalculateAccuracyForGallery, compute
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices, onAddDevice, onRemoveDevice, familyMembers, setFamilyMembers, activeProfileId, setActiveProfileId }: {
+export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices, onAddDevice, onRemoveDevice, familyMembers, setFamilyMembers, activeProfileId, setActiveProfileId, onRequestAuth, reopenAddMemberSignal }: {
   onNav: (s: Screen) => void
   user: User | null
   onSignOut: () => void
@@ -44,6 +44,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   setFamilyMembers: (m: FamilyMember[] | ((prev: FamilyMember[]) => FamilyMember[])) => void
   activeProfileId: string
   setActiveProfileId: (id: string) => void
+  onRequestAuth?: () => void
+  reopenAddMemberSignal?: number
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -295,10 +297,32 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
   // Family member management
   const [showAddMember, setShowAddMember] = useState(false)
+  const [showFamilyAuthGate, setShowFamilyAuthGate] = useState(false)
   const [newMemberName, setNewMemberName] = useState('')
   const [newMemberCategory, setNewMemberCategory] = useState<FamilyCategory>('self')
   const [inviteLoading, setInviteLoading] = useState<string | null>(null)
   const [inviteToast, setInviteToast] = useState<string | null>(null)
+
+  // Reopen add-member sheet automatically after successful auth
+  useEffect(() => {
+    if (reopenAddMemberSignal && reopenAddMemberSignal > 0 && user) {
+      setShowFamilyAuthGate(false)
+      setShowAddMember(true)
+    }
+  }, [reopenAddMemberSignal, user])
+
+  function handleAddMemberPress() {
+    if (!user) {
+      setShowFamilyAuthGate(true)
+      return
+    }
+    setShowAddMember(true)
+  }
+
+  function handleAuthGateLogin() {
+    setShowFamilyAuthGate(false)
+    onRequestAuth?.()
+  }
 
   const CATEGORY_LABELS: Record<FamilyCategory, string> = {
     self: 'אני',
@@ -867,7 +891,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.familyHeader}>
             <Text style={profStyles.sizesTitle}>👤 פרופילים משפחתיים</Text>
             <TouchableOpacity
-              onPress={() => setShowAddMember(true)}
+              onPress={handleAddMemberPress}
               activeOpacity={0.7}
               style={profStyles.addMemberBtn}
             >
@@ -1463,6 +1487,39 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       />
 
       {/* Add Family Member Modal */}
+      {showFamilyAuthGate && (
+        <View style={profStyles.sheetOverlay}>
+          <TouchableOpacity onPress={() => setShowFamilyAuthGate(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
+          <View style={profStyles.sheet}>
+            <View style={profStyles.sheetHeaderRow}>
+              <Text style={profStyles.sheetTitle}>רוצה לנהל את המידות של כל המשפחה במקום אחד? 👨‍👩‍👧‍👦</Text>
+              <TouchableOpacity onPress={() => setShowFamilyAuthGate(false)} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
+                <Text style={{ color: '#4A4A4A', fontSize: 15 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ gap: 20 }}>
+              <Text style={[profStyles.sheetDesc, { fontSize: 14, lineHeight: 22 }]}>
+                הרשמה קצרה תאפשר לך לשמור ארון משפחתי, לקבל המלצות גודל מדויקות ולשתף קישורי עדכון מאובטחים עם בני המשפחה ✨
+              </Text>
+              <TouchableOpacity
+                onPress={handleAuthGateLogin}
+                activeOpacity={0.8}
+                style={[profStyles.formSubmitBtn, { backgroundColor: '#00FF66' }]}
+              >
+                <Text style={profStyles.formSubmitBtnText}>התחבר / הירשם עכשיו 🚀</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowFamilyAuthGate(false)}
+                activeOpacity={0.7}
+                style={[profStyles.confirmCancelBtn, { flex: 1 }]}
+              >
+                <Text style={profStyles.confirmCancelBtnText}>המשך כאיש קשר יחיד (אורח)</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {showAddMember && (
         <View style={profStyles.sheetOverlay}>
           <TouchableOpacity onPress={() => setShowAddMember(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
