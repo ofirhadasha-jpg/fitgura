@@ -41,6 +41,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const [accuracy, setAccuracy] = useState(72)
   const [wardrobe, setWardrobe] = useState<WardrobeItem[]>([])
   const [expandedWardrobe, setExpandedWardrobe] = useState<Set<string>>(new Set())
+  const [deleteTarget, setDeleteTarget] = useState<WardrobeItem | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
   const [result, setResult] = useState<{
     visible: boolean
     productName: string
@@ -61,6 +63,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const [mismatch, setMismatch] = useState<CategoryMismatch | null>(null)
   const [pendingResult, setPendingResult] = useState<typeof result>(null)
   const [overrideMismatch, setOverrideMismatch] = useState(false)
+  const [galleryToast, setGalleryToast] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -230,6 +233,29 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     window.open(affiliateUrl, '_blank', 'noopener,noreferrer')
   }
 
+  async function handleDeleteWardrobeItem(id: string) {
+    setRemovingId(id)
+    setDeleteTarget(null)
+    try {
+      const { error } = await supabase.from('fitted_wardrobe').delete().eq('id', id)
+      if (error) {
+        console.error('[SizingHub] Delete failed:', error)
+        setRemovingId(null)
+        return
+      }
+      setWardrobe((prev) => prev.filter((w) => w.id !== id))
+      setExpandedWardrobe((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    } catch (err) {
+      console.error('[SizingHub] Delete error:', err)
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
   function toggleWardrobeExpand(id: string) {
     setExpandedWardrobe((prev) => {
       const next = new Set(prev)
@@ -367,6 +393,12 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   }
 
   function handleUpsellTrigger() {
+    galleryInputRef.current?.click()
+  }
+
+  function handleGallerySync() {
+    setGalleryToast(true)
+    setTimeout(() => setGalleryToast(false), 2500)
     galleryInputRef.current?.click()
   }
 
@@ -590,6 +622,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                         <Text style={styles.wardrobeSizeText}>{item.recommendedSize}</Text>
                         <Text style={styles.wardrobeMatchText}>{item.matchPercentage}%</Text>
                       </View>
+                      <TouchableOpacity
+                        onPress={() => setDeleteTarget(item)}
+                        activeOpacity={0.6}
+                        style={styles.wardrobeDeleteBtn}
+                      >
+                        <Text style={styles.wardrobeDeleteBtnText}>🗑️</Text>
+                      </TouchableOpacity>
                     </View>
                     <TouchableOpacity
                       onPress={() => toggleWardrobeExpand(item.id)}
@@ -650,6 +689,47 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
             </View>
           )}
         </View>
+
+        {deleteTarget && (
+          <View style={styles.deleteOverlay}>
+            <TouchableOpacity onPress={() => setDeleteTarget(null)} activeOpacity={1} style={styles.deleteBackdrop} />
+            <View style={styles.deleteDialog}>
+              <Text style={styles.deleteDialogIcon}>🗑️</Text>
+              <Text style={styles.deleteDialogTitle}>להסיר את המוצר מהארון? 🗑️</Text>
+              <Text style={styles.deleteDialogSub} numberOfLines={2}>{decodeHtmlEntities(deleteTarget.productName)}</Text>
+              <View style={styles.deleteDialogBtns}>
+                <TouchableOpacity
+                  onPress={() => setDeleteTarget(null)}
+                  activeOpacity={0.7}
+                  style={styles.deleteCancelBtn}
+                >
+                  <Text style={styles.deleteCancelBtnText}>ביטול</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void handleDeleteWardrobeItem(deleteTarget.id)}
+                  activeOpacity={0.7}
+                  style={styles.deleteConfirmBtn}
+                >
+                  <Text style={styles.deleteConfirmBtnText}>הסר 🗑️</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        <TouchableOpacity
+          onPress={handleGallerySync}
+          activeOpacity={0.8}
+          style={styles.gallerySyncBtn}
+        >
+          <Text style={styles.gallerySyncBtnText}>סנכרון תמונות אוטומטי מהגלריה</Text>
+        </TouchableOpacity>
+
+        {galleryToast && (
+          <View style={styles.galleryToast} pointerEvents="none">
+            <Text style={styles.galleryToastText}>בחר 2-3 תמונות מהגלריה לניתוח ✨</Text>
+          </View>
+        )}
       </ScrollView>
 
       <BottomNav current="hub" onNav={onNav} isAdmin={user?.is_admin === true} />
@@ -762,4 +842,21 @@ const styles = StyleSheet.create({
   wardrobeProfileTagText: { fontSize: 12, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   wardrobeBuyBtn: { backgroundColor: '#00CC52', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, marginTop: 4 } as any,
   wardrobeBuyBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
+  wardrobeDeleteBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 4 },
+  wardrobeDeleteBtnText: { fontSize: 16 },
+  deleteOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 500, justifyContent: 'center', alignItems: 'center' },
+  deleteBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
+  deleteDialog: { backgroundColor: '#FFFEF5', borderRadius: 18, padding: 24, width: '85%', maxWidth: 380, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 12 } as any,
+  deleteDialogIcon: { fontSize: 36 },
+  deleteDialogTitle: { fontSize: 17, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Permanent Marker', cursive" },
+  deleteDialogSub: { fontSize: 13, color: '#6B6B6B', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  deleteDialogBtns: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  deleteCancelBtn: { flex: 1, backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
+  deleteCancelBtnText: { fontSize: 14, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  deleteConfirmBtn: { flex: 1, backgroundColor: '#FF4444', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  deleteConfirmBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
+  gallerySyncBtn: { backgroundColor: '#0891B2', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, marginTop: 4 } as any,
+  gallerySyncBtnText: { color: '#FFFEF5', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
+  galleryToast: { position: 'absolute', bottom: 90, left: 20, right: 20, backgroundColor: '#1A1A1A', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center', zIndex: 600, boxShadow: '2px 2px 0 #0891B2' as any } as any,
+  galleryToastText: { color: '#FFE566', fontSize: 14, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })
