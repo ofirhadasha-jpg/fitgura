@@ -57,7 +57,7 @@ export function SplashScreen({ onNext, onAuth }: { onNext: () => void; onAuth: (
             <Text style={splashStyles.subtitle}>AI POWERED</Text>
             <View style={splashStyles.subtitleLine} />
           </View>
-          <Text style={splashStyles.tagline}>בדיוק מה שחיפשת</Text>
+          <Text style={splashStyles.tagline}>זה מתאים לך</Text>
         </View>
 
         <View style={splashStyles.scanBadge}>
