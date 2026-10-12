@@ -17,8 +17,6 @@ import {
 } from '../types'
 import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type SizeRegion } from '../utils/sizeConverter'
 import { supabase } from '../lib/supabase'
-import SizingAccuracyUpgrade from '../components/SizingAccuracyUpgrade'
-import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
 import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
 import { runAutonomousScan, analyzePhoto, recalculateAccuracyForGallery, computeAccuracyForGallery } from '../services/sizingService'
 
@@ -801,17 +799,37 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           </View>
         )}
 
-        {/* Auto-update toggle */}
+        {/* PATH 1: AUTOMATIC ACCURACY & GALLERY SCAN — consolidated widget */}
         <View style={profStyles.card}>
+          <Text style={profStyles.sizesTitle}>📸 דיוק אוטומטי מהגלריה</Text>
+          <View style={profStyles.accuracyRow}>
+            <View style={profStyles.accuracyGaugeWrap}>
+              <View style={profStyles.accuracyGaugeTrack}>
+                <View style={[profStyles.accuracyGaugeFill, { width: `${currentAccuracy}%` }]} />
+              </View>
+              <Text style={profStyles.accuracyGaugeValue}>{currentAccuracy}%</Text>
+              <Text style={profStyles.accuracyGaugeLabel}>דיוק נוכחי</Text>
+            </View>
+            <View style={profStyles.accuracySide}>
+              <Text style={profStyles.accuracySideText}>{currentAccuracy >= 95 ? 'דיוק מרבי הושג!' : `${Math.min(scanGallery.length, 3)}/3 תמונות`}</Text>
+              <Text style={profStyles.accuracySideHint}>חזה · מותן · ירכיים · כתפיים</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={galleryAccess === 'granted' ? handleAutoScan : handleGrantGalleryAccess}
+            disabled={autoScanning}
+            activeOpacity={0.8}
+            style={[profStyles.autoScanBtn, autoScanning && profStyles.photoBtnDisabled]}
+          >
+            <Text style={{ fontSize: 18 }}>📸</Text>
+            <Text style={profStyles.autoScanBtnText}>דיוק אוטומטי מהגלריה</Text>
+          </TouchableOpacity>
+
           <View style={profStyles.toggleRow}>
             <View style={profStyles.toggleLeft}>
-              <View style={[profStyles.toggleIcon, { backgroundColor: autoUpdate ? '#E0FFF0' : '#F5F0E0' }]}>
-                <Text style={{ fontSize: 20 }}>🔄</Text>
-              </View>
-              <View>
-                <Text style={profStyles.toggleTitle}>עדכון מידות אוטומטי</Text>
-                <Text style={profStyles.toggleSub}>AI מעדכן מתמונות חדשות</Text>
-              </View>
+              <Text style={profStyles.toggleTitle}>עדכון מידות אוטומטי</Text>
+              <Text style={profStyles.toggleSub}>AI מעדכן מתמונות חדשות</Text>
             </View>
             <TouchableOpacity
               onPress={() => setAutoUpdate(!autoUpdate)}
@@ -821,22 +839,107 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
               <View style={[profStyles.toggleKnob, { left: autoUpdate ? 25 : 3 }]} />
             </TouchableOpacity>
           </View>
+
+          {autoScanning && (
+            <View style={profStyles.autoScanBox}>
+              <View style={profStyles.autoScanHeader}>
+                <Text style={{ fontSize: 24 }}>🔍</Text>
+                <Text style={profStyles.autoScanTitle}>{autoScanPhase || 'סורק...'}</Text>
+              </View>
+              <View style={profStyles.autoScanBar}>
+                <View style={[profStyles.autoScanBarFill, { width: `${autoScanProgress}%` }]} />
+              </View>
+              <Text style={profStyles.autoScanPct}>{Math.round(autoScanProgress)}%</Text>
+            </View>
+          )}
+
+          {galleryScanSuccess && !autoScanning && (
+            <View style={profStyles.galleryScanSuccessBox}>
+              <View style={profStyles.galleryScanSuccessHeader}>
+                <Text style={{ fontSize: 22 }}>✅</Text>
+                <Text style={profStyles.galleryScanSuccessTitle}>{galleryScanSuccess}</Text>
+              </View>
+              {galleryScanAccuracy != null && (
+                <View style={profStyles.galleryScanAccuracyBar}>
+                  <View style={[profStyles.galleryScanAccuracyFill, { width: `${galleryScanAccuracy}%` }]} />
+                </View>
+              )}
+            </View>
+          )}
+
+          {galleryError && (
+            <View style={{ backgroundColor: '#FFFACC', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1.5, borderColor: '#1A1A1A' }}>
+              <Text style={{ fontSize: 12, color: '#1A1A1A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
+                ⚠️ {galleryError}
+              </Text>
+            </View>
+          )}
+
+          {/* Clean gallery preview — only approved active photos */}
+          {scanGallery.length > 0 && !autoScanning && (
+            <View style={{ gap: 8, marginTop: 12 }}>
+              <View style={profStyles.combinedStrip}>
+                {scanGallery.slice(0, 4).map((scan) => (
+                  <View key={scan.id} style={profStyles.combinedThumbWrap}>
+                    <Image source={{ uri: scan.photoUrl }} style={profStyles.combinedThumb} />
+                    <TouchableOpacity
+                      onPress={() => handleRemoveScanPhoto(scan.id)}
+                      activeOpacity={0.7}
+                      style={profStyles.thumbRemoveBtn}
+                    >
+                      <Text style={{ fontSize: 10, color: '#FFFEF5', fontWeight: '700' }}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+              <Text style={profStyles.combinedStripSub}>
+                {scanGallery.length} תמונות פעילות · סריקה הבאה: {nextScanDate}
+              </Text>
+            </View>
+          )}
+
+          {lastAutoScan && !autoScanning && (
+            <View style={profStyles.lastScanInfo}>
+              <Text style={{ fontSize: 14 }}>✅</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={profStyles.lastScanText}>סריקה אחרונה: {lastAutoScan}</Text>
+                <Text style={profStyles.lastScanSub}>הסריקה הבאה תתבצע אוטומטית ב-{nextScanDate}</Text>
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* Current sizes */}
+        {/* PATH 2: MANUAL PHOTO UPLOAD */}
+        <View style={profStyles.card}>
+          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleManualUpload} />
+          <Text style={profStyles.sizesTitle}>העלאת תמונה ידנית</Text>
+          <Text style={profStyles.regionSub}>העלה תמונה ספציפית במקום לאשר גישה לגלריה</Text>
+          <TouchableOpacity
+            onPress={() => galleryUploadRef.current?.click()}
+            disabled={autoScanning}
+            activeOpacity={0.8}
+            style={[profStyles.manualUploadBtn, autoScanning && profStyles.photoBtnDisabled]}
+          >
+            <Text style={{ fontSize: 18 }}>📤</Text>
+            <Text style={profStyles.manualUploadBtnText}>העלאת תמונה ידנית</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* PATH 3: MANUAL DATA ENTRY — unified measurements */}
         <View style={profStyles.card}>
           <View style={profStyles.sizesHeader}>
-            <Text style={profStyles.sizesTitle}>📐 המידות הנוכחיות</Text>
+            <Text style={profStyles.sizesTitle}>📐 המידות שלי</Text>
             <TouchableOpacity
               onPress={() => editingSizes ? handleSaveSizes() : setEditingSizes(true)}
               activeOpacity={0.7}
               style={[profStyles.editBtn, editingSizes && profStyles.editBtnActive]}
             >
               <Text style={[profStyles.editBtnText, editingSizes && profStyles.editBtnTextActive]}>
-                {editingSizes ? 'אישור ושמירה' : 'ערוך ידנית'}
+                {editingSizes ? '✓ שמור' : 'עריכה ידנית ✏️'}
               </Text>
             </TouchableOpacity>
           </View>
+
           <View style={profStyles.sizesGrid}>
             {[
               { label: 'מידת חולצה', value: profTop, options: TOP_SIZES, set: handleProfTopChange },
@@ -862,37 +965,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
               </View>
             ))}
           </View>
-          <Text style={profStyles.sizeRegionHint}>מידת המכנסיים נשמרת כ-{formatFullPantsSizeLabel(profBottom)}</Text>
-        </View>
 
-        <View style={profStyles.card}>
-          <Text style={profStyles.sizesTitle}>אזור מידות מועדף</Text>
-          <Text style={profStyles.regionSub}>בחר כיצד להציג מידות באפליקציה</Text>
-          <View style={profStyles.regionOptionsRow}>
-            {SIZE_REGION_OPTIONS.map((region) => (
-              <TouchableOpacity
-                key={region}
-                onPress={() => setPreferredRegion(region)}
-                activeOpacity={0.75}
-                style={[profStyles.regionOption, preferredRegion === region && profStyles.regionOptionActive]}
-              >
-                <Text style={[profStyles.regionOptionText, preferredRegion === region && profStyles.regionOptionTextActive]}>
-                  {SIZE_REGION_LABELS[region]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Body metrics editing — height/weight with proportional recalculation */}
-        {scannedSizes?.sizing.bodyMetrics && (
-          <View style={profStyles.card}>
-            <View style={profStyles.sizesHeader}>
-              <Text style={profStyles.sizesTitle}>📏 מידות גוף מדויקות</Text>
-              <Text style={{ fontSize: 11, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
-                שינוי גובה/משקל מעדכן אוטומטית חזה, מותן, ירכיים וכתפיים
-              </Text>
-            </View>
+          {scannedSizes?.sizing.bodyMetrics && (
             <View style={profStyles.bodyMetricsGrid}>
               {[
                 { label: 'גובה', value: scannedSizes.sizing.bodyMetrics.estimated_height_cm, unit: 'ס"מ', onChange: handleProfHeightChange },
@@ -916,8 +990,25 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                 </View>
               ))}
             </View>
+          )}
+
+          <Text style={profStyles.sizeRegionHint}>מידת המכנסיים נשמרת כ-{formatFullPantsSizeLabel(profBottom)}</Text>
+
+          <View style={profStyles.regionOptionsRow}>
+            {SIZE_REGION_OPTIONS.map((region) => (
+              <TouchableOpacity
+                key={region}
+                onPress={() => setPreferredRegion(region)}
+                activeOpacity={0.75}
+                style={[profStyles.regionOption, preferredRegion === region && profStyles.regionOptionActive]}
+              >
+                <Text style={[profStyles.regionOptionText, preferredRegion === region && profStyles.regionOptionTextActive]}>
+                  {SIZE_REGION_LABELS[region]}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
+        </View>
 
         {/* My Devices */}
         <View style={profStyles.card}>
@@ -960,234 +1051,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <Text style={profStyles.devicesNote}>Fitgura ישאב התאמות לכל מכשיר ברשימה</Text>
         </View>
 
-        {/* Contextual upsell banner — upgrade accuracy to 95%+ */}
-        <ContextualUpsellBanner
-          accuracy={currentAccuracy}
-          onTrigger={handleGrantGalleryAccess}
-          variant="profile"
-        />
 
-        {/* Sizing accuracy upgrade — guided multi-photo flow */}
-        <SizingAccuracyUpgrade
-          user={user}
-          scannedSizes={scannedSizes}
-          setScannedSizes={setScannedSizes}
-          scanGallery={scanGallery}
-          setScanGallery={setScanGallery}
-          baselinePhotoUrl={profilePhotoUrl}
-        />
-
-        {/* AI scan gallery */}
-        <View style={profStyles.card}>
-          <input ref={galleryUploadRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleManualUpload} />
-          <View style={profStyles.galleryHeader}>
-            <View>
-              <Text style={profStyles.galleryTitle}>🖼️ גלריית סריקות AI</Text>
-              <Text style={profStyles.gallerySub}>{scanGallery.length} תמונות שלך למדידה משולבת</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              {galleryAccess === 'granted' ? (
-                <View style={profStyles.galleryAccessBadge}>
-                  <View style={profStyles.galleryAccessDot} />
-                  <Text style={profStyles.galleryAccessText}>גישה אושרה</Text>
-                </View>
-              ) : galleryAccess === 'denied' ? (
-                <TouchableOpacity onPress={handleGrantGalleryAccess} activeOpacity={0.7}>
-                  <View style={[profStyles.galleryAccessBadge, { backgroundColor: '#FFFACC' }]}>
-                    <Text style={{ fontSize: 12 }}>⚠️</Text>
-                    <Text style={[profStyles.galleryAccessText, { color: '#1A1A1A' }]}>אשר גישה</Text>
-                  </View>
-                </TouchableOpacity>
-              ) : null}
-              <Text style={profStyles.galleryNextScan}>סריקה הבאה: {nextScanDate}</Text>
-            </View>
-          </View>
-
-          {/* Gallery access status / explanation */}
-          {galleryAccess !== 'granted' && (
-            <View style={profStyles.galleryAccessPrompt}>
-              <Text style={{ fontSize: 28 }}>🖼️</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={profStyles.galleryAccessPromptTitle}>
-                  {galleryAccess === 'denied' ? 'גישה לגלריה נדרשת לעדכון אוטומטי' : 'אשר גישה לגלריה לעדכון אוטומטי'}
-                </Text>
-                <Text style={profStyles.galleryAccessPromptSub}>
-                  ה-AI יסרוק את התמונות האחרונות שלך פעם בשבוע, יזהה את הפנים שלך, ויעדכן את המידות אוטומטית — ללא כל פעולה מצידך
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={handleGrantGalleryAccess}
-                activeOpacity={0.8}
-                style={profStyles.galleryAccessGrantBtn}
-              >
-                <Text style={profStyles.galleryAccessGrantBtnText}>אשר</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Auto-scan progress */}
-          {autoScanning && (
-            <View style={profStyles.autoScanBox}>
-              <View style={profStyles.autoScanHeader}>
-                <Text style={{ fontSize: 24 }}>🔍</Text>
-                <Text style={profStyles.autoScanTitle}>{autoScanPhase || 'סורק...'}</Text>
-              </View>
-              <View style={profStyles.autoScanBar}>
-                <View style={[profStyles.autoScanBarFill, { width: `${autoScanProgress}%` }]} />
-              </View>
-              <Text style={profStyles.autoScanPct}>{Math.round(autoScanProgress)}%</Text>
-            </View>
-          )}
-
-          {galleryScanSuccess && !autoScanning && (
-            <View style={profStyles.galleryScanSuccessBox}>
-              <View style={profStyles.galleryScanSuccessHeader}>
-                <Text style={{ fontSize: 22 }}>✅</Text>
-                <Text style={profStyles.galleryScanSuccessTitle}>{galleryScanSuccess}</Text>
-              </View>
-              {galleryScanAccuracy != null && (
-                <View style={profStyles.galleryScanAccuracyBar}>
-                  <View style={[profStyles.galleryScanAccuracyFill, { width: `${galleryScanAccuracy}%` }]} />
-                </View>
-              )}
-            </View>
-          )}
-
-          {galleryError && (
-            <View style={{ backgroundColor: '#FFFACC', borderRadius: 10, padding: 10, marginBottom: 10, borderWidth: 1.5, borderColor: '#1A1A1A' }}>
-              <Text style={{ fontSize: 12, color: '#1A1A1A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>
-                ⚠️ {galleryError}
-              </Text>
-            </View>
-          )}
-
-          {/* Scan now button */}
-          {galleryAccess === 'granted' && !autoScanning && (
-            <TouchableOpacity
-              onPress={handleAutoScan}
-              activeOpacity={0.8}
-              style={profStyles.scanNowBtn}
-            >
-              <Text style={{ fontSize: 18 }}>🔄</Text>
-              <Text style={profStyles.scanNowBtnText}>סרוק גלריה עכשיו</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Last scan info */}
-          {lastAutoScan && !autoScanning && (
-            <View style={profStyles.lastScanInfo}>
-              <Text style={{ fontSize: 14 }}>✅</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={profStyles.lastScanText}>סריקה אחרונה: {lastAutoScan}</Text>
-                <Text style={profStyles.lastScanSub}>הסריקה הבאה תתבצע אוטומטית ב-{nextScanDate}</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Gallery photos */}
-          {scanGallery.length === 0 ? (
-            <View style={profStyles.galleryEmptyBox}>
-              <Text style={{ fontSize: 32 }}>📸</Text>
-              <Text style={profStyles.galleryEmptyTitle}>אין תמונות בגלריה עדיין</Text>
-              <Text style={profStyles.galleryEmptySub}>
-                {galleryAccess === 'granted'
-                  ? 'ה-AI יסרוק אוטומטית את הגלריה שלך כל שבוע וימצא תמונות חדשות שלך. ניתן גם ללחוץ "סרוק גלריה עכשיו" או להעלות תמונה ידנית.'
-                  : 'אשר גישה לגלריה כדי שה-AI יוכל לסרוק אוטומטית ולמצוא תמונות שלך.'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => galleryUploadRef.current?.click()}
-                activeOpacity={0.8}
-                style={profStyles.manualUploadLink}
-              >
-                <Text style={profStyles.manualUploadLinkText}>או העלה תמונה ידנית</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              {/* Combined measurement strip */}
-              <View style={profStyles.combinedStrip}>
-                {scanGallery.slice(0, 3).map((scan) => (
-                  <View key={scan.id} style={profStyles.combinedThumbWrap}>
-                    <Image source={{ uri: scan.photoUrl }} style={profStyles.combinedThumb} />
-                    <View style={profStyles.combinedThumbLabel}>
-                      <Text style={profStyles.combinedThumbLabelTxt}>
-                        {scan.isBaseline ? 'הרשמה' : scan.source.includes('אוטומטית') ? 'גלריה' : 'ידנית'}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-              <Text style={profStyles.combinedStripSub}>
-                מדידה משולבת מ-{Math.min(scanGallery.length, 3)} תמונות שלך — תמונת ההרשמה והתמונות האחרונות שזוהו מהגלריה
-              </Text>
-
-              <View style={profStyles.galleryStatusBar}>
-                <View style={profStyles.galleryStatusDot} />
-                <View style={{ flex: 1 }}>
-                  <Text style={profStyles.galleryStatusTitle}>
-                    AI שילב {Math.min(scanGallery.length, 3)} תמונות למדידה מדויקת
-                  </Text>
-                  <Text style={profStyles.galleryStatusSub}>
-                    התמונות נבחרו לפי חותמת הזמן האחרונה מהגלריה שלך — רק תמונות שלך
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 18 }}>🔄</Text>
-              </View>
-
-              <View style={{ gap: 10 }}>
-                {scanGallery.map((scan, i) => (
-                  <View key={scan.id} style={[profStyles.scanRow, { backgroundColor: i === 0 ? '#E0FFF0' : '#FFFEF5', borderColor: i === 0 ? '#00FF66' : '#9A9A9A' }]}>
-                    <View style={profStyles.scanThumbWrap}>
-                      <Image source={{ uri: scan.photoUrl }} style={profStyles.scanThumb} />
-                      {i === 0 && <View style={profStyles.scanThumbBadge}><Text style={{ fontSize: 9, color: '#1A1A1A' }}>✓</Text></View>}
-                      {!scan.isBaseline && <View style={profStyles.scanWeeklyBadge}><Text style={{ fontSize: 9, color: '#1A1A1A' }}>🔄</Text></View>}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <View>
-                          <Text style={profStyles.scanDate}>{scan.date} · {scan.time}</Text>
-                          <View style={profStyles.scanSourceRow}>
-                            <View style={[profStyles.scanSourceBadge, { backgroundColor: scan.isBaseline ? '#F5F0E0' : '#FFFACC' }]}>
-                              <Text style={[profStyles.scanSourceText, { color: scan.isBaseline ? '#4A4A4A' : '#1A1A1A' }]}>{scan.source}</Text>
-                            </View>
-                          </View>
-                        </View>
-                        <Text style={[profStyles.scanConf, { color: i === 0 ? '#00CC52' : '#9A9A9A' }]}>{scan.confidence}%</Text>
-                      </View>
-                      <View style={profStyles.scanChips}>
-                        {[`חולצה: ${scan.top}`, `מכנסיים: ${scan.bottom}`, scan.fit].map((label) => (
-                          <View key={label} style={[profStyles.scanChip, { backgroundColor: i === 0 ? '#E0FFF0' : '#F5F0E0' }]}>
-                            <Text style={[profStyles.scanChipText, { color: i === 0 ? '#00CC52' : '#4A4A4A' }]}>{label}</Text>
-                          </View>
-                        ))}
-                      </View>
-                      {scan.delta && (
-                        <View style={profStyles.scanDeltaRow}>
-                          {Object.entries(scan.delta).filter(([k]) => k !== 'summary').map(([k, d]) => (
-                            <View key={k} style={profStyles.scanDeltaBadge}>
-                              <Text style={profStyles.scanDeltaText}>↔ {d}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                      <View style={profStyles.scanConfBar}>
-                        <View style={[profStyles.scanConfBarFill, { width: `${scan.confidence}%`, backgroundColor: i === 0 ? '#00FF66' : '#9A9A9A' }]} />
-                      </View>
-                      <TouchableOpacity onPress={() => handleRemoveScanPhoto(scan.id)} activeOpacity={0.7} style={profStyles.scanDeleteBtn}>
-                        <Text style={{ fontSize: 13 }}>🗑️</Text>
-                        <Text style={profStyles.scanDeleteBtnText}>הסר</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-
-          <Text style={profStyles.galleryNote}>
-            הגלריה נסרקת אוטומטית כל שבוע · ה-AI מזהה את הפנים שלך ומעדכן מידות · ניתן גם להעלות תמונה ידנית
-          </Text>
-        </View>
 
         {/* Family CTA */}
         <TouchableOpacity activeOpacity={0.7} style={profStyles.familyCTA}>
@@ -1627,4 +1491,18 @@ const profStyles = StyleSheet.create({
   confirmCancelBtnText: { color: '#2D2D2D', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
   confirmDeleteBtn: { flex: 1, padding: 14, borderRadius: 8 as any, backgroundColor: '#1A1A1A', alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' as any },
   confirmDeleteBtnText: { color: '#FFE566', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  accuracyRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginVertical: 12 },
+  accuracyGaugeWrap: { width: 122, alignItems: 'center' },
+  accuracyGaugeTrack: { width: 122, height: 18, borderRadius: 12, backgroundColor: '#F5F0E0', overflow: 'hidden', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  accuracyGaugeFill: { height: '100%', backgroundColor: '#00CC52' },
+  accuracyGaugeValue: { fontSize: 28, fontWeight: '800', color: '#1A1A1A', marginTop: 3, fontFamily: "'Permanent Marker', cursive" },
+  accuracyGaugeLabel: { fontSize: 11, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  accuracySide: { flex: 1, gap: 7 },
+  accuracySideText: { fontSize: 13, fontWeight: '700', color: '#00CC52', textAlign: 'right', fontFamily: "'Permanent Marker', cursive" },
+  accuracySideHint: { fontSize: 10, color: '#4A4A4A', textAlign: 'right', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  autoScanBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#00FF66', borderRadius: 12 as any, paddingVertical: 13, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any },
+  autoScanBtnText: { color: '#1A1A1A', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  manualUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F5F0E0', borderRadius: 12 as any, paddingVertical: 13, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any },
+  manualUploadBtnText: { color: '#1A1A1A', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  thumbRemoveBtn: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(26,26,26,0.75)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFFEF5' },
 })
