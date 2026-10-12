@@ -11,6 +11,7 @@ import { FeedScreen } from './screens/FeedScreen'
 import { SizingHubScreen } from './screens/SizingHubScreen'
 import { EventsScreen } from './screens/EventsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
+import { RemoteUpdateScreen } from './screens/RemoteUpdateScreen'
 
 import { AdminDashboard } from './pages/AdminDashboard'
 import { startSession, endSession, updateLastSeen } from './services/trackingService'
@@ -338,6 +339,7 @@ export default function App() {
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
   const [activeProfileId, setActiveProfileId] = useState<string>('self')
   const [growthAlerts, setGrowthAlerts] = useState<GrowthDetection[]>([])
+  const [inviteToken, setInviteToken] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -451,6 +453,15 @@ export default function App() {
       })()
     })
     return () => listener.subscription.unsubscribe()
+  }, [])
+
+  // Check for invite link in URL hash on mount
+  useEffect(() => {
+    const hash = window.location.hash
+    const inviteMatch = hash.match(/invite=([a-f0-9-]+)/i)
+    if (inviteMatch?.[1]) {
+      setInviteToken(inviteMatch[1])
+    }
   }, [])
 
   async function handleSignOut() {
@@ -744,6 +755,10 @@ export default function App() {
     <ErrorBoundary>
     <View style={styles.outer}>
       <View style={styles.phoneFrame}>
+      {inviteToken ? (
+        <RemoteUpdateScreen token={inviteToken} />
+      ) : (
+      <>
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} onAuth={handleAuth} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('hub')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('hub')} onDetected={handleDeviceDetected} />}
@@ -793,6 +808,8 @@ export default function App() {
             <Text style={styles.toastText}>{toast}</Text>
           </View>
         )}
+      </>
+      )}
       </View>
     </View>
     </ErrorBoundary>

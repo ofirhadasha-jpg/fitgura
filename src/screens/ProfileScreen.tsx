@@ -18,6 +18,7 @@ import {
 } from '../types'
 import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type SizeRegion } from '../utils/sizeConverter'
 import { supabase } from '../lib/supabase'
+import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
 import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
 import { runAutonomousScan, analyzePhoto, recalculateAccuracyForGallery, computeAccuracyForGallery } from '../services/sizingService'
 
@@ -295,6 +296,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [showAddMember, setShowAddMember] = useState(false)
   const [newMemberName, setNewMemberName] = useState('')
   const [newMemberCategory, setNewMemberCategory] = useState<FamilyCategory>('self')
+  const [inviteLoading, setInviteLoading] = useState<string | null>(null)
+  const [inviteToast, setInviteToast] = useState<string | null>(null)
 
   const CATEGORY_LABELS: Record<FamilyCategory, string> = {
     self: 'אני',
@@ -333,6 +336,54 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   function handleRemoveMember(id: string) {
     setFamilyMembers((prev) => prev.filter((m) => m.id !== id))
     if (activeProfileId === id) setActiveProfileId('self')
+  }
+
+  async function handleGenerateInvite(member: FamilyMember) {
+    if (!user) {
+      showPhotoToast('התחבר כדי לשלוח קישור הזמנה')
+      return
+    }
+    setInviteLoading(member.id)
+    try {
+      const { data: session } = await supabase.auth.getSession()
+      const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'generate',
+          memberName: member.name,
+          category: member.category,
+          familyMemberId: member.id,
+        }),
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.error ?? 'Failed to generate invite')
+      }
+      const data = await res.json()
+      if (data.inviteUrl) {
+        const shareData = {
+          title: 'פיטגורה - עדכון מידות',
+          text: `היי ${member.name}! עדכן/י את המידות שלך בפיטגורה 📲`,
+          url: data.inviteUrl,
+        }
+        if (navigator.share) {
+          await navigator.share(shareData)
+        } else {
+          await navigator.clipboard.writeText(data.inviteUrl)
+          setInviteToast('הקישור הועתק ללוח! הדבק אותו ושלח לבן המשפחה 📋')
+          setTimeout(() => setInviteToast(null), 3500)
+        }
+      }
+    } catch (err) {
+      console.error('[ProfileScreen] Invite generation failed:', err)
+      showPhotoToast('יצירת הקישור נכשלה')
+    } finally {
+      setInviteLoading(null)
+    }
   }
 
   function handleSelectMember(id: string) {
@@ -799,18 +850,31 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
               {activeProfileId === 'self' && <Text style={profStyles.memberChipBadge}>●</Text>}
             </TouchableOpacity>
             {familyMembers.map((m) => (
-              <TouchableOpacity
-                key={m.id}
-                onPress={() => handleSelectMember(m.id)}
-                activeOpacity={0.7}
-                style={[profStyles.memberChip, activeProfileId === m.id && profStyles.memberChipActive]}
-              >
-                <Text style={{ fontSize: 28 }}>{CATEGORY_EMOJIS[m.category]}</Text>
-                <Text style={[profStyles.memberChipName, activeProfileId === m.id && profStyles.memberChipNameActive]}>{m.name}</Text>
-                <TouchableOpacity onPress={() => handleRemoveMember(m.id)} activeOpacity={0.7} style={profStyles.memberRemoveBtn}>
-                  <Text style={{ fontSize: 10, color: '#9A9A9A' }}>✕</Text>
+              <View key={m.id} style={{ alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  onPress={() => handleSelectMember(m.id)}
+                  activeOpacity={0.7}
+                  style={[profStyles.memberChip, activeProfileId === m.id && profStyles.memberChipActive]}
+                >
+                  <Text style={{ fontSize: 28 }}>{CATEGORY_EMOJIS[m.category]}</Text>
+                  <Text style={[profStyles.memberChipName, activeProfileId === m.id && profStyles.memberChipNameActive]}>{m.name}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveMember(m.id)} activeOpacity={0.7} style={profStyles.memberRemoveBtn}>
+                    <Text style={{ fontSize: 10, color: '#9A9A9A' }}>✕</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
+                {m.category !== 'self' && (
+                  <TouchableOpacity
+                    onPress={() => handleGenerateInvite(m)}
+                    disabled={inviteLoading === m.id}
+                    activeOpacity={0.7}
+                    style={profStyles.inviteBtn}
+                  >
+                    <Text style={profStyles.inviteBtnText}>
+                      {inviteLoading === m.id ? '⏳' : 'שלח קישור לעדכון עצמי 📲'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             ))}
           </ScrollView>
         </View>
@@ -878,6 +942,12 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         {photoToast && (
           <View style={profStyles.photoToast}>
             <Text style={profStyles.photoToastText}>✓ {photoToast}</Text>
+          </View>
+        )}
+
+        {inviteToast && (
+          <View style={profStyles.photoToast}>
+            <Text style={profStyles.photoToastText}>📋 {inviteToast}</Text>
           </View>
         )}
 
@@ -1666,4 +1736,6 @@ const profStyles = StyleSheet.create({
   memberChipNameActive: { color: '#1A1A1A' },
   memberChipBadge: { fontSize: 10, color: '#00CC52', fontWeight: '700' },
   memberRemoveBtn: { position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#9A9A9A' },
+  inviteBtn: { backgroundColor: '#E0F2FE', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#0891B2', marginTop: 6, maxWidth: 200 },
+  inviteBtnText: { fontSize: 11, fontWeight: '700', color: '#0891B2', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
 })

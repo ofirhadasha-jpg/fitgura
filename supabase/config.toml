@@ -1,2 +1,5 @@
 [functions.analyze-product]
 verify_jwt = false
+
+[functions.profile-invite]
+verify_jwt = false
