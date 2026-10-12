@@ -9,6 +9,7 @@ const FETCH_TIMEOUT_MS = 4000
 export interface ProductAnalysisResult {
   productName: string
   productImage: string | null
+  price: string | null
   platform: string
   category: string
   recommendedSize: string
@@ -21,6 +22,7 @@ export interface ProductAnalysisResult {
 interface EdgeFunctionResponse {
   productName: string | null
   productImage: string | null
+  price: string | null
   platform: string
   category: string
   sizeChart: SellerSizeEntry[]
@@ -97,18 +99,24 @@ function fallbackAnalysis(url: string): EdgeFunctionResponse {
   else if (lower.includes('temu')) platform = 'Temu'
   else if (lower.includes('zara')) platform = 'ZARA'
 
-  let productName = 'מוצר'
+  let productName = 'מוצר מרשת'
   try {
     const u = new URL(url)
     const parts = u.pathname.split('/').filter(Boolean)
-    const last = parts[parts.length - 1] ?? ''
-    const decoded = decodeURIComponent(last.replace(/[-_]/g, ' ').replace(/\.\w+$/, ''))
-    if (decoded) productName = decoded.slice(0, 60)
+    // Try to find a descriptive path segment (not a numeric ID)
+    const descPart = parts.find((p) => /[a-zA-Zא-ת]/.test(decodeURIComponent(p)) && !/^\d+$/.test(p))
+    const last = descPart ?? parts[parts.length - 1] ?? ''
+    const decoded = decodeURIComponent(last.replace(/[-_]/g, ' ').replace(/\.\w+$/, '').replace(/\b\d+\b/g, '').trim())
+    if (decoded && decoded.length > 2) {
+      // Capitalize first letter for cleaner look
+      productName = decoded.charAt(0).toUpperCase() + decoded.slice(1, 60)
+    }
   } catch { /* keep default */ }
 
   return {
     productName,
     productImage: null,
+    price: null,
     platform,
     category: 'clothing',
     sizeChart: [],
@@ -203,6 +211,7 @@ export async function analyzeProductUrl(
   return {
     productName: analysis.productName,
     productImage: analysis.productImage,
+    price: analysis.price,
     platform: analysis.platform,
     category: analysis.category,
     recommendedSize,

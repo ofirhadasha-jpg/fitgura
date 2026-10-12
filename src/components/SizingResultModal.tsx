@@ -12,6 +12,7 @@ export interface WardrobeItem {
   productUrl: string
   productName: string
   productImage: string | null
+  price: string | null
   platform: string
   recommendedSize: string
   matchPercentage: number
@@ -23,6 +24,7 @@ interface SizingResultModalProps {
   visible: boolean
   productName: string
   productImage: string | null
+  price: string | null
   platform: string
   recommendedSize: string
   matchPercentage: number
@@ -38,6 +40,7 @@ export default function SizingResultModal({
   visible,
   productName,
   productImage,
+  price,
   platform,
   recommendedSize,
   matchPercentage,
@@ -75,8 +78,13 @@ export default function SizingResultModal({
         )}
 
         <Text style={styles.productName}>{productName}</Text>
-        <View style={styles.platformBadge}>
-          <Text style={styles.platformText}>{platform}</Text>
+        <View style={styles.productMetaRow}>
+          <View style={styles.platformBadge}>
+            <Text style={styles.platformText}>{platform}</Text>
+          </View>
+          {price && (
+            <Text style={styles.priceText}>{price}</Text>
+          )}
         </View>
 
         <View style={[styles.sizeCard, { borderColor: matchColor }]}>
@@ -142,7 +150,9 @@ const styles = StyleSheet.create({
   imageWrap: { alignItems: 'center', marginBottom: 12 },
   productImage: { width: 120, height: 140, borderRadius: 12, borderWidth: 1.5, borderColor: '#1A1A1A', resizeMode: 'cover' as any },
   productName: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', marginBottom: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  platformBadge: { alignSelf: 'center', backgroundColor: '#FFFACC', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 10, borderWidth: 1, borderColor: '#FFE566', marginBottom: 14 },
+  platformBadge: { backgroundColor: '#FFFACC', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 10, borderWidth: 1, borderColor: '#FFE566' },
+  productMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 14 },
+  priceText: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   platformText: { fontSize: 12, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   sizeCard: { backgroundColor: '#FFFEF5', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 2, marginBottom: 14, boxShadow: '2px 2px 0 #1A1A1A' as any } as any,
   sizeLabel: { fontSize: 13, color: '#6B6B6B', marginBottom: 4, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },

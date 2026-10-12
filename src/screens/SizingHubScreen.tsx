@@ -38,6 +38,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     visible: boolean
     productName: string
     productImage: string | null
+    price: string | null
     platform: string
     recommendedSize: string
     matchPercentage: number
@@ -76,6 +77,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         productUrl: row.product_url as string,
         productName: row.product_name as string ?? 'מוצר',
         productImage: row.product_image as string | null,
+        price: row.price as string | null,
         platform: row.platform as string ?? 'חנות',
         recommendedSize: row.recommended_size as string ?? '-',
         matchPercentage: row.match_percentage as number ?? 0,
@@ -107,6 +109,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         visible: true,
         productName: analysisResult.productName,
         productImage: analysisResult.productImage,
+        price: analysisResult.price,
         platform: analysisResult.platform,
         recommendedSize: analysisResult.recommendedSize,
         matchPercentage: analysisResult.matchPercentage,
@@ -133,6 +136,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           product_url: result.originalUrl,
           product_name: result.productName,
           product_image: result.productImage,
+          price: result.price,
           platform: result.platform,
           recommended_size: result.recommendedSize,
           match_percentage: result.matchPercentage,
@@ -311,12 +315,25 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                   activeOpacity={0.7}
                   style={styles.wardrobeItem}
                 >
-                  {item.productImage && (
-                    <Image source={{ uri: item.productImage }} style={styles.wardrobeThumb} />
-                  )}
+                  <View style={styles.wardrobeThumbWrap}>
+                    {item.productImage ? (
+                      <Image source={{ uri: item.productImage }} style={styles.wardrobeThumb} />
+                    ) : (
+                      <View style={styles.wardrobeThumbPlaceholder}>
+                        <Text style={styles.wardrobeThumbPlaceholderText}>👕</Text>
+                      </View>
+                    )}
+                  </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.wardrobeItemName}>{item.productName}</Text>
-                    <Text style={styles.wardrobeItemPlatform}>{item.platform}</Text>
+                    <Text style={styles.wardrobeItemName} numberOfLines={2}>{item.productName}</Text>
+                    <View style={styles.wardrobeMetaRow}>
+                      <View style={styles.wardrobeStoreBadge}>
+                        <Text style={styles.wardrobeStoreText}>{item.platform}</Text>
+                      </View>
+                      {item.price && (
+                        <Text style={styles.wardrobePriceText}>{item.price}</Text>
+                      )}
+                    </View>
                   </View>
                   <View style={styles.wardrobeSizeBadge}>
                     <Text style={styles.wardrobeSizeText}>{item.recommendedSize}</Text>
@@ -336,6 +353,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           visible={result.visible}
           productName={result.productName}
           productImage={result.productImage}
+          price={result.price}
           platform={result.platform}
           recommendedSize={result.recommendedSize}
           matchPercentage={result.matchPercentage}
@@ -391,9 +409,15 @@ const styles = StyleSheet.create({
   wardrobeEmptyText: { fontSize: 15, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Permanent Marker', cursive" },
   wardrobeEmptySub: { fontSize: 13, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   wardrobeItem: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFEF5', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any } as any,
-  wardrobeThumb: { width: 48, height: 56, borderRadius: 8, borderWidth: 1, borderColor: '#1A1A1A', resizeMode: 'cover' as any },
-  wardrobeItemName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  wardrobeItemPlatform: { fontSize: 12, color: '#9A9A9A', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeThumbWrap: { width: 56, height: 56, borderRadius: 10, borderWidth: 1.5, borderColor: '#1A1A1A', overflow: 'hidden' as any, flexShrink: 0 },
+  wardrobeThumb: { width: '100%', height: '100%', resizeMode: 'cover' as any },
+  wardrobeThumbPlaceholder: { width: '100%', height: '100%', backgroundColor: '#F5F0E0', alignItems: 'center', justifyContent: 'center' },
+  wardrobeThumbPlaceholderText: { fontSize: 24 },
+  wardrobeItemName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", lineHeight: 18, marginBottom: 4 },
+  wardrobeMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wardrobeStoreBadge: { backgroundColor: '#FFFACC', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 6, borderWidth: 1, borderColor: '#FFE566' },
+  wardrobeStoreText: { fontSize: 10, fontWeight: '600', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobePriceText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   wardrobeSizeBadge: { backgroundColor: '#E0FFF0', borderRadius: 10, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#00CC52', alignItems: 'center' },
   wardrobeSizeText: { fontSize: 16, fontWeight: '800', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
   wardrobeMatchText: { fontSize: 11, color: '#00CC52', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },

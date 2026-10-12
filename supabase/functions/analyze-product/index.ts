@@ -18,6 +18,7 @@ interface SizeChartEntry {
 interface ProductAnalysis {
   productName: string | null
   productImage: string | null
+  price: string | null
   platform: string
   category: string
   sizeChart: SizeChartEntry[]
@@ -214,6 +215,7 @@ async function handleRequest(req: Request): Promise<Response> {
     let html = ""
     let productName: string | null = null
     let productImage: string | null = null
+    let price: string | null = null
 
     try {
       html = await fetchProductPage(url)
@@ -226,6 +228,22 @@ async function handleRequest(req: Request): Promise<Response> {
         const imgMatch = html.match(/<img[^>]*src=["']([^"']*)["'][^>]*class=["'][^"']*product[^"']*["']/i)
         if (imgMatch) productImage = imgMatch[1]
       }
+
+      // Extract price from meta tags
+      const ogPrice = extractMetaContent(html, "product:price:amount")
+      const ogCurrency = extractMetaContent(html, "product:price:currency")
+      if (ogPrice) {
+        const currencySymbol = ogCurrency === "ILS" || ogCurrency === "₪" ? "₪" : ogCurrency === "USD" || ogCurrency === "$" ? "$" : ogCurrency === "EUR" || ogCurrency === "€" ? "€" : ""
+        price = `${currencySymbol} ${ogPrice}`
+      }
+      if (!price) {
+        // Fallback: search HTML for price patterns
+        const priceMatch = html.match(/(?:₪|\$|€|price["']?\s*[:=]\s*["']?)(\d+(?:\.\d{1,2})?)/i)
+        if (priceMatch) {
+          const symbol = priceMatch[0].match(/₪|\$|€/)
+          price = `${symbol ? symbol[0] : "₪"} ${priceMatch[1]}`
+        }
+      }
     } catch (fetchErr) {
       console.error("Product page fetch failed:", fetchErr)
     }
@@ -236,6 +254,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const result: ProductAnalysis = {
       productName: productName ?? null,
       productImage,
+      price,
       platform,
       category,
       sizeChart,

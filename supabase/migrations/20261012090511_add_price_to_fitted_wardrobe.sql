@@ -1,0 +1,1 @@
+ALTER TABLE fitted_wardrobe ADD COLUMN IF NOT EXISTS price text;
