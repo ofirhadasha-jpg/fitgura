@@ -16,6 +16,7 @@ import {
   fileToCompressedBase64,
   formatTimestamp, nextScanId,
 } from '../types'
+import { detectFace } from '../utils/faceDetection'
 
 const PENDING_SCAN_KEY = 'fitgura_pending_scan'
 
@@ -36,6 +37,8 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   const [baseHeight, setBaseHeight] = useState('')
   const [baseWeight, setBaseWeight] = useState('')
   const [faceMissing, setFaceMissing] = useState(false)
+  const [faceCheckError, setFaceCheckError] = useState(false)
+  const [faceChecking, setFaceChecking] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
@@ -63,6 +66,20 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
     previewUrlRef.current = null
 
     setScanError(null)
+    setFaceMissing(false)
+
+    setFaceChecking(true)
+    const faceResult = await detectFace(file)
+    setFaceChecking(false)
+
+    if (!faceResult.faceDetected) {
+      setFaceCheckError(true)
+      setFaceMissing(true)
+      setStep('result')
+      return
+    }
+    setFaceCheckError(false)
+
     const instantPreview = URL.createObjectURL(file)
     previewUrlRef.current = instantPreview
     setSizes({
@@ -339,6 +356,13 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
 
         {step === 'upload' && (
           <>
+            {faceChecking && (
+              <View style={{ alignItems: 'center', gap: 12, paddingVertical: 40 }}>
+                <Text style={{ fontSize: 32 }}>🔍</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" }}>מחפש פנים בתמונה...</Text>
+              </View>
+            )}
+            {!faceChecking && <>
             <BenefitCarousel />
 
             <View style={[obStyles.dropZone, dragOver && obStyles.dropZoneActive]}>
@@ -385,6 +409,8 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                 ))}
               </View>
             </View>
+            </>
+            }
           </>
         )}
 
@@ -392,9 +418,21 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         {step === 'result' && sizes && <ResultView onNext={() => setStep('gallery-access')} onScanned={onScanned} sizes={sizes} setSizes={setSizes} scanError={scanError} faceMissing={faceMissing} onRetake={resetScan} />}
         {step === 'result' && !sizes && (
           <View style={{ alignItems: 'center', gap: 16, paddingTop: 40 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
-            <Text style={{ fontSize: 16, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב, או המשך ללא סריקה.</Text>
-            {scanError && <Text style={{ fontSize: 13, color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center', marginTop: 4 }}>{scanError}</Text>}
+            {faceMissing ? (
+              <>
+                <Text style={{ fontSize: 40 }}>🤳</Text>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center' }}>לא זוהו פנים בתמונה</Text>
+                <Text style={{ fontSize: 15, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center', lineHeight: 22 }}>
+                  אנא העלה תמונה ברורה שבה רואים אותך כדי שנוכל להתאים את המידות ולמצוא תמונות נוספות שלך ✨
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif" }}>שגיאה בסריקה</Text>
+                <Text style={{ fontSize: 16, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' }}>אירעה שגיאה בניתוח התמונה. נסה שוב, או המשך ללא סריקה.</Text>
+                {scanError && <Text style={{ fontSize: 13, color: '#DC2626', fontFamily: "'Noto Sans Hebrew', sans-serif", textAlign: 'center', marginTop: 4 }}>{scanError}</Text>}
+              </>
+            )}
             <TouchableOpacity onPress={resetScan} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
               <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>נסה שוב</Text>
             </TouchableOpacity>

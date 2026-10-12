@@ -1,6 +1,7 @@
 import type { ScanEntry, ScannedSizes, BodyMetrics, AIBodyAnalysis } from '../types'
 import { aiAnalysisToScannedSizes, analyzeBodyImage, computeDelta, formatTimestamp, nextScanId, fileToCompressedBase64 } from '../types'
 import { supabase } from '../lib/supabase'
+import { computeImageHash, computeHashFromUrl, compareHashes } from '../utils/faceDetection'
 
 const DEEPSEEK_TIMEOUT_MS = 4000
 
@@ -416,10 +417,34 @@ export async function runGalleryScan(params: {
 
   onProgress({ phase: 'matching_faces', progress: 35, message: 'משווה תווי פנים עם תמונת הפרופיל...' })
 
-  const scored: { file: File; score: number }[] = []
+  // Compute baseline hash for strict deduplication
+  const baselineHash = baselinePhotoUrl ? await computeHashFromUrl(baselinePhotoUrl) : null
+  const seenHashes: string[] = []
+  if (baselineHash) seenHashes.push(baselineHash)
+  // Also collect hashes of existing gallery photos to avoid re-selecting them
+  for (const entry of existingGallery) {
+    if (entry.photoUrl) {
+      const h = await computeHashFromUrl(entry.photoUrl)
+      if (!h.startsWith('url_')) seenHashes.push(h)
+    }
+  }
+
+  const scored: { file: File; score: number; hash: string }[] = []
   for (let i = 0; i < candidates.length; i++) {
+    const fileHash = await computeImageHash(candidates[i])
+
+    // Strict deduplication: skip if perceptual hash matches baseline or any already-seen photo
+    let isDuplicate = false
+    for (const seen of seenHashes) {
+      if (compareHashes(fileHash, seen) > 0.92) {
+        isDuplicate = true
+        break
+      }
+    }
+    if (isDuplicate) continue
+
     const score = await visualMatchScore(baselinePhotoUrl, candidates[i])
-    scored.push({ file: candidates[i], score })
+    scored.push({ file: candidates[i], score, hash: fileHash })
     onProgress({
       phase: 'matching_faces',
       progress: 35 + Math.round(((i + 1) / candidates.length) * 25),
