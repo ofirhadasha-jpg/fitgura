@@ -282,7 +282,7 @@ const authStyles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(26,26,26,0.6)',
-    animationName: 'fadeIn',
+
     animationDuration: '0.2s',
     animationTimingFunction: 'ease-out',
     animationFillMode: 'both',
@@ -293,7 +293,6 @@ const authStyles = StyleSheet.create({
     overflow: 'hidden',
     width: 340,
     maxHeight: '90%',
-    animationName: 'popIn',
     animationDuration: '0.3s',
     animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
     animationFillMode: 'both',

@@ -297,9 +297,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidCatch(err: unknown) { console.error('App crash caught:', err) }
   handleRecover = () => {
-    this.setState({ hasError: false })
     sessionStorage.removeItem('fitgura_screen')
     sessionStorage.removeItem('fitgura_pending_scan')
+    window.location.reload()
   }
   render() {
     if (this.state.hasError) {
