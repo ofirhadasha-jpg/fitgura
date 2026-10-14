@@ -975,19 +975,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           </View>
         )}
 
-        <TouchableOpacity
-          onPress={handleGallerySync}
-          activeOpacity={0.8}
-          style={styles.gallerySyncBtn}
-        >
-          <Text style={styles.gallerySyncBtnText}>סנכרון תמונות אוטומטי מהגלריה</Text>
-        </TouchableOpacity>
 
-        {galleryToast && (
-          <View style={styles.galleryToast} pointerEvents="none">
-            <Text style={styles.galleryToastText}>בחר 2-3 תמונות מהגלריה לניתוח ✨</Text>
-          </View>
-        )}
       </ScrollView>
 
       <BottomNav current="hub" onNav={onNav} isAdmin={user?.is_admin === true} />
@@ -1175,10 +1163,6 @@ const styles = StyleSheet.create({
   deleteCancelBtnText: { fontSize: 14, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   deleteConfirmBtn: { flex: 1, backgroundColor: '#FF4444', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
   deleteConfirmBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
-  gallerySyncBtn: { backgroundColor: '#0891B2', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, marginTop: 4 } as any,
-  gallerySyncBtnText: { color: '#FFFEF5', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
-  galleryToast: { position: 'absolute', bottom: 90, left: 20, right: 20, backgroundColor: '#1A1A1A', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center', zIndex: 600, boxShadow: '2px 2px 0 #0891B2' as any } as any,
-  galleryToastText: { color: '#FFE566', fontSize: 14, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   permissionOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 550, justifyContent: 'center', alignItems: 'center' },
   permissionBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
   permissionDialog: { backgroundColor: '#FFFEF5', borderRadius: 20, padding: 28, width: '88%', maxWidth: 400, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 14 } as any,
