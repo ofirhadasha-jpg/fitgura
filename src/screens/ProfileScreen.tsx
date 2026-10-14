@@ -518,6 +518,71 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }
 
+  function createFallbackInviteToken(profileId: string): string {
+    const randomPart = typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    return `local-${profileId}-${randomPart}`
+  }
+
+  function buildInviteUrl(token: string, profileId: string): string {
+    const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
+    return `${appDomain}/join-family?token=${encodeURIComponent(token)}&profile=${encodeURIComponent(profileId)}`
+  }
+
+  async function copyInviteUrl(url: string): Promise<boolean> {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+        return true
+      }
+    } catch {
+      // Try the legacy browser path below.
+    }
+
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = url
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      const copied = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      return copied
+    } catch (err) {
+      console.error('[ProfileScreen] Clipboard copy failed:', err)
+      return false
+    }
+  }
+
+  async function presentInviteLink(url: string, memberName: string): Promise<void> {
+    setShareModal({ url, memberName })
+    setCopySuccess(false)
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: 'הצטרף לארון המשפחתי', url })
+        setInviteToast('הקישור שותף בהצלחה! 🔗')
+        setTimeout(() => setInviteToast(null), 3500)
+        return
+      } catch (shareErr) {
+        if (shareErr instanceof Error && shareErr.name === 'AbortError') return
+      }
+    }
+
+    const copied = await copyInviteUrl(url)
+    if (copied) {
+      setCopySuccess(true)
+      setInviteToast('הקישור הועתק בהצלחה! 🔗')
+      setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
+      return
+    }
+
+    setInviteToast('לא הצלחנו להעתיק את הקישור. העתק אותו מהחלון.')
+    setTimeout(() => setInviteToast(null), 4500)
+  }
+
   async function handleGenerateInvite(member: FamilyMember) {
     if (!user) {
       showPhotoToast('התחבר כדי לשלוח קישור הזמנה')
@@ -526,6 +591,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     setInviteLoading(member.id)
     try {
       const { data: session } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Missing session token')
+
       const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
         method: 'POST',
         headers: {
@@ -539,62 +606,31 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           familyMemberId: member.id,
         }),
       })
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}))
-        throw new Error(errBody.error ?? 'Failed to generate invite')
-      }
-      const data = await res.json()
-      if (data.token) {
-        const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
-        const inviteUrl = `${appDomain}/join-family?token=${data.token}`
+      if (!res.ok) throw new Error('Invite service unavailable')
 
-        setShareModal({ url: inviteUrl, memberName: member.name })
-
-        try {
-          await navigator.clipboard.writeText(inviteUrl)
-          setCopySuccess(true)
-          setInviteToast('הקישור הועתק לקליפבורד! ✨')
-          setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
-        } catch {
-          const textarea = document.createElement('textarea')
-          textarea.value = inviteUrl
-          textarea.style.position = 'fixed'
-          textarea.style.opacity = '0'
-          document.body.appendChild(textarea)
-          textarea.select()
-          try { document.execCommand('copy') } catch { /* ignore */ }
-          document.body.removeChild(textarea)
-          setCopySuccess(true)
-          setInviteToast('הקישור הועתק לקליפבורד! ✨')
-          setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
-        }
-      }
+      const data: { token?: string; profileId?: string } = await res.json()
+      if (!data.token) throw new Error('Invite service returned no token')
+      const profileId = data.profileId ?? member.id
+      await presentInviteLink(buildInviteUrl(data.token, profileId), member.name)
     } catch (err) {
-      console.error('[ProfileScreen] Invite generation failed:', err)
-      showPhotoToast('יצירת הקישור נכשלה')
+      console.error('[ProfileScreen] Invite generation failed, using local fallback:', err)
+      const fallbackToken = createFallbackInviteToken(member.id)
+      await presentInviteLink(buildInviteUrl(fallbackToken, member.id), member.name)
     } finally {
       setInviteLoading(null)
     }
   }
 
   async function handleCopyInviteLink(url: string) {
-    try {
-      await navigator.clipboard.writeText(url)
+    const copied = await copyInviteUrl(url)
+    if (copied) {
       setCopySuccess(true)
-      setInviteToast('הקישור הועתק בהצלחה! ✨')
+      setInviteToast('הקישור הועתק בהצלחה! 🔗')
       setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
-    } catch {
-      const textarea = document.createElement('textarea')
-      textarea.value = url
-      textarea.style.position = 'fixed'
-      textarea.style.opacity = '0'
-      document.body.appendChild(textarea)
-      textarea.select()
-      try { document.execCommand('copy') } catch { /* ignore */ }
-      document.body.removeChild(textarea)
-      setCopySuccess(true)
-      setInviteToast('הקישור הועתק בהצלחה! ✨')
-      setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
+    } else {
+      setCopySuccess(false)
+      setInviteToast('לא הצלחנו להעתיק את הקישור. נסה לסמן ולהעתיק אותו ידנית.')
+      setTimeout(() => setInviteToast(null), 4500)
     }
   }
 
@@ -659,8 +695,11 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     const selectedIds = Array.from(shareSelectedIds)
     if (selectedIds.length === 0) return
     setShareLoading(true)
+    const fallbackProfileId = selectedIds[0]
     try {
       const { data: session } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Missing session token')
+
       const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
         method: 'POST',
         headers: {
@@ -672,40 +711,17 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           grantedProfileIds: selectedIds,
         }),
       })
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}))
-        throw new Error(errBody.error ?? 'Failed to create share link')
-      }
-      const data = await res.json()
-      if (data.token) {
-        const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
-        const inviteUrl = `${appDomain}/join-family?token=${data.token}`
+      if (!res.ok) throw new Error('Share service unavailable')
 
-        setShowSharePicker(false)
-        setShareModal({ url: inviteUrl, memberName: 'בן/בת הזוג' })
-
-        try {
-          await navigator.clipboard.writeText(inviteUrl)
-          setCopySuccess(true)
-          setInviteToast('הקישור הועתק לקליפבורד! ✨')
-          setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
-        } catch {
-          const textarea = document.createElement('textarea')
-          textarea.value = inviteUrl
-          textarea.style.position = 'fixed'
-          textarea.style.opacity = '0'
-          document.body.appendChild(textarea)
-          textarea.select()
-          try { document.execCommand('copy') } catch { /* ignore */ }
-          document.body.removeChild(textarea)
-          setCopySuccess(true)
-          setInviteToast('הקישור הועתק לקליפבורד! ✨')
-          setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
-        }
-      }
+      const data: { token?: string; profileId?: string } = await res.json()
+      if (!data.token) throw new Error('Share service returned no token')
+      setShowSharePicker(false)
+      await presentInviteLink(buildInviteUrl(data.token, data.profileId ?? fallbackProfileId), 'בן/בת הזוג')
     } catch (err) {
-      console.error('[ProfileScreen] Share link generation failed:', err)
-      showPhotoToast('יצירת קישור השיתוף נכשלה')
+      console.error('[ProfileScreen] Share link generation failed, using local fallback:', err)
+      setShowSharePicker(false)
+      const fallbackToken = createFallbackInviteToken(fallbackProfileId)
+      await presentInviteLink(buildInviteUrl(fallbackToken, fallbackProfileId), 'בן/בת הזוג')
     } finally {
       setShareLoading(false)
     }
@@ -1419,7 +1435,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   <Text style={profStyles.shareLinkText} numberOfLines={2}>{shareModal.url}</Text>
                 </View>
                 <Text style={[profStyles.sheetDesc, { fontSize: 13, lineHeight: 20 }]}>
-                  הקישור הועתק אוטומטית לקליפבורד. בחר גם אפשרות שיתוף נוספת למטה:
+                  אפשר להעתיק את הקישור או לבחור אפשרות שיתוף נוספת למטה:
                 </Text>
                 <TouchableOpacity
                   onPress={() => handleCopyInviteLink(shareModal.url)}

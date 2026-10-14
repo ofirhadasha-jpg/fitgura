@@ -13,7 +13,7 @@ import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl, ensureAffiliateWrapped, buildCategoryAffiliateUrls } from '../services/affiliateService'
 import { isNativePlatform, getGalleryPhotos, fetchPhotoAsFile, getGalleryPermissionGranted, setGalleryPermissionGranted, requestGalleryPermissions } from '../services/nativeGalleryBridge'
 
-import { captureClickPos, type AnchorPos } from '../utils/popupPosition'
+import { captureClickPos, computePopupStyle, type AnchorPos } from '../utils/popupPosition'
 
 const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' as any
 

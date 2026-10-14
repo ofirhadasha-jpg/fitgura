@@ -134,7 +134,19 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/join-family?token=${token}`;
+      const { error: compatibilityInviteError } = await supabase
+        .from("family_invites")
+        .insert({
+          parent_user_id: user.id,
+          profile_id: profileId,
+          token,
+          status: "pending",
+        });
+      if (compatibilityInviteError) {
+        console.error("Compatibility family invite insert failed:", compatibilityInviteError);
+      }
+
+      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/join-family?token=${token}&profile=${profileId}`;
 
       return new Response(JSON.stringify({ success: true, token, inviteUrl, profileId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -194,9 +206,21 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/join-family?token=${token}`;
+      const { error: compatibilityInviteError } = await supabase
+        .from("family_invites")
+        .insert({
+          parent_user_id: user.id,
+          profile_id: primaryProfileId,
+          token,
+          status: "pending",
+        });
+      if (compatibilityInviteError) {
+        console.error("Compatibility family invite insert failed:", compatibilityInviteError);
+      }
 
-      return new Response(JSON.stringify({ success: true, token, inviteUrl, grantedProfileIds }), {
+      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/join-family?token=${token}&profile=${primaryProfileId}`;
+
+      return new Response(JSON.stringify({ success: true, token, inviteUrl, profileId: primaryProfileId, grantedProfileIds }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
