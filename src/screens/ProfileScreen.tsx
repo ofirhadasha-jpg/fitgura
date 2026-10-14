@@ -1075,6 +1075,28 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             </View>
           </View>
         </View>
+        {user ? (
+          <TouchableOpacity onPress={onSignOut} activeOpacity={0.8} style={profStyles.headerLogoutBtn}>
+            <Text style={profStyles.headerLogoutBtnText}>התנתקות מהחשבון</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => {
+              localStorage.removeItem('fitgura_guest_profile')
+              localStorage.removeItem('fitgura_guest_device')
+              localStorage.removeItem('fitgura_guest_devices')
+              localStorage.removeItem('fitgura_guest_favorites')
+              localStorage.removeItem('fitgura_favorites')
+              localStorage.removeItem('fitgura_legacy_guest_favorites')
+              sessionStorage.removeItem('fitgura_screen')
+              window.location.reload()
+            }}
+            activeOpacity={0.8}
+            style={profStyles.headerLogoutBtn}
+          >
+            <Text style={profStyles.headerLogoutBtnText}>איפוס נתונים והתחלה מחדש</Text>
+          </TouchableOpacity>
+        )}
         {/* Hidden admin trigger — only visible to admin users */}
         {user?.is_admin && (
         <TouchableOpacity onPress={() => onNav('admin')} activeOpacity={1} delayLongPress={2000} onLongPress={() => onNav('admin')} style={profStyles.hiddenAdminTrigger}>
@@ -1993,6 +2015,8 @@ const profStyles = StyleSheet.create({
   userStatusText: { fontSize: 12, color: '#2D2D2D', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   signOutBtn: { backgroundColor: '#1A1A1A', borderRadius: 8 as any, paddingVertical: 4, paddingHorizontal: 10, marginLeft: 6, boxShadow: '2px 2px 0 #F5C842' as any },
   signOutBtnText: { fontSize: 11, fontWeight: '700', color: '#FFE566', fontFamily: "'Permanent Marker', cursive" },
+  headerLogoutBtn: { width: '100%', marginTop: 18, paddingVertical: 13, alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #F5C842' as any },
+  headerLogoutBtnText: { fontSize: 16, fontWeight: '700', color: '#FFE566', fontFamily: "'Permanent Marker', cursive" },
   logoutBtn: { backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #F5C842' as any, marginTop: 8 } as React.CSSProperties,
   logoutBtnText: { fontSize: 17, fontWeight: '700', color: '#FFE566', fontFamily: "'Permanent Marker', cursive" },
   card: {
