@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product, FamilyMember } from './types'
+import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product, FamilyMember, FitEvent } from './types'
 import type { SizeRegion } from './utils/sizeConverter'
 import { AuthModal } from './components'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
@@ -338,6 +338,7 @@ export default function App() {
   const [latestAddedDevice, setLatestAddedDevice] = useState<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
+  const [events, setEvents] = useState<FitEvent[]>([])
   const [recentlyUpdatedMembers, setRecentlyUpdatedMembers] = useState<Set<string>>(new Set())
   const [activeProfileId, setActiveProfileId] = useState<string>('self')
   const [growthAlerts, setGrowthAlerts] = useState<GrowthDetection[]>([])
@@ -805,9 +806,9 @@ export default function App() {
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('hub')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('hub')} onDetected={handleDeviceDetected} />}
         {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} wishlistItems={wishlistItems} feedCatalog={feedCatalog} budget={budget} onToggleWishlist={handleWishlistToggle} familyMembers={familyMembers} />}
-        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
+        {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} events={events} familyMembers={familyMembers} />}
 
-        {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} familyMembers={familyMembers} />}
+        {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} familyMembers={familyMembers} events={events} setEvents={setEvents} />}
         {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} onRequestAuth={() => { setPendingFamilyAdd(1); setAuthModal({ pendingIdx: -1 }) }} reopenAddMemberSignal={pendingFamilyAdd} recentlyUpdatedMembers={recentlyUpdatedMembers} />}
         {screen === 'admin' && <AdminDashboard onNav={changeScreen} />}
 

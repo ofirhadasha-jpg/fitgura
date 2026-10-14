@@ -75,6 +75,11 @@ export const PRESET_EVENTS = [
   { name: 'פסח', emoji: '✡️', month: '04', day: '12', color: '#F59E0B', bgColor: '#FFFBEB' },
   { name: 'יום האב', emoji: '👨', month: '06', day: '16', color: '#7C3AED', bgColor: '#F5F3FF' },
   { name: 'יום האם', emoji: '💐', month: '05', day: '11', color: '#EC4899', bgColor: '#FDF2F8' },
+  { name: 'חזרה לבית הספר', emoji: '🎒', month: '09', day: '01', color: '#2563EB', bgColor: '#E0F2FE' },
+  { name: 'חגי תשרי', emoji: '🍯', month: '09', day: '15', color: '#F59E0B', bgColor: '#FFFBEB' },
+  { name: 'מעבר עונת קיץ', emoji: '☀️', month: '05', day: '01', color: '#F59E0B', bgColor: '#FFFBEB' },
+  { name: 'מעבר עונת חורף', emoji: '❄️', month: '11', day: '01', color: '#0891B2', bgColor: '#E0F2FE' },
+  { name: 'פסח שני', emoji: '🍷', month: '04', day: '20', color: '#7C3AED', bgColor: '#F5F3FF' },
 ]
 
 export let _nextEventId = 10

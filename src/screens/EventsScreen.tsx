@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
 import { BottomNav } from '../components'
 import {
@@ -7,17 +7,22 @@ import {
   daysUntil, daysUntilRecurring, nextRecurringDate, formatDate, nextEventId,
 } from '../types'
 
-export function EventsScreen({ onNav, isAdmin, familyMembers = [] }: { onNav: (s: Screen) => void; isAdmin?: boolean; familyMembers?: FamilyMember[] }) {
+export function EventsScreen({ onNav, isAdmin, familyMembers = [], events, setEvents }: { onNav: (s: Screen) => void; isAdmin?: boolean; familyMembers?: FamilyMember[]; events: FitEvent[]; setEvents: React.Dispatch<React.SetStateAction<FitEvent[]>> }) {
   const yr = new Date().getFullYear()
   const mo = (n: number) => String(new Date().getMonth() + n).padStart(2, '0')
 
-  const [events, setEvents] = useState<FitEvent[]>([
-    { id: 1, name: 'יום האהבה', emoji: '💝', date: `${yr}-02-14`, platforms: ['Amazon', 'Shein'], color: '#FF6B6B', bgColor: '#FFF0F0' },
-    { id: 2, name: 'יום הולדת — מיכל', emoji: '🎂', date: `${yr}-${mo(2)}-18`, platforms: ['AliExpress', 'ZARA'], color: '#FFE566', bgColor: '#FFFACC' },
-    { id: 3, name: 'יום נישואין', emoji: '💍', date: `${yr + 1}-12-25`, platforms: ['AliExpress', 'Amazon', 'ASOS'], color: '#FF6B6B', bgColor: '#FFF5F0' },
-  ])
-
   const [showAdd, setShowAdd] = useState(false)
+  // Seed default events on first mount if none provided
+  useEffect(() => {
+    if (events.length === 0) {
+      setEvents([
+        { id: 1, name: 'יום האהבה', emoji: '💝', date: `${yr}-02-14`, platforms: ['Amazon', 'Shein'], color: '#FF6B6B', bgColor: '#FFF0F0' },
+        { id: 2, name: 'יום הולדת — מיכל', emoji: '🎂', date: `${yr}-${mo(2)}-18`, platforms: ['AliExpress', 'ZARA'], color: '#FFE566', bgColor: '#FFFACC' },
+        { id: 3, name: 'יום נישואין', emoji: '💍', date: `${yr + 1}-12-25`, platforms: ['AliExpress', 'Amazon', 'ASOS'], color: '#FF6B6B', bgColor: '#FFF5F0' },
+      ])
+    }
+  }, [])
+
   const [newName, setNewName] = useState('')
   const [newDate, setNewDate] = useState('')
   const [newPlatforms, setNewPlatforms] = useState<string[]>([])

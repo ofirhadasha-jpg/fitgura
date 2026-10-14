@@ -2,7 +2,10 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
 import { BottomNav } from '../components'
 import { AddDeviceModal } from '../components/AddDeviceModal'
-import { type Screen, type User, type Product, type ScannedSizes, type DetectedDevice, detectDevice } from '../types'
+import {
+  type Screen, type User, type Product, type ScannedSizes, type DetectedDevice, type FitEvent, type FamilyMember,
+  detectDevice, daysUntil, daysUntilRecurring, nextRecurringDate, formatDate,
+} from '../types'
 import { calculateRecommendedSize } from '../utils/exactSizeMatcher'
 import {
   filterByPrice,
@@ -84,6 +87,8 @@ export function FeedScreen({
   onAddDevice,
   onRemoveDevice,
   latestAddedDevice,
+  events = [],
+  familyMembers = [],
 }: {
   wishlistItems: number[]
   onToggleWishlist: (i: number) => void
@@ -98,6 +103,8 @@ export function FeedScreen({
   onAddDevice: (deviceName: string) => void
   onRemoveDevice: (deviceName: string) => void
   latestAddedDevice: string | null
+  events?: FitEvent[]
+  familyMembers?: FamilyMember[]
 }) {
   const [filter, setFilter] = useState<'all' | 'clothing' | 'shoes' | 'accessories'>('all')
   const [search, setSearch] = useState('')
@@ -489,6 +496,25 @@ export function FeedScreen({
 
   console.log('[Feed UI] Products to display in render:', filtered.length, 'of', catalog.length, 'budget:', budget)
 
+  // Compute upcoming event alerts — events within 14 days trigger a sizing verification prompt
+  const SIX_MONTHS_MS = 180 * 24 * 60 * 60 * 1000
+  const upcomingEventAlerts = events
+    .map((ev) => {
+      const recurring = ev.isRecurring ?? false
+      const dLeft = recurring ? daysUntilRecurring(ev.date) : daysUntil(ev.date)
+      const member = ev.profileId ? familyMembers.find((m) => m.id === ev.profileId) : null
+      const memberName = member?.name ?? null
+      // Check if the member's (or self's) last scan is older than 6 months
+      const relevantGallery = member ? member.scanGallery : scanGallery
+      const lastScanTime = relevantGallery.length > 0
+        ? new Date(`${relevantGallery[0].date} ${relevantGallery[0].time}`).getTime()
+        : 0
+      const needsRescan = lastScanTime === 0 || (Date.now() - lastScanTime) > SIX_MONTHS_MS
+      return { event: ev, daysLeft: dLeft, memberName, needsRescan }
+    })
+    .filter((alert) => alert.daysLeft >= 0 && alert.daysLeft <= 14)
+    .sort((a, b) => a.daysLeft - b.daysLeft)
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' } as React.CSSProperties}>
       <View style={feedStyles.header}>
@@ -596,6 +622,47 @@ export function FeedScreen({
             <Text style={feedStyles.aiMatchCountText}>{sizeSorted.length} פריטים</Text>
           </View>
         </View>
+
+        {/* Seasonal event alert cards — triggered 14 days before an event */}
+        {upcomingEventAlerts.length > 0 && (
+          <View style={{ gap: 10 }}>
+            {upcomingEventAlerts.map((alert) => (
+              <View key={alert.event.id} style={feedStyles.eventAlertCard}>
+                <View style={feedStyles.eventAlertHeader}>
+                  <Text style={{ fontSize: 28 }}>{alert.event.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={feedStyles.eventAlertTitle}>{alert.event.name} מתקרב!</Text>
+                    <Text style={feedStyles.eventAlertSub}>
+                      {alert.daysLeft === 0 ? 'היום!' : `${alert.daysLeft} ימים עד האירוע`}
+                      {alert.memberName ? ` · בדוק מידות של ${alert.memberName}` : ' · בדוק מידות לפני הקניות'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={feedStyles.eventAlertMsg}>
+                  📅 {alert.event.name} מתקרב! בוא נבדוק אם המידות של {alert.memberName ?? 'בן המשפחה'} עדיין מעודכנות לפני הקניות.
+                </Text>
+                <View style={feedStyles.eventAlertActions}>
+                  <TouchableOpacity
+                    onPress={() => onNav('hub')}
+                    activeOpacity={0.8}
+                    style={feedStyles.quickVerifyBtn}
+                  >
+                    <Text style={feedStyles.quickVerifyBtnText}>אישור מידות מהיר ⚡</Text>
+                  </TouchableOpacity>
+                  {alert.needsRescan ? (
+                    <View style={feedStyles.rescanBadge}>
+                      <Text style={feedStyles.rescanBadgeText}>📸 סריקה ישנה — מומלץ לעדכן</Text>
+                    </View>
+                  ) : (
+                    <View style={feedStyles.sizesOkBadge}>
+                      <Text style={feedStyles.sizesOkBadgeText}>✓ מידות עדכניות</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {isLoadingProducts && (
           <View style={feedStyles.loadingState}>
@@ -842,4 +909,16 @@ const feedStyles = StyleSheet.create({
   deviceChipRemoveText: { fontSize: 10, fontWeight: '700', color: '#DC2626' },
   addDeviceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#00FF66', borderRadius: 8, paddingVertical: 7, paddingHorizontal: 13, minWidth: 112, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
   addDeviceBtnText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Permanent Marker', cursive" },
+  eventAlertCard: { backgroundColor: '#FFFACC', borderRadius: 14, padding: 16, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A', gap: 10 } as React.CSSProperties,
+  eventAlertHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  eventAlertTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  eventAlertSub: { fontSize: 12, color: '#4A4A4A', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  eventAlertMsg: { fontSize: 14, color: '#1A1A1A', lineHeight: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  eventAlertActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  quickVerifyBtn: { backgroundColor: '#00FF66', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 16, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  quickVerifyBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  rescanBadge: { backgroundColor: '#FFF0F0', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#DC2626' } as React.CSSProperties,
+  rescanBadgeText: { fontSize: 11, fontWeight: '700', color: '#DC2626', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sizesOkBadge: { backgroundColor: '#E0FFF0', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#00CC52' } as React.CSSProperties,
+  sizesOkBadgeText: { fontSize: 11, fontWeight: '700', color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })
