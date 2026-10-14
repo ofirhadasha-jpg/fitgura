@@ -190,6 +190,15 @@ export default function SizingResultModal({
           <Text style={styles.buyBtnText}>🛒 קנה עכשיו במידה {recommendedSize}</Text>
         </TouchableOpacity>
 
+        {matchPercentage >= 95 && (
+          <View style={styles.commitmentBadge}>
+            <Text style={styles.commitmentBadgeIcon}>✅</Text>
+            <Text style={styles.commitmentBadgeText}>
+              מידה מאומתת ב-95%+ דיוק עבור {profileName ?? userName ?? 'אני'}. בטוח להזמין!
+            </Text>
+          </View>
+        )}
+
         <View style={styles.comparisonRow}>
           <TouchableOpacity
             onPress={() => {
@@ -305,6 +314,9 @@ const styles = StyleSheet.create({
   breakdownScoreText: { fontSize: 11, fontWeight: '700', color: '#4A4A4A', width: 34, textAlign: 'left', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   buyBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, marginBottom: 8 } as any,
   buyBtnText: { color: '#1A1A1A', fontSize: 16, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
+  commitmentBadge: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#E0FFF0', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, borderWidth: 2, borderColor: '#00CC52', marginBottom: 10, boxShadow: '2px 2px 0 #00CC52' as any } as any,
+  commitmentBadgeIcon: { fontSize: 20 },
+  commitmentBadgeText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#006633', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", lineHeight: 20 },
   comparisonRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   compareAffiliateBtn: { flex: 1, backgroundColor: '#0891B2', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as any,
   compareAffiliateBtnText: { color: '#FFFEF5', fontSize: 12, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },

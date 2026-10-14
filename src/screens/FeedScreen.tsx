@@ -538,6 +538,14 @@ export function FeedScreen({
 
         <Text style={feedStyles.feedTitle}>הפיד שלי</Text>
 
+        <View style={feedStyles.brandPromiseBanner}>
+          <Text style={feedStyles.brandPromiseShield}>🛡️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={feedStyles.brandPromiseTitle}>לא קונים לפני שמודדים</Text>
+            <Text style={feedStyles.brandPromiseSub}>ההזמנה הבאה שלך בול בזמן ובול במידה</Text>
+          </View>
+        </View>
+
         <BudgetSlider budget={budget} setBudget={setBudget} />
 
         <View style={feedStyles.searchBox}>
@@ -850,6 +858,10 @@ const feedStyles = StyleSheet.create({
   avatarText: { color: '#1A1A1A', fontWeight: '700', fontSize: 16, fontFamily: "'Permanent Marker', cursive" },
   avatarDot: { position: 'absolute', bottom: -1, right: -1, width: 12, height: 12, borderRadius: 6, backgroundColor: '#00FF66', borderWidth: 2, borderColor: '#FFFEF5' },
   feedTitle: { fontSize: 24, fontWeight: '700', color: '#1A1A1A', marginBottom: 14, fontFamily: "'Permanent Marker', cursive" },
+  brandPromiseBanner: { backgroundColor: '#1A1A1A', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14, borderWidth: 2, borderColor: '#FFE566', boxShadow: '3px 3px 0 #FFE566' } as React.CSSProperties,
+  brandPromiseShield: { fontSize: 24 },
+  brandPromiseTitle: { fontSize: 16, fontWeight: '700', color: '#FFE566', fontFamily: "'Permanent Marker', cursive" },
+  brandPromiseSub: { fontSize: 13, color: 'rgba(255,229,102,0.7)', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   budgetCard: { backgroundColor: '#FFFEF5', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#1A1A1A', marginBottom: 12, boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   budgetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   budgetTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
