@@ -13,6 +13,15 @@
   "dir": "rtl",
   "lang": "he",
   "categories": ["shopping", "lifestyle", "fashion"],
+  "share_target": {
+    "action": "/parse-shared-link",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "icons": [
     {
       "src": "/icons/icon-192.png",
