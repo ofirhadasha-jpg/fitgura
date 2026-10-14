@@ -40,17 +40,19 @@ export function wrapAffiliateUrl(originalUrl: string): string {
 }
 
 // Build a platform-specific search URL for a product name, wrapped with affiliate tracking.
+// Uses vendor search-query endpoints (not rigid category pages) to prevent 404s.
 export function buildAffiliateSearchUrl(platform: StorePlatform, productName: string): string {
   const cleanName = productName.replace(/^(SHEIN|Temu|AliExpress|Amazon)\s+/i, '').trim()
+  const encoded = encodeURIComponent(cleanName)
   let rawUrl = ''
   if (platform === 'shein') {
-    rawUrl = `https://www.shein.com/pdsearch/${encodeURIComponent(cleanName)}/`
+    rawUrl = `https://www.shein.com/pdsearch/${encoded}`
   } else if (platform === 'temu') {
-    rawUrl = `https://www.temu.com/search_result.html?search_key=${encodeURIComponent(cleanName)}`
+    rawUrl = `https://www.temu.com/search_result.html?search_key=${encoded}`
   } else if (platform === 'aliexpress') {
-    rawUrl = `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(cleanName)}`
+    rawUrl = `https://www.aliexpress.com/w/wholesale-${encoded}.html?SearchText=${encoded}`
   } else if (platform === 'amazon') {
-    rawUrl = `https://www.amazon.com/s?k=${encodeURIComponent(cleanName)}`
+    rawUrl = `https://www.amazon.com/s?k=${encoded}`
   }
   return rawUrl ? wrapAffiliateUrl(rawUrl) : ''
 }
@@ -77,55 +79,36 @@ export function ensureAffiliateWrapped(url: string): string {
   return wrapAffiliateUrl(url)
 }
 
-// Build profile-aware category landing URLs for all supported retailers,
-// each wrapped with affiliate tracking. The gender and ageGroup of the
-// active profile determine which clothing category each link targets.
-export function buildCategoryAffiliateUrls(gender: 'male' | 'female' | 'unisex', ageGroup: AgeGroup): RetailerChip[] {
+// Derive a human-readable English search query from the active profile's
+// gender and age group. This query is used to build vendor search URLs
+// that are resilient to category-page changes (no 404s).
+export function profileSearchQuery(gender: 'male' | 'female' | 'unisex', ageGroup: AgeGroup): string {
   const isChild = ageGroup === 'child' || ageGroup === 'toddler'
   const isBaby = ageGroup === 'baby'
   const isFemale = gender === 'female'
   const isMale = gender === 'male'
 
-  let sheinPath = 'Women-Dresses-c-1727.html'
-  let aliPath = 'womens-clothing'
-  let temuPath = 'women-clothing'
-  let zaraPath = 'woman'
-  let amazonQuery = 'womens clothing'
+  if (isBaby) return 'baby clothing'
+  if (isChild) return isFemale ? 'girls clothing' : 'boys clothing'
+  if (isFemale) return 'womens fashion'
+  if (isMale) return 'mens fashion'
+  return 'fashion clothing'
+}
 
-  if (isChild) {
-    if (isFemale) {
-      sheinPath = 'Kids-Girls-c-2031.html'
-      aliPath = 'girls-clothing'
-      temuPath = 'girls-clothing'
-      zaraPath = 'girl'
-      amazonQuery = 'girls clothing kids'
-    } else {
-      sheinPath = 'Kids-Boys-c-2030.html'
-      aliPath = 'boys-clothing'
-      temuPath = 'boys-clothing'
-      zaraPath = 'boy'
-      amazonQuery = 'boys clothing kids'
-    }
-  } else if (isBaby) {
-    sheinPath = 'Baby-c-2029.html'
-    aliPath = 'baby-clothing'
-    temuPath = 'baby-clothing'
-    zaraPath = 'baby'
-    amazonQuery = 'baby clothing'
-  } else if (isMale) {
-    sheinPath = 'Men-Tees-c-1996.html'
-    aliPath = 'mens-clothing'
-    temuPath = 'men-clothing'
-    zaraPath = 'man'
-    amazonQuery = 'mens clothing'
-  }
+// Build profile-aware search URLs for all supported retailers, each wrapped
+// with affiliate tracking. Uses vendor search-query endpoints (not rigid
+// category sub-paths) so links never 404 when a merchant reorganises their
+// site structure.
+export function buildCategoryAffiliateUrls(gender: 'male' | 'female' | 'unisex', ageGroup: AgeGroup): RetailerChip[] {
+  const query = profileSearchQuery(gender, ageGroup)
+  const encoded = encodeURIComponent(query)
 
   const chips: RetailerChip[] = [
-    { label: 'Amazon', url: `https://www.amazon.com/s?k=${encodeURIComponent(amazonQuery)}` },
-    { label: 'AliExpress', url: `https://www.aliexpress.com/${aliPath}.html` },
-    { label: 'SHEIN', url: `https://www.shein.com/${sheinPath}` },
-    { label: 'Temu', url: `https://www.temu.com/${temuPath}.html` },
-    { label: 'Zara', url: `https://www.zara.com/us/${zaraPath}.html` },
+    { label: 'Amazon', url: `https://www.amazon.com/s?k=${encoded}` },
+    { label: 'AliExpress', url: `https://www.aliexpress.com/w/wholesale-${encoded}.html?SearchText=${encoded}` },
+    { label: 'SHEIN', url: `https://www.shein.com/pdsearch/${encoded}` },
+    { label: 'Temu', url: `https://www.temu.com/search_result.html?search_key=${encoded}` },
+    { label: 'Zara', url: `https://www.zara.com/us/search?searchTerm=${encoded}` },
   ]
 
   return chips.map((c) => ({ ...c, url: wrapAffiliateUrl(c.url) }))
