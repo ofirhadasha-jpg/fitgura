@@ -67,8 +67,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFEF5',
     borderTopWidth: 1.5,
     borderTopColor: '#1A1A1A',
-    paddingTop: 10,
-    paddingBottom: 28,
+    paddingTop: 6,
+    paddingBottom: 12,
     position: 'fixed',
     bottom: 0,
     left: 0,
@@ -82,11 +82,11 @@ const styles = StyleSheet.create({
   navItem: {
     flex: 1,
     alignItems: 'center',
-    paddingTop: 6,
+    paddingTop: 2,
   },
   navIconWrap: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -97,10 +97,10 @@ const styles = StyleSheet.create({
     borderColor: '#FFE566',
   },
   navLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '400',
     color: '#9A9A9A',
-    marginTop: 4,
+    marginTop: 2,
     fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
   },
   navLabelActive: {
