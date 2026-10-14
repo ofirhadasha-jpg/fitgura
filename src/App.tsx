@@ -484,26 +484,55 @@ export default function App() {
           console.error('[App] Profile lookup failed; keeping auth session:', err)
         }
 
-        // Load family profiles from Supabase on sign-in
+        // Load family profiles from Supabase on sign-in (owned + granted)
         try {
           const { data: familyData, error: familyError } = await supabase
             .from('family_profiles')
             .select('*')
             .eq('owner_user_id', u.id)
           if (familyError) throw familyError
-          if (familyData && familyData.length > 0) {
-            const members: FamilyMember[] = familyData.map((row: Record<string, unknown>) => ({
-              id: row.id as string,
-              name: row.member_name as string,
-              category: (row.category as FamilyCategory) ?? 'partner',
-              scannedSizes: null,
-              scanGallery: [],
-              accuracy: (row.accuracy as number) ?? 0,
-              photoUrl: null,
-              wardrobe: [],
-            }))
-            setFamilyMembers(members)
+          const members: FamilyMember[] = (familyData ?? []).map((row: Record<string, unknown>) => ({
+            id: row.id as string,
+            name: row.member_name as string,
+            category: (row.category as FamilyCategory) ?? 'partner',
+            scannedSizes: null,
+            scanGallery: [],
+            accuracy: (row.accuracy as number) ?? 0,
+            photoUrl: null,
+            wardrobe: [],
+          }))
+
+          // Load profiles shared with this user via profile_grants
+          const { data: grantedIds, error: grantedError } = await supabase
+            .from('profile_grants')
+            .select('family_profile_id')
+            .eq('granted_user_id', u.id)
+          if (!grantedError && grantedIds && grantedIds.length > 0) {
+            const ids = grantedIds.map((g: { family_profile_id: string }) => g.family_profile_id)
+            const { data: sharedData } = await supabase
+              .from('family_profiles')
+              .select('*')
+              .in('id', ids)
+            if (sharedData) {
+              for (const row of sharedData as Record<string, unknown>[]) {
+                const alreadyLoaded = members.some((m) => m.id === row.id)
+                if (!alreadyLoaded) {
+                  members.push({
+                    id: row.id as string,
+                    name: row.member_name as string,
+                    category: (row.category as FamilyCategory) ?? 'partner',
+                    scannedSizes: null,
+                    scanGallery: [],
+                    accuracy: (row.accuracy as number) ?? 0,
+                    photoUrl: null,
+                    wardrobe: [],
+                  })
+                }
+              }
+            }
           }
+
+          if (members.length > 0) setFamilyMembers(members)
         } catch (err) {
           console.error('[App] Failed to load family profiles:', err)
         }

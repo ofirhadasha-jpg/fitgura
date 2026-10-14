@@ -306,6 +306,9 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [inviteToast, setInviteToast] = useState<string | null>(null)
   const [shareModal, setShareModal] = useState<{ url: string; memberName: string } | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [showSharePicker, setShowSharePicker] = useState(false)
+  const [shareSelectedIds, setShareSelectedIds] = useState<Set<string>>(new Set())
+  const [shareLoading, setShareLoading] = useState(false)
   const [memberWishlist, setMemberWishlist] = useState<Array<{ id: string; product_name: string; product_image: string | null; recommended_size: string; match_percentage: number; price: string | null; platform: string; affiliate_url: string }>>([])
   const [wishlistLoading, setWishlistLoading] = useState(false)
 
@@ -508,6 +511,78 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   function handleWhatsAppShare(url: string, memberName: string) {
     const text = encodeURIComponent(`היי ${memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${url}`)
     window.open(`https://wa.me/?text=${text}`, '_blank')
+  }
+
+  function openSharePicker() {
+    if (!user) {
+      showPhotoToast('התחבר כדי לשתף פרופילים')
+      return
+    }
+    const dbMembers = familyMembers.filter((m) => !m.id.startsWith('member_'))
+    if (dbMembers.length === 0) {
+      showPhotoToast('אין פרופילים לשיתוף')
+      return
+    }
+    setShareSelectedIds(new Set())
+    setShowSharePicker(true)
+  }
+
+  function toggleShareSelection(id: string) {
+    setShareSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleShareProfiles() {
+    const selectedIds = Array.from(shareSelectedIds)
+    if (selectedIds.length === 0) return
+    setShareLoading(true)
+    try {
+      const { data: session } = await supabase.auth.getSession()
+      const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'share',
+          grantedProfileIds: selectedIds,
+        }),
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.error ?? 'Failed to create share link')
+      }
+      const data = await res.json()
+      if (data.token) {
+        const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
+        const inviteUrl = `${appDomain}/update-profile?token=${data.token}`
+        const shareText = `היי! הנה קישור לצפייה בפרופילים המשפחתיים המשותפים בפיטגורה ✨: ${inviteUrl}`
+        const shareTitle = 'פיטגורה - שיתוף פרופילים משפחתי ✨'
+
+        setShowSharePicker(false)
+
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          try {
+            await navigator.share({ title: shareTitle, text: shareText, url: inviteUrl })
+          } catch (shareErr) {
+            if (shareErr instanceof Error && shareErr.name === 'AbortError') return
+            setShareModal({ url: inviteUrl, memberName: 'בן/בת הזוג' })
+          }
+        } else {
+          setShareModal({ url: inviteUrl, memberName: 'בן/בת הזוג' })
+        }
+      }
+    } catch (err) {
+      console.error('[ProfileScreen] Share link generation failed:', err)
+      showPhotoToast('יצירת קישור השיתוף נכשלה')
+    } finally {
+      setShareLoading(false)
+    }
   }
 
   function handleSelectMember(id: string) {
@@ -1013,14 +1088,25 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         <View style={profStyles.card}>
           <View style={profStyles.familyHeader}>
             <Text style={profStyles.sizesTitle}>👤 פרופילים משפחתיים</Text>
-            <TouchableOpacity
-              ref={addMemberBtnRef}
-              onPress={handleAddMemberPress}
-              activeOpacity={0.7}
-              style={profStyles.addMemberBtn}
-            >
-              <Text style={profStyles.addMemberBtnText}>+ הוסף</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {familyMembers.some((m) => !m.id.startsWith('member_')) && (
+                <TouchableOpacity
+                  onPress={openSharePicker}
+                  activeOpacity={0.7}
+                  style={profStyles.shareFamilyBtn}
+                >
+                  <Text style={profStyles.shareFamilyBtnText}>שתף 📲</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                ref={addMemberBtnRef}
+                onPress={handleAddMemberPress}
+                activeOpacity={0.7}
+                style={profStyles.addMemberBtn}
+              >
+                <Text style={profStyles.addMemberBtnText}>+ הוסף</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 2 }}>
             <TouchableOpacity
@@ -1175,6 +1261,63 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => { setShareModal(null); setCopySuccess(false) }}
+                  activeOpacity={0.7}
+                  style={[profStyles.confirmCancelBtn, { paddingVertical: 12 }]}
+                >
+                  <Text style={profStyles.confirmCancelBtnText}>סגור</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Share picker modal — select which profiles to share with spouse */}
+        {showSharePicker && (
+          <View style={profStyles.gateOverlay}>
+            <TouchableOpacity onPress={() => setShowSharePicker(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
+            <View style={profStyles.shareModalSheet}>
+              <View style={profStyles.sheetHeaderRow}>
+                <Text style={[profStyles.sheetTitle, { fontSize: 17 }]}>אילו פרופילים לשתף? 👨‍👩‍👧‍👦</Text>
+                <TouchableOpacity onPress={() => setShowSharePicker(false)} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
+                  <Text style={{ color: '#4A4A4A', fontSize: 15 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ gap: 10 }}>
+                <Text style={[profStyles.sheetDesc, { fontSize: 13, marginBottom: 4 }]}>
+                  בחר אילו פרופילים משפחתיים לשתף עם בן/בת הזוג. הם יקבלו גישה מלאה למידות, ארון והיסטוריית סריקות.
+                </Text>
+                {familyMembers.filter((m) => !m.id.startsWith('member_')).map((m) => {
+                  const isSelected = shareSelectedIds.has(m.id)
+                  return (
+                    <TouchableOpacity
+                      key={m.id}
+                      onPress={() => toggleShareSelection(m.id)}
+                      activeOpacity={0.7}
+                      style={[profStyles.sharePickerRow, isSelected && profStyles.sharePickerRowActive]}
+                    >
+                      <View style={[profStyles.checkbox, isSelected && profStyles.checkboxActive]}>
+                        {isSelected && <Text style={{ color: '#FFFEF5', fontSize: 14, fontWeight: '800' }}>✓</Text>}
+                      </View>
+                      <Text style={{ fontSize: 22 }}>{CATEGORY_EMOJIS[m.category]}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={profStyles.sharePickerName}>{m.name}</Text>
+                        <Text style={profStyles.sharePickerCategory}>{CATEGORY_LABELS[m.category]}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )
+                })}
+                <TouchableOpacity
+                  onPress={handleShareProfiles}
+                  disabled={shareSelectedIds.size === 0 || shareLoading}
+                  activeOpacity={0.8}
+                  style={[profStyles.formSubmitBtn, { backgroundColor: shareSelectedIds.size === 0 ? '#9A9A9A' : '#00FF66', paddingVertical: 14, marginTop: 4, opacity: shareSelectedIds.size === 0 ? 0.5 : 1 }]}
+                >
+                  <Text style={[profStyles.formSubmitBtnText, { fontSize: 15 }]}>
+                    {shareLoading ? '⏳ יוצר קישור...' : 'צור קישור שיתוף משפחתי 📲'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowSharePicker(false)}
                   activeOpacity={0.7}
                   style={[profStyles.confirmCancelBtn, { paddingVertical: 12 }]}
                 >
@@ -2073,4 +2216,12 @@ const profStyles = StyleSheet.create({
   memberRemoveBtn: { position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#9A9A9A' },
   inviteBtn: { backgroundColor: '#E0F2FE', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#0891B2', marginTop: 6, maxWidth: 200 },
   inviteBtnText: { fontSize: 11, fontWeight: '700', color: '#0891B2', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
+  shareFamilyBtn: { backgroundColor: '#0891B2', borderRadius: 8 as any, paddingVertical: 7, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any },
+  shareFamilyBtnText: { color: '#FFFEF5', fontSize: 13, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
+  sharePickerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12 as any, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' },
+  sharePickerRowActive: { borderColor: '#1A1A1A', backgroundColor: '#FFFACC', boxShadow: '2px 2px 0 #1A1A1A' as any },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFEF5' },
+  checkboxActive: { backgroundColor: '#1A1A1A' },
+  sharePickerName: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  sharePickerCategory: { fontSize: 11, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })

@@ -141,6 +141,171 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // --- GENERATE SHARE LINK ---
+    // Creates an invite token with granted_profile_ids for workspace sharing
+    if (action === "share") {
+      const { grantedProfileIds, recipientName } = body;
+
+      if (!grantedProfileIds || !Array.isArray(grantedProfileIds) || grantedProfileIds.length === 0) {
+        return new Response(JSON.stringify({ error: "Missing grantedProfileIds" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify all profiles belong to the authenticated user
+      const { data: ownedProfiles } = await supabase
+        .from("family_profiles")
+        .select("id")
+        .eq("owner_user_id", user.id)
+        .in("id", grantedProfileIds);
+
+      if (!ownedProfiles || ownedProfiles.length !== grantedProfileIds.length) {
+        return new Response(JSON.stringify({ error: "Not all profiles belong to you" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Use the first profile as the family_profile_id for the invite
+      // The granted_profile_ids array stores the full list of shared profiles
+      const primaryProfileId = grantedProfileIds[0];
+      const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
+
+      // Deactivate old invites for this profile
+      await supabase
+        .from("profile_invites")
+        .update({ is_active: false })
+        .eq("family_profile_id", primaryProfileId);
+
+      const { error: inviteError } = await supabase
+        .from("profile_invites")
+        .insert({
+          family_profile_id: primaryProfileId,
+          token,
+          is_active: true,
+          granted_profile_ids: grantedProfileIds,
+        });
+
+      if (inviteError) {
+        return new Response(JSON.stringify({ error: "Failed to create share link" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/update-profile?token=${token}`;
+
+      return new Response(JSON.stringify({ success: true, token, inviteUrl, grantedProfileIds }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- ACCEPT FAMILY SHARE ---
+    // Called when a recipient opens a share link and is authenticated.
+    // Creates profile_grants rows linking the recipient to each shared profile.
+    if (action === "accept") {
+      const { token } = body;
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Missing token" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fetch the invite with granted_profile_ids
+      const { data: invite, error: inviteError } = await supabase
+        .from("profile_invites")
+        .select("family_profile_id, granted_profile_ids, is_active, used, expires_at")
+        .eq("token", token)
+        .maybeSingle();
+
+      if (inviteError || !invite) {
+        return new Response(JSON.stringify({ error: "Invalid link" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!invite.is_active || invite.used) {
+        return new Response(JSON.stringify({ error: "Link already used or inactive" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (new Date(invite.expires_at) < new Date()) {
+        return new Response(JSON.stringify({ error: "Link has expired" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const grantedIds: string[] = invite.granted_profile_ids || [invite.family_profile_id];
+
+      // Don't let the owner accept their own share link
+      const { data: profileRow } = await supabase
+        .from("family_profiles")
+        .select("owner_user_id")
+        .eq("id", invite.family_profile_id)
+        .maybeSingle();
+
+      if (profileRow?.owner_user_id === user.id) {
+        return new Response(JSON.stringify({ error: "Cannot accept your own share link", isOwner: true }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Create grants for each profile — idempotent via UNIQUE constraint
+      const grants = grantedIds.map((pid) => ({
+        family_profile_id: pid,
+        granted_user_id: user.id,
+        granted_by_user_id: profileRow?.owner_user_id,
+      }));
+
+      const { error: grantError } = await supabase
+        .from("profile_grants")
+        .upsert(grants, { onConflict: "family_profile_id,granted_user_id" });
+
+      if (grantError) {
+        return new Response(JSON.stringify({ error: "Failed to accept share" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fetch the shared profile names for the response
+      const { data: sharedProfiles } = await supabase
+        .from("family_profiles")
+        .select("id, member_name, category")
+        .in("id", grantedIds);
+
+      // Mark invite as used
+      await supabase
+        .from("profile_invites")
+        .update({ used: true, used_at: new Date().toISOString() })
+        .eq("token", token);
+
+      // Notify the parent that the share was accepted
+      if (profileRow?.owner_user_id) {
+        const names = (sharedProfiles || []).map((p: { member_name: string }) => p.member_name).join(", ");
+        await supabase.from("notifications").insert({
+          user_id: profileRow.owner_user_id,
+          title: "שיתוף משפחתי התקבל ✨",
+          body: `${user.email?.split("@")[0] ?? "בן משפחה"} קיבל/ה גישה לפרופילים: ${names}`,
+          type: "family_share",
+        });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        sharedProfiles: sharedProfiles || [],
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // --- VERIFY TOKEN ---
     // Returns profile info for the remote update screen
     if (action === "verify") {
@@ -162,7 +327,35 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      return new Response(JSON.stringify(data), {
+      // Check if this is a share link (has granted_profile_ids)
+      const { data: inviteRow } = await supabase
+        .from("profile_invites")
+        .select("granted_profile_ids, family_profile_id")
+        .eq("token", token)
+        .maybeSingle();
+
+      const isShareLink = !!(inviteRow?.granted_profile_ids && inviteRow.granted_profile_ids.length > 0);
+
+      let sharerName: string | null = null;
+      if (isShareLink && inviteRow?.family_profile_id) {
+        const { data: profileRow } = await supabase
+          .from("family_profiles")
+          .select("owner_user_id")
+          .eq("id", inviteRow.family_profile_id as string)
+          .maybeSingle();
+        if (profileRow?.owner_user_id) {
+          const { data: inviterProfile } = await supabase
+            .from("profiles")
+            .select("email")
+            .eq("user_id", profileRow.owner_user_id as string)
+            .maybeSingle();
+          if (inviterProfile?.email) {
+            sharerName = inviterProfile.email.split("@")[0] ?? null;
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({ ...data, isShareLink, grantedProfileIds: inviteRow?.granted_profile_ids || null, sharerName }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

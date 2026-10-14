@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
 import { analyzeBodyImage, aiAnalysisToScannedSizes, type ScannedSizes } from '../types'
 
-type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'success'
+type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'success' | 'accepting' | 'accepted' | 'share_error'
 
 interface ProfileInfo {
   success: boolean
@@ -13,6 +13,9 @@ interface ProfileInfo {
   gender?: string
   age_group?: string
   error?: string
+  isShareLink?: boolean
+  grantedProfileIds?: string[]
+  sharerName?: string
 }
 
 export function RemoteUpdateScreen({ token }: { token: string }) {
@@ -22,6 +25,7 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
   const [scanProgress, setScanProgress] = useState(0)
   const [scanPhase, setScanPhase] = useState('')
   const [scannedSizes, setScannedSizes] = useState<ScannedSizes | null>(null)
+  const [acceptError, setAcceptError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -52,10 +56,50 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
       }
 
       setProfileInfo(data)
-      setPhase('ready')
+
+      if (data.isShareLink) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user) {
+          setPhase('share_error')
+          setAcceptError('כדי לקבל את הפרופילים המשותפים, עליך להתחבר לחשבון הפיטגורה שלך. חזור לאפליקציה, התחבר, ואז פתח שוב את הקישור.')
+          return
+        }
+        await acceptShare(session.access_token)
+      } else {
+        setPhase('ready')
+      }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Invalid or expired link')
       setPhase('error')
+    }
+  }
+
+  async function acceptShare(accessToken: string) {
+    setPhase('accepting')
+    try {
+      const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ action: 'accept', token }),
+      })
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.error ?? 'Accept failed')
+      }
+
+      const data = await res.json()
+      if (data.success === false) {
+        throw new Error(data.error ?? 'Accept failed')
+      }
+
+      setPhase('accepted')
+    } catch (err) {
+      setAcceptError(err instanceof Error ? err.message : 'שגיאה בקבלת השיתוף')
+      setPhase('share_error')
     }
   }
 
@@ -152,6 +196,49 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           <Text style={styles.errorTitle}>הקישור לא תקין</Text>
           <Text style={styles.errorBody}>{errorMsg}</Text>
           <Text style={styles.errorHint}>בקש מבן המשפחה ששלח את הקישור ליצור קישור חדש</Text>
+        </View>
+      </View>
+    )
+  }
+
+  if (phase === 'accepting') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <Text style={styles.loadingIcon}>⏳</Text>
+          <Text style={styles.loadingText}>מוסיף פרופילים משותפים לחשבון שלך...</Text>
+        </View>
+      </View>
+    )
+  }
+
+  if (phase === 'accepted') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <View style={styles.successIconWrap}>
+            <Text style={styles.successIcon}>✅</Text>
+          </View>
+          <Text style={styles.successTitle}>הפרופילים נוספו בהצלחה!</Text>
+          <Text style={styles.successBody}>
+            {profileInfo?.grantedProfileIds?.length ?? 0} פרופילים משפחתיים נוספו לחשבון שלך. עכשיו תוכל/י לראות את המידות, הארון והיסטוריית הסריקות שלהם.
+          </Text>
+          <Text style={styles.privacyNote}>חזור לאפליקציית פיטגורה כדי לראות את הפרופילים המשותפים ✨</Text>
+        </View>
+      </View>
+    )
+  }
+
+  if (phase === 'share_error') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>לא ניתן לקבל את השיתוף</Text>
+          <Text style={styles.errorBody}>{acceptError}</Text>
+          {profileInfo?.sharerName && (
+            <Text style={styles.errorHint}>הקישור נשלח על ידי: {profileInfo.sharerName}</Text>
+          )}
         </View>
       </View>
     )
