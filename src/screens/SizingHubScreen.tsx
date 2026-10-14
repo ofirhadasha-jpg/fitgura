@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image 
 import { BottomNav } from '../components'
 import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
 import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
-import type { Screen, User, ScannedSizes, ScanEntry, Product, FamilyMember } from '../types'
+import type { Screen, User, ScannedSizes, ScanEntry, Product, FamilyMember, AgeGroup } from '../types'
 import { supabase } from '../lib/supabase'
 import SizingResultModal, { type WardrobeItem, type FitBreakdown, decodeHtmlEntities } from '../components/SizingResultModal'
 import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type CategoryMismatch, type SmartMatch } from '../components/CategoryMismatchModal'
@@ -26,7 +26,55 @@ function wrapAffiliateUrl(url: string): string {
   }
 }
 
-export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers }: {
+interface RetailerChip {
+  label: string
+  url: string
+}
+
+function getRetailerChips(gender: 'male' | 'female' | 'unisex', ageGroup: AgeGroup): RetailerChip[] {
+  const isChild = ageGroup === 'child' || ageGroup === 'toddler'
+  const isBaby = ageGroup === 'baby'
+  const isFemale = gender === 'female'
+  const isMale = gender === 'male'
+
+  let sheinPath = 'Women-Dresses-c-1727.html'
+  let aliPath = 'womens-clothing'
+  let temuPath = 'women-clothing'
+  let zaraPath = 'woman'
+
+  if (isChild) {
+    if (isFemale) {
+      sheinPath = 'Kids-Girls-c-2031.html'
+      aliPath = 'girls-clothing'
+      temuPath = 'girls-clothing'
+      zaraPath = 'girl'
+    } else {
+      sheinPath = 'Kids-Boys-c-2030.html'
+      aliPath = 'boys-clothing'
+      temuPath = 'boys-clothing'
+      zaraPath = 'boy'
+    }
+  } else if (isBaby) {
+    sheinPath = 'Baby-c-2029.html'
+    aliPath = 'baby-clothing'
+    temuPath = 'baby-clothing'
+    zaraPath = 'baby'
+  } else if (isMale) {
+    sheinPath = 'Men-Tees-c-1996.html'
+    aliPath = 'mens-clothing'
+    temuPath = 'men-clothing'
+    zaraPath = 'man'
+  }
+
+  return [
+    { label: 'SHEIN', url: `https://www.shein.com/${sheinPath}` },
+    { label: 'AliExpress', url: `https://www.aliexpress.com/${aliPath}.html` },
+    { label: 'Temu', url: `https://www.temu.com/${temuPath}.html` },
+    { label: 'Zara', url: `https://www.zara.com/us/${zaraPath}.html` },
+  ]
+}
+
+export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId }: {
   onNav: (s: Screen) => void
   user: User | null
   scannedSizes: ScannedSizes | null
@@ -38,6 +86,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   budget?: [number, number]
   onToggleWishlist?: (idx: number) => void
   familyMembers?: FamilyMember[]
+  activeProfileId?: string
+  setActiveProfileId?: (id: string) => void
 }) {
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -61,6 +111,12 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const [resultProfileName, setResultProfileName] = useState<string | null>(null)
   const [resultDefaultProfileId, setResultDefaultProfileId] = useState<string | null>(null)
   const [wardrobeFilter, setWardrobeFilter] = useState<string>('all')
+
+  const currentProfileId = activeProfileId ?? 'self'
+  const activeMember = currentProfileId === 'self' ? null : (familyMembers ?? []).find((m) => m.id === currentProfileId) ?? null
+  const activeSizes: ScannedSizes | null = activeMember?.scannedSizes ?? scannedSizes
+  const activeGender = activeSizes?.gender ?? 'unisex'
+  const activeAgeGroup = activeSizes?.ageGroup ?? 'adult'
 
   const [galleryPhotos, setGalleryPhotos] = useState<PreviewablePhoto[]>([])
   const [galleryModalVisible, setGalleryModalVisible] = useState(false)
@@ -138,7 +194,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     setAnalyzing(true)
 
     try {
-      const analysisResult = await analyzeProductUrl(trimmed, scannedSizes, accuracy)
+      const analysisResult = await analyzeProductUrl(trimmed, activeSizes, accuracy)
       const affiliateUrl = wrapAffiliateUrl(trimmed)
 
       const newResult = {
@@ -157,9 +213,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       const productTarget = detectProductTarget(analysisResult.productName, analysisResult.category, trimmed)
       const detected = checkCategoryMismatch(
         productTarget,
-        scannedSizes.gender,
-        scannedSizes.ageGroup,
-        user?.name ?? 'אני',
+        activeSizes.gender,
+        activeSizes.ageGroup,
+        activeMember?.name ?? user?.name ?? 'אני',
         familyMembers ?? [],
       )
 
@@ -612,15 +668,48 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         <Text style={styles.hubTitle}>פיטגורה</Text>
         <Text style={styles.hubSub}>נתח מידה לכל מוצר מכל חנות</Text>
 
-        {accuracy < 95 && (
-          <ContextualUpsellBanner accuracy={accuracy} onTrigger={handleUpsellTrigger} variant="feed" />
-        )}
+        {/* Profile selector card */}
+        <View style={styles.profileSelectorCard}>
+          <Text style={styles.profileSelectorTitle}>למי תרצה לקנות היום? 🕵️‍♂️✨</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 2, paddingVertical: 4 }}>
+            <TouchableOpacity
+              onPress={() => setActiveProfileId?.('self')}
+              activeOpacity={0.7}
+              style={[styles.profilePill, currentProfileId === 'self' && styles.profilePillActive]}
+            >
+              <Text style={styles.profilePillEmoji}>🧑</Text>
+              <Text style={[styles.profilePillName, currentProfileId === 'self' && styles.profilePillNameActive]}>{user?.name ?? 'אני'}</Text>
+            </TouchableOpacity>
+            {(familyMembers ?? []).map((m) => {
+              const emoji = m.category === 'baby' ? '👶' : m.category === 'child' ? '🧒' : m.category === 'partner' ? '💍' : '👤'
+              const isActive = currentProfileId === m.id
+              return (
+                <TouchableOpacity
+                  key={m.id}
+                  onPress={() => setActiveProfileId?.(m.id)}
+                  activeOpacity={0.7}
+                  style={[styles.profilePill, isActive && styles.profilePillActive]}
+                >
+                  <Text style={styles.profilePillEmoji}>{emoji}</Text>
+                  <Text style={[styles.profilePillName, isActive && styles.profilePillNameActive]}>{m.name}</Text>
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+        </View>
 
         <View style={styles.urlCard}>
           <Text style={styles.urlLabel}>מצאת משהו שווה ברשת? שים פה לינק ונפצח לך את המידה 🕵️‍♂️✨</Text>
           <View style={styles.platformRow}>
-            {['SHEIN', 'AliExpress', 'Temu', 'Zara'].map((p) => (
-              <View key={p} style={styles.platformChip}><Text style={styles.platformChipText}>{p}</Text></View>
+            {getRetailerChips(activeGender, activeAgeGroup).map((chip) => (
+              <TouchableOpacity
+                key={chip.label}
+                onPress={() => window.open(wrapAffiliateUrl(chip.url), '_blank', 'noopener,noreferrer')}
+                activeOpacity={0.7}
+                style={styles.platformChip}
+              >
+                <Text style={styles.platformChipText}>{chip.label}</Text>
+              </TouchableOpacity>
             ))}
           </View>
           <TextInput
@@ -1044,6 +1133,13 @@ const styles = StyleSheet.create({
   accuracyText: { fontSize: 12, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   accuracyGauge: { backgroundColor: '#1A1A1A', borderRadius: 12, paddingVertical: 6, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFFEF5' as any } as any,
   accuracyGaugeText: { fontSize: 16, fontWeight: '800', color: '#FFE566', fontFamily: "'Permanent Marker', cursive" },
+  profileSelectorCard: { backgroundColor: '#FFFACC', borderRadius: 16, padding: 18, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 12 } as any,
+  profileSelectorTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Permanent Marker', cursive" },
+  profilePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' } as any,
+  profilePillActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566', boxShadow: '2px 2px 0 #1A1A1A' as any },
+  profilePillEmoji: { fontSize: 22 },
+  profilePillName: { fontSize: 14, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Permanent Marker', cursive" },
+  profilePillNameActive: { color: '#1A1A1A' },
   hubTitle: { fontSize: 28, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Permanent Marker', cursive" },
   hubSub: { fontSize: 15, color: '#4A4A4A', textAlign: 'center', marginBottom: 4, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   urlCard: { backgroundColor: '#FFFEF5', borderRadius: 16, padding: 18, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 12 } as any,
