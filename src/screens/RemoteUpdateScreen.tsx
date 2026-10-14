@@ -15,7 +15,7 @@ import {
 import { computeAccuracyForGallery } from '../services/sizingService'
 import PhotoGuidanceModal from '../components/PhotoGuidanceModal'
 
-type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'gallery_syncing' | 'success' | 'gallery_success' | 'accepting' | 'accepted' | 'share_error'
+type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'gallery_syncing' | 'success' | 'gallery_success' | 'accepting' | 'accepted' | 'share_error' | 'guest_join'
 
 interface ProfileInfo {
   success: boolean
@@ -104,8 +104,7 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
       if (data.isShareLink) {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.user) {
-          setPhase('share_error')
-          setAcceptError('כדי לקבל את הפרופילים המשותפים, עליך להתחבר לחשבון הפיטגורה שלך. חזור לאפליקציה, התחבר, ואז פתח שוב את הקישור.')
+          setPhase('guest_join')
           return
         }
         await acceptShare(session.access_token)
@@ -113,8 +112,24 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
         setPhase('ready')
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Invalid or expired link')
-      setPhase('error')
+      // Fallback: try direct RPC with anon key if edge function is unreachable
+      try {
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_family_profile_by_token', { p_token: token })
+
+        if (rpcError || !rpcData) {
+          throw new Error('Invalid or expired link')
+        }
+
+        const fallbackData: ProfileInfo = rpcData
+        setProfileInfo(fallbackData)
+        if (fallbackData.date_of_birth) setDateOfBirth(fallbackData.date_of_birth)
+        if (fallbackData.scan_preview) setPhotoUrl(fallbackData.scan_preview)
+        setPhase('ready')
+      } catch (fallbackErr) {
+        setErrorMsg(err instanceof Error ? err.message : 'Invalid or expired link')
+        setPhase('error')
+      }
     }
   }
 
@@ -455,6 +470,55 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           </Text>
           <Text style={styles.privacyNote}>חזור לאפליקציית פיטגורה כדי לראות את הפרופילים המשותפים ✨</Text>
         </View>
+      </View>
+    )
+  }
+
+  if (phase === 'guest_join') {
+    const profileCount = profileInfo?.grantedProfileIds?.length ?? 1
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
+          <View style={styles.card}>
+            <View style={styles.headerRow}>
+              <Text style={styles.appTitle}>פיטגורה</Text>
+              <Text style={styles.appSub}>הזמנה לארון המשפחתי</Text>
+            </View>
+
+            <View style={styles.welcomeBanner}>
+              <Text style={styles.welcomeEmoji}>🚀</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.welcomeTitle}>הוזמנת לארון המשפחתי!</Text>
+                <Text style={styles.welcomeText}>
+                  {profileInfo?.sharerName ? `${profileInfo.sharerName} שיתף/ה איתך ` : 'שותף איתך '}
+                  {profileCount} {profileCount === 1 ? 'פרופיל משפחתי' : 'פרופילים משפחתיים'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.privacyBanner}>
+              <Text style={styles.privacyIcon}>🔒</Text>
+              <Text style={styles.privacyText}>
+                כדי לקבל את הפרופילים המשותפים, עליך להתחבר לחשבון הפיטגורה שלך. התחבר/י באפליקציה ואז פתח/י שוב את הקישור.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
+                window.location.href = baseUrl
+              }}
+              activeOpacity={0.8}
+              style={styles.confirmBtn}
+            >
+              <Text style={styles.confirmBtnText}>הצטרף לארון המשפחתי 🚀</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.errorHint}>
+              חזור/י לאפליקציית פיטגורה, התחבר/י לחשבון, ואז פתח/י שוב את הקישור הזה
+            </Text>
+          </View>
+        </ScrollView>
       </View>
     )
   }
