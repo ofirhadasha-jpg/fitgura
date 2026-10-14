@@ -59,16 +59,13 @@ Deno.serve(async (req: Request) => {
       // Upsert family_profile (use familyMemberId as a stable reference if provided)
       let profileId: string;
 
-      if (familyMemberId) {
-        // Try to find existing profile by matching id — but since family_members
-        // are local, we use a deterministic approach: check if a profile with
-        // this owner + member_name + category already exists
+      if (familyMemberId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(familyMemberId)) {
+        // familyMemberId is a real DB UUID — look up the profile directly by id
         const { data: existing } = await supabase
           .from("family_profiles")
           .select("id")
+          .eq("id", familyMemberId)
           .eq("owner_user_id", user.id)
-          .eq("member_name", memberName)
-          .eq("category", category)
           .maybeSingle();
 
         if (existing) {
@@ -137,7 +134,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/update-profile?token=${token}`;
+      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/?token=${token}`;
 
       return new Response(JSON.stringify({ success: true, token, inviteUrl, profileId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -224,6 +221,26 @@ Deno.serve(async (req: Request) => {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // Insert notification to the parent account
+      if (data.success && data.profile_id) {
+        const profileId = data.profile_id as string;
+        const memberName = data.member_name as string;
+        const { data: profileRow } = await supabase
+          .from("family_profiles")
+          .select("owner_user_id")
+          .eq("id", profileId)
+          .maybeSingle();
+
+        if (profileRow?.owner_user_id) {
+          await supabase.from("notifications").insert({
+            user_id: profileRow.owner_user_id,
+            title: `${memberName} עדכנ/ה את המידות`,
+            body: `${memberName} עדכנ/ה את המידות! הנתונים עודכנו בהצלחה ✨`,
+            type: "family_update",
+          });
+        }
       }
 
       return new Response(JSON.stringify(data), {

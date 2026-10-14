@@ -457,8 +457,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       const data = await res.json()
       if (data.token) {
         const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
-        const inviteUrl = `${appDomain}/?invite=${data.token}#update-profile?token=${data.token}`
-        const shareText = `היי! הנה קישור מאובטח לעדכון המידות שלך בפיטגורה. התמונות נשארות אצלך בטלפון בלבד! 🔒`
+        const inviteUrl = `${appDomain}/?token=${data.token}`
+        const shareText = `היי ${member.name}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${inviteUrl}`
         const shareTitle = 'פיטגורה - עדכון מידות משפחתי ✨'
 
         if (typeof navigator !== 'undefined' && navigator.share) {
@@ -506,7 +506,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   }
 
   function handleWhatsAppShare(url: string, memberName: string) {
-    const text = encodeURIComponent(`פיטגורה - עדכון מידות משפחתי ✨\nהיי ${memberName}! הנה קישור מאובטח לעדכון המידות שלך בפיטגורה. התמונות נשארות אצלך בטלפון בלבד! 🔒\n${url}`)
+    const text = encodeURIComponent(`היי ${memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${url}`)
     window.open(`https://wa.me/?text=${text}`, '_blank')
   }
 
@@ -1155,7 +1155,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   <Text style={profStyles.shareLinkText} numberOfLines={2}>{shareModal.url}</Text>
                 </View>
                 <Text style={[profStyles.sheetDesc, { fontSize: 13, lineHeight: 20 }]}>
-                  היי {shareModal.memberName}! הנה קישור מאובטח לעדכון המידות שלך בפיטגורה. התמונות נשארות אצלך בטלפון בלבד! 🔒
+                  היי {shareModal.memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: {shareModal.url}
                 </Text>
                 <TouchableOpacity
                   onPress={() => handleCopyInviteLink(shareModal.url)}
