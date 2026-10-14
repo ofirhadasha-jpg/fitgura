@@ -22,7 +22,7 @@ Deno.serve(async (req: Request) => {
 
     // Actions that don't require authentication — they use the service-role
     // client and validate access via the invite token itself.
-    const publicActions = ["verify", "submit"];
+    const publicActions = ["verify", "submit", "request_join"];
 
     let user: { id: string; email?: string } | null = null;
 
@@ -388,7 +388,41 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      return new Response(JSON.stringify({ ...data, isShareLink, grantedProfileIds: inviteRow?.granted_profile_ids || null, sharerName }), {
+      // Also look up the inviter's name for non-share links (family update invites)
+      if (!isShareLink && inviteRow?.family_profile_id) {
+        const { data: profileRow } = await supabase
+          .from("family_profiles")
+          .select("owner_user_id")
+          .eq("id", inviteRow.family_profile_id as string)
+          .maybeSingle();
+        if (profileRow?.owner_user_id) {
+          const { data: inviterProfile } = await supabase
+            .from("profiles")
+            .select("email")
+            .eq("user_id", profileRow.owner_user_id as string)
+            .maybeSingle();
+          if (inviterProfile?.email) {
+            sharerName = inviterProfile.email.split("@")[0] ?? null;
+          }
+        }
+      }
+
+      // Check if there's already a pending join request for this token
+      const { data: existingRequest } = await supabase
+        .from("join_requests")
+        .select("id, status, guest_name")
+        .eq("token", token)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      return new Response(JSON.stringify({
+        ...data,
+        isShareLink,
+        grantedProfileIds: inviteRow?.granted_profile_ids || null,
+        sharerName,
+        hasPendingRequest: !!existingRequest,
+        pendingRequestName: existingRequest?.guest_name ?? null,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -471,6 +505,229 @@ Deno.serve(async (req: Request) => {
       }
 
       return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- REQUEST JOIN (public, no auth required) ---
+    // A guest opens the invite link and submits their name/email to request
+    // to join the family. Stores a pending request and notifies the inviter.
+    if (action === "request_join") {
+      const { token, guestName, guestEmail } = body;
+      if (!token || !guestName) {
+        return new Response(JSON.stringify({ error: "Missing token or guestName" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Look up the invite to find the parent_user_id and profile_id
+      const { data: inviteRow } = await supabase
+        .from("profile_invites")
+        .select("family_profile_id, is_active, used, expires_at")
+        .eq("token", token)
+        .maybeSingle();
+
+      if (!inviteRow || !inviteRow.is_active || inviteRow.used) {
+        return new Response(JSON.stringify({ error: "Invalid or expired link" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (inviteRow.expires_at && new Date(inviteRow.expires_at) < new Date()) {
+        return new Response(JSON.stringify({ error: "Link has expired" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Find the family profile to get the owner (inviter)
+      const { data: profileRow } = await supabase
+        .from("family_profiles")
+        .select("owner_user_id, member_name")
+        .eq("id", inviteRow.family_profile_id)
+        .maybeSingle();
+
+      if (!profileRow?.owner_user_id) {
+        return new Response(JSON.stringify({ error: "Invalid invite" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check if there's already a pending request for this token
+      const { data: existingReq } = await supabase
+        .from("join_requests")
+        .select("id, status")
+        .eq("token", token)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (existingReq) {
+        return new Response(JSON.stringify({ success: true, alreadyPending: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Insert the join request
+      const { error: insertError } = await supabase
+        .from("join_requests")
+        .insert({
+          parent_user_id: profileRow.owner_user_id,
+          profile_id: inviteRow.family_profile_id,
+          token,
+          guest_name: guestName,
+          guest_email: guestEmail || null,
+          status: "pending",
+        });
+
+      if (insertError) {
+        return new Response(JSON.stringify({ error: "Failed to submit request" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Notify the inviter
+      await supabase.from("notifications").insert({
+        user_id: profileRow.owner_user_id,
+        title: "בקשת הצטרפות חדשה 📩",
+        body: `${guestName} מבקש/ת להצטרף לארון המשפחתי`,
+        type: "join_request",
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- APPROVE JOIN REQUEST (auth required, inviter only) ---
+    if (action === "approve_request") {
+      const { requestId } = body;
+      if (!requestId) {
+        return new Response(JSON.stringify({ error: "Missing requestId" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify the request belongs to this user
+      const { data: reqRow, error: reqError } = await supabase
+        .from("join_requests")
+        .select("id, parent_user_id, status, guest_name, token, profile_id")
+        .eq("id", requestId)
+        .maybeSingle();
+
+      if (reqError || !reqRow) {
+        return new Response(JSON.stringify({ error: "Request not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (reqRow.parent_user_id !== user!.id) {
+        return new Response(JSON.stringify({ error: "Not authorized" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (reqRow.status !== "pending") {
+        return new Response(JSON.stringify({ error: "Request already handled" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: updateError } = await supabase
+        .from("join_requests")
+        .update({ status: "approved", responded_at: new Date().toISOString() })
+        .eq("id", requestId);
+
+      if (updateError) {
+        return new Response(JSON.stringify({ error: "Failed to approve" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, guestName: reqRow.guest_name }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- REJECT JOIN REQUEST (auth required, inviter only) ---
+    if (action === "reject_request") {
+      const { requestId } = body;
+      if (!requestId) {
+        return new Response(JSON.stringify({ error: "Missing requestId" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: reqRow, error: reqError } = await supabase
+        .from("join_requests")
+        .select("id, parent_user_id, status")
+        .eq("id", requestId)
+        .maybeSingle();
+
+      if (reqError || !reqRow) {
+        return new Response(JSON.stringify({ error: "Request not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (reqRow.parent_user_id !== user!.id) {
+        return new Response(JSON.stringify({ error: "Not authorized" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (reqRow.status !== "pending") {
+        return new Response(JSON.stringify({ error: "Request already handled" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: updateError } = await supabase
+        .from("join_requests")
+        .update({ status: "rejected", responded_at: new Date().toISOString() })
+        .eq("id", requestId);
+
+      if (updateError) {
+        return new Response(JSON.stringify({ error: "Failed to reject" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- LIST JOIN REQUESTS (auth required, inviter only) ---
+    if (action === "list_requests") {
+      const { data: requests, error: listError } = await supabase
+        .from("join_requests")
+        .select("id, guest_name, guest_email, status, created_at, profile_id")
+        .eq("parent_user_id", user!.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+
+      if (listError) {
+        return new Response(JSON.stringify({ error: "Failed to load requests" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, requests: requests || [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

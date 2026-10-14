@@ -4,6 +4,7 @@ import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAcce
 import type { SizeRegion } from './utils/sizeConverter'
 import { AuthModal } from './components'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
+import { EDGE_FUNCTION_URL } from './lib/config'
 import { SplashScreen } from './screens/SplashScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
 import { DeviceDetectionScreen } from './screens/DeviceDetectionScreen'
@@ -376,6 +377,7 @@ export default function App() {
   const [activeProfileId, setActiveProfileId] = useState<string>('self')
   const [focusWishlistProfileId, setFocusWishlistProfileId] = useState<string | null>(null)
   const [growthAlerts, setGrowthAlerts] = useState<GrowthDetection[]>([])
+  const [joinRequests, setJoinRequests] = useState<{ id: string; guest_name: string; guest_email: string | null }[]>([])
   const [inviteToken, setInviteToken] = useState<string | null>(null)
   const [sharedProductUrl, setSharedProductUrl] = useState<string | null>(null)
   const [clipboardCandidate, setClipboardCandidate] = useState<string | null>(null)
@@ -392,6 +394,73 @@ export default function App() {
       void endSession()
     }
   }, [user])
+
+  // Load pending join requests for the inviter
+  useEffect(() => {
+    if (!user) { setJoinRequests([]); return }
+    void loadJoinRequests()
+  }, [user])
+
+  async function loadJoinRequests() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action: 'list_requests' }),
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.success && data.requests) {
+        setJoinRequests(data.requests)
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function handleApproveJoin(requestId: string) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action: 'approve_request', requestId }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success) {
+          showToast(`אישרת את בקשת ההצטרפות של ${data.guestName} ✅`)
+        }
+      }
+    } catch { /* ignore */ }
+    setJoinRequests((prev) => prev.filter((r) => r.id !== requestId))
+  }
+
+  async function handleRejectJoin(requestId: string) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action: 'reject_request', requestId }),
+      })
+      if (res.ok) {
+        showToast('הבקשה נדחתה ❌')
+      }
+    } catch { /* ignore */ }
+    setJoinRequests((prev) => prev.filter((r) => r.id !== requestId))
+  }
 
   // Realtime: listen for family_profiles updates + new notifications
   useEffect(() => {
@@ -414,6 +483,7 @@ export default function App() {
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         () => {
           void getUnreadCount().then(setUnreadCount)
+          void loadJoinRequests()
         }
       )
       .subscribe()
@@ -936,6 +1006,34 @@ export default function App() {
           />
         )}
 
+        {joinRequests.length > 0 && (
+          <View style={styles.joinRequestOverlay}>
+            {joinRequests.map((req) => (
+              <View key={req.id} style={styles.joinRequestBanner}>
+                <Text style={styles.joinRequestText}>
+                  📩 בקשת הצטרפות חדשה מ-{req.guest_name}
+                </Text>
+                <View style={styles.growthBannerActions}>
+                  <TouchableOpacity
+                    onPress={() => handleApproveJoin(req.id)}
+                    activeOpacity={0.8}
+                    style={styles.growthApproveBtn}
+                  >
+                    <Text style={styles.growthApproveBtnText}>אישור הצטרפות ✅</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleRejectJoin(req.id)}
+                    activeOpacity={0.7}
+                    style={styles.growthDismissBtn}
+                  >
+                    <Text style={styles.growthDismissBtnText}>דחיית בקשה ❌</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {growthAlerts.length > 0 && (
           <View style={styles.growthBannerOverlay}>
             {growthAlerts.map((d) => (
@@ -1099,6 +1197,30 @@ const styles = StyleSheet.create({
     zIndex: 210,
     gap: 8,
   } as React.CSSProperties,
+  joinRequestOverlay: {
+    position: 'absolute',
+    bottom: 100,
+    left: 16,
+    right: 16,
+    zIndex: 215,
+    gap: 8,
+  } as React.CSSProperties,
+  joinRequestBanner: {
+    backgroundColor: '#E0F2FE',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderWidth: 2,
+    borderColor: '#1A1A1A',
+    boxShadow: '3px 3px 0 #0891B2',
+  } as React.CSSProperties,
+  joinRequestText: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 22,
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
+    marginBottom: 10,
+  },
   growthBanner: {
     backgroundColor: '#E0FFF0',
     borderRadius: 14,

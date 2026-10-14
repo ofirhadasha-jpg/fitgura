@@ -15,7 +15,7 @@ import {
 import { computeAccuracyForGallery } from '../services/sizingService'
 import PhotoGuidanceModal from '../components/PhotoGuidanceModal'
 
-type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'gallery_syncing' | 'success' | 'gallery_success' | 'accepting' | 'accepted' | 'share_error' | 'guest_join'
+type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'gallery_syncing' | 'success' | 'gallery_success' | 'accepting' | 'accepted' | 'share_error' | 'guest_join' | 'request_join' | 'request_pending'
 
 interface ProfileInfo {
   success: boolean
@@ -26,7 +26,7 @@ interface ProfileInfo {
   error?: string
   isShareLink?: boolean
   grantedProfileIds?: string[]
-  sharerName?: string
+  sharerName?: string | null
   avatar_url?: string | null
   date_of_birth?: string | null
   top_size?: string | null
@@ -42,6 +42,8 @@ interface ProfileInfo {
   accuracy?: number | null
   scan_preview?: string | null
   profile_id?: string
+  hasPendingRequest?: boolean
+  pendingRequestName?: string | null
 }
 
 export function RemoteUpdateScreen({ token }: { token: string }) {
@@ -62,6 +64,9 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const [showPhotoGuidance, setShowPhotoGuidance] = useState(false)
+  const [guestName, setGuestName] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+  const [submittingRequest, setSubmittingRequest] = useState(false)
 
   useEffect(() => {
     void verifyToken()
@@ -108,6 +113,8 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           return
         }
         await acceptShare(session.access_token)
+      } else if (data.hasPendingRequest) {
+        setPhase('request_pending')
       } else {
         setPhase('ready')
       }
@@ -159,6 +166,43 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
     } catch (err) {
       setAcceptError(err instanceof Error ? err.message : 'שגיאה בקבלת השיתוף')
       setPhase('share_error')
+    }
+  }
+
+  async function submitJoinRequest() {
+    if (!guestName.trim() || submittingRequest) return
+    setSubmittingRequest(true)
+    try {
+      const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: 'request_join',
+          token,
+          guestName: guestName.trim(),
+          guestEmail: guestEmail.trim() || undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.error ?? 'Failed to send request')
+      }
+
+      const data = await res.json()
+      if (data.success === false) {
+        throw new Error(data.error ?? 'Failed to send request')
+      }
+
+      setPhase('request_pending')
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'שגיאה בשליחת הבקשה')
+      setPhase('error')
+    } finally {
+      setSubmittingRequest(false)
     }
   }
 
@@ -516,6 +560,94 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
 
             <Text style={styles.errorHint}>
               חזור/י לאפליקציית פיטגורה, התחבר/י לחשבון, ואז פתח/י שוב את הקישור הזה
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
+  if (phase === 'request_join') {
+    const inviterName = profileInfo?.sharerName ?? profileInfo?.member_name ?? 'בן המשפחה'
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
+          <View style={styles.card}>
+            <View style={styles.headerRow}>
+              <Text style={styles.appTitle}>פיטגורה</Text>
+              <Text style={styles.appSub}>הזמנה לארון המשפחתי</Text>
+            </View>
+
+            <View style={styles.welcomeBanner}>
+              <Text style={styles.welcomeEmoji}>🏠</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.welcomeTitle}>הוזמנת לארון המשפחתי! 🏠</Text>
+                <Text style={styles.welcomeText}>
+                  {inviterName} הזמין/ה אותך להצטרף לארון המשפחתי בפיטגורה
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.privacyBanner}>
+              <Text style={styles.privacyIcon}>🔒</Text>
+              <Text style={styles.privacyText}>
+                מלא/י את הפרטים שלך ו-{inviterName} יקבל/י בקשת הצטרפות. לאחר אישור, תוכל/י לעדכן מידות ולראות פריטים משותפים.
+              </Text>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>השם שלך</Text>
+              <input
+                type="text"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                placeholder="הכנס/י את השם שלך"
+                style={styles.dateInput}
+              />
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>אימייל (אופציונלי)</Text>
+              <input
+                type="email"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                placeholder="your@email.com"
+                style={styles.dateInput}
+              />
+            </View>
+
+            <TouchableOpacity
+              onPress={submitJoinRequest}
+              disabled={!guestName.trim() || submittingRequest}
+              activeOpacity={0.8}
+              style={[styles.confirmBtn, (!guestName.trim() || submittingRequest) && styles.confirmBtnDisabled]}
+            >
+              <Text style={styles.confirmBtnText}>
+                {submittingRequest ? 'שולח...' : `שלח בקשת הצטרפות ל-${inviterName} 📬`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
+  if (phase === 'request_pending') {
+    const inviterName = profileInfo?.sharerName ?? profileInfo?.member_name ?? 'בן המשפחה'
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
+          <View style={styles.card}>
+            <View style={styles.successIconWrap}>
+              <Text style={styles.successIcon}>⏳</Text>
+            </View>
+            <Text style={styles.successTitle}>הבקשה נשלחה!</Text>
+            <Text style={styles.successBody}>
+              ממתין לאישור מ-{inviterName} ⏳
+            </Text>
+            <Text style={styles.privacyNote}>
+              כש-{inviterName} יאשר/י את הבקשה, תקבל/י גישה לארון המשפחתי ותוכל/י לעדכן מידות ולצפות בפריטים משותפים ✨
             </Text>
           </View>
         </ScrollView>
