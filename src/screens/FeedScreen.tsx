@@ -20,7 +20,6 @@ import {
 
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
-import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
 import { captureClickPos, type AnchorPos } from '../utils/popupPosition'
 
 const PAGE_SIZE = 50
@@ -720,8 +719,6 @@ export function FeedScreen({
             )
           })}
         </View>
-
-        <ContextualUpsellBanner accuracy={sizingAccuracy} onTrigger={() => onNav('profile')} variant="feed" />
 
         <View style={feedStyles.productGrid}>
           {sheinFirst.slice(6).map((product) => {
