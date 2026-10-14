@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useEscToDismiss } from '../utils/useEscToDismiss'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Image } from 'react-native'
 import { BottomNav } from '../components'
 import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
@@ -150,6 +151,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   }, [])
 
   useEffect(() => { void loadWardrobe() }, [loadWardrobe])
+
+  useEscToDismiss(!!deleteTarget, () => setDeleteTarget(null))
+  useEscToDismiss(showPermissionModal, () => setShowPermissionModal(false))
 
   useEffect(() => {
     if (!focusWishlistProfileId) return
@@ -1204,26 +1208,26 @@ const styles = StyleSheet.create({
   wardrobeCompareLensBtnText: { color: '#4A4A4A', fontSize: 11, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   wardrobeDeleteBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 4 },
   wardrobeDeleteBtnText: { fontSize: 16 },
-  deleteOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 500, justifyContent: 'center', alignItems: 'center' },
-  deleteBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
-  deleteDialog: { backgroundColor: '#FFFEF5', borderRadius: 18, padding: 24, width: '85%', maxWidth: 380, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 12 } as any,
+  deleteOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center', padding: 16, backdropFilter: 'blur(2px)' } as any,
+  deleteBackdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  deleteDialog: { backgroundColor: '#FFFEF5', borderRadius: 18, padding: 24, width: '100%', maxWidth: 380, maxHeight: '90vh', alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden' } as any,
   deleteDialogIcon: { fontSize: 36 },
   deleteDialogTitle: { fontSize: 17, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Permanent Marker', cursive" },
   deleteDialogSub: { fontSize: 13, color: '#6B6B6B', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   deleteDialogBtns: { flexDirection: 'row', gap: 10, marginTop: 6 },
-  deleteCancelBtn: { flex: 1, backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
-  deleteCancelBtnText: { fontSize: 14, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  deleteConfirmBtn: { flex: 1, backgroundColor: '#FF4444', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
-  deleteConfirmBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
-  permissionOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 550, justifyContent: 'center', alignItems: 'center' },
-  permissionBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
-  permissionDialog: { backgroundColor: '#FFFEF5', borderRadius: 20, padding: 28, width: '88%', maxWidth: 400, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 14 } as any,
+  deleteCancelBtn: { flex: 1, backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
+  deleteCancelBtnText: { fontSize: 16, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  deleteConfirmBtn: { flex: 1, backgroundColor: '#FF4444', borderRadius: 12, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  deleteConfirmBtnText: { fontSize: 16, fontWeight: '800', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
+  permissionOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center', padding: 16, backdropFilter: 'blur(2px)' } as any,
+  permissionBackdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  permissionDialog: { backgroundColor: '#FFFEF5', borderRadius: 20, padding: 28, width: '100%', maxWidth: 400, maxHeight: '90vh', alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, gap: 14, display: 'flex', flexDirection: 'column', overflow: 'hidden' } as any,
   permissionIcon: { fontSize: 40 },
   permissionTitle: { fontSize: 19, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Permanent Marker', cursive" },
   permissionDesc: { fontSize: 14, color: '#4A4A4A', textAlign: 'center', lineHeight: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   permissionBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  permissionCancelBtn: { flex: 1, backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
+  permissionCancelBtn: { flex: 1, backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
   permissionCancelBtnText: { fontSize: 14, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  permissionGrantBtn: { flex: 1, backgroundColor: '#0891B2', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
+  permissionGrantBtn: { flex: 1, backgroundColor: '#0891B2', borderRadius: 12, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
   permissionGrantBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
 })

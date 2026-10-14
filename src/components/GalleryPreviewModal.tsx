@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
 import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
+import { useEscToDismiss } from '../utils/useEscToDismiss'
 
 export interface PreviewablePhoto {
   id: string
@@ -26,6 +27,8 @@ export default function GalleryPreviewModal({
   anchorPos,
 }: GalleryPreviewModalProps) {
   const [removed, setRemoved] = useState<Set<string>>(new Set())
+
+  useEscToDismiss(visible, onCancel)
 
   if (!visible) return null
 
@@ -116,33 +119,31 @@ export default function GalleryPreviewModal({
 const styles = StyleSheet.create({
   overlay: {
     position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 380,
+    top: 0, left: 0, right: 0, bottom: 0,
+    zIndex: 9999,
     justifyContent: 'center',
     alignItems: 'center',
-  },
+    padding: 16,
+    backdropFilter: 'blur(2px)',
+  } as React.CSSProperties,
   backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(26,26,26,0.65)',
-  },
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  } as React.CSSProperties,
   panel: {
     backgroundColor: '#FFFEF5',
     borderRadius: 22,
     padding: 20,
-    width: '90%',
+    width: '100%',
     maxWidth: 440,
     borderWidth: 2,
     borderColor: '#1A1A1A',
     boxShadow: '4px 4px 0 #1A1A1A' as any,
-    maxHeight: '90%',
+    maxHeight: '90vh',
     overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
   } as any,
   header: {
     flexDirection: 'row',
@@ -278,8 +279,10 @@ const styles = StyleSheet.create({
   cancelBtn: {
     backgroundColor: '#F5F0E0',
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    minHeight: 48,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#9A9A9A',
   },

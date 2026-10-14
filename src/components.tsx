@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native'
 import type { Screen, User } from './types'
 import { supabase } from './lib/supabase'
+import { useEscToDismiss } from './utils/useEscToDismiss'
 
 /* ─── LINEAR GRADIENT HELPER (web fallback) ─────────────────────────────── */
 
@@ -118,6 +119,8 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+
+  useEscToDismiss(true, onDismiss)
 
   async function handleGoogleLogin() {
     setLoading(true)
@@ -274,21 +277,24 @@ const authStyles = StyleSheet.create({
   overlay: {
     position: 'fixed',
     top: 0, left: 0, right: 0, bottom: 0,
-    zIndex: 200,
+    zIndex: 9999,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 16,
+    backdropFilter: 'blur(2px)',
   } as React.CSSProperties,
   backdrop: {
-    position: 'absolute',
+    position: 'fixed',
     top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(26,26,26,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   } as React.CSSProperties,
   sheet: {
     backgroundColor: '#FFFEF5',
     borderRadius: 14,
     overflow: 'hidden',
-    width: 340,
-    maxHeight: '90%',
+    width: '100%',
+    maxWidth: 340,
+    maxHeight: '90vh',
     boxShadow: '6px 6px 0 #1A1A1A',
     borderWidth: 2,
     borderColor: '#1A1A1A',

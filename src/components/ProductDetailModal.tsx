@@ -11,6 +11,7 @@ import { wrapWithSkimlinks } from '../utils/skimlinks'
 import type { ExactVisualMatch } from '../services/adapterTypes'
 import type { ProductPlatform } from '../types'
 import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
+import { useEscToDismiss } from '../utils/useEscToDismiss'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
   const isUSD = currency === 'USD'
@@ -87,6 +88,8 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
       })
     return () => { cancelled = true }
   }, [visible, product.imageUrl, product.img, productPlatform])
+
+  useEscToDismiss(visible, onDismiss)
 
   if (!visible) return null
 
@@ -383,9 +386,9 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 }
 
 const modalStyles = StyleSheet.create({
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
-  sheet: { backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)', borderRadius: 12, padding: 18, width: 340, maxWidth: '92%', maxHeight: '88%', overflowY: 'auto', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center', padding: 16, backdropFilter: 'blur(2px)' } as React.CSSProperties,
+  backdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  sheet: { backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)', borderRadius: 12, padding: 18, width: '100%', maxWidth: 340, maxHeight: '90vh', overflowY: 'auto', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A', display: 'flex', flexDirection: 'column' } as React.CSSProperties,
   scrollArea: { flexShrink: 1 },
   scrollContent: { gap: 12, paddingBottom: 8 },
   closeBtn: { position: 'absolute', top: 8, right: 8, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', zIndex: 2 },

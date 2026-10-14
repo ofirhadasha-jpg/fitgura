@@ -480,8 +480,8 @@ const evStyles = StyleSheet.create({
     boxShadow: '3px 3px 0 #1A1A1A',
   } as React.CSSProperties,
   tipText: { fontSize: 14, color: '#1A1A1A', lineHeight: 20, flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, justifyContent: 'flex-end' },
-  sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
+  sheetOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'flex-end', padding: 16, backdropFilter: 'blur(2px)' } as React.CSSProperties,
+  sheetBackdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
     backgroundColor: '#FFFEF5',
     borderTopLeftRadius: 32, borderTopRightRadius: 32,

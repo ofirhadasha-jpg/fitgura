@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Image } from 'react-native'
 import { type DeviceIdentificationResult, identifyDevice } from '../types'
 import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
+import { useEscToDismiss } from '../utils/useEscToDismiss'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
@@ -26,6 +27,8 @@ export function AddDeviceModal({ visible, onClose, onAdd, anchorPos }: AddDevice
   const devGalleryInputRef = useRef<HTMLInputElement>(null)
   const devScanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const devPhotoFileRef = useRef<File | null>(null)
+
+  useEscToDismiss(visible, handleClose)
 
   if (!visible) return null
 
@@ -281,9 +284,9 @@ export function AddDeviceModal({ visible, onClose, onAdd, anchorPos }: AddDevice
 }
 
 const modalStyles = StyleSheet.create({
-  sheetOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 80 },
-  sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
-  sheet: { backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)', borderRadius: 12, padding: 28, maxHeight: '80%', overflowY: 'auto', width: '92%', maxWidth: 420, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
+  sheetOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center', padding: 16, backdropFilter: 'blur(2px)' } as React.CSSProperties,
+  sheetBackdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  sheet: { backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)', borderRadius: 12, padding: 28, maxHeight: '90vh', overflowY: 'auto', width: '100%', maxWidth: 420, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A', display: 'flex', flexDirection: 'column' } as React.CSSProperties,
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   sheetTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sheetCloseBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#F5F0E0', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,

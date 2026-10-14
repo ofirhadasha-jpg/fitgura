@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
 import type { FamilyMember } from '../types'
 import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
+import { useEscToDismiss } from '../utils/useEscToDismiss'
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl } from '../services/affiliateService'
 import { normalizeProductImageUrl, getFallbackImage } from '../utils/productImages'
 
@@ -117,6 +118,8 @@ export default function SizingResultModal({
     setManualImageUrl('')
     setShowManualInput(false)
   }, [productImage, visible])
+
+  useEscToDismiss(visible, onClose)
 
   if (!visible) return null
 
@@ -401,9 +404,9 @@ export default function SizingResultModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
-  panel: { backgroundColor: '#FFFEF5', borderRadius: 22, padding: 20, width: '90%', maxWidth: 440, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, maxHeight: '90%', overflowY: 'auto' } as any,
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center', padding: 16, backdropFilter: 'blur(2px)' } as React.CSSProperties,
+  backdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  panel: { backgroundColor: '#FFFEF5', borderRadius: 22, padding: 20, width: '100%', maxWidth: 440, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' } as any,
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   title: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   closeBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F5F0E0', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
@@ -442,7 +445,7 @@ const styles = StyleSheet.create({
   breakdownScoreBar: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#F5F0E0', overflow: 'hidden' as any },
   breakdownScoreFill: { height: '100%', borderRadius: 3 },
   breakdownScoreText: { fontSize: 11, fontWeight: '700', color: '#4A4A4A', width: 34, textAlign: 'left', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  buyBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, marginBottom: 8 } as any,
+  buyBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 16, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, marginBottom: 8 } as any,
   buyBtnText: { color: '#1A1A1A', fontSize: 16, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
   commitmentBadge: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#E0FFF0', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, borderWidth: 2, borderColor: '#00CC52', marginBottom: 10, boxShadow: '2px 2px 0 #00CC52' as any } as any,
   commitmentBadgeIcon: { fontSize: 20 },
@@ -459,7 +462,7 @@ const styles = StyleSheet.create({
   profileOptionBtnActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566' },
   profileOptionText: { fontSize: 12, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   profileOptionTextActive: { color: '#1A1A1A', fontWeight: '700' },
-  saveBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
+  saveBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
   wishlistToggle: { alignSelf: 'center', marginBottom: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#F5F0E0', borderWidth: 1.5, borderColor: '#9A9A9A' } as any,
   wishlistToggleActive: { borderColor: '#1A1A1A', backgroundColor: '#FFD6E0' },
   wishlistToggleText: { fontSize: 13, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },

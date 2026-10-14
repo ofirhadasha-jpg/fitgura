@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { useEscToDismiss } from '../utils/useEscToDismiss'
 
 type PhotoGuidanceModalProps = {
   visible: boolean
@@ -8,6 +9,8 @@ type PhotoGuidanceModalProps = {
 }
 
 export default function PhotoGuidanceModal({ visible, onContinue, onClose }: PhotoGuidanceModalProps) {
+  useEscToDismiss(visible, onClose)
+
   if (!visible) return null
 
   return (
@@ -61,9 +64,9 @@ export default function PhotoGuidanceModal({ visible, onContinue, onClose }: Pho
 }
 
 const styles = StyleSheet.create({
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1200, justifyContent: 'center', alignItems: 'center' } as React.CSSProperties,
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.68)' } as React.CSSProperties,
-  sheet: { width: '92%', maxWidth: 430, maxHeight: '92%', overflowY: 'auto', backgroundColor: '#FFFEF5', borderRadius: 22, padding: 20, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '5px 5px 0 #1A1A1A' as any } as any,
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center', padding: 16, backdropFilter: 'blur(2px)' } as React.CSSProperties,
+  backdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' } as React.CSSProperties,
+  sheet: { width: '100%', maxWidth: 430, maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#FFFEF5', borderRadius: 22, padding: 20, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '5px 5px 0 #1A1A1A' as any, display: 'flex', flexDirection: 'column' } as any,
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
   title: { flex: 1, fontSize: 20, lineHeight: 26, fontWeight: '800', color: '#1A1A1A', textAlign: 'right', fontFamily: "'Permanent Marker', cursive" },
   closeBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E0', borderWidth: 1.5, borderColor: '#1A1A1A' },
@@ -82,8 +85,8 @@ const styles = StyleSheet.create({
   checklist: { backgroundColor: '#FFFACC', borderRadius: 14, padding: 14, gap: 7, borderWidth: 1.5, borderColor: '#FFE566', marginBottom: 14 },
   checklistTitle: { fontSize: 14, fontWeight: '800', color: '#1A1A1A', textAlign: 'right', fontFamily: "'Permanent Marker', cursive", marginBottom: 2 },
   checkItem: { fontSize: 14, lineHeight: 20, color: '#1A1A1A', textAlign: 'right', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  cta: { backgroundColor: '#00CC52', borderRadius: 13, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any } as any,
+  cta: { backgroundColor: '#00CC52', borderRadius: 13, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any } as any,
   ctaText: { fontSize: 15, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
-  cancelBtn: { alignItems: 'center', paddingVertical: 10, marginTop: 2 },
+  cancelBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12, minHeight: 48, marginTop: 2 },
   cancelText: { fontSize: 13, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })

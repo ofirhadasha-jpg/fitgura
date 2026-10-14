@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import type { FamilyMember } from '../types'
 import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
+import { useEscToDismiss } from '../utils/useEscToDismiss'
 
 export type ProductTarget = 'women' | 'men' | 'boys' | 'girls' | 'kids' | 'baby' | 'unisex' | 'unknown'
 
@@ -257,6 +258,8 @@ export default function CategoryMismatchModal({
   onOverride,
   onClose,
 }: CategoryMismatchModalProps) {
+  useEscToDismiss(visible && !!mismatch, onClose)
+
   if (!visible || !mismatch) return null
 
   const hasSwitchOptions = mismatch.switchOptions.length > 0
@@ -350,28 +353,28 @@ export default function CategoryMismatchModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 450, justifyContent: 'center', alignItems: 'center' },
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.7)' },
-  panel: { backgroundColor: '#FFFEF5', borderRadius: 22, padding: 24, width: '90%', maxWidth: 400, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, alignItems: 'center', maxHeight: '90%', overflowY: 'auto' } as any,
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center', padding: 16, backdropFilter: 'blur(2px)' } as React.CSSProperties,
+  backdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  panel: { backgroundColor: '#FFFEF5', borderRadius: 22, padding: 24, width: '100%', maxWidth: 400, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, alignItems: 'center', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' } as any,
   iconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFE566', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#1A1A1A', marginBottom: 14 },
   icon: { fontSize: 32 },
   title: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', marginBottom: 10, fontFamily: "'Permanent Marker', cursive" },
   body: { fontSize: 15, color: '#4A4A4A', textAlign: 'center', lineHeight: 22, marginBottom: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   switchOptionsWrap: { width: '100%', gap: 8, marginBottom: 8 },
-  switchBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, width: '100%' } as any,
+  switchBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 14, minHeight: 48, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any, width: '100%' } as any,
   switchBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive", textAlign: 'center' },
   addProfileBtn: { backgroundColor: '#E0F2FE', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#0891B2', width: '100%', marginBottom: 8 },
   addProfileBtnText: { color: '#0891B2', fontSize: 14, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  overrideBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566', width: '100%', marginBottom: 8 },
+  overrideBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 14, minHeight: 48, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFE566', width: '100%', marginBottom: 8 },
   overrideBtnText: { color: '#4A4A4A', fontSize: 14, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   noSwitchHint: { fontSize: 13, color: '#9A9A9A', marginBottom: 16, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
-  cancelBtn: { paddingVertical: 8, paddingHorizontal: 16 },
+  cancelBtn: { paddingVertical: 12, minHeight: 48, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
   cancelBtnText: { fontSize: 14, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   smartMatchCard: { backgroundColor: '#E0FFF0', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: '#00CC52', width: '100%', marginBottom: 14, alignItems: 'center' } as any,
   smartMatchTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', marginBottom: 8, fontFamily: "'Permanent Marker', cursive" },
   smartMatchBody: { fontSize: 14, color: '#1A1A1A', textAlign: 'center', lineHeight: 22, marginBottom: 12, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   smartMatchName: { fontSize: 18, fontWeight: '800', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
   smartMatchSize: { fontSize: 18, fontWeight: '800', color: '#00CC52', fontFamily: "'Permanent Marker', cursive" },
-  smartMatchSaveBtn: { backgroundColor: '#00CC52', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, width: '100%' } as any,
+  smartMatchSaveBtn: { backgroundColor: '#00CC52', borderRadius: 12, paddingVertical: 14, minHeight: 48, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, width: '100%' } as any,
   smartMatchSaveBtnText: { color: '#1A1A1A', fontSize: 14, fontWeight: '800', fontFamily: "'Permanent Marker', cursive", textAlign: 'center' },
 })
