@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/?token=${token}`;
+      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/update-profile?token=${token}`;
 
       return new Response(JSON.stringify({ success: true, token, inviteUrl, profileId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

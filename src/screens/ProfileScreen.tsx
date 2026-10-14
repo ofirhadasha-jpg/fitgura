@@ -457,7 +457,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       const data = await res.json()
       if (data.token) {
         const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
-        const inviteUrl = `${appDomain}/?token=${data.token}`
+        const inviteUrl = `${appDomain}/update-profile?token=${data.token}`
         const shareText = `היי ${member.name}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${inviteUrl}`
         const shareTitle = 'פיטגורה - עדכון מידות משפחתי ✨'
 
