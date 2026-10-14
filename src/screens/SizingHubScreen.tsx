@@ -8,7 +8,7 @@ import type { Screen, User, ScannedSizes, ScanEntry, Product, FamilyMember, AgeG
 import { supabase } from '../lib/supabase'
 import SizingResultModal, { type WardrobeItem, type FitBreakdown, decodeHtmlEntities } from '../components/SizingResultModal'
 import { normalizeProductImageUrl, getFallbackImage } from '../utils/productImages'
-import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type CategoryMismatch, type SmartMatch } from '../components/CategoryMismatchModal'
+
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl, ensureAffiliateWrapped, buildCategoryAffiliateUrls } from '../services/affiliateService'
@@ -80,6 +80,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   } | null>(null)
   const [resultProfileName, setResultProfileName] = useState<string | null>(null)
   const [resultDefaultProfileId, setResultDefaultProfileId] = useState<string | null>(null)
+  const [recalculating, setRecalculating] = useState(false)
   const [wardrobeFilter, setWardrobeFilter] = useState<string>('all')
 
   const currentProfileId = activeProfileId ?? 'self'
@@ -92,9 +93,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const [galleryModalVisible, setGalleryModalVisible] = useState(false)
   const [galleryProcessing, setGalleryProcessing] = useState(false)
   const galleryInputRef = useRef<HTMLInputElement>(null)
-  const [mismatch, setMismatch] = useState<CategoryMismatch | null>(null)
-  const [pendingResult, setPendingResult] = useState<typeof result>(null)
-  const [overrideMismatch, setOverrideMismatch] = useState(false)
+
   const [galleryToast, setGalleryToast] = useState(false)
   const [galleryPermissionGranted, setGalleryPermissionGrantedState] = useState(false)
   const [showPermissionModal, setShowPermissionModal] = useState(false)
@@ -191,67 +190,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         originalUrl: trimmed,
       }
 
-      const productTarget = detectProductTarget(analysisResult.productName, analysisResult.category, trimmed)
-      const detected = checkCategoryMismatch(
-        productTarget,
-        activeSizes.gender,
-        activeSizes.ageGroup,
-        activeMember?.name ?? user?.name ?? 'אני',
-        familyMembers ?? [],
-      )
-
-      if (detected && !overrideMismatch) {
-        setPendingResult(newResult)
-
-        // Auto-run analysis against matching family profiles to find best fit
-        const members = familyMembers ?? []
-        const productTarget = detected.productTarget
-        const candidateMembers = members.filter((m) => {
-          if (!m.scannedSizes) return false
-          const mg = m.scannedSizes.gender
-          const ma = m.scannedSizes.ageGroup
-          if (productTarget === 'women') return mg === 'female' && (ma === 'adult' || ma === 'teen')
-          if (productTarget === 'men') return mg === 'male' && (ma === 'adult' || ma === 'teen')
-          if (productTarget === 'boys' || productTarget === 'girls' || productTarget === 'kids') return ma === 'child' || ma === 'toddler'
-          if (productTarget === 'baby') return ma === 'baby'
-          return false
-        })
-
-        let bestMatch: SmartMatch | null = null
-
-        if (candidateMembers.length > 0) {
-          try {
-            const results = await Promise.all(
-              candidateMembers.map(async (m) => {
-                try {
-                  const r = await analyzeProductUrl(trimmed, m.scannedSizes!, m.accuracy)
-                  return { member: m, result: r }
-                } catch {
-                  return null
-                }
-              })
-            )
-            const valid = results.filter((r): r is { member: typeof candidateMembers[0]; result: typeof analysisResult } => r !== null)
-            if (valid.length > 0) {
-              const best = valid.reduce((a, b) => b.result.matchPercentage > a.result.matchPercentage ? b : a)
-              bestMatch = {
-                profileId: best.member.id,
-                profileName: best.member.name,
-                recommendedSize: best.result.recommendedSize,
-                matchPercentage: best.result.matchPercentage,
-                emoji: best.member.category === 'baby' ? '👶' : best.member.category === 'child' ? '🧒' : '💍',
-              }
-            }
-          } catch (err) {
-            console.error('[SizingHub] Smart match failed:', err)
-          }
-        }
-
-        setMismatch({ ...detected, smartMatch: bestMatch })
-        setResult(null)
-      } else {
-        setResult(newResult)
-      }
+      setResult(newResult)
     } catch (err) {
       console.error('[SizingHub] Analysis failed:', err)
       if (err instanceof Error && err.message === 'NO_PROFILE') {
@@ -358,111 +297,49 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     return '\u05e0\u05d9\u05ea\u05d5\u05d7 \u05d1\u05d9\u05e7\u05d5\u05e8\u05d5\u05ea \u05e7\u05d5\u05e0\u05d9\u05dd: \u05d7\u05dc\u05e7 \u05de\u05d4\u05e7\u05d5\u05e0\u05d9\u05dd \u05de\u05de\u05dc\u05d9\u05e6\u05d9\u05dd \u05dc\u05e7\u05d7\u05ea \u05de\u05d9\u05d3\u05d4 \u05de\u05e2\u05dc'
   }
 
-  function handleMismatchSwitch(profileId: string) {
-    const targetMember = (familyMembers ?? []).find((m) => m.id === profileId)
-    if (!targetMember?.scannedSizes) {
-      setMismatch(null)
-      setPendingResult(null)
-      return
-    }
-
-    setResultProfileName(targetMember.name)
-    setResultDefaultProfileId(profileId)
-
-    void (async () => {
-      const trimmed = url.trim()
-      if (!trimmed || !pendingResult) {
-        setMismatch(null)
-        return
-      }
-
-      setAnalyzing(true)
+  async function handleResultProfileChange(profileId: string) {
+    if (!result) return
+    const trimmed = result.originalUrl
+    if (profileId === 'self') {
+      setResultProfileName(null)
+      setResultDefaultProfileId('self')
+      if (!scannedSizes) return
+      setRecalculating(true)
       try {
-        const reanalysis = await analyzeProductUrl(trimmed, targetMember.scannedSizes, targetMember.accuracy)
-        const affiliateUrl = wrapAffiliateUrl(trimmed)
-        setResult({
-          visible: true,
-          productName: reanalysis.productName,
-          productImage: reanalysis.productImage,
-          price: reanalysis.price,
-          platform: reanalysis.platform,
-          category: reanalysis.category,
+        const reanalysis = await analyzeProductUrl(trimmed, scannedSizes, accuracy)
+        setResult((prev) => prev ? {
+          ...prev,
           recommendedSize: reanalysis.recommendedSize,
           matchPercentage: reanalysis.matchPercentage,
           fitBreakdown: reanalysis.fitBreakdown,
-          affiliateUrl,
-          originalUrl: trimmed,
-        })
+        } : null)
       } catch (err) {
-        console.error('[SizingHub] Re-analysis for switched profile failed:', err)
+        console.error('[SizingHub] Recalculation for self failed:', err)
       } finally {
-        setAnalyzing(false)
+        setRecalculating(false)
       }
-    })()
-
-    setMismatch(null)
-    setPendingResult(null)
-  }
-
-  function handleMismatchOverride() {
-    setOverrideMismatch(true)
-    if (pendingResult) {
-      setResult(pendingResult)
-    }
-    setMismatch(null)
-    setPendingResult(null)
-  }
-
-  function handleMismatchClose() {
-    setMismatch(null)
-    setPendingResult(null)
-    setAnalyzeAnchorPos(null)
-  }
-
-  function handleSmartMatchSave(profileId: string) {
-    const targetMember = (familyMembers ?? []).find((m) => m.id === profileId)
-    if (!targetMember) {
-      setMismatch(null)
-      setPendingResult(null)
       return
     }
 
-    void (async () => {
-      const trimmed = url.trim()
-      if (!trimmed) {
-        setMismatch(null)
-        return
-      }
+    const targetMember = (familyMembers ?? []).find((m) => m.id === profileId)
+    if (!targetMember?.scannedSizes) return
 
-      setAnalyzing(true)
-      try {
-        const reanalysis = await analyzeProductUrl(trimmed, targetMember.scannedSizes ?? scannedSizes!, targetMember.accuracy ?? accuracy)
-        const affiliateUrl = wrapAffiliateUrl(trimmed)
-
-        const { error } = await supabase.from('fitted_wardrobe').insert({
-          product_url: trimmed,
-          product_name: reanalysis.productName,
-          product_image: reanalysis.productImage,
-          price: reanalysis.price,
-          platform: reanalysis.platform,
-          recommended_size: reanalysis.recommendedSize,
-          match_percentage: reanalysis.matchPercentage,
-          fit_breakdown: reanalysis.fitBreakdown,
-          affiliate_url: affiliateUrl,
-          user_id: user?.id ?? null,
-          profile_id: profileId,
-        })
-        if (error) console.error('[SizingHub] Smart match save failed:', error)
-        else void loadWardrobe()
-      } catch (err) {
-        console.error('[SizingHub] Smart match save error:', err)
-      } finally {
-        setAnalyzing(false)
-      }
-    })()
-
-    setMismatch(null)
-    setPendingResult(null)
+    setResultProfileName(targetMember.name)
+    setResultDefaultProfileId(profileId)
+    setRecalculating(true)
+    try {
+      const reanalysis = await analyzeProductUrl(trimmed, targetMember.scannedSizes, targetMember.accuracy ?? accuracy)
+      setResult((prev) => prev ? {
+        ...prev,
+        recommendedSize: reanalysis.recommendedSize,
+        matchPercentage: reanalysis.matchPercentage,
+        fitBreakdown: reanalysis.fitBreakdown,
+      } : null)
+    } catch (err) {
+      console.error('[SizingHub] Recalculation for profile failed:', err)
+    } finally {
+      setRecalculating(false)
+    }
   }
 
   async function handleUpsellTrigger(event?: unknown) {
@@ -1047,7 +924,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           matchPercentage={result.matchPercentage}
           fitBreakdown={result.fitBreakdown}
           affiliateUrl={result.affiliateUrl}
-          onClose={() => { setResult(null); setResultProfileName(null); setResultDefaultProfileId(null); setOverrideMismatch(false); setAnalyzeAnchorPos(null) }}
+          onClose={() => { setResult(null); setResultProfileName(null); setResultDefaultProfileId(null); setAnalyzeAnchorPos(null) }}
           anchorPos={analyzeAnchorPos}
           onBuy={handleBuy}
           onSave={handleSaveToWardrobe}
@@ -1055,19 +932,10 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           userName={user?.name}
           profileName={resultProfileName}
           defaultProfileId={resultDefaultProfileId}
+          onProfileChange={handleResultProfileChange}
+          recalculating={recalculating}
         />
       )}
-
-      <CategoryMismatchModal
-        visible={mismatch !== null}
-        mismatch={mismatch}
-        onSwitchProfile={handleMismatchSwitch}
-        onAddProfile={() => { handleMismatchClose(); onNav('profile') }}
-        onSmartMatchSave={handleSmartMatchSave}
-        onOverride={handleMismatchOverride}
-        onClose={handleMismatchClose}
-        anchorPos={analyzeAnchorPos}
-      />
 
       <GalleryPreviewModal
         visible={galleryModalVisible}

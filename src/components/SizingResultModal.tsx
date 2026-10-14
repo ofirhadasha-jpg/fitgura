@@ -70,6 +70,8 @@ interface SizingResultModalProps {
   onClose: () => void
   onBuy: (url: string) => void
   onSave?: (profileId: string, isWishlist?: boolean, overrideImage?: string | null) => void
+  onProfileChange?: (profileId: string) => void
+  recalculating?: boolean
   saving?: boolean
   familyMembers?: FamilyMember[]
   userName?: string | null
@@ -92,6 +94,8 @@ export default function SizingResultModal({
   onClose,
   onBuy,
   onSave,
+  onProfileChange,
+  recalculating = false,
   saving,
   familyMembers = [],
   userName,
@@ -100,7 +104,6 @@ export default function SizingResultModal({
   category = 'clothing',
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
-  const [showProfileSelector, setShowProfileSelector] = useState(false)
   const [isWishlist, setIsWishlist] = useState(false)
   const [imgError, setImgError] = useState(false)
   const [manualImageUrl, setManualImageUrl] = useState('')
@@ -141,6 +144,11 @@ export default function SizingResultModal({
     : isWishlist
       ? (selectedProfileId === 'self' ? 'שמור ברשימת משאלות 🎁' : `שמור ברשימת משאלות של ${selectedProfile?.name ?? ''} 🎁`)
       : (selectedProfileId === 'self' ? 'שמור בארון שלי' : `שמור בארון של ${selectedProfile?.name ?? ''}`)
+
+  function handleProfileSelect(profileId: string) {
+    setSelectedProfileId(profileId)
+    onProfileChange?.(profileId)
+  }
 
   function handleSave() {
     onSave?.(selectedProfileId, isWishlist, overrideImage)
@@ -346,39 +354,6 @@ export default function SizingResultModal({
 
         {onSave && (
           <View>
-            {profileOptions.length > 1 && (
-              <TouchableOpacity
-                onPress={() => setShowProfileSelector((v) => !v)}
-                activeOpacity={0.7}
-                style={styles.profileToggleBtn}
-              >
-                <Text style={styles.profileToggleText}>
-                  למי לשמור? {selectedProfile?.name ?? 'אני'} {showProfileSelector ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {showProfileSelector && profileOptions.length > 1 && (
-              <View style={styles.profileSelectorRow}>
-                {profileOptions.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.id}
-                    onPress={() => { setSelectedProfileId(opt.id); setShowProfileSelector(false) }}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.profileOptionBtn,
-                      selectedProfileId === opt.id && styles.profileOptionBtnActive,
-                    ]}
-                  >
-                    <Text style={[
-                      styles.profileOptionText,
-                      selectedProfileId === opt.id && styles.profileOptionTextActive,
-                    ]}>
-                      {opt.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
             <TouchableOpacity
               onPress={() => setIsWishlist((v) => !v)}
               activeOpacity={0.7}
@@ -455,13 +430,15 @@ const styles = StyleSheet.create({
   compareAffiliateBtnText: { color: '#FFFEF5', fontSize: 12, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   compareLensBtn: { flex: 1, backgroundColor: '#FFFEF5', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#4A4A4A' } as any,
   compareLensBtnText: { color: '#4A4A4A', fontSize: 12, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
-  profileToggleBtn: { alignSelf: 'center', marginBottom: 8, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#E0F2FE', borderWidth: 1, borderColor: '#0891B2' },
-  profileToggleText: { fontSize: 13, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  profileSelectorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 10 },
-  profileOptionBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' } as any,
+  profileSelectorCard: { backgroundColor: '#FFFACC', borderRadius: 14, padding: 12, marginBottom: 14, borderWidth: 1.5, borderColor: '#FFE566', gap: 8 } as any,
+  profileSelectorLabel: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  profileSelectorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
+  profileOptionBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' } as any,
   profileOptionBtnActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566' },
-  profileOptionText: { fontSize: 12, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  profileOptionText: { fontSize: 13, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   profileOptionTextActive: { color: '#1A1A1A', fontWeight: '700' },
+  recalculatingBanner: { backgroundColor: '#E0F2FE', borderRadius: 10, padding: 10, marginBottom: 14, alignItems: 'center', borderWidth: 1, borderColor: '#0891B2' } as any,
+  recalculatingText: { fontSize: 13, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   saveBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
   wishlistToggle: { alignSelf: 'center', marginBottom: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#F5F0E0', borderWidth: 1.5, borderColor: '#9A9A9A' } as any,
   wishlistToggleActive: { borderColor: '#1A1A1A', backgroundColor: '#FFD6E0' },
