@@ -13,6 +13,7 @@ import {
   type SizingProfile,
 } from '../types'
 import { computeAccuracyForGallery } from '../services/sizingService'
+import PhotoGuidanceModal from '../components/PhotoGuidanceModal'
 
 type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'gallery_syncing' | 'success' | 'gallery_success' | 'accepting' | 'accepted' | 'share_error'
 
@@ -60,6 +61,7 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
   const [gallerySynced, setGallerySynced] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
+  const [showPhotoGuidance, setShowPhotoGuidance] = useState(false)
 
   useEffect(() => {
     void verifyToken()
@@ -593,7 +595,7 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>תמונת פרופיל וסריקה</Text>
             <TouchableOpacity
-              onPress={() => fileInputRef.current?.click()}
+              onPress={() => setShowPhotoGuidance(true)}
               activeOpacity={0.8}
               style={styles.photoPicker}
             >
@@ -712,6 +714,15 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           </View>
         </View>
       </ScrollView>
+
+      <PhotoGuidanceModal
+        visible={showPhotoGuidance}
+        onClose={() => setShowPhotoGuidance(false)}
+        onContinue={() => {
+          setShowPhotoGuidance(false)
+          fileInputRef.current?.click()
+        }}
+      />
     </View>
   )
 }

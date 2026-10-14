@@ -20,6 +20,7 @@ import { SIZE_REGION_OPTIONS, SIZE_REGION_LABELS, formatFullPantsSizeLabel, type
 import { supabase } from '../lib/supabase'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
 import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
+import PhotoGuidanceModal from '../components/PhotoGuidanceModal'
 import { runAutonomousScan, analyzePhoto, recalculateAccuracyForGallery, computeAccuracyForGallery } from '../services/sizingService'
 import { captureClickPos, computePopupStyle, type AnchorPos } from '../utils/popupPosition'
 
@@ -77,6 +78,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
   const [removeConfirmAnchorPos, setRemoveConfirmAnchorPos] = useState<AnchorPos>(null)
   const photoUploadRef = useRef<HTMLInputElement>(null)
+  const [showPhotoGuidance, setShowPhotoGuidance] = useState(false)
 
   // Load saved avatar path from profiles table and create a signed URL on mount
   useEffect(() => {
@@ -1645,7 +1647,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <Text style={profStyles.sizesTitle}>העלאת תמונה ידנית</Text>
           <Text style={profStyles.regionSub}>העלה תמונה ספציפית במקום לאשר גישה לגלריה</Text>
           <TouchableOpacity
-            onPress={() => galleryUploadRef.current?.click()}
+            onPress={() => setShowPhotoGuidance(true)}
             disabled={autoScanning}
             activeOpacity={0.8}
             style={[profStyles.manualUploadBtn, autoScanning && profStyles.photoBtnDisabled]}
@@ -2164,6 +2166,15 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           </View>
         </View>
       )}
+
+      <PhotoGuidanceModal
+        visible={showPhotoGuidance}
+        onClose={() => setShowPhotoGuidance(false)}
+        onContinue={() => {
+          setShowPhotoGuidance(false)
+          galleryUploadRef.current?.click()
+        }}
+      />
 
       <BottomNav current="profile" onNav={onNav} isAdmin={user?.is_admin === true} />
     </View>
