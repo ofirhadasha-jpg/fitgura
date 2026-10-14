@@ -686,8 +686,8 @@ const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 
 const SHADOW_STD = '3px 3px 0 #1A1A1A' as const
 const SHADOW_SM = '2px 2px 0 #1A1A1A' as const
 const SHADOW_ACTIVE = '3px 3px 0 #FFE566' as const
-const RADIUS_BOX = '3px 12px 4px 10px / 8px 3px 9px 4px' as const
-const RADIUS_SM = '2px 8px 3px 7px / 6px 2px 7px 3px' as const
+const RADIUS_BOX = 12 as const
+const RADIUS_SM = 8 as const
 
 function typeBtnActiveStyle(t: string): React.CSSProperties {
   return {

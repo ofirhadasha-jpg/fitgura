@@ -286,7 +286,7 @@ const authStyles = StyleSheet.create({
     animationDuration: '0.2s',
     animationTimingFunction: 'ease-out',
     animationFillMode: 'both',
-  },
+  } as React.CSSProperties,
   sheet: {
     backgroundColor: '#FFFEF5',
     borderRadius: 14,

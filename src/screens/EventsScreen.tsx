@@ -497,7 +497,8 @@ const evStyles = StyleSheet.create({
   addEventConfirmBtnDisabled: { backgroundColor: '#F5F0E0', boxShadow: 'none' } as React.CSSProperties,
   addEventConfirmBtnText: { color: '#1A1A1A', fontSize: 17, fontWeight: '400', fontFamily: "'Permanent Marker', cursive" },
   dateInput: {
-    padding: '12px 14px',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: '1.5px',
     borderColor: '#1A1A1A',
