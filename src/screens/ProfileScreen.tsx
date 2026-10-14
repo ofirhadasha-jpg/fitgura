@@ -1662,12 +1662,24 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.familyCTABadge}><Text style={profStyles.familyCTABadgeText}>בקרוב</Text></View>
         </TouchableOpacity>
 
-        {/* Logout button — prominent, at the bottom */}
-        {user && (
-          <TouchableOpacity onPress={onSignOut} activeOpacity={0.8} style={profStyles.logoutBtn}>
-            <Text style={profStyles.logoutBtnText}>🚪 התנתק</Text>
-          </TouchableOpacity>
-        )}
+        {/* Logout / Reset button — always visible at the bottom */}
+        <TouchableOpacity
+          onPress={user ? onSignOut : () => {
+            localStorage.removeItem('fitgura_guest_profile')
+            localStorage.removeItem('fitgura_guest_device')
+            localStorage.removeItem('fitgura_guest_devices')
+            localStorage.removeItem('fitgura_guest_favorites')
+            localStorage.removeItem('fitgura_favorites')
+            localStorage.removeItem('fitgura_legacy_guest_favorites')
+            sessionStorage.removeItem('fitgura_screen')
+            sessionStorage.removeItem('fitgura_pending_scan')
+            window.location.reload()
+          }}
+          activeOpacity={0.8}
+          style={profStyles.logoutBtn}
+        >
+          <Text style={profStyles.logoutBtnText}>{user ? '🚪 התנתק' : '🗑️ נקה נתונים והתחל מחדש'}</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Add Device Sheet */}
