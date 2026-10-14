@@ -50,20 +50,20 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
-  const [profTop, setProfTop] = useState(scannedSizes?.sizing.top ?? 'M')
-  const [profBottom, setProfBottom] = useState(scannedSizes?.sizing.bottom ?? '48')
-  const [profFit, setProfFit] = useState(scannedSizes?.sizing.fit ?? 'Slim Fit')
+  const [profTop, setProfTop] = useState(scannedSizes?.sizing?.top ?? 'M')
+  const [profBottom, setProfBottom] = useState(scannedSizes?.sizing?.bottom ?? '48')
+  const [profFit, setProfFit] = useState(scannedSizes?.sizing?.fit ?? 'Slim Fit')
   const [profShoe, setProfShoe] = useState(scannedSizes?.shoeSize ?? '42')
 
   // Sync local profile fields when scannedSizes changes externally (e.g. from onboarding or a new scan)
   useEffect(() => {
-    if (scannedSizes) {
+    if (scannedSizes?.sizing) {
       setProfTop(scannedSizes.sizing.top)
       setProfBottom(scannedSizes.sizing.bottom)
       setProfFit(scannedSizes.sizing.fit)
       if (scannedSizes.shoeSize) setProfShoe(scannedSizes.shoeSize)
     }
-  }, [scannedSizes?.sizing.top, scannedSizes?.sizing.bottom, scannedSizes?.sizing.fit, scannedSizes?.shoeSize])
+  }, [scannedSizes?.sizing?.top, scannedSizes?.sizing?.bottom, scannedSizes?.sizing?.fit, scannedSizes?.shoeSize])
 
   // Profile photo management
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(scannedSizes?.preview ?? null)
@@ -589,9 +589,9 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     setActiveProfileId(id)
     const member = familyMembers.find((m) => m.id === id)
     if (member) {
-      setProfTop(member.scannedSizes?.sizing.top ?? 'M')
-      setProfBottom(member.scannedSizes?.sizing.bottom ?? '48')
-      setProfFit(member.scannedSizes?.sizing.fit ?? 'Regular')
+      setProfTop(member.scannedSizes?.sizing?.top ?? 'M')
+      setProfBottom(member.scannedSizes?.sizing?.bottom ?? '48')
+      setProfFit(member.scannedSizes?.sizing?.fit ?? 'Regular')
       setProfShoe(member.scannedSizes?.shoeSize ?? '42')
       setProfilePhotoUrl(member.photoUrl)
       setCurrentAccuracy(member.accuracy)
@@ -920,7 +920,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   }
 
   function handleProfChestChange(val: string) {
-    if (!scannedSizes?.sizing.bodyMetrics) return
+    if (!scannedSizes?.sizing?.bodyMetrics) return
     const n = Number(val)
     if (n > 0) {
       setScannedSizes({
@@ -935,7 +935,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   }
 
   function handleProfWaistChange(val: string) {
-    if (!scannedSizes?.sizing.bodyMetrics) return
+    if (!scannedSizes?.sizing?.bodyMetrics) return
     const n = Number(val)
     if (n > 0) {
       setScannedSizes({
@@ -950,7 +950,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   }
 
   function handleProfHipsChange(val: string) {
-    if (!scannedSizes?.sizing.bodyMetrics) return
+    if (!scannedSizes?.sizing?.bodyMetrics) return
     const n = Number(val)
     if (n > 0) {
       setScannedSizes({
@@ -965,7 +965,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   }
 
   function handleProfShoulderChange(val: string) {
-    if (!scannedSizes?.sizing.bodyMetrics) return
+    if (!scannedSizes?.sizing?.bodyMetrics) return
     const n = Number(val)
     if (n > 0) {
       setScannedSizes({
@@ -1537,7 +1537,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             ))}
           </View>
 
-          {scannedSizes?.sizing.bodyMetrics && (
+          {scannedSizes?.sizing?.bodyMetrics && (
             <View style={profStyles.bodyMetricsGrid}>
               {[
                 { label: 'גובה', value: scannedSizes.sizing.bodyMetrics.estimated_height_cm, unit: 'ס"מ', onChange: handleProfHeightChange },

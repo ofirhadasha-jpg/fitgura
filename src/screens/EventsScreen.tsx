@@ -1,27 +1,52 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native'
 import { BottomNav } from '../components'
+import { supabase } from '../lib/supabase'
 import {
-  type Screen, type FitEvent, type Platform, type FamilyMember,
+  type Screen, type FitEvent, type Platform, type FamilyMember, type User,
   PLATFORMS, PRESET_EVENTS,
   daysUntil, daysUntilRecurring, nextRecurringDate, formatDate, nextEventId,
 } from '../types'
 
-export function EventsScreen({ onNav, isAdmin, familyMembers = [], events, setEvents }: { onNav: (s: Screen) => void; isAdmin?: boolean; familyMembers?: FamilyMember[]; events: FitEvent[]; setEvents: React.Dispatch<React.SetStateAction<FitEvent[]>> }) {
+export function EventsScreen({ onNav, isAdmin, familyMembers = [], events, setEvents, user, onToast }: { onNav: (s: Screen) => void; isAdmin?: boolean; familyMembers?: FamilyMember[]; events: FitEvent[]; setEvents: React.Dispatch<React.SetStateAction<FitEvent[]>>; user: User | null; onToast: (message: string) => void }) {
   const yr = new Date().getFullYear()
   const mo = (n: number) => String(new Date().getMonth() + n).padStart(2, '0')
 
   const [showAdd, setShowAdd] = useState(false)
-  // Seed default events on first mount if none provided
   useEffect(() => {
-    if (events.length === 0) {
+    if (!user) {
       setEvents([
         { id: 1, name: 'יום האהבה', emoji: '💝', date: `${yr}-02-14`, platforms: ['Amazon', 'Shein'], color: '#FF6B6B', bgColor: '#FFF0F0' },
         { id: 2, name: 'יום הולדת — מיכל', emoji: '🎂', date: `${yr}-${mo(2)}-18`, platforms: ['AliExpress', 'ZARA'], color: '#FFE566', bgColor: '#FFFACC' },
         { id: 3, name: 'יום נישואין', emoji: '💍', date: `${yr + 1}-12-25`, platforms: ['AliExpress', 'Amazon', 'ASOS'], color: '#FF6B6B', bgColor: '#FFF5F0' },
       ])
+      return
     }
-  }, [])
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, name, emoji, date, platforms, color, bg_color, is_recurring, profile_id')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+      if (error) {
+        console.error('[EventsScreen] Failed to load events:', error)
+        onToast('שגיאה בטעינת האירועים מהענן')
+        return
+      }
+      setEvents((data ?? []).map((row) => ({
+        id: Number(row.id),
+        name: row.name,
+        emoji: row.emoji,
+        date: row.date,
+        platforms: row.platforms,
+        color: row.color,
+        bgColor: row.bg_color,
+        isRecurring: row.is_recurring,
+        profileId: row.profile_id,
+      })))
+    })()
+  }, [user?.id])
 
   const [newName, setNewName] = useState('')
   const [newDate, setNewDate] = useState('')
@@ -54,22 +79,39 @@ export function EventsScreen({ onNav, isAdmin, familyMembers = [], events, setEv
     if (p.month && p.day) setNewDate(`${new Date().getFullYear()}-${p.month}-${p.day}`)
   }
 
-  function addEvent() {
+  async function addEvent() {
     if (!newName || !newDate || newPlatforms.length === 0) return
-    setEvents((prev) => [
-      ...prev,
-      { id: nextEventId(), name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bgColor: newBg, isRecurring: newRecurring, profileId: newProfileId },
-    ])
+    const draft = { name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bg_color: newBg, is_recurring: newRecurring, profile_id: newProfileId }
+
+    if (user) {
+      const { data, error } = await supabase.from('events').insert(draft).select('id').maybeSingle()
+      if (error || !data) {
+        console.error('[EventsScreen] Failed to save event:', error)
+        onToast('שגיאה בשמירת האירוע בענן')
+        return
+      }
+      setEvents((prev) => [...prev, { id: Number(data.id), ...draft, bgColor: draft.bg_color, isRecurring: draft.is_recurring, profileId: draft.profile_id } as FitEvent])
+    } else {
+      setEvents((prev) => [...prev, { id: nextEventId(), name: newName, emoji: newEmoji, date: newDate, platforms: newPlatforms, color: newColor, bgColor: newBg, isRecurring: newRecurring, profileId: newProfileId }])
+    }
+
     setShowAdd(false)
     setNewName(''); setNewDate(''); setNewPlatforms([]); setSelectedPreset(null); setNewEmoji('🎉'); setNewColor('#FFE566'); setNewBg('#FFFACC'); setNewRecurring(false); setNewProfileId(null)
   }
 
-  function removeEvent(id: number) {
+  async function removeEvent(id: number) {
     setDeletingId(id)
-    setTimeout(() => {
-      setEvents((prev) => prev.filter((e) => e.id !== id))
-      setDeletingId(null)
-    }, 300)
+    if (user) {
+      const { error } = await supabase.from('events').delete().eq('id', id).eq('user_id', user.id)
+      if (error) {
+        console.error('[EventsScreen] Failed to delete event:', error)
+        setDeletingId(null)
+        onToast('שגיאה במחיקת האירוע מהענן')
+        return
+      }
+    }
+    setEvents((prev) => prev.filter((event) => event.id !== id))
+    setDeletingId(null)
   }
 
   return (
