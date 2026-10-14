@@ -381,6 +381,7 @@ Deno.serve(async (req: Request) => {
         dateOfBirth,
         avatarUrl,
         scanPreview,
+        galleryScans,
       } = body;
 
       if (!token) {
@@ -408,6 +409,7 @@ Deno.serve(async (req: Request) => {
       if (dateOfBirth != null) metrics.date_of_birth = dateOfBirth;
       if (avatarUrl != null) metrics.avatar_url = avatarUrl;
       if (scanPreview != null) metrics.scan_preview = scanPreview;
+      if (galleryScans != null) metrics.gallery_scans = galleryScans;
 
       const { data, error } = await supabase
         .rpc("update_profile_metrics_via_token", {

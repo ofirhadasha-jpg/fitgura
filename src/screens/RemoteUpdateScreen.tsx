@@ -2,9 +2,19 @@ import React, { useState, useRef, useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
-import { analyzeBodyImage, aiAnalysisToScannedSizes, type ScannedSizes } from '../types'
+import {
+  analyzeBodyImage,
+  aiAnalysisToScannedSizes,
+  nextScanId,
+  formatTimestamp,
+  computeDelta,
+  type ScannedSizes,
+  type ScanEntry,
+  type SizingProfile,
+} from '../types'
+import { computeAccuracyForGallery } from '../services/sizingService'
 
-type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'success' | 'accepting' | 'accepted' | 'share_error'
+type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'gallery_syncing' | 'success' | 'gallery_success' | 'accepting' | 'accepted' | 'share_error'
 
 interface ProfileInfo {
   success: boolean
@@ -30,6 +40,7 @@ interface ProfileInfo {
   shoulder_cm?: number | null
   accuracy?: number | null
   scan_preview?: string | null
+  profile_id?: string
 }
 
 export function RemoteUpdateScreen({ token }: { token: string }) {
@@ -37,14 +48,18 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [scanProgress, setScanProgress] = useState(0)
-  const [scanPhase, setScanPhase] = useState('')
+  const [scanPhaseText, setScanPhaseText] = useState('')
   const [scannedSizes, setScannedSizes] = useState<ScannedSizes | null>(null)
   const [acceptError, setAcceptError] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [galleryPhotos, setGalleryPhotos] = useState<File[]>([])
+  const [galleryEntries, setGalleryEntries] = useState<ScanEntry[]>([])
+  const [gallerySynced, setGallerySynced] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     void verifyToken()
@@ -146,18 +161,32 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
     if (phase === 'error' && profileInfo) setPhase('ready')
   }
 
+  function handleGallerySelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (files.length === 0) return
+    const valid = files.filter((f) => f.type.startsWith('image/') && f.size <= 10 * 1024 * 1024)
+    if (valid.length === 0) {
+      setErrorMsg('בחר תמונות עד 10MB כל אחת')
+      setPhase('error')
+      setTimeout(() => { if (profileInfo) setPhase('ready') }, 2000)
+      return
+    }
+    setGalleryPhotos(valid)
+  }
+
   async function handleScanAndSubmit() {
     if (!photoFile || submitting) return
     setSubmitting(true)
     setPhase('scanning')
     setScanProgress(0)
-    setScanPhase('מעלה ומנתח תמונה...')
+    setScanPhaseText('מעלה ומנתח תמונה...')
 
     const progressInterval = setInterval(() => {
       setScanProgress((p) => {
-        if (p < 30) { setScanPhase('מעלה תמונה...'); return p + 4 }
-        if (p < 70) { setScanPhase('AI מנתח מידות...'); return p + 3 }
-        if (p < 95) { setScanPhase('מסנכרן פרופיל...'); return p + 3 }
+        if (p < 30) { setScanPhaseText('מעלה תמונה...'); return p + 4 }
+        if (p < 70) { setScanPhaseText('AI מנתח מידות...'); return p + 3 }
+        if (p < 95) { setScanPhaseText('מסנכרן פרופיל...'); return p + 3 }
         clearInterval(progressInterval)
         return p
       })
@@ -168,7 +197,7 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
       const sizes = aiAnalysisToScannedSizes(analysis, preview)
       setScannedSizes(sizes)
 
-      setScanPhase('מסנכרן מידות...')
+      setScanPhaseText('מסנכרן מידות...')
       setScanProgress(92)
 
       const profileId = profileInfo?.profile_id
@@ -181,6 +210,29 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           .upload(filePath, photoFile, { upsert: true, contentType: photoFile.type })
         if (!uploadError) avatarPath = filePath
       }
+
+      const allEntries = [...galleryEntries]
+      if (allEntries.length === 0) {
+        const ts = formatTimestamp(new Date())
+        const entry: ScanEntry = {
+          id: nextScanId(),
+          date: ts.date,
+          time: ts.time,
+          top: sizes.sizing.top,
+          bottom: sizes.sizing.bottom,
+          fit: sizes.sizing.fit,
+          confidence: sizes.confidence,
+          photoUrl: preview,
+          source: 'סריקה ראשונית',
+          isBaseline: true,
+          delta: null,
+        }
+        allEntries.push(entry)
+      }
+
+      const accuracy = computeAccuracyForGallery(allEntries)
+      sizes.confidence = accuracy
+      sizes.sizing.confidence = accuracy
 
       const bm = sizes.sizing.bodyMetrics
       const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
@@ -202,12 +254,13 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           waistCm: bm?.waist_circumference_cm ?? null,
           hipsCm: bm?.hips_circumference_cm ?? null,
           shoulderCm: bm?.shoulder_width_cm ?? null,
-          accuracy: sizes.confidence,
+          accuracy,
           gender: sizes.gender,
           ageGroup: sizes.ageGroup,
           dateOfBirth: dateOfBirth || null,
           avatarUrl: avatarPath,
           scanPreview: preview,
+          galleryScans: allEntries,
         }),
       })
 
@@ -233,6 +286,123 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
     }
   }
 
+  async function handleGallerySync() {
+    if (galleryPhotos.length === 0 || submitting) return
+    setSubmitting(true)
+    setPhase('gallery_syncing')
+    setScanProgress(0)
+    setScanPhaseText('מנתח תמונות מהגלריה...')
+
+    try {
+      const newEntries: ScanEntry[] = []
+      let mergedSizes: ScannedSizes | null = scannedSizes
+
+      for (let i = 0; i < galleryPhotos.length; i++) {
+        setScanProgress(Math.round(((i / galleryPhotos.length) * 80)))
+        setScanPhaseText(`מנתח תמונה ${i + 1} מתוך ${galleryPhotos.length}...`)
+
+        try {
+          const { analysis, preview } = await analyzeBodyImage(galleryPhotos[i])
+          const sizes = aiAnalysisToScannedSizes(analysis, preview)
+          const prevSizing: SizingProfile | null = mergedSizes?.sizing ?? null
+          const delta = prevSizing ? computeDelta(prevSizing, sizes.sizing) : null
+          mergedSizes = sizes
+
+          const ts = formatTimestamp(new Date())
+          const entry: ScanEntry = {
+            id: nextScanId(),
+            date: ts.date,
+            time: ts.time,
+            top: sizes.sizing.top,
+            bottom: sizes.sizing.bottom,
+            fit: sizes.sizing.fit,
+            confidence: sizes.confidence,
+            photoUrl: preview,
+            source: 'סריקה אוטומטית מגלריה',
+            isBaseline: i === 0 && newEntries.length === 0,
+            delta,
+          }
+          newEntries.push(entry)
+        } catch (err) {
+          console.error('[GallerySync] Failed to analyze photo:', err)
+        }
+      }
+
+      if (newEntries.length === 0 || !mergedSizes) {
+        throw new Error('ניתוח התמונות נכשל')
+      }
+
+      setScanProgress(85)
+      setScanPhaseText('שומר מידות והיסטוריית סריקות...')
+
+      const allEntries = [...newEntries, ...galleryEntries]
+      const accuracy = computeAccuracyForGallery(allEntries)
+      mergedSizes.confidence = accuracy
+      mergedSizes.sizing.confidence = accuracy
+      setScannedSizes(mergedSizes)
+      setGalleryEntries(allEntries)
+      setGallerySynced(true)
+
+      const profileId = profileInfo?.profile_id
+      let avatarPath: string | null = null
+      if (profileId && photoFile) {
+        const filePath = `family/${profileId}/avatar.${photoFile.name.split('.').pop() || 'jpg'}`
+        const { error: uploadError } = await supabase.storage
+          .from('profile-photos')
+          .upload(filePath, photoFile, { upsert: true, contentType: photoFile.type })
+        if (!uploadError) avatarPath = filePath
+      }
+
+      const bm = mergedSizes.sizing.bodyMetrics
+      const res = await fetch(`${EDGE_FUNCTION_URL}/functions/v1/profile-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${EDGE_FUNCTION_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: 'submit',
+          token,
+          topSize: mergedSizes.sizing.top,
+          bottomSize: mergedSizes.sizing.bottom,
+          shoeSize: mergedSizes.shoeSize,
+          fit: mergedSizes.sizing.fit,
+          heightCm: bm?.estimated_height_cm ?? null,
+          weightKg: bm?.estimated_weight_kg ?? null,
+          chestCm: bm?.chest_circumference_cm ?? null,
+          waistCm: bm?.waist_circumference_cm ?? null,
+          hipsCm: bm?.hips_circumference_cm ?? null,
+          shoulderCm: bm?.shoulder_width_cm ?? null,
+          accuracy,
+          gender: mergedSizes.gender,
+          ageGroup: mergedSizes.ageGroup,
+          dateOfBirth: dateOfBirth || null,
+          avatarUrl: avatarPath,
+          scanPreview: mergedSizes.preview,
+          galleryScans: allEntries,
+        }),
+      })
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.error ?? 'Sync failed')
+      }
+
+      const data = await res.json()
+      if (data.success === false) {
+        throw new Error(data.error ?? 'Sync failed')
+      }
+
+      setScanProgress(100)
+      setTimeout(() => setPhase('gallery_success'), 500)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'סנכרון הגלריה נכשל')
+      setPhase('error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (phase === 'loading') {
     return (
       <View style={styles.container}>
@@ -247,12 +417,14 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
   if (phase === 'error') {
     return (
       <View style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>הקישור לא תקין</Text>
-          <Text style={styles.errorBody}>{errorMsg}</Text>
-          <Text style={styles.errorHint}>בקש מבן המשפחה ששלח את הקישור ליצור קישור חדש</Text>
-        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
+          <View style={styles.card}>
+            <Text style={styles.errorIcon}>⚠️</Text>
+            <Text style={styles.errorTitle}>הקישור לא תקין</Text>
+            <Text style={styles.errorBody}>{errorMsg}</Text>
+            <Text style={styles.errorHint}>בקש מבן המשפחה ששלח את הקישור ליצור קישור חדש</Text>
+          </View>
+        </ScrollView>
       </View>
     )
   }
@@ -322,13 +494,38 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
               <View style={styles.sizeBadge}><Text style={styles.sizeBadgeLabel}>דיוק</Text><Text style={styles.sizeBadgeValue}>{scannedSizes.confidence}%</Text></View>
             </View>
           )}
-          <Text style={styles.privacyNote}>המידות עודכנו בהצלחה! התמונות נשמרות בפרופיל ✨</Text>
+          <Text style={styles.privacyNote}>המידות עודכנו בהצלחה! בן/בת הזוג יקבלו הודעה ✨</Text>
         </View>
       </View>
     )
   }
 
-  if (phase === 'scanning') {
+  if (phase === 'gallery_success') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <View style={styles.successIconWrap}>
+            <Text style={styles.successIcon}>✅</Text>
+          </View>
+          <Text style={styles.successTitle}>הגלריה סונכרנה בהצלחה!</Text>
+          <Text style={styles.successBody}>
+            נותחו {galleryEntries.length} תמונות והמידות של {profileInfo?.member_name ?? 'בן המשפחה'} עודכנו אוטומטית.
+          </Text>
+          {scannedSizes && (
+            <View style={styles.sizesSummary}>
+              <View style={styles.sizeBadge}><Text style={styles.sizeBadgeLabel}>חולצה</Text><Text style={styles.sizeBadgeValue}>{scannedSizes.sizing.top}</Text></View>
+              <View style={styles.sizeBadge}><Text style={styles.sizeBadgeLabel}>מכנסיים</Text><Text style={styles.sizeBadgeValue}>{scannedSizes.sizing.bottom}</Text></View>
+              {scannedSizes.shoeSize && <View style={styles.sizeBadge}><Text style={styles.sizeBadgeLabel}>נעליים</Text><Text style={styles.sizeBadgeValue}>{scannedSizes.shoeSize}</Text></View>}
+              <View style={styles.sizeBadge}><Text style={styles.sizeBadgeLabel}>דיוק</Text><Text style={styles.sizeBadgeValue}>{scannedSizes.confidence}%</Text></View>
+            </View>
+          )}
+          <Text style={styles.privacyNote}>מידה מעודכנת להיום ✨ בן/בת הזוג יקבלו הודעה</Text>
+        </View>
+      </View>
+    )
+  }
+
+  if (phase === 'scanning' || phase === 'gallery_syncing') {
     return (
       <View style={styles.container}>
         <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
@@ -337,7 +534,7 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
               <View style={styles.scanningIconWrap}>
                 <Text style={styles.scanningIcon}>{scanProgress < 30 ? '📤' : scanProgress < 70 ? '🤖' : '✅'}</Text>
               </View>
-              <Text style={styles.scanningPhase}>{scanPhase}</Text>
+              <Text style={styles.scanningPhase}>{scanPhaseText}</Text>
               <View style={styles.progressBar}>
                 <View style={[styles.progressBarFill, { width: `${scanProgress}%` }]} />
               </View>
@@ -383,6 +580,14 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
             accept="image/*"
             style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }}
             onChange={handlePhotoSelect}
+          />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }}
+            onChange={handleGallerySelect}
           />
 
           <View style={styles.section}>
@@ -446,6 +651,35 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
             </View>
           )}
 
+          <View style={styles.galleryCard}>
+            <Text style={styles.galleryIcon}>📱</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.galleryTitle}>סנכרון גלריה לעדכון מידות אוטומטי</Text>
+              <Text style={styles.galleryDesc}>
+                בחר/י מספר תמונות אחרונות שלך מהגלריה. ה-AI ינתח כל תמונה ויעדכן את המידות אוטומטית.
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => galleryInputRef.current?.click()}
+            activeOpacity={0.8}
+            style={styles.galleryBtn}
+          >
+            <Text style={styles.galleryBtnIcon}>🖼️</Text>
+            <Text style={styles.galleryBtnText}>
+              {galleryPhotos.length > 0
+                ? `${galleryPhotos.length} תמונות נבחרו — סנכרן עכשיו`
+                : 'בחר תמונות מהגלריה'}
+            </Text>
+          </TouchableOpacity>
+
+          {gallerySynced && (
+            <View style={styles.syncedBadge}>
+              <Text style={styles.syncedBadgeText}>✅ סונכרנו {galleryEntries.length} סריקות — מידה מעודכנת להיום</Text>
+            </View>
+          )}
+
           <TouchableOpacity
             onPress={handleScanAndSubmit}
             disabled={!photoFile || submitting}
@@ -457,10 +691,23 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
             </Text>
           </TouchableOpacity>
 
+          {galleryPhotos.length > 0 && !gallerySynced && (
+            <TouchableOpacity
+              onPress={handleGallerySync}
+              disabled={submitting}
+              activeOpacity={0.8}
+              style={[styles.gallerySyncBtn, submitting && styles.confirmBtnDisabled]}
+            >
+              <Text style={styles.gallerySyncBtnText}>
+                {submitting ? 'מסנכרן...' : `סנכרן ${galleryPhotos.length} תמונות עכשיו ✨`}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <View style={styles.instructionsList}>
             <View style={styles.instructionStep}><Text style={styles.stepNum}>1</Text><Text style={styles.stepText}>בחר/י תמונה מהגלריה או המצלמה</Text></View>
             <View style={styles.instructionStep}><Text style={styles.stepNum}>2</Text><Text style={styles.stepText}>ה-AI מנתח את המידות מהתמונה</Text></View>
-            <View style={styles.instructionStep}><Text style={styles.stepNum}>3</Text><Text style={styles.stepText}>המידות והתמונה נשמרות בפרופיל המשפחתי</Text></View>
+            <View style={styles.instructionStep}><Text style={styles.stepNum}>3</Text><Text style={styles.stepText}>סנכרן/י תמונות נוספות מהגלריה לדיוק גבוה יותר</Text></View>
             <View style={styles.instructionStep}><Text style={styles.stepNum}>4</Text><Text style={styles.stepText}>בן/בת הזוג מקבלים הודעה על העדכון ✨</Text></View>
           </View>
         </View>
@@ -503,9 +750,20 @@ const styles = StyleSheet.create({
   sizeChipValue: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   existingSizesHint: { fontSize: 12, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   scannedSizesBox: { backgroundColor: '#E0FFF0', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#00CC52' },
+  galleryCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F0F4FF', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#3B82F6' },
+  galleryIcon: { fontSize: 28 },
+  galleryTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  galleryDesc: { fontSize: 13, color: '#4A4A4A', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", lineHeight: 18 },
+  galleryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#3B82F6', borderRadius: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any } as any,
+  galleryBtnIcon: { fontSize: 22 },
+  galleryBtnText: { color: '#FFFEF5', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive", textAlign: 'center' },
+  syncedBadge: { backgroundColor: '#E0FFF0', borderRadius: 10, padding: 12, borderWidth: 1.5, borderColor: '#00CC52', alignItems: 'center' },
+  syncedBadgeText: { fontSize: 14, fontWeight: '700', color: '#00CC52', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   confirmBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any } as any,
   confirmBtnDisabled: { backgroundColor: '#F5F0E0' },
   confirmBtnText: { color: '#1A1A1A', fontSize: 16, fontWeight: '800', fontFamily: "'Permanent Marker', cursive", textAlign: 'center' },
+  gallerySyncBtn: { backgroundColor: '#3B82F6', borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any } as any,
+  gallerySyncBtnText: { color: '#FFFEF5', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive", textAlign: 'center' },
   scanningBox: { alignItems: 'center', gap: 12 },
   scanningIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFE566', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#1A1A1A' },
   scanningIcon: { fontSize: 32 },
