@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, type ReactNode } from 'react'
+import { useState, useEffect, useRef, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product, FamilyMember, FamilyCategory, FitEvent } from './types'
 import type { SizeRegion } from './utils/sizeConverter'
@@ -23,6 +23,21 @@ const GUEST_FAVORITES_KEY = 'fitgura_favorites'
 const GUEST_DEVICE_KEY = 'fitgura_guest_device'
 const GUEST_DEVICES_KEY = 'fitgura_guest_devices'
 const LEGACY_GUEST_FAVORITES_KEY = 'fitgura_guest_favorites'
+
+const PRODUCT_HOST_PATTERN = /(^|\.)((amazon\.[a-z.]+)|(shein\.com)|(aliexpress\.com)|(temu\.com)|(zara\.com))$/i
+
+function extractProductUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  const match = value.match(/https?:\/\/[^\s<>"']+/i)
+  if (!match) return null
+  const candidate = match[0].replace(/[),.;!?]+$/, '')
+  try {
+    const parsed = new URL(candidate)
+    return PRODUCT_HOST_PATTERN.test(parsed.hostname) ? parsed.toString() : null
+  } catch {
+    return null
+  }
+}
 
 interface GuestProfile {
   gender: 'male' | 'female' | 'unisex'
@@ -362,6 +377,9 @@ export default function App() {
   const [focusWishlistProfileId, setFocusWishlistProfileId] = useState<string | null>(null)
   const [growthAlerts, setGrowthAlerts] = useState<GrowthDetection[]>([])
   const [inviteToken, setInviteToken] = useState<string | null>(null)
+  const [sharedProductUrl, setSharedProductUrl] = useState<string | null>(null)
+  const [clipboardCandidate, setClipboardCandidate] = useState<string | null>(null)
+  const lastClipboardValueRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -550,10 +568,37 @@ export default function App() {
     const queryParams = new URLSearchParams(window.location.search)
     const queryToken = queryParams.get('token')
     const token = hashInviteMatch?.[1] ?? hashTokenMatch?.[1] ?? queryToken
-    if (token) {
-      setInviteToken(token)
+    if (token) setInviteToken(token)
+
+    if (window.location.pathname === '/parse-shared-link') {
+      const productUrl = extractProductUrl(queryParams.get('url') ?? queryParams.get('text'))
+      if (productUrl) {
+        setSharedProductUrl(productUrl)
+        setScreen('hub')
+      }
+      window.history.replaceState({}, document.title, '/')
     }
   }, [])
+
+  useEffect(() => {
+    const inspectClipboard = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      try {
+        if (typeof navigator === 'undefined' || !navigator.clipboard) return
+        const clipboardText = await navigator.clipboard.readText()
+        const productUrl = extractProductUrl(clipboardText)
+        if (!productUrl || productUrl === lastClipboardValueRef.current || productUrl === sharedProductUrl) return
+        lastClipboardValueRef.current = productUrl
+        setClipboardCandidate(productUrl)
+      } catch {
+        // Clipboard access is optional and can be denied by the browser.
+      }
+    }
+
+    window.addEventListener('focus', inspectClipboard)
+    void inspectClipboard()
+    return () => window.removeEventListener('focus', inspectClipboard)
+  }, [sharedProductUrl])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -848,6 +893,17 @@ export default function App() {
     setGrowthAlerts((prev) => prev.filter((d) => d.member.id !== detection.member.id))
   }
 
+  function handleClipboardProductAccept() {
+    if (!clipboardCandidate) return
+    setSharedProductUrl(clipboardCandidate)
+    setClipboardCandidate(null)
+    setScreen('hub')
+  }
+
+  const activeProfileName = activeProfileId === 'self'
+    ? (user?.name ?? 'אני')
+    : familyMembers.find((member) => member.id === activeProfileId)?.name ?? 'הפרופיל הפעיל'
+
   return (
     <ErrorBoundary>
     <View style={styles.outer}>
@@ -859,7 +915,7 @@ export default function App() {
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} onAuth={handleAuth} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('hub')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('hub')} onDetected={handleDeviceDetected} />}
-        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} wishlistItems={wishlistItems} feedCatalog={feedCatalog} budget={budget} onToggleWishlist={handleWishlistToggle} familyMembers={familyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} focusWishlistProfileId={focusWishlistProfileId} onWishlistFocusHandled={() => setFocusWishlistProfileId(null)} />}
+        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} wishlistItems={wishlistItems} feedCatalog={feedCatalog} budget={budget} onToggleWishlist={handleWishlistToggle} familyMembers={familyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} focusWishlistProfileId={focusWishlistProfileId} onWishlistFocusHandled={() => setFocusWishlistProfileId(null)} initialProductUrl={sharedProductUrl} onInitialProductHandled={() => setSharedProductUrl(null)} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} events={events} familyMembers={familyMembers} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} familyMembers={familyMembers} events={events} setEvents={setEvents} user={user} onToast={showToast} />}
@@ -906,6 +962,22 @@ export default function App() {
           </View>
         )}
 
+        {clipboardCandidate && (
+          <View style={styles.clipboardPrompt}>
+            <Text style={styles.clipboardPromptText}>
+              🕵️‍♂️ מצאנו קישור שהעתקת! לנתח מידה עבור {activeProfileName}?
+            </Text>
+            <View style={styles.clipboardPromptActions}>
+              <TouchableOpacity onPress={handleClipboardProductAccept} activeOpacity={0.8} style={styles.clipboardAcceptBtn}>
+                <Text style={styles.clipboardAcceptText}>כן, פתח עכשיו ✂️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setClipboardCandidate(null)} activeOpacity={0.7} style={styles.clipboardDismissBtn}>
+                <Text style={styles.clipboardDismissText}>לא עכשיו</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {toast && (
           <View style={styles.toast}>
             <Text style={styles.toastEmoji}>💚</Text>
@@ -945,6 +1017,62 @@ const styles = StyleSheet.create({
     boxShadow: 'none',
     overflow: 'hidden',
   } as React.CSSProperties,
+  clipboardPrompt: {
+    position: 'absolute',
+    bottom: 112,
+    left: 14,
+    right: 14,
+    zIndex: 220,
+    backgroundColor: '#FFF8C7',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: '#1A1A1A',
+    boxShadow: '3px 3px 0 #1A1A1A',
+  } as React.CSSProperties,
+  clipboardPromptText: {
+    color: '#1A1A1A',
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: '700',
+    textAlign: 'right',
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
+    marginBottom: 10,
+  },
+  clipboardPromptActions: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-start',
+  },
+  clipboardAcceptBtn: {
+    backgroundColor: '#00FF66',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: '#1A1A1A',
+  },
+  clipboardAcceptText: {
+    color: '#1A1A1A',
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
+  },
+  clipboardDismissBtn: {
+    backgroundColor: '#FFFEF5',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: '#9A9A9A',
+  },
+  clipboardDismissText: {
+    color: '#4A4A4A',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
+  },
   toast: {
     position: 'absolute',
     bottom: 100,

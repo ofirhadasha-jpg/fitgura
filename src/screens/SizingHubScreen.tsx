@@ -38,7 +38,7 @@ function ProductThumbWithFallback({ imageUrl, fallback, style, placeholderStyle 
   return <Image source={{ uri: imageUrl }} style={style} onError={() => setError(true)} />
 }
 
-export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId, focusWishlistProfileId, onWishlistFocusHandled }: {
+export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId, focusWishlistProfileId, onWishlistFocusHandled, initialProductUrl, onInitialProductHandled }: {
   onNav: (s: Screen) => void
   user: User | null
   scannedSizes: ScannedSizes | null
@@ -54,6 +54,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   setActiveProfileId?: (id: string) => void
   focusWishlistProfileId?: string | null
   onWishlistFocusHandled?: () => void
+  initialProductUrl?: string | null
+  onInitialProductHandled?: () => void
 }) {
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -156,9 +158,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     onWishlistFocusHandled?.()
   }, [focusWishlistProfileId, onWishlistFocusHandled, setActiveProfileId])
 
-  async function handleAnalyze(event?: unknown) {
+  async function handleAnalyze(event?: unknown, productUrl?: string) {
     if (event) setAnalyzeAnchorPos(captureClickPos(event))
-    const trimmed = url.trim()
+    const trimmed = (productUrl ?? url).trim()
     if (!trimmed) return
     if (!scannedSizes) {
       onNav('profile')
@@ -255,6 +257,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       setAnalyzing(false)
     }
   }
+
+  useEffect(() => {
+    if (!initialProductUrl) return
+    setUrl(initialProductUrl)
+    onInitialProductHandled?.()
+    void handleAnalyze(undefined, initialProductUrl)
+  }, [initialProductUrl, onInitialProductHandled])
 
   async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean, overrideImage?: string | null) {
     if (!result) return
