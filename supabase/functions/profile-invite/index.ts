@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/update-profile?token=${token}`;
+      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/join-family?token=${token}`;
 
       return new Response(JSON.stringify({ success: true, token, inviteUrl, profileId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -194,7 +194,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/update-profile?token=${token}`;
+      const inviteUrl = `${new URL(req.url).origin.split('/functions')[0]}/join-family?token=${token}`;
 
       return new Response(JSON.stringify({ success: true, token, inviteUrl, grantedProfileIds }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -378,6 +378,9 @@ Deno.serve(async (req: Request) => {
         accuracy,
         gender,
         ageGroup,
+        dateOfBirth,
+        avatarUrl,
+        scanPreview,
       } = body;
 
       if (!token) {
@@ -402,6 +405,9 @@ Deno.serve(async (req: Request) => {
       if (accuracy != null) metrics.accuracy = accuracy;
       if (gender != null) metrics.gender = gender;
       if (ageGroup != null) metrics.age_group = ageGroup;
+      if (dateOfBirth != null) metrics.date_of_birth = dateOfBirth;
+      if (avatarUrl != null) metrics.avatar_url = avatarUrl;
+      if (scanPreview != null) metrics.scan_preview = scanPreview;
 
       const { data, error } = await supabase
         .rpc("update_profile_metrics_via_token", {
@@ -416,19 +422,12 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Insert notification to the parent account
       if (data.success && data.profile_id) {
-        const profileId = data.profile_id as string;
         const memberName = data.member_name as string;
-        const { data: profileRow } = await supabase
-          .from("family_profiles")
-          .select("owner_user_id")
-          .eq("id", profileId)
-          .maybeSingle();
-
-        if (profileRow?.owner_user_id) {
+        const ownerUserId = data.owner_user_id as string | undefined;
+        if (ownerUserId) {
           await supabase.from("notifications").insert({
-            user_id: profileRow.owner_user_id,
+            user_id: ownerUserId,
             title: `${memberName} עדכנ/ה את המידות`,
             body: `${memberName} עדכנ/ה את המידות! הנתונים עודכנו בהצלחה ✨`,
             type: "family_update",
