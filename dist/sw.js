@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitgura-v1';
+const CACHE_NAME = 'fitgura-v2';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
