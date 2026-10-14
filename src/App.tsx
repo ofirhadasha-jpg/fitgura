@@ -949,7 +949,7 @@ const styles = StyleSheet.create({
     bottom: 100,
     left: 16,
     right: 16,
-    borderRadius: '10px 10px 10px 2px',
+    borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 18,
     flexDirection: 'row',

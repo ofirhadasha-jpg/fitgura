@@ -72,13 +72,16 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
     const faceResult = await detectFace(file)
     setFaceChecking(false)
 
+    // Don't block the scan based on the lightweight local heuristic alone.
+    // The AI vision model performs its own face_detected check and we honor
+    // that result after the scan completes. The local check is only used to
+    // set a soft warning flag — it must never reject a valid photo outright.
     if (!faceResult.faceDetected) {
-      setFaceCheckError(true)
-      setFaceMissing(true)
-      setStep('result')
-      return
+      setFaceCheckError(false)
+      // Soft warning only — proceed with the scan and let the AI decide
+    } else {
+      setFaceCheckError(false)
     }
-    setFaceCheckError(false)
 
     const instantPreview = URL.createObjectURL(file)
     previewUrlRef.current = instantPreview

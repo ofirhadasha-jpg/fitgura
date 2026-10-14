@@ -877,7 +877,7 @@ const feedStyles = StyleSheet.create({
     height: 22,
     margin: 0,
     padding: 0,
-    background: 'transparent',
+    backgroundColor: 'transparent',
     outlineWidth: 0,
   } as React.CSSProperties,
   budgetLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
