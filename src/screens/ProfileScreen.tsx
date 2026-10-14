@@ -512,22 +512,26 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       if (data.token) {
         const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
         const inviteUrl = `${appDomain}/join-family?token=${data.token}`
-        const shareText = `היי ${member.name}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${inviteUrl}`
-        const shareTitle = 'פיטגורה - עדכון מידות משפחתי ✨'
 
-        if (typeof navigator !== 'undefined' && navigator.share) {
-          try {
-            await navigator.share({
-              title: shareTitle,
-              text: shareText,
-              url: inviteUrl,
-            })
-          } catch (shareErr) {
-            if (shareErr instanceof Error && shareErr.name === 'AbortError') return
-            setShareModal({ url: inviteUrl, memberName: member.name })
-          }
-        } else {
-          setShareModal({ url: inviteUrl, memberName: member.name })
+        setShareModal({ url: inviteUrl, memberName: member.name })
+
+        try {
+          await navigator.clipboard.writeText(inviteUrl)
+          setCopySuccess(true)
+          setInviteToast('הקישור הועתק לקליפבורד! ✨')
+          setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
+        } catch {
+          const textarea = document.createElement('textarea')
+          textarea.value = inviteUrl
+          textarea.style.position = 'fixed'
+          textarea.style.opacity = '0'
+          document.body.appendChild(textarea)
+          textarea.select()
+          try { document.execCommand('copy') } catch { /* ignore */ }
+          document.body.removeChild(textarea)
+          setCopySuccess(true)
+          setInviteToast('הקישור הועתק לקליפבורד! ✨')
+          setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
         }
       }
     } catch (err) {
@@ -562,6 +566,34 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   function handleWhatsAppShare(url: string, memberName: string) {
     const text = encodeURIComponent(`היי ${memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${url}`)
     window.open(`https://wa.me/?text=${text}`, '_blank')
+  }
+
+  function handleSmsShare(url: string, memberName: string) {
+    const body = encodeURIComponent(`היי ${memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${url}`)
+    window.open(`sms:?&body=${body}`, '_blank')
+  }
+
+  function handleEmailShare(url: string, memberName: string) {
+    const subject = encodeURIComponent('פיטגורה - עדכון מידות משפחתי ✨')
+    const body = encodeURIComponent(`היי ${memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${url}`)
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
+  }
+
+  function handleTelegramShare(url: string, memberName: string) {
+    const text = encodeURIComponent(`היי ${memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${url}`)
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`, '_blank')
+  }
+
+  async function handleNativeShare(url: string, memberName: string) {
+    const shareText = `היי ${memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: ${url}`
+    const shareTitle = 'פיטגורה - עדכון מידות משפחתי ✨'
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText, url })
+      } catch (shareErr) {
+        if (shareErr instanceof Error && shareErr.name === 'AbortError') return
+      }
+    }
   }
 
   function openSharePicker() {
@@ -612,20 +644,27 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       if (data.token) {
         const appDomain = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
         const inviteUrl = `${appDomain}/join-family?token=${data.token}`
-        const shareText = `היי! הנה קישור לצפייה בפרופילים המשפחתיים המשותפים בפיטגורה ✨: ${inviteUrl}`
-        const shareTitle = 'פיטגורה - שיתוף פרופילים משפחתי ✨'
 
         setShowSharePicker(false)
+        setShareModal({ url: inviteUrl, memberName: 'בן/בת הזוג' })
 
-        if (typeof navigator !== 'undefined' && navigator.share) {
-          try {
-            await navigator.share({ title: shareTitle, text: shareText, url: inviteUrl })
-          } catch (shareErr) {
-            if (shareErr instanceof Error && shareErr.name === 'AbortError') return
-            setShareModal({ url: inviteUrl, memberName: 'בן/בת הזוג' })
-          }
-        } else {
-          setShareModal({ url: inviteUrl, memberName: 'בן/בת הזוג' })
+        try {
+          await navigator.clipboard.writeText(inviteUrl)
+          setCopySuccess(true)
+          setInviteToast('הקישור הועתק לקליפבורד! ✨')
+          setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
+        } catch {
+          const textarea = document.createElement('textarea')
+          textarea.value = inviteUrl
+          textarea.style.position = 'fixed'
+          textarea.style.opacity = '0'
+          document.body.appendChild(textarea)
+          textarea.select()
+          try { document.execCommand('copy') } catch { /* ignore */ }
+          document.body.removeChild(textarea)
+          setCopySuccess(true)
+          setInviteToast('הקישור הועתק לקליפבורד! ✨')
+          setTimeout(() => { setInviteToast(null); setCopySuccess(false) }, 3500)
         }
       }
     } catch (err) {
@@ -1315,7 +1354,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           </View>
         )}
 
-        {/* Share fallback modal — shown when Web Share API is not available */}
+        {/* Share modal — copy link + share via multiple channels */}
         {shareModal && (
           <View style={profStyles.gateOverlay}>
             <TouchableOpacity onPress={() => { setShareModal(null); setCopySuccess(false) }} activeOpacity={1} style={profStyles.sheetBackdrop} />
@@ -1326,29 +1365,66 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   <Text style={{ color: '#4A4A4A', fontSize: 15 }}>✕</Text>
                 </TouchableOpacity>
               </View>
-              <View style={{ gap: 16 }}>
+              <View style={{ gap: 14 }}>
                 <View style={profStyles.shareLinkBox}>
                   <Text style={profStyles.shareLinkText} numberOfLines={2}>{shareModal.url}</Text>
                 </View>
                 <Text style={[profStyles.sheetDesc, { fontSize: 13, lineHeight: 20 }]}>
-                  היי {shareModal.memberName}! הנה קישור עדכון המידות שלך בפיטגורה ✨: {shareModal.url}
+                  הקישור הועתק אוטומטית לקליפבורד. בחר גם אפשרות שיתוף נוספת למטה:
                 </Text>
                 <TouchableOpacity
                   onPress={() => handleCopyInviteLink(shareModal.url)}
                   activeOpacity={0.8}
-                  style={[profStyles.formSubmitBtn, { backgroundColor: copySuccess ? '#00CC52' : '#00FF66', paddingVertical: 14 }]}
+                  style={[profStyles.formSubmitBtn, { backgroundColor: copySuccess ? '#00CC52' : '#00FF66', paddingVertical: 13 }]}
                 >
                   <Text style={[profStyles.formSubmitBtnText, { fontSize: 15 }]}>
-                    {copySuccess ? 'הועתק! ✅' : 'העתק קישור 📋'}
+                    {copySuccess ? 'הועתק! ✅' : 'העתק קישור שוב 📋'}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleWhatsAppShare(shareModal.url, shareModal.memberName)}
-                  activeOpacity={0.8}
-                  style={[profStyles.formSubmitBtn, { backgroundColor: '#25D366', paddingVertical: 14 }]}
-                >
-                  <Text style={[profStyles.formSubmitBtnText, { fontSize: 15, color: '#FFFFFF' }]}>שתף בוואטסאפ 🟢</Text>
-                </TouchableOpacity>
+                <View style={profStyles.shareOptionsGrid}>
+                  <TouchableOpacity
+                    onPress={() => handleWhatsAppShare(shareModal.url, shareModal.memberName)}
+                    activeOpacity={0.8}
+                    style={profStyles.shareOptionBtn}
+                  >
+                    <Text style={profStyles.shareOptionIcon}>🟢</Text>
+                    <Text style={profStyles.shareOptionLabel}>וואטסאפ</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleTelegramShare(shareModal.url, shareModal.memberName)}
+                    activeOpacity={0.8}
+                    style={profStyles.shareOptionBtn}
+                  >
+                    <Text style={profStyles.shareOptionIcon}>✈️</Text>
+                    <Text style={profStyles.shareOptionLabel}>טלגרם</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleSmsShare(shareModal.url, shareModal.memberName)}
+                    activeOpacity={0.8}
+                    style={profStyles.shareOptionBtn}
+                  >
+                    <Text style={profStyles.shareOptionIcon}>💬</Text>
+                    <Text style={profStyles.shareOptionLabel}>SMS</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleEmailShare(shareModal.url, shareModal.memberName)}
+                    activeOpacity={0.8}
+                    style={profStyles.shareOptionBtn}
+                  >
+                    <Text style={profStyles.shareOptionIcon}>📧</Text>
+                    <Text style={profStyles.shareOptionLabel}>אימייל</Text>
+                  </TouchableOpacity>
+                  {typeof navigator !== 'undefined' && navigator.share && (
+                    <TouchableOpacity
+                      onPress={() => handleNativeShare(shareModal.url, shareModal.memberName)}
+                      activeOpacity={0.8}
+                      style={profStyles.shareOptionBtn}
+                    >
+                      <Text style={profStyles.shareOptionIcon}>📤</Text>
+                      <Text style={profStyles.shareOptionLabel}>עוד...</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <TouchableOpacity
                   onPress={() => { setShareModal(null); setCopySuccess(false) }}
                   activeOpacity={0.7}
@@ -2241,6 +2317,10 @@ const profStyles = StyleSheet.create({
   shareModalSheet: { position: 'fixed', bottom: 84, left: 0, right: 0, maxHeight: 'calc(100vh - 104px)', overflowY: 'auto', backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 24, padding: 28, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '0 -4px 0 #1A1A1A' as any, zIndex: 1001 } as any,
   shareLinkBox: { backgroundColor: '#F5F0E0', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#9A9A9A' },
   shareLinkText: { fontSize: 12, color: '#4A4A4A', fontFamily: "'Noto Sans Hebrew', sans-serif", lineHeight: 18 },
+  shareOptionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
+  shareOptionBtn: { alignItems: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1.5, borderColor: '#1A1A1A', backgroundColor: '#FFFACC', width: '31%', minWidth: 90 } as React.CSSProperties,
+  shareOptionIcon: { fontSize: 26 },
+  shareOptionLabel: { fontSize: 12, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   sheetBackdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
   sheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, maxHeight: '85%', overflowY: 'auto', borderWidth: 2, borderColor: '#1A1A1A' } as any,
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
