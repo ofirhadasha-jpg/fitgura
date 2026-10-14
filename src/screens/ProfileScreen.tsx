@@ -1661,6 +1661,13 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           </View>
           <View style={profStyles.familyCTABadge}><Text style={profStyles.familyCTABadgeText}>בקרוב</Text></View>
         </TouchableOpacity>
+
+        {/* Logout button — prominent, at the bottom */}
+        {user && (
+          <TouchableOpacity onPress={onSignOut} activeOpacity={0.8} style={profStyles.logoutBtn}>
+            <Text style={profStyles.logoutBtnText}>🚪 התנתק</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Add Device Sheet */}
@@ -1974,6 +1981,8 @@ const profStyles = StyleSheet.create({
   userStatusText: { fontSize: 12, color: '#2D2D2D', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   signOutBtn: { backgroundColor: '#1A1A1A', borderRadius: 8 as any, paddingVertical: 4, paddingHorizontal: 10, marginLeft: 6, boxShadow: '2px 2px 0 #F5C842' as any },
   signOutBtnText: { fontSize: 11, fontWeight: '700', color: '#FFE566', fontFamily: "'Permanent Marker', cursive" },
+  logoutBtn: { backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #F5C842' as any, marginTop: 8 } as React.CSSProperties,
+  logoutBtnText: { fontSize: 17, fontWeight: '700', color: '#FFE566', fontFamily: "'Permanent Marker', cursive" },
   card: {
     backgroundColor: '#FFFEF5',
     backgroundImage: PAPER_TEXTURE,
