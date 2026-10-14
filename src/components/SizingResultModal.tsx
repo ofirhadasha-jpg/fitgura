@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
 import type { FamilyMember } from '../types'
 import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl } from '../services/affiliateService'
+import { normalizeProductImageUrl, getFallbackImage } from '../utils/productImages'
 
 export interface FitBreakdown {
   chest: { fit: string; score: number }
@@ -67,12 +68,13 @@ interface SizingResultModalProps {
   affiliateUrl: string
   onClose: () => void
   onBuy: (url: string) => void
-  onSave?: (profileId: string, isWishlist?: boolean) => void
+  onSave?: (profileId: string, isWishlist?: boolean, overrideImage?: string | null) => void
   saving?: boolean
   familyMembers?: FamilyMember[]
   userName?: string | null
   profileName?: string | null
   defaultProfileId?: string | null
+  category?: string
 }
 
 export default function SizingResultModal({
@@ -94,19 +96,36 @@ export default function SizingResultModal({
   userName,
   profileName,
   defaultProfileId,
+  category = 'clothing',
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
   const [showProfileSelector, setShowProfileSelector] = useState(false)
   const [isWishlist, setIsWishlist] = useState(false)
+  const [imgError, setImgError] = useState(false)
+  const [manualImageUrl, setManualImageUrl] = useState('')
+  const [showManualInput, setShowManualInput] = useState(false)
+  const [overrideImage, setOverrideImage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (defaultProfileId) setSelectedProfileId(defaultProfileId)
   }, [defaultProfileId])
 
+  useEffect(() => {
+    setImgError(false)
+    setOverrideImage(null)
+    setManualImageUrl('')
+    setShowManualInput(false)
+  }, [productImage, visible])
+
   if (!visible) return null
 
   const matchColor = matchPercentage >= 90 ? '#00CC52' : matchPercentage >= 75 ? '#FFE566' : '#F59E0B'
   const decodedName = decodeHtmlEntities(productName)
+
+  const normalizedImage = normalizeProductImageUrl(overrideImage ?? productImage)
+  const fallbackUrl = getFallbackImage(category, decodedName)
+  const displayImage = normalizedImage ?? (imgError || !productImage ? fallbackUrl : null)
 
   const profileOptions: SaveProfileOption[] = [
     { id: 'self', name: userName ?? 'אני' },
@@ -121,7 +140,29 @@ export default function SizingResultModal({
       : (selectedProfileId === 'self' ? 'שמור בארון שלי' : `שמור בארון של ${selectedProfile?.name ?? ''}`)
 
   function handleSave() {
-    onSave?.(selectedProfileId, isWishlist)
+    onSave?.(selectedProfileId, isWishlist, overrideImage)
+  }
+
+  function handleManualFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      setOverrideImage(dataUrl)
+      setImgError(false)
+      setShowManualInput(false)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  function handleManualUrlSubmit() {
+    const trimmed = manualImageUrl.trim()
+    if (!trimmed) return
+    setOverrideImage(trimmed)
+    setImgError(false)
+    setShowManualInput(false)
   }
 
   return (
@@ -140,9 +181,81 @@ export default function SizingResultModal({
           </TouchableOpacity>
         </View>
 
-        {productImage && (
+        {displayImage ? (
           <View style={styles.imageWrap}>
-            <Image source={{ uri: productImage }} style={styles.productImage} />
+            <Image
+              source={{ uri: displayImage }}
+              style={styles.productImage}
+              onError={() => { if (!overrideImage) setImgError(true) }}
+            />
+            {!overrideImage && (
+              <TouchableOpacity
+                onPress={() => setShowManualInput((v) => !v)}
+                activeOpacity={0.7}
+                style={styles.manualImageToggle}
+              >
+                <Text style={styles.manualImageToggleText}>תמונה לא נכונה? החלף 📷</Text>
+              </TouchableOpacity>
+            )}
+            {overrideImage && (
+              <TouchableOpacity
+                onPress={() => { setOverrideImage(null); setImgError(false) }}
+                activeOpacity={0.7}
+                style={styles.manualImageToggle}
+              >
+                <Text style={styles.manualImageToggleText}>חזור לתמונה המקורית ↩️</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <View style={styles.imageWrap}>
+            <View style={styles.imagePlaceholder}>
+              <Text style={styles.imagePlaceholderIcon}>🖼️</Text>
+              <Text style={styles.imagePlaceholderText}>אין תמונה זמינה</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowManualInput((v) => !v)}
+              activeOpacity={0.7}
+              style={styles.manualImageToggle}
+            >
+              <Text style={styles.manualImageToggleText}>הוסף תמונה ידנית 📷</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {showManualInput && (
+          <View style={styles.manualImageBox}>
+            <Text style={styles.manualImageLabel}>הדבק קישור לתמונה או העלה קובץ:</Text>
+            <View style={styles.manualImageRow}>
+              <input
+                type="text"
+                value={manualImageUrl}
+                onChange={(e) => setManualImageUrl(e.target.value)}
+                placeholder="https://..."
+                style={styles.manualImageInput as React.CSSProperties}
+              />
+              <TouchableOpacity
+                onPress={handleManualUrlSubmit}
+                activeOpacity={0.7}
+                style={styles.manualImageBtn}
+              >
+                <Text style={styles.manualImageBtnText}>אישור ✓</Text>
+              </TouchableOpacity>
+            </View>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 } as React.CSSProperties}
+              onChange={handleManualFileSelect}
+            />
+            <TouchableOpacity
+              onPress={() => fileInputRef.current?.click()}
+              activeOpacity={0.7}
+              style={styles.manualUploadBtn}
+            >
+              <Text style={styles.manualUploadBtnText}>בחר תמונה מהמכשיר 📁</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -215,8 +328,9 @@ export default function SizingResultModal({
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
-              if (productImage) {
-                const lensUrl = buildGoogleLensUrl(productImage)
+              const imgForLens = normalizedImage ?? productImage
+              if (imgForLens) {
+                const lensUrl = buildGoogleLensUrl(imgForLens)
                 if (lensUrl) window.open(lensUrl, '_blank', 'noopener,noreferrer')
               }
             }}
@@ -296,6 +410,19 @@ const styles = StyleSheet.create({
   closeText: { color: '#1A1A1A', fontSize: 22, lineHeight: 22 },
   imageWrap: { alignItems: 'center', marginBottom: 12 },
   productImage: { width: 120, height: 140, borderRadius: 12, borderWidth: 1.5, borderColor: '#1A1A1A', resizeMode: 'cover' as any },
+  imagePlaceholder: { width: 120, height: 140, borderRadius: 12, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#F5F0E0', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
+  imagePlaceholderIcon: { fontSize: 32 },
+  imagePlaceholderText: { fontSize: 12, color: '#9A9A9A', marginTop: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  manualImageToggle: { marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F5F0E0', borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  manualImageToggleText: { fontSize: 11, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  manualImageBox: { backgroundColor: '#FFFACC', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#FFE566' } as React.CSSProperties,
+  manualImageLabel: { fontSize: 12, fontWeight: '700', color: '#4A4A4A', marginBottom: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  manualImageRow: { flexDirection: 'row', gap: 6, marginBottom: 8 } as React.CSSProperties,
+  manualImageInput: { flex: 1, borderRadius: 8, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5', padding: '8px 10px', fontSize: 13, color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", outline: 'none' } as React.CSSProperties,
+  manualImageBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#00CC52', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
+  manualImageBtnText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  manualUploadBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#E0F2FE', borderWidth: 1.5, borderColor: '#0891B2', alignItems: 'center' } as React.CSSProperties,
+  manualUploadBtnText: { fontSize: 13, fontWeight: '700', color: '#0891B2', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   productName: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', marginBottom: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   platformBadge: { backgroundColor: '#FFFACC', borderRadius: 8, paddingVertical: 3, paddingHorizontal: 10, borderWidth: 1, borderColor: '#FFE566' },
   productMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 14 },

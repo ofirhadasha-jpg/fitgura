@@ -6,6 +6,7 @@ import GalleryPreviewModal, { type PreviewablePhoto } from '../components/Galler
 import type { Screen, User, ScannedSizes, ScanEntry, Product, FamilyMember, AgeGroup } from '../types'
 import { supabase } from '../lib/supabase'
 import SizingResultModal, { type WardrobeItem, type FitBreakdown, decodeHtmlEntities } from '../components/SizingResultModal'
+import { normalizeProductImageUrl, getFallbackImage } from '../utils/productImages'
 import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type CategoryMismatch, type SmartMatch } from '../components/CategoryMismatchModal'
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
@@ -18,6 +19,23 @@ const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 
 
 function wrapAffiliateUrl(url: string): string {
   return ensureAffiliateWrapped(url)
+}
+
+function ProductThumbWithFallback({ imageUrl, fallback, style, placeholderStyle }: {
+  imageUrl: string
+  fallback: string
+  style: React.CSSProperties
+  placeholderStyle: React.CSSProperties
+}) {
+  const [error, setError] = useState(false)
+  if (error) {
+    return (
+      <View style={placeholderStyle}>
+        <Image source={{ uri: fallback }} style={style} onError={() => {}} />
+      </View>
+    )
+  }
+  return <Image source={{ uri: imageUrl }} style={style} onError={() => setError(true)} />
 }
 
 export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId, focusWishlistProfileId, onWishlistFocusHandled }: {
@@ -50,6 +68,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     productImage: string | null
     price: string | null
     platform: string
+    category: string
     recommendedSize: string
     matchPercentage: number
     fitBreakdown: FitBreakdown | null
@@ -158,6 +177,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         productImage: analysisResult.productImage,
         price: analysisResult.price,
         platform: analysisResult.platform,
+        category: analysisResult.category,
         recommendedSize: analysisResult.recommendedSize,
         matchPercentage: analysisResult.matchPercentage,
         fitBreakdown: analysisResult.fitBreakdown,
@@ -236,15 +256,16 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     }
   }
 
-  async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean) {
+  async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean, overrideImage?: string | null) {
     if (!result) return
+    const savedImage = overrideImage !== undefined ? overrideImage : result.productImage
     try {
       const { error } = await supabase
         .from('fitted_wardrobe')
         .insert({
           product_url: result.originalUrl,
           product_name: result.productName,
-          product_image: result.productImage,
+          product_image: savedImage,
           price: result.price,
           platform: result.platform,
           recommended_size: result.recommendedSize,
@@ -352,6 +373,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           productImage: reanalysis.productImage,
           price: reanalysis.price,
           platform: reanalysis.platform,
+          category: reanalysis.category,
           recommendedSize: reanalysis.recommendedSize,
           matchPercentage: reanalysis.matchPercentage,
           fitBreakdown: reanalysis.fitBreakdown,
@@ -811,13 +833,24 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                   <View key={item.id} style={styles.wardrobeCard}>
                     <View style={styles.wardrobeItemRow}>
                       <View style={styles.wardrobeThumbWrap}>
-                        {item.productImage ? (
-                          <Image source={{ uri: item.productImage }} style={styles.wardrobeThumb} />
-                        ) : (
-                          <View style={styles.wardrobeThumbPlaceholder}>
-                            <Text style={styles.wardrobeThumbPlaceholderText}>👕</Text>
-                          </View>
-                        )}
+                        {(() => {
+                          const normalized = normalizeProductImageUrl(item.productImage)
+                          if (normalized) {
+                            return (
+                              <ProductThumbWithFallback
+                                imageUrl={normalized}
+                                fallback={getFallbackImage('clothing', item.productName)}
+                                style={styles.wardrobeThumb}
+                                placeholderStyle={styles.wardrobeThumbPlaceholder}
+                              />
+                            )
+                          }
+                          return (
+                            <View style={styles.wardrobeThumbPlaceholder}>
+                              <Text style={styles.wardrobeThumbPlaceholderText}>👕</Text>
+                            </View>
+                          )
+                        })()}
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.wardrobeItemName} numberOfLines={2}>{decodedName}</Text>
@@ -996,6 +1029,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           productImage={result.productImage}
           price={result.price}
           platform={result.platform}
+          category={result.category ?? 'clothing'}
           recommendedSize={result.recommendedSize}
           matchPercentage={result.matchPercentage}
           fitBreakdown={result.fitBreakdown}

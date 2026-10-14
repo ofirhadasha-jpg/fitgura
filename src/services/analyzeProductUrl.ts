@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
 import type { FitBreakdown, WardrobeItem } from '../components/SizingResultModal'
 
-const FETCH_TIMEOUT_MS = 4000
+const FETCH_TIMEOUT_MS = 9000
 
 export interface ProductAnalysisResult {
   productName: string
