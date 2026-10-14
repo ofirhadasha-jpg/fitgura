@@ -57,13 +57,14 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
   // Sync local profile fields when scannedSizes changes externally (e.g. from onboarding or a new scan)
   useEffect(() => {
+    if (activeProfileId !== 'self') return
     if (scannedSizes?.sizing) {
       setProfTop(scannedSizes.sizing.top)
       setProfBottom(scannedSizes.sizing.bottom)
       setProfFit(scannedSizes.sizing.fit)
       if (scannedSizes.shoeSize) setProfShoe(scannedSizes.shoeSize)
     }
-  }, [scannedSizes?.sizing?.top, scannedSizes?.sizing?.bottom, scannedSizes?.sizing?.fit, scannedSizes?.shoeSize])
+  }, [activeProfileId, scannedSizes?.sizing?.top, scannedSizes?.sizing?.bottom, scannedSizes?.sizing?.fit, scannedSizes?.shoeSize])
 
   // Profile photo management
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(scannedSizes?.preview ?? null)
@@ -454,10 +455,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       }
       setFamilyMembers((prev) => [...prev, newMember])
       setActiveProfileId(data.id)
-      setProfTop(scannedMember?.sizing.top ?? 'M')
-      setProfBottom(scannedMember?.sizing.bottom ?? '48')
-      setProfFit(scannedMember?.sizing.fit ?? 'Regular')
-      setProfShoe(scannedMember?.shoeSize ?? '42')
+      setProfTop(scannedMember?.sizing.top ?? '')
+      setProfBottom(scannedMember?.sizing.bottom ?? '')
+      setProfFit(scannedMember?.sizing.fit ?? '')
+      setProfShoe(scannedMember?.shoeSize ?? '')
       setCurrentAccuracy(scannedMember?.confidence ?? 0)
       setProfilePhotoUrl(newMemberPhotoUrl)
       setShowAddMember(false)
@@ -692,10 +693,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       const member = familyMembers.find((m) => m.id === id)
       if (!member) return
 
-      setProfTop(member.scannedSizes?.sizing?.top ?? 'M')
-      setProfBottom(member.scannedSizes?.sizing?.bottom ?? '48')
-      setProfFit(member.scannedSizes?.sizing?.fit ?? 'Regular')
-      setProfShoe(member.scannedSizes?.shoeSize ?? '42')
+      setProfTop(member.scannedSizes?.sizing?.top ?? '')
+      setProfBottom(member.scannedSizes?.sizing?.bottom ?? '')
+      setProfFit(member.scannedSizes?.sizing?.fit ?? '')
+      setProfShoe(member.scannedSizes?.shoeSize ?? '')
       setCurrentAccuracy(member.accuracy ?? 0)
       if (member.photoUrl && user) {
         void supabase.storage.from('profile-photos').createSignedUrl(member.photoUrl, 3600).then(({ data }) => {
@@ -1675,7 +1676,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                     ))}
                   </View>
                 ) : (
-                  <Text style={profStyles.sizeValue}>{value}</Text>
+                  <Text style={[profStyles.sizeValue, !value && profStyles.sizeValueEmpty]}>{value || 'טרם הוזן'}</Text>
                 )}
               </View>
             ))}
@@ -1707,7 +1708,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             </View>
           )}
 
-          <Text style={profStyles.sizeRegionHint}>מידת המכנסיים נשמרת כ-{formatFullPantsSizeLabel(profBottom)}</Text>
+          <Text style={profStyles.sizeRegionHint}>{profBottom ? `מידת המכנסיים נשמרת כ-${formatFullPantsSizeLabel(profBottom)}` : 'מידות הפרופיל יופיעו לאחר סריקה או הזנה ידנית'}</Text>
 
           <View style={profStyles.regionOptionsRow}>
             {SIZE_REGION_OPTIONS.map((region) => (
@@ -2201,6 +2202,7 @@ const profStyles = StyleSheet.create({
   editBtnTextActive: { color: '#1A1A1A' },
   sizesGrid: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   sizeBox: { flex: 1, minWidth: 150, backgroundColor: '#FFFEF5', borderRadius: 12 as any, padding: 12, alignItems: 'stretch', borderWidth: 1.5, borderColor: '#9A9A9A' },
+  sizeValueEmpty: { color: '#9A9A9A', fontSize: 13 },
   sizeValue: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', textAlign: 'right', fontFamily: "'Permanent Marker', cursive" },
   sizeRegionHint: { fontSize: 11, color: '#4A4A4A', marginTop: 10, textAlign: 'right', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   regionSub: { fontSize: 11, color: '#9A9A9A', marginTop: 4, marginBottom: 12, textAlign: 'right', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
