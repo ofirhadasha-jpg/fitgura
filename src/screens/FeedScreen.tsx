@@ -745,15 +745,6 @@ export function FeedScreen({
           </View>
         )}
 
-        <View style={feedStyles.familyTeaser}>
-          <Text style={{ fontSize: 26 }}>👨‍👩‍👧</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={feedStyles.familyTitle}>רוצה לסנכרן גם את בני המשפחה?</Text>
-            <Text style={feedStyles.familySub}>סריקת AI לכל הבית — בקרוב</Text>
-          </View>
-          <View style={feedStyles.familyBadge}><Text style={feedStyles.familyBadgeText}>בקרוב</Text></View>
-        </View>
-
         <View style={{ height: 80 }} />
       </ScrollView>
 
@@ -904,11 +895,6 @@ const feedStyles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingTop: 40 },
   emptyText: { color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", fontSize: 16 },
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  familyTeaser: { backgroundColor: '#FFFACC', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: '#FFE566', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
-  familyTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
-  familySub: { fontSize: 13, color: '#6B6B6B', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  familyBadge: { backgroundColor: '#FFFACC', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, borderColor: '#FFE566' },
-  familyBadgeText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   deviceBar: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#FFFACC', borderBottomWidth: 1.5, borderBottomColor: '#1A1A1A' },
   deviceBarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   deviceBarTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1A1A1A', textAlign: 'right', writingDirection: 'rtl', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
