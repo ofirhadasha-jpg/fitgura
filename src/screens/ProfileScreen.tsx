@@ -586,20 +586,24 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   }
 
   function handleSelectMember(id: string) {
-    setActiveProfileId(id)
-    const member = familyMembers.find((m) => m.id === id)
-    if (member) {
-      setProfTop(member.scannedSizes?.sizing?.top ?? 'M')
-      setProfBottom(member.scannedSizes?.sizing?.bottom ?? '48')
-      setProfFit(member.scannedSizes?.sizing?.fit ?? 'Regular')
-      setProfShoe(member.scannedSizes?.shoeSize ?? '42')
-      setProfilePhotoUrl(member.photoUrl)
-      setCurrentAccuracy(member.accuracy)
-    }
-    if (user && id !== 'self') {
-      void loadMemberWishlist(id)
-    } else {
-      setMemberWishlist([])
+    try {
+      setActiveProfileId(id)
+      const member = familyMembers.find((m) => m.id === id)
+      if (member) {
+        setProfTop(member.scannedSizes?.sizing?.top ?? 'M')
+        setProfBottom(member.scannedSizes?.sizing?.bottom ?? '48')
+        setProfFit(member.scannedSizes?.sizing?.fit ?? 'Regular')
+        setProfShoe(member.scannedSizes?.shoeSize ?? '42')
+        setProfilePhotoUrl(member.photoUrl ?? null)
+        setCurrentAccuracy(member.accuracy ?? 0)
+      }
+      if (user && id !== 'self') {
+        void loadMemberWishlist(id)
+      } else {
+        setMemberWishlist([])
+      }
+    } catch (err) {
+      console.error('[ProfileScreen] handleSelectMember failed:', err)
     }
   }
 
