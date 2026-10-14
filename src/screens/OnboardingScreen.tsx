@@ -350,9 +350,9 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
               }}
               disabled={!baseAge || !baseHeight || !baseWeight}
               activeOpacity={0.8}
-              style={[obStyles.cameraBtn, (!baseAge || !baseHeight || !baseWeight) && { opacity: 0.5 }]}
+              style={[obStyles.cameraBtn, obStyles.continueScanBtn, (!baseAge || !baseHeight || !baseWeight) && { opacity: 0.5 }]}
             >
-              <Text style={obStyles.cameraBtnText}>המשך לסריקה →</Text>
+              <Text style={obStyles.cameraBtnText}>📐←מתאים לי להתקדם</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1241,6 +1241,7 @@ const obStyles = StyleSheet.create({
   tipText: { fontSize: 14, color: '#4A4A4A', lineHeight: 20, flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   btnRow: { flexDirection: 'row', gap: 10 },
   cameraBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00FF66', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
+  continueScanBtn: { width: '100%', justifyContent: 'center', gap: 8, textAlign: 'center' } as React.CSSProperties,
   cameraBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFEF5', borderWidth: 1.5, borderColor: '#1A1A1A', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 18, boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
   galleryBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
