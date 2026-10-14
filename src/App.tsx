@@ -292,9 +292,11 @@ async function migrateGuestData(userId: string) {
   }
 }
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false }
-  static getDerivedStateFromError() { return { hasError: true } }
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorInfo: string }> {
+  state = { hasError: false, errorInfo: '' }
+  static getDerivedStateFromError(err: unknown) {
+    return { hasError: true, errorInfo: err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err) }
+  }
   componentDidCatch(err: unknown) { console.error('App crash caught:', err) }
   handleRecover = () => {
     sessionStorage.removeItem('fitgura_screen')
@@ -306,8 +308,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24, backgroundColor: '#FFFEF5' }}>
           <Text style={{ fontSize: 22, fontFamily: "'Permanent Marker', cursive", color: '#1A1A1A' }}>משהו השתבש</Text>
-          <Text style={{ fontSize: 16, color: '#6B6B6B', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>אירעה שגיאה. אנא רענן את העמוד.</Text>
-          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}>
+          <Text style={{ fontSize: 14, color: '#DC2626', textAlign: 'center', fontFamily: 'monospace', maxWidth: 600 }}>{this.state.errorInfo.slice(0, 500)}</Text>
+          <TouchableOpacity onPress={this.handleRecover} activeOpacity={0.8} style={{ backgroundColor: '#FFE566', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, marginTop: 8, borderWidth: 1.5, borderColor: '#1A1A1A' }}>
             <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>חזור להתחלה</Text>
           </TouchableOpacity>
         </View>
