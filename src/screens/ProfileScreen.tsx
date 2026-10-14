@@ -1818,16 +1818,6 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           </View>
         )}
 
-        {/* Family CTA */}
-        <TouchableOpacity activeOpacity={0.7} style={profStyles.familyCTA}>
-          <Text style={{ fontSize: 26 }}>👨‍👩‍👧</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={profStyles.familyCTATitle}>+ הוסף פרופיל משפחתי</Text>
-            <Text style={profStyles.familyCTASub}>בקרוב — סריקת AI לכל הבית</Text>
-          </View>
-          <View style={profStyles.familyCTABadge}><Text style={profStyles.familyCTABadgeText}>בקרוב</Text></View>
-        </TouchableOpacity>
-
         {/* Logout / Reset button — always visible at the bottom */}
         <TouchableOpacity
           onPress={user ? onSignOut : () => {
@@ -2306,11 +2296,6 @@ const profStyles = StyleSheet.create({
   noNewBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFEF5', borderRadius: 12 as any, padding: 12, marginTop: 12, borderWidth: 1.5, borderColor: '#9A9A9A', boxShadow: '2px 2px 0 #1A1A1A' as any },
   noNewText: { fontSize: 12, fontWeight: '700', color: '#2D2D2D', fontFamily: "'Permanent Marker', cursive" },
   noNewSub: { fontSize: 11, color: '#9A9A9A', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  familyCTA: { borderWidth: 2, borderStyle: 'dashed', borderColor: '#1A1A1A', backgroundColor: '#FFFACC', borderRadius: 12 as any, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, boxShadow: '3px 3px 0 #1A1A1A' as any },
-  familyCTATitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
-  familyCTASub: { fontSize: 12, color: '#4A4A4A', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  familyCTABadge: { backgroundColor: '#FFE566', borderRadius: 8 as any, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#1A1A1A' },
-  familyCTABadgeText: { fontSize: 11, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sheetOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 500, justifyContent: 'flex-end' } as React.CSSProperties,
   gateOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 } as React.CSSProperties,
   gatePopover: { position: 'fixed', width: 320, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto', backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 20, padding: 24, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, zIndex: 1001 } as any,
