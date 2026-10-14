@@ -9,69 +9,15 @@ import SizingResultModal, { type WardrobeItem, type FitBreakdown, decodeHtmlEnti
 import CategoryMismatchModal, { detectProductTarget, checkCategoryMismatch, type CategoryMismatch, type SmartMatch } from '../components/CategoryMismatchModal'
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
-import { SKIMLINKS_PUBLISHER_ID } from '../lib/config'
-import { buildComparisonAffiliateUrl, buildGoogleLensUrl, ensureAffiliateWrapped } from '../services/affiliateService'
+import { buildComparisonAffiliateUrl, buildGoogleLensUrl, ensureAffiliateWrapped, buildCategoryAffiliateUrls } from '../services/affiliateService'
 import { isNativePlatform, getGalleryPhotos, fetchPhotoAsFile, getGalleryPermissionGranted, setGalleryPermissionGranted, requestGalleryPermissions } from '../services/nativeGalleryBridge'
+
 import { captureClickPos, type AnchorPos } from '../utils/popupPosition'
 
 const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' as any
 
 function wrapAffiliateUrl(url: string): string {
-  if (!SKIMLINKS_PUBLISHER_ID) return url
-  try {
-    const encoded = encodeURIComponent(url)
-    return `https://go.skimresources.com/?id=${SKIMLINKS_PUBLISHER_ID}&url=${encoded}&xs=1`
-  } catch {
-    return url
-  }
-}
-
-interface RetailerChip {
-  label: string
-  url: string
-}
-
-function getRetailerChips(gender: 'male' | 'female' | 'unisex', ageGroup: AgeGroup): RetailerChip[] {
-  const isChild = ageGroup === 'child' || ageGroup === 'toddler'
-  const isBaby = ageGroup === 'baby'
-  const isFemale = gender === 'female'
-  const isMale = gender === 'male'
-
-  let sheinPath = 'Women-Dresses-c-1727.html'
-  let aliPath = 'womens-clothing'
-  let temuPath = 'women-clothing'
-  let zaraPath = 'woman'
-
-  if (isChild) {
-    if (isFemale) {
-      sheinPath = 'Kids-Girls-c-2031.html'
-      aliPath = 'girls-clothing'
-      temuPath = 'girls-clothing'
-      zaraPath = 'girl'
-    } else {
-      sheinPath = 'Kids-Boys-c-2030.html'
-      aliPath = 'boys-clothing'
-      temuPath = 'boys-clothing'
-      zaraPath = 'boy'
-    }
-  } else if (isBaby) {
-    sheinPath = 'Baby-c-2029.html'
-    aliPath = 'baby-clothing'
-    temuPath = 'baby-clothing'
-    zaraPath = 'baby'
-  } else if (isMale) {
-    sheinPath = 'Men-Tees-c-1996.html'
-    aliPath = 'mens-clothing'
-    temuPath = 'men-clothing'
-    zaraPath = 'man'
-  }
-
-  return [
-    { label: 'SHEIN', url: `https://www.shein.com/${sheinPath}` },
-    { label: 'AliExpress', url: `https://www.aliexpress.com/${aliPath}.html` },
-    { label: 'Temu', url: `https://www.temu.com/${temuPath}.html` },
-    { label: 'Zara', url: `https://www.zara.com/us/${zaraPath}.html` },
-  ]
+  return ensureAffiliateWrapped(url)
 }
 
 export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId }: {
@@ -701,10 +647,10 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         <View style={styles.urlCard}>
           <Text style={styles.urlLabel}>מצאת משהו שווה ברשת? שים פה לינק ונפצח לך את המידה 🕵️‍♂️✨</Text>
           <View style={styles.platformRow}>
-            {getRetailerChips(activeGender, activeAgeGroup).map((chip) => (
+            {buildCategoryAffiliateUrls(activeGender, activeAgeGroup).map((chip) => (
               <TouchableOpacity
                 key={chip.label}
-                onPress={() => window.open(wrapAffiliateUrl(chip.url), '_blank', 'noopener,noreferrer')}
+                onPress={() => window.open(chip.url, '_blank', 'noopener,noreferrer')}
                 activeOpacity={0.7}
                 style={styles.platformChip}
               >

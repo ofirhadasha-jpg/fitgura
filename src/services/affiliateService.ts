@@ -1,7 +1,13 @@
 import { SKIMLINKS_PUBLISHER_ID } from '../lib/config'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
+import type { AgeGroup } from '../types'
 
 export type StorePlatform = 'shein' | 'temu' | 'aliexpress' | 'amazon'
+
+export interface RetailerChip {
+  label: string
+  url: string
+}
 
 const STORE_DOMAINS: { platform: StorePlatform; patterns: RegExp[] }[] = [
   { platform: 'shein', patterns: [/shein\.(com|us|il)/i] },
@@ -69,4 +75,58 @@ export function ensureAffiliateWrapped(url: string): string {
   const platform = detectPlatform(url)
   if (!platform) return url
   return wrapAffiliateUrl(url)
+}
+
+// Build profile-aware category landing URLs for all supported retailers,
+// each wrapped with affiliate tracking. The gender and ageGroup of the
+// active profile determine which clothing category each link targets.
+export function buildCategoryAffiliateUrls(gender: 'male' | 'female' | 'unisex', ageGroup: AgeGroup): RetailerChip[] {
+  const isChild = ageGroup === 'child' || ageGroup === 'toddler'
+  const isBaby = ageGroup === 'baby'
+  const isFemale = gender === 'female'
+  const isMale = gender === 'male'
+
+  let sheinPath = 'Women-Dresses-c-1727.html'
+  let aliPath = 'womens-clothing'
+  let temuPath = 'women-clothing'
+  let zaraPath = 'woman'
+  let amazonQuery = 'womens clothing'
+
+  if (isChild) {
+    if (isFemale) {
+      sheinPath = 'Kids-Girls-c-2031.html'
+      aliPath = 'girls-clothing'
+      temuPath = 'girls-clothing'
+      zaraPath = 'girl'
+      amazonQuery = 'girls clothing kids'
+    } else {
+      sheinPath = 'Kids-Boys-c-2030.html'
+      aliPath = 'boys-clothing'
+      temuPath = 'boys-clothing'
+      zaraPath = 'boy'
+      amazonQuery = 'boys clothing kids'
+    }
+  } else if (isBaby) {
+    sheinPath = 'Baby-c-2029.html'
+    aliPath = 'baby-clothing'
+    temuPath = 'baby-clothing'
+    zaraPath = 'baby'
+    amazonQuery = 'baby clothing'
+  } else if (isMale) {
+    sheinPath = 'Men-Tees-c-1996.html'
+    aliPath = 'mens-clothing'
+    temuPath = 'men-clothing'
+    zaraPath = 'man'
+    amazonQuery = 'mens clothing'
+  }
+
+  const chips: RetailerChip[] = [
+    { label: 'Amazon', url: `https://www.amazon.com/s?k=${encodeURIComponent(amazonQuery)}` },
+    { label: 'AliExpress', url: `https://www.aliexpress.com/${aliPath}.html` },
+    { label: 'SHEIN', url: `https://www.shein.com/${sheinPath}` },
+    { label: 'Temu', url: `https://www.temu.com/${temuPath}.html` },
+    { label: 'Zara', url: `https://www.zara.com/us/${zaraPath}.html` },
+  ]
+
+  return chips.map((c) => ({ ...c, url: wrapAffiliateUrl(c.url) }))
 }
