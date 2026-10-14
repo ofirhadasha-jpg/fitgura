@@ -168,7 +168,7 @@ function restoreScannedSizes(profile: Record<string, unknown>): ScannedSizes | n
       aestheticTags: [],
     },
     confidence: 100,
-    preview: '',
+    preview: typeof profile.scan_preview === 'string' ? profile.scan_preview : '',
     top: top ?? 'M',
     bottom: bottom ?? '40',
     fit,
@@ -176,6 +176,22 @@ function restoreScannedSizes(profile: Record<string, unknown>): ScannedSizes | n
     ageGroup,
     personBounds: { top: 2, left: 10, width: 80, height: 96 },
     shoeSize,
+  }
+}
+
+function mapFamilyProfile(row: Record<string, unknown>): FamilyMember {
+  const galleryScans = Array.isArray(row.gallery_scans) ? row.gallery_scans as ScanEntry[] : []
+  const profileData = { ...row, scan_preview: row.scan_preview }
+  return {
+    id: row.id as string,
+    name: typeof row.member_name === 'string' ? row.member_name : 'פרופיל משפחתי',
+    category: (row.category as FamilyCategory) ?? 'partner',
+    scannedSizes: restoreScannedSizes(profileData),
+    scanGallery: galleryScans,
+    accuracy: typeof row.accuracy === 'number' ? row.accuracy : 0,
+    photoUrl: typeof row.avatar_url === 'string' ? row.avatar_url : null,
+    dateOfBirth: typeof row.date_of_birth === 'string' ? row.date_of_birth : null,
+    wardrobe: [],
   }
 }
 
@@ -493,16 +509,7 @@ export default function App() {
             .select('*')
             .eq('owner_user_id', u.id)
           if (familyError) throw familyError
-          const members: FamilyMember[] = (familyData ?? []).map((row: Record<string, unknown>) => ({
-            id: row.id as string,
-            name: row.member_name as string,
-            category: (row.category as FamilyCategory) ?? 'partner',
-            scannedSizes: null,
-            scanGallery: [],
-            accuracy: (row.accuracy as number) ?? 0,
-            photoUrl: null,
-            wardrobe: [],
-          }))
+          const members: FamilyMember[] = (familyData ?? []).map((row: Record<string, unknown>) => mapFamilyProfile(row))
 
           // Load profiles shared with this user via profile_grants
           const { data: grantedIds, error: grantedError } = await supabase
@@ -519,16 +526,7 @@ export default function App() {
               for (const row of sharedData as Record<string, unknown>[]) {
                 const alreadyLoaded = members.some((m) => m.id === row.id)
                 if (!alreadyLoaded) {
-                  members.push({
-                    id: row.id as string,
-                    name: row.member_name as string,
-                    category: (row.category as FamilyCategory) ?? 'partner',
-                    scannedSizes: null,
-                    scanGallery: [],
-                    accuracy: (row.accuracy as number) ?? 0,
-                    photoUrl: null,
-                    wardrobe: [],
-                  })
+                  members.push(mapFamilyProfile(row))
                 }
               }
             }

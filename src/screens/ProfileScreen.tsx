@@ -24,7 +24,7 @@ import { runAutonomousScan, analyzePhoto, recalculateAccuracyForGallery, compute
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
-export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices, onAddDevice, onRemoveDevice, familyMembers, setFamilyMembers, activeProfileId, setActiveProfileId, onRequestAuth, reopenAddMemberSignal }: {
+export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedSizes, setScannedSizes, scanGallery, setScanGallery, galleryAccess, setGalleryAccess, preferredRegion, setPreferredRegion, registeredDevices, onAddDevice, onRemoveDevice, familyMembers, setFamilyMembers, activeProfileId, setActiveProfileId, onRequestAuth, reopenAddMemberSignal, recentlyUpdatedMembers }: {
   onNav: (s: Screen) => void
   user: User | null
   onSignOut: () => void
@@ -67,6 +67,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
   // Profile photo management
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(scannedSizes?.preview ?? null)
+  const [ownProfilePhotoUrl, setOwnProfilePhotoUrl] = useState<string | null>(scannedSizes?.preview ?? null)
   const [photoLoading, setPhotoLoading] = useState(false)
   const [photoScanProgress, setPhotoScanProgress] = useState(0)
   const [photoScanPhase, setPhotoScanPhase] = useState('')
@@ -94,6 +95,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           if (signError) throw signError
           if (signed?.signedUrl) {
             setProfilePhotoUrl(signed.signedUrl)
+            setOwnProfilePhotoUrl(signed.signedUrl)
           }
         }
       } catch (err) {
@@ -172,9 +174,11 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         if (signError) throw signError
         if (signed?.signedUrl) {
           setProfilePhotoUrl(signed.signedUrl)
+          setOwnProfilePhotoUrl(signed.signedUrl)
         }
       } else {
         setProfilePhotoUrl(preview)
+        setOwnProfilePhotoUrl(preview)
       }
       showPhotoToast('התמונה נסרקה והמידות עודכנו')
     } catch (err) {
@@ -201,6 +205,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         if (dbError) throw dbError
       }
       setProfilePhotoUrl(null)
+      setOwnProfilePhotoUrl(null)
       showPhotoToast('התמונה הוסרה')
     } catch (err) {
       setPhotoError(err instanceof Error ? err.message : 'הסרה נכשלה')
@@ -302,6 +307,12 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [gatePos, setGatePos] = useState<{ x: number; y: number } | null>(null)
   const [newMemberName, setNewMemberName] = useState('')
   const [newMemberCategory, setNewMemberCategory] = useState<FamilyCategory>('self')
+  const [newMemberDateOfBirth, setNewMemberDateOfBirth] = useState('')
+  const [newMemberPhotoFile, setNewMemberPhotoFile] = useState<File | null>(null)
+  const [newMemberPhotoUrl, setNewMemberPhotoUrl] = useState<string | null>(null)
+  const [memberFormLoading, setMemberFormLoading] = useState(false)
+  const [memberFormError, setMemberFormError] = useState<string | null>(null)
+  const memberPhotoInputRef = useRef<HTMLInputElement>(null)
   const [inviteLoading, setInviteLoading] = useState<string | null>(null)
   const [inviteToast, setInviteToast] = useState<string | null>(null)
   const [shareModal, setShareModal] = useState<{ url: string; memberName: string } | null>(null)
@@ -355,67 +366,106 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     baby: '👶',
   }
 
-  async function handleAddMember() {
-    const name = newMemberName.trim()
-    if (!name) return
-    setShowAddMember(false)
+  function handleMemberPhotoSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+      setMemberFormError('בחר תמונה עד 10MB')
+      return
+    }
+    if (newMemberPhotoUrl) URL.revokeObjectURL(newMemberPhotoUrl)
+    setNewMemberPhotoFile(file)
+    setNewMemberPhotoUrl(URL.createObjectURL(file))
+    setMemberFormError(null)
+    event.target.value = ''
+  }
+
+  function resetMemberForm() {
+    if (newMemberPhotoUrl) URL.revokeObjectURL(newMemberPhotoUrl)
     setNewMemberName('')
     setNewMemberCategory('self')
+    setNewMemberDateOfBirth('')
+    setNewMemberPhotoFile(null)
+    setNewMemberPhotoUrl(null)
+    setMemberFormError(null)
+  }
 
-    if (user) {
-      try {
-        const { data, error } = await supabase
-          .from('family_profiles')
-          .insert({
-            owner_user_id: user.id,
-            member_name: name,
-            category: newMemberCategory,
-          })
-          .select('id')
-          .single()
-        if (error) throw error
-        const newMember: FamilyMember = {
-          id: data.id,
-          name,
-          category: newMemberCategory,
-          scannedSizes: null,
-          scanGallery: [],
-          accuracy: 0,
-          photoUrl: null,
-          wardrobe: [],
-        }
-        setFamilyMembers((prev) => [...prev, newMember])
-        setActiveProfileId(data.id)
-      } catch (err) {
-        console.error('[ProfileScreen] Failed to save family member to Supabase:', err)
-        const fallbackId = `member_${Date.now()}`
-        const newMember: FamilyMember = {
-          id: fallbackId,
-          name,
-          category: newMemberCategory,
-          scannedSizes: null,
-          scanGallery: [],
-          accuracy: 0,
-          photoUrl: null,
-          wardrobe: [],
-        }
-        setFamilyMembers((prev) => [...prev, newMember])
-        setActiveProfileId(fallbackId)
+  async function handleAddMember() {
+    const name = newMemberName.trim()
+    if (!name || !user || memberFormLoading) return
+    setMemberFormLoading(true)
+    setMemberFormError(null)
+    const category = newMemberCategory
+    const dateOfBirth = newMemberDateOfBirth || null
+
+    try {
+      const { data, error } = await supabase
+        .from('family_profiles')
+        .insert({ owner_user_id: user.id, member_name: name, category, date_of_birth: dateOfBirth })
+        .select('id')
+        .maybeSingle()
+      if (error || !data?.id) throw error ?? new Error('Profile could not be created')
+
+      let scannedMember: ScannedSizes | null = null
+      let scanGallery: ScanEntry[] = []
+      let photoPath: string | null = null
+
+      if (newMemberPhotoFile) {
+        const photoFile = newMemberPhotoFile
+        const { analysis, preview } = await analyzeBodyImage(photoFile)
+        scannedMember = aiAnalysisToScannedSizes(analysis, preview)
+        const timestamp = formatTimestamp(new Date())
+        scanGallery = [{
+          id: nextScanId(), date: timestamp.date, time: timestamp.time,
+          top: scannedMember.sizing.top, bottom: scannedMember.sizing.bottom,
+          fit: scannedMember.sizing.fit, confidence: scannedMember.confidence,
+          photoUrl: preview, source: 'סריקת פרופיל משפחתי', isBaseline: true, delta: null,
+        }]
+        photoPath = `${user.id}/family/${data.id}/avatar.${photoFile.name.split('.').pop() || 'jpg'}`
+        const { error: uploadError } = await supabase.storage.from('profile-photos').upload(photoPath, photoFile, { upsert: true, contentType: photoFile.type })
+        if (uploadError) throw uploadError
+
+        const metrics = scannedMember.sizing.bodyMetrics
+        const { error: updateError } = await supabase.from('family_profiles').update({
+          avatar_url: photoPath,
+          scan_preview: preview,
+          gallery_scans: scanGallery,
+          accuracy: scannedMember.confidence,
+          top_size: scannedMember.sizing.top,
+          bottom_size: scannedMember.sizing.bottom,
+          shoe_size: scannedMember.shoeSize,
+          fit: scannedMember.sizing.fit,
+          gender: scannedMember.gender,
+          age_group: scannedMember.ageGroup,
+          height_cm: metrics?.estimated_height_cm ?? null,
+          weight_kg: metrics?.estimated_weight_kg ?? null,
+          chest_cm: metrics?.chest_circumference_cm ?? null,
+          waist_cm: metrics?.waist_circumference_cm ?? null,
+          hips_cm: metrics?.hips_circumference_cm ?? null,
+          shoulder_cm: metrics?.shoulder_width_cm ?? null,
+        }).eq('id', data.id)
+        if (updateError) throw updateError
       }
-    } else {
-      const id = `member_${Date.now()}`
+
       const newMember: FamilyMember = {
-        id,
-        name,
-        category: newMemberCategory,
-        scannedSizes: null,
-        scanGallery: [],
-        accuracy: 0,
-        photoUrl: null,
-        wardrobe: [],
+        id: data.id, name, category, scannedSizes: scannedMember, scanGallery,
+        accuracy: scannedMember?.confidence ?? 0, photoUrl: photoPath, dateOfBirth, wardrobe: [],
       }
       setFamilyMembers((prev) => [...prev, newMember])
-      setActiveProfileId(id)
+      setActiveProfileId(data.id)
+      setProfTop(scannedMember?.sizing.top ?? 'M')
+      setProfBottom(scannedMember?.sizing.bottom ?? '48')
+      setProfFit(scannedMember?.sizing.fit ?? 'Regular')
+      setProfShoe(scannedMember?.shoeSize ?? '42')
+      setCurrentAccuracy(scannedMember?.confidence ?? 0)
+      setProfilePhotoUrl(newMemberPhotoUrl)
+      setShowAddMember(false)
+      resetMemberForm()
+    } catch (err) {
+      console.error('[ProfileScreen] Failed to save family member:', err)
+      setMemberFormError('לא הצלחנו לשמור את הפרופיל. נסה שוב.')
+    } finally {
+      setMemberFormLoading(false)
     }
   }
 
@@ -588,20 +638,33 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   function handleSelectMember(id: string) {
     try {
       setActiveProfileId(id)
-      const member = familyMembers.find((m) => m.id === id)
-      if (member) {
-        setProfTop(member.scannedSizes?.sizing?.top ?? 'M')
-        setProfBottom(member.scannedSizes?.sizing?.bottom ?? '48')
-        setProfFit(member.scannedSizes?.sizing?.fit ?? 'Regular')
-        setProfShoe(member.scannedSizes?.shoeSize ?? '42')
-        setProfilePhotoUrl(member.photoUrl ?? null)
-        setCurrentAccuracy(member.accuracy ?? 0)
-      }
-      if (user && id !== 'self') {
-        void loadMemberWishlist(id)
-      } else {
+      if (id === 'self') {
+        setProfTop(scannedSizes?.sizing?.top ?? 'M')
+        setProfBottom(scannedSizes?.sizing?.bottom ?? '48')
+        setProfFit(scannedSizes?.sizing?.fit ?? 'Regular')
+        setProfShoe(scannedSizes?.shoeSize ?? '42')
+        setProfilePhotoUrl(ownProfilePhotoUrl ?? scannedSizes?.preview ?? null)
+        setCurrentAccuracy(scannedSizes?.confidence ?? 0)
         setMemberWishlist([])
+        return
       }
+
+      const member = familyMembers.find((m) => m.id === id)
+      if (!member) return
+
+      setProfTop(member.scannedSizes?.sizing?.top ?? 'M')
+      setProfBottom(member.scannedSizes?.sizing?.bottom ?? '48')
+      setProfFit(member.scannedSizes?.sizing?.fit ?? 'Regular')
+      setProfShoe(member.scannedSizes?.shoeSize ?? '42')
+      setCurrentAccuracy(member.accuracy ?? 0)
+      if (member.photoUrl && user) {
+        void supabase.storage.from('profile-photos').createSignedUrl(member.photoUrl, 3600).then(({ data }) => {
+          if (data?.signedUrl) setProfilePhotoUrl(data.signedUrl)
+        })
+      } else {
+        setProfilePhotoUrl(member.photoUrl ?? null)
+      }
+      if (user) void loadMemberWishlist(id)
     } catch (err) {
       console.error('[ProfileScreen] handleSelectMember failed:', err)
     }
@@ -1949,11 +2012,19 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.sheet}>
             <View style={profStyles.sheetHeaderRow}>
               <Text style={profStyles.sheetTitle}>הוסף פרופיל משפחתי</Text>
-              <TouchableOpacity onPress={() => setShowAddMember(false)} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
+              <TouchableOpacity onPress={() => { setShowAddMember(false); resetMemberForm() }} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
                 <Text style={{ color: '#4A4A4A', fontSize: 15 }}>✕</Text>
               </TouchableOpacity>
             </View>
             <View style={{ gap: 16 }}>
+              <input ref={memberPhotoInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleMemberPhotoSelect} />
+              <TouchableOpacity onPress={() => memberPhotoInputRef.current?.click()} activeOpacity={0.8} style={profStyles.memberPhotoPicker}>
+                {newMemberPhotoUrl ? <Image source={{ uri: newMemberPhotoUrl }} style={profStyles.memberPhotoPreview} /> : <Text style={{ fontSize: 32 }}>📸</Text>}
+                <View style={{ flex: 1 }}>
+                  <Text style={profStyles.memberPhotoTitle}>{newMemberPhotoUrl ? 'החלף תמונת פרופיל' : 'הוסף תמונת פרופיל וסריקה'}</Text>
+                  <Text style={profStyles.memberPhotoSub}>התמונה תשמש לזיהוי מידות ותישמר בפרופיל</Text>
+                </View>
+              </TouchableOpacity>
               <View>
                 <Text style={profStyles.formLabel}>שם הפרופיל</Text>
                 <TextInput
@@ -1962,6 +2033,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   placeholder="לדוגמה: אלה, אשתי, תינוק..."
                   style={profStyles.formInput}
                 />
+              </View>
+              <View>
+                <Text style={profStyles.formLabel}>תאריך לידה (אופציונלי)</Text>
+                <input type="date" value={newMemberDateOfBirth} onChange={(event) => setNewMemberDateOfBirth(event.target.value)} style={profStyles.dateInput} />
               </View>
               <View>
                 <Text style={profStyles.formLabel}>קטגוריה</Text>
@@ -1980,13 +2055,14 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   ))}
                 </View>
               </View>
+              {memberFormError && <Text style={profStyles.memberFormError}>{memberFormError}</Text>}
               <TouchableOpacity
                 onPress={handleAddMember}
-                disabled={!newMemberName.trim()}
+                disabled={!newMemberName.trim() || memberFormLoading}
                 activeOpacity={0.8}
-                style={[profStyles.formSubmitBtn, !newMemberName.trim() && profStyles.formSubmitBtnDisabled]}
+                style={[profStyles.formSubmitBtn, (!newMemberName.trim() || memberFormLoading) && profStyles.formSubmitBtnDisabled]}
               >
-                <Text style={profStyles.formSubmitBtnText}>הוסף פרופיל</Text>
+                <Text style={profStyles.formSubmitBtnText}>{memberFormLoading ? 'שומר וסורק...' : 'הוסף פרופיל'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2273,4 +2349,10 @@ const profStyles = StyleSheet.create({
   checkboxActive: { backgroundColor: '#1A1A1A' },
   sharePickerName: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   sharePickerCategory: { fontSize: 11, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  memberPhotoPicker: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 16, borderRadius: 12 as any, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5', borderStyle: 'dashed' as any },
+  memberPhotoPreview: { width: 64, height: 64, borderRadius: 32 as any, borderWidth: 2, borderColor: '#1A1A1A' },
+  memberPhotoTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  memberPhotoSub: { fontSize: 11, color: '#6B6B6B', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  dateInput: { padding: '11px 12px', borderRadius: 8, borderWidth: 1.5, borderStyle: 'solid', borderColor: '#9A9A9A', fontSize: 14, backgroundColor: '#FFFEF5', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", width: '100%' } as React.CSSProperties,
+  memberFormError: { fontSize: 12, color: '#B91C1C', fontWeight: '600', paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#FEF2F2', borderRadius: 8, borderWidth: 1, borderColor: '#FCA5A5', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })

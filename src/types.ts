@@ -25,6 +25,7 @@ export interface FamilyMember {
   scanGallery: ScanEntry[]
   accuracy: number
   photoUrl: string | null
+  dateOfBirth?: string | null
   wardrobe: WardrobeEntry[]
 }
 
