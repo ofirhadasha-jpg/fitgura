@@ -1086,6 +1086,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }
 
+  const activeMember = activeProfileId === 'self' ? null : familyMembers.find((m) => m.id === activeProfileId) ?? null
+  const activeSizes: ScannedSizes | null = activeMember?.scannedSizes ?? scannedSizes
+  const activeGallery: ScanEntry[] = activeMember?.scanGallery ?? scanGallery
+
   function handleDevPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -1525,7 +1529,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
               <Text style={profStyles.accuracyGaugeLabel}>דיוק נוכחי</Text>
             </View>
             <View style={profStyles.accuracySide}>
-              <Text style={profStyles.accuracySideText}>{currentAccuracy >= 95 ? 'דיוק מרבי הושג!' : `${Math.min(scanGallery.length, 3)}/3 תמונות`}</Text>
+              <Text style={profStyles.accuracySideText}>{currentAccuracy >= 95 ? 'דיוק מרבי הושג!' : `${Math.min(activeGallery.length, 3)}/3 תמונות`}</Text>
               <Text style={profStyles.accuracySideHint}>חזה · מותן · ירכיים · כתפיים</Text>
             </View>
           </View>
@@ -1590,10 +1594,10 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           )}
 
           {/* Clean gallery preview — only approved active photos */}
-          {scanGallery.length > 0 && !autoScanning && (
+          {activeGallery.length > 0 && !autoScanning && (
             <View style={{ gap: 8, marginTop: 12 }}>
               <View style={profStyles.combinedStrip}>
-                {scanGallery.slice(0, 4).map((scan) => (
+                {activeGallery.slice(0, 4).map((scan) => (
                   <View key={scan.id} style={profStyles.combinedThumbWrap}>
                     <Image source={{ uri: scan.photoUrl }} style={profStyles.combinedThumb} />
                     <TouchableOpacity
@@ -1607,7 +1611,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                 ))}
               </View>
               <Text style={profStyles.combinedStripSub}>
-                {scanGallery.length} תמונות פעילות · סריקה הבאה: {nextScanDate}
+                {activeGallery.length} תמונות פעילות · סריקה הבאה: {nextScanDate}
               </Text>
             </View>
           )}
@@ -1658,7 +1662,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.sizesGrid}>
             {[
               { label: 'מידת חולצה', value: profTop, options: TOP_SIZES, set: handleProfTopChange },
-              { label: 'מידת מכנסיים', value: profBottom, options: getBottomSizesForGender(scannedSizes?.gender), set: handleProfBottomChange },
+              { label: 'מידת מכנסיים', value: profBottom, options: getBottomSizesForGender(activeSizes?.gender), set: handleProfBottomChange },
               { label: 'מידת נעליים', value: profShoe, options: SHOE_SIZES_EU, set: handleProfShoeChange },
               { label: 'גזרה', value: profFit, options: FIT_TYPES, set: handleProfFitChange },
             ].map(({ label, value, options, set }) => (
@@ -1681,15 +1685,15 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
             ))}
           </View>
 
-          {scannedSizes?.sizing?.bodyMetrics && (
+          {activeSizes?.sizing?.bodyMetrics && (
             <View style={profStyles.bodyMetricsGrid}>
               {[
-                { label: 'גובה', value: scannedSizes.sizing.bodyMetrics.estimated_height_cm, unit: 'ס"מ', onChange: handleProfHeightChange },
-                { label: 'משקל', value: scannedSizes.sizing.bodyMetrics.estimated_weight_kg, unit: 'ק"ג', onChange: handleProfWeightChange },
-                { label: 'חזה', value: scannedSizes.sizing.bodyMetrics.chest_circumference_cm, unit: 'ס"מ', onChange: handleProfChestChange },
-                { label: 'מותן', value: scannedSizes.sizing.bodyMetrics.waist_circumference_cm, unit: 'ס"מ', onChange: handleProfWaistChange },
-                { label: 'ירכיים', value: scannedSizes.sizing.bodyMetrics.hips_circumference_cm, unit: 'ס"מ', onChange: handleProfHipsChange },
-                { label: 'כתפיים', value: scannedSizes.sizing.bodyMetrics.shoulder_width_cm, unit: 'ס"מ', onChange: handleProfShoulderChange },
+                { label: 'גובה', value: activeSizes.sizing.bodyMetrics.estimated_height_cm, unit: 'ס"מ', onChange: handleProfHeightChange },
+                { label: 'משקל', value: activeSizes.sizing.bodyMetrics.estimated_weight_kg, unit: 'ק"ג', onChange: handleProfWeightChange },
+                { label: 'חזה', value: activeSizes.sizing.bodyMetrics.chest_circumference_cm, unit: 'ס"מ', onChange: handleProfChestChange },
+                { label: 'מותן', value: activeSizes.sizing.bodyMetrics.waist_circumference_cm, unit: 'ס"מ', onChange: handleProfWaistChange },
+                { label: 'ירכיים', value: activeSizes.sizing.bodyMetrics.hips_circumference_cm, unit: 'ס"מ', onChange: handleProfHipsChange },
+                { label: 'כתפיים', value: activeSizes.sizing.bodyMetrics.shoulder_width_cm, unit: 'ס"מ', onChange: handleProfShoulderChange },
               ].map(({ label, value, unit, onChange }) => (
                 <View key={label} style={profStyles.bodyMetricItem}>
                   <View style={profStyles.bodyMetricFieldRow}>
