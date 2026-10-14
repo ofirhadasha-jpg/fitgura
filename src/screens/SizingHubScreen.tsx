@@ -20,7 +20,7 @@ function wrapAffiliateUrl(url: string): string {
   return ensureAffiliateWrapped(url)
 }
 
-export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId }: {
+export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId, focusWishlistProfileId, onWishlistFocusHandled }: {
   onNav: (s: Screen) => void
   user: User | null
   scannedSizes: ScannedSizes | null
@@ -34,6 +34,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   familyMembers?: FamilyMember[]
   activeProfileId?: string
   setActiveProfileId?: (id: string) => void
+  focusWishlistProfileId?: string | null
+  onWishlistFocusHandled?: () => void
 }) {
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -127,6 +129,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   }, [])
 
   useEffect(() => { void loadWardrobe() }, [loadWardrobe])
+
+  useEffect(() => {
+    if (!focusWishlistProfileId) return
+    setActiveProfileId?.(focusWishlistProfileId)
+    setWardrobeFilter('wishlist')
+    onWishlistFocusHandled?.()
+  }, [focusWishlistProfileId, onWishlistFocusHandled, setActiveProfileId])
 
   async function handleAnalyze(event?: unknown) {
     if (event) setAnalyzeAnchorPos(captureClickPos(event))
@@ -782,7 +791,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
               : wardrobeFilter === 'self'
                 ? wardrobe.filter((w) => !w.profileId)
                 : wardrobeFilter === 'wishlist'
-                  ? wardrobe.filter((w) => w.isWishlist)
+                  ? wardrobe.filter((w) => w.isWishlist && (currentProfileId === 'self' ? !w.profileId : w.profileId === currentProfileId))
                   : wardrobe.filter((w) => w.profileId === wardrobeFilter)
             return filteredWardrobe.length === 0 ? (
             <View style={styles.wardrobeEmpty}>

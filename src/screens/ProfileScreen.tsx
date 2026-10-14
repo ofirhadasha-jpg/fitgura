@@ -49,6 +49,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   onRequestAuth?: () => void
   reopenAddMemberSignal?: number
   recentlyUpdatedMembers?: Set<string>
+  onOpenWishlist?: (profileId: string) => void
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -331,6 +332,30 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [shareLoading, setShareLoading] = useState(false)
   const [memberWishlist, setMemberWishlist] = useState<Array<{ id: string; product_name: string; product_image: string | null; recommended_size: string; match_percentage: number; price: string | null; platform: string; affiliate_url: string }>>([])
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [wishlistCounts, setWishlistCounts] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (!user) {
+      setWishlistCounts({})
+      return
+    }
+    void (async () => {
+      const { data, error } = await supabase
+        .from('fitted_wardrobe')
+        .select('profile_id')
+        .eq('is_wishlist', true)
+      if (error) {
+        console.error('[ProfileScreen] Failed to load wishlist counts:', error)
+        return
+      }
+      const counts: Record<string, number> = {}
+      for (const row of data ?? []) {
+        const key = row.profile_id ?? 'self'
+        counts[key] = (counts[key] ?? 0) + 1
+      }
+      setWishlistCounts(counts)
+    })()
+  }, [user?.id, familyMembers.length])
 
   // Reopen add-member sheet automatically after successful auth
   useEffect(() => {
@@ -1281,6 +1306,13 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   <TouchableOpacity onPress={() => handleRemoveMember(m.id)} activeOpacity={0.7} style={profStyles.memberRemoveBtn}>
                     <Text style={{ fontSize: 10, color: '#9A9A9A' }}>✕</Text>
                   </TouchableOpacity>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => onOpenWishlist?.(m.id)}
+                  activeOpacity={0.7}
+                  style={profStyles.wishlistShortcutBtn}
+                >
+                  <Text style={profStyles.wishlistShortcutText}>🎁 רשימת המשאלות של {m.name} ({wishlistCounts[m.id] ?? 0} פריטים)</Text>
                 </TouchableOpacity>
                 {m.category !== 'self' && (
                   <TouchableOpacity
@@ -2445,6 +2477,8 @@ const profStyles = StyleSheet.create({
   memberChipNameActive: { color: '#1A1A1A' },
   memberChipBadge: { fontSize: 10, color: '#00CC52', fontWeight: '700' },
   memberRemoveBtn: { position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFFACC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#9A9A9A' },
+  wishlistShortcutBtn: { backgroundColor: '#FFFACC', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566', marginTop: 6, maxWidth: 200 },
+  wishlistShortcutText: { fontSize: 11, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   inviteBtn: { backgroundColor: '#E0F2FE', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#0891B2', marginTop: 6, maxWidth: 200 },
   inviteBtnText: { fontSize: 11, fontWeight: '700', color: '#0891B2', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   shareFamilyBtn: { backgroundColor: '#0891B2', borderRadius: 8 as any, paddingVertical: 7, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any },
