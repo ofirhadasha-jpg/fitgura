@@ -352,30 +352,81 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     baby: '👶',
   }
 
-  function handleAddMember() {
+  async function handleAddMember() {
     const name = newMemberName.trim()
     if (!name) return
-    const id = `member_${Date.now()}`
-    const newMember: FamilyMember = {
-      id,
-      name,
-      category: newMemberCategory,
-      scannedSizes: null,
-      scanGallery: [],
-      accuracy: 0,
-      photoUrl: null,
-      wardrobe: [],
-    }
-    setFamilyMembers((prev) => [...prev, newMember])
-    setActiveProfileId(id)
     setShowAddMember(false)
     setNewMemberName('')
     setNewMemberCategory('self')
+
+    if (user) {
+      try {
+        const { data, error } = await supabase
+          .from('family_profiles')
+          .insert({
+            owner_user_id: user.id,
+            member_name: name,
+            category: newMemberCategory,
+          })
+          .select('id')
+          .single()
+        if (error) throw error
+        const newMember: FamilyMember = {
+          id: data.id,
+          name,
+          category: newMemberCategory,
+          scannedSizes: null,
+          scanGallery: [],
+          accuracy: 0,
+          photoUrl: null,
+          wardrobe: [],
+        }
+        setFamilyMembers((prev) => [...prev, newMember])
+        setActiveProfileId(data.id)
+      } catch (err) {
+        console.error('[ProfileScreen] Failed to save family member to Supabase:', err)
+        const fallbackId = `member_${Date.now()}`
+        const newMember: FamilyMember = {
+          id: fallbackId,
+          name,
+          category: newMemberCategory,
+          scannedSizes: null,
+          scanGallery: [],
+          accuracy: 0,
+          photoUrl: null,
+          wardrobe: [],
+        }
+        setFamilyMembers((prev) => [...prev, newMember])
+        setActiveProfileId(fallbackId)
+      }
+    } else {
+      const id = `member_${Date.now()}`
+      const newMember: FamilyMember = {
+        id,
+        name,
+        category: newMemberCategory,
+        scannedSizes: null,
+        scanGallery: [],
+        accuracy: 0,
+        photoUrl: null,
+        wardrobe: [],
+      }
+      setFamilyMembers((prev) => [...prev, newMember])
+      setActiveProfileId(id)
+    }
   }
 
-  function handleRemoveMember(id: string) {
+  async function handleRemoveMember(id: string) {
     setFamilyMembers((prev) => prev.filter((m) => m.id !== id))
     if (activeProfileId === id) setActiveProfileId('self')
+    if (user && !id.startsWith('member_')) {
+      try {
+        const { error } = await supabase.from('family_profiles').delete().eq('id', id)
+        if (error) console.error('[ProfileScreen] Failed to delete family member from Supabase:', error)
+      } catch (err) {
+        console.error('[ProfileScreen] Family member delete error:', err)
+      }
+    }
   }
 
   async function handleGenerateInvite(member: FamilyMember) {

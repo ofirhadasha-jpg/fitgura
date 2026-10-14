@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product, FamilyMember, FitEvent } from './types'
+import type { Screen, User, DetectedDevice, ScannedSizes, ScanEntry, GalleryAccessState, Product, FamilyMember, FamilyCategory, FitEvent } from './types'
 import type { SizeRegion } from './utils/sizeConverter'
 import { AuthModal } from './components'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
@@ -482,6 +482,30 @@ export default function App() {
           }
         } catch (err) {
           console.error('[App] Profile lookup failed; keeping auth session:', err)
+        }
+
+        // Load family profiles from Supabase on sign-in
+        try {
+          const { data: familyData, error: familyError } = await supabase
+            .from('family_profiles')
+            .select('*')
+            .eq('owner_user_id', u.id)
+          if (familyError) throw familyError
+          if (familyData && familyData.length > 0) {
+            const members: FamilyMember[] = familyData.map((row: Record<string, unknown>) => ({
+              id: row.id as string,
+              name: row.member_name as string,
+              category: (row.category as FamilyCategory) ?? 'partner',
+              scannedSizes: null,
+              scanGallery: [],
+              accuracy: (row.accuracy as number) ?? 0,
+              photoUrl: null,
+              wardrobe: [],
+            }))
+            setFamilyMembers(members)
+          }
+        } catch (err) {
+          console.error('[App] Failed to load family profiles:', err)
         }
       })()
     })
