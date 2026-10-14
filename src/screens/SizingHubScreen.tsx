@@ -113,6 +113,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         affiliateUrl: row.affiliate_url as string ?? row.product_url as string,
         profileId: row.profile_id as string | null,
         isWishlist: row.is_wishlist as boolean ?? false,
+        createdAt: row.created_at as string | null,
       })))
     } catch {
       // Non-fatal
@@ -776,6 +777,30 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                             <Text style={styles.wardrobePriceText}>{item.price}</Text>
                           )}
                         </View>
+                        {(() => {
+                          const daysSaved = item.createdAt ? Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 86400000) : 0
+                          const needsRecheck = daysSaved > 90
+                          const recommendBuy = daysSaved > 7 && daysSaved <= 90
+                          return (
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                              {daysSaved > 0 && (
+                                <View style={styles.savedDaysBadge}>
+                                  <Text style={styles.savedDaysBadgeText}>נשמר לפני {daysSaved} ימים</Text>
+                                </View>
+                              )}
+                              {recommendBuy && (
+                                <View style={styles.recommendBuyBadge}>
+                                  <Text style={styles.recommendBuyBadgeText}>מומלץ לרכישה עכשיו 🛍️</Text>
+                                </View>
+                              )}
+                              {needsRecheck && (
+                                <View style={styles.recheckBadge}>
+                                  <Text style={styles.recheckBadgeText}>בדיקת מידה מחדש מומלצת ⚠️</Text>
+                                </View>
+                              )}
+                            </View>
+                          )
+                        })()}
                       </View>
                       <View style={styles.wardrobeSizeBadge}>
                         <Text style={styles.wardrobeSizeText}>{item.recommendedSize}</Text>
@@ -833,6 +858,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                         <View style={styles.wardrobeProfileTag}>
                           <Text style={styles.wardrobeProfileTagText}>{profileTag}{item.isWishlist ? ' 🎁' : ''}</Text>
                         </View>
+                        <TouchableOpacity
+                          onPress={() => window.open(ensureAffiliateWrapped(item.affiliateUrl || item.productUrl), '_blank', 'noopener,noreferrer')}
+                          activeOpacity={0.8}
+                          style={styles.wardrobeCheckBtn}
+                        >
+                          <Text style={styles.wardrobeCheckBtnText}>בדוק זמינות ומחיר מעודכן 🛒</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => window.open(ensureAffiliateWrapped(item.affiliateUrl), '_blank', 'noopener,noreferrer')}
                           activeOpacity={0.8}
@@ -1065,6 +1097,14 @@ const styles = StyleSheet.create({
   wardrobeProfileTagText: { fontSize: 12, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   wardrobeBuyBtn: { backgroundColor: '#00CC52', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, marginTop: 4 } as any,
   wardrobeBuyBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
+  wardrobeCheckBtn: { backgroundColor: '#FFE566', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, marginTop: 6 } as any,
+  wardrobeCheckBtnText: { color: '#1A1A1A', fontSize: 13, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  savedDaysBadge: { backgroundColor: '#F5F0E0', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 6, borderWidth: 1, borderColor: '#9A9A9A' },
+  savedDaysBadgeText: { fontSize: 10, color: '#6B6B6B', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  recommendBuyBadge: { backgroundColor: '#E0FFF0', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 6, borderWidth: 1, borderColor: '#00CC52' },
+  recommendBuyBadgeText: { fontSize: 10, color: '#00CC52', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  recheckBadge: { backgroundColor: '#FFF0F0', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 6, borderWidth: 1, borderColor: '#DC2626' },
+  recheckBadgeText: { fontSize: 10, color: '#DC2626', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   wardrobeComparisonRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   wardrobeCompareAffBtn: { flex: 1, backgroundColor: '#0891B2', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' } as any,
   wardrobeCompareAffBtnText: { color: '#FFFEF5', fontSize: 11, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },

@@ -22,6 +22,7 @@ export interface WardrobeItem {
   affiliateUrl: string
   profileId?: string | null
   isWishlist?: boolean
+  createdAt?: string | null
 }
 
 export interface SaveProfileOption {
