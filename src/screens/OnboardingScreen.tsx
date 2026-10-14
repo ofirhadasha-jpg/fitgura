@@ -352,7 +352,7 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
               activeOpacity={0.8}
               style={[obStyles.cameraBtn, obStyles.continueScanBtn, (!baseAge || !baseHeight || !baseWeight) && { opacity: 0.5 }]}
             >
-              <Text style={obStyles.cameraBtnText}>📐←מתאים לי להתקדם</Text>
+              <Text style={obStyles.cameraBtnText}>מתאים לי להתקדם</Text>
             </TouchableOpacity>
           </View>
         )}
