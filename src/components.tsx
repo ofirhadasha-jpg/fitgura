@@ -292,6 +292,8 @@ const authStyles = StyleSheet.create({
     boxShadow: '6px 6px 0 #1A1A1A',
     borderWidth: 2,
     borderColor: '#1A1A1A',
+    display: 'flex',
+    flexDirection: 'column',
   } as React.CSSProperties,
   header: {
     paddingTop: 28,
@@ -340,6 +342,8 @@ const authStyles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 12,
+    overflowY: 'auto',
+    flexShrink: 1,
   },
   bodyDesc: {
     fontSize: 16,

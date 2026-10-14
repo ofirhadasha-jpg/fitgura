@@ -312,7 +312,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [newMemberPhotoUrl, setNewMemberPhotoUrl] = useState<string | null>(null)
   const [memberFormLoading, setMemberFormLoading] = useState(false)
   const [memberFormError, setMemberFormError] = useState<string | null>(null)
-  const memberPhotoInputRef = useRef<HTMLInputElement>(null)
+  const memberPhotoCameraRef = useRef<HTMLInputElement>(null)
+  const memberPhotoGalleryRef = useRef<HTMLInputElement>(null)
   const [inviteLoading, setInviteLoading] = useState<string | null>(null)
   const [inviteToast, setInviteToast] = useState<string | null>(null)
   const [shareModal, setShareModal] = useState<{ url: string; memberName: string } | null>(null)
@@ -2017,14 +2018,27 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
               </TouchableOpacity>
             </View>
             <View style={{ gap: 16 }}>
-              <input ref={memberPhotoInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleMemberPhotoSelect} />
-              <TouchableOpacity onPress={() => memberPhotoInputRef.current?.click()} activeOpacity={0.8} style={profStyles.memberPhotoPicker}>
+              <input ref={memberPhotoCameraRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleMemberPhotoSelect} />
+              <input ref={memberPhotoGalleryRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleMemberPhotoSelect} />
+              <View style={profStyles.memberPhotoPicker}>
                 {newMemberPhotoUrl ? <Image source={{ uri: newMemberPhotoUrl }} style={profStyles.memberPhotoPreview} /> : <Text style={{ fontSize: 32 }}>📸</Text>}
                 <View style={{ flex: 1 }}>
                   <Text style={profStyles.memberPhotoTitle}>{newMemberPhotoUrl ? 'החלף תמונת פרופיל' : 'הוסף תמונת פרופיל וסריקה'}</Text>
                   <Text style={profStyles.memberPhotoSub}>התמונה תשמש לזיהוי מידות ותישמר בפרופיל</Text>
                 </View>
-              </TouchableOpacity>
+              </View>
+              <View style={profStyles.memberPhotoSourceRow}>
+                <TouchableOpacity onPress={() => memberPhotoCameraRef.current?.click()} activeOpacity={0.8} style={profStyles.memberPhotoSourceBtn}>
+                  <Text style={profStyles.memberPhotoSourceIcon}>📷</Text>
+                  <Text style={profStyles.memberPhotoSourceText}>מצלמה</Text>
+                  <Text style={profStyles.memberPhotoSourceSub}>צלם עכשיו</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => memberPhotoGalleryRef.current?.click()} activeOpacity={0.8} style={[profStyles.memberPhotoSourceBtn, profStyles.memberPhotoSourceBtnDivider]}>
+                  <Text style={profStyles.memberPhotoSourceIcon}>🖼️</Text>
+                  <Text style={profStyles.memberPhotoSourceText}>גלריה</Text>
+                  <Text style={profStyles.memberPhotoSourceSub}>בחר תמונה</Text>
+                </TouchableOpacity>
+              </View>
               <View>
                 <Text style={profStyles.formLabel}>שם הפרופיל</Text>
                 <TextInput
@@ -2222,13 +2236,13 @@ const profStyles = StyleSheet.create({
   familyCTABadge: { backgroundColor: '#FFE566', borderRadius: 8 as any, paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1.5, borderColor: '#1A1A1A' },
   familyCTABadgeText: { fontSize: 11, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sheetOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 500, justifyContent: 'flex-end' } as React.CSSProperties,
-  gateOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 500 } as React.CSSProperties,
-  gatePopover: { position: 'fixed', width: 320, backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 20, padding: 24, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, zIndex: 501 } as any,
-  shareModalSheet: { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 24, padding: 28, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '0 -4px 0 #1A1A1A' as any, zIndex: 501 } as any,
+  gateOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 } as React.CSSProperties,
+  gatePopover: { position: 'fixed', width: 320, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto', backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 20, padding: 24, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, zIndex: 1001 } as any,
+  shareModalSheet: { position: 'fixed', bottom: 84, left: 0, right: 0, maxHeight: 'calc(100vh - 104px)', overflowY: 'auto', backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 24, padding: 28, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '0 -4px 0 #1A1A1A' as any, zIndex: 1001 } as any,
   shareLinkBox: { backgroundColor: '#F5F0E0', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#9A9A9A' },
   shareLinkText: { fontSize: 12, color: '#4A4A4A', fontFamily: "'Noto Sans Hebrew', sans-serif", lineHeight: 18 },
   sheetBackdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
-  sheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, maxHeight: '85%', borderWidth: 2, borderColor: '#1A1A1A' } as any,
+  sheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, maxHeight: '85%', overflowY: 'auto', borderWidth: 2, borderColor: '#1A1A1A' } as any,
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   sheetTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   sheetCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F0E0', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A' },
@@ -2306,7 +2320,7 @@ const profStyles = StyleSheet.create({
   photoToast: { position: 'absolute', bottom: 90, left: 20, right: 20, backgroundColor: '#00CC52', borderRadius: 12 as any, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', zIndex: 300, elevation: 5, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any },
   photoToastText: { color: '#FFFEF5', fontSize: 14, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
   confirmOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 500, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 } as React.CSSProperties,
-  confirmSheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 24, padding: 28, gap: 16, borderWidth: 2, borderColor: '#1A1A1A', width: '100%', maxWidth: 380, boxShadow: '4px 4px 0 #1A1A1A' } as any,
+  confirmSheet: { backgroundColor: '#FFFEF5', backgroundImage: PAPER_TEXTURE, borderRadius: 24, padding: 28, gap: 16, borderWidth: 2, borderColor: '#1A1A1A', width: '100%', maxWidth: 380, maxHeight: '80vh', overflowY: 'auto', boxShadow: '4px 4px 0 #1A1A1A' } as any,
   confirmTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   confirmDesc: { fontSize: 14, color: '#4A4A4A', lineHeight: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   confirmActionsRow: { flexDirection: 'row', gap: 10 },
@@ -2353,6 +2367,12 @@ const profStyles = StyleSheet.create({
   memberPhotoPreview: { width: 64, height: 64, borderRadius: 32 as any, borderWidth: 2, borderColor: '#1A1A1A' },
   memberPhotoTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   memberPhotoSub: { fontSize: 11, color: '#6B6B6B', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  memberPhotoSourceRow: { flexDirection: 'row', borderRadius: 12 as any, overflow: 'hidden', borderWidth: 1.5, borderColor: '#1A1A1A', backgroundColor: '#FFFACC' },
+  memberPhotoSourceBtn: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12, paddingHorizontal: 8 },
+  memberPhotoSourceBtnDivider: { borderLeftWidth: 1.5, borderLeftColor: '#1A1A1A' },
+  memberPhotoSourceIcon: { fontSize: 24 },
+  memberPhotoSourceText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  memberPhotoSourceSub: { fontSize: 10, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   dateInput: { padding: '11px 12px', borderRadius: 8, borderWidth: 1.5, borderStyle: 'solid', borderColor: '#9A9A9A', fontSize: 14, backgroundColor: '#FFFEF5', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", width: '100%' } as React.CSSProperties,
   memberFormError: { fontSize: 12, color: '#B91C1C', fontWeight: '600', paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#FEF2F2', borderRadius: 8, borderWidth: 1, borderColor: '#FCA5A5', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })

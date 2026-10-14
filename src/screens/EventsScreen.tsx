@@ -485,7 +485,7 @@ const evStyles = StyleSheet.create({
   sheet: {
     backgroundColor: '#FFFEF5',
     borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    overflow: 'hidden', maxHeight: '88%',
+    overflowY: 'auto', maxHeight: '88%',
     borderWidth: 2, borderColor: '#1A1A1A',
     borderBottomWidth: 0,
   },

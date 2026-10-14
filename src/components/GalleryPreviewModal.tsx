@@ -138,6 +138,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#1A1A1A',
     boxShadow: '4px 4px 0 #1A1A1A' as any,
+    maxHeight: '90%',
+    overflowY: 'auto',
   } as any,
   header: {
     flexDirection: 'row',

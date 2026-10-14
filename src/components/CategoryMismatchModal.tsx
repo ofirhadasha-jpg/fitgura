@@ -349,7 +349,7 @@ export default function CategoryMismatchModal({
 const styles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 450, justifyContent: 'center', alignItems: 'center' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.7)' },
-  panel: { backgroundColor: '#FFFEF5', borderRadius: 22, padding: 24, width: '90%', maxWidth: 400, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, alignItems: 'center' } as any,
+  panel: { backgroundColor: '#FFFEF5', borderRadius: 22, padding: 24, width: '90%', maxWidth: 400, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, alignItems: 'center', maxHeight: '90%', overflowY: 'auto' } as any,
   iconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFE566', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#1A1A1A', marginBottom: 14 },
   icon: { fontSize: 32 },
   title: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', marginBottom: 10, fontFamily: "'Permanent Marker', cursive" },
