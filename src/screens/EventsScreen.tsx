@@ -95,7 +95,7 @@ export function EventsScreen({ onNav, isAdmin, familyMembers = [], events, setEv
         </View>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 110 }}>
         {sorted.length === 0 && (
           <View style={evStyles.emptyState}>
             <Text style={{ fontSize: 52, marginBottom: 12 }}>🗓️</Text>
@@ -215,7 +215,7 @@ export function EventsScreen({ onNav, isAdmin, familyMembers = [], events, setEv
               </View>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+            <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 40 }}>
               <View>
                 <Text style={evStyles.presetLabel}>בחר מאירועים מוכנים:</Text>
                 <View style={evStyles.presetRow}>

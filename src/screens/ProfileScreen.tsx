@@ -1083,7 +1083,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         )}
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 14 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 110 }}>
         {/* Family Profile Selector */}
         <View style={profStyles.card}>
           <View style={profStyles.familyHeader}>

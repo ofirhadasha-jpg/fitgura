@@ -75,6 +75,9 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 50,
     elevation: 50,
+    maxWidth: 480,
+    marginHorizontal: 'auto',
+    width: '100%',
   } as React.CSSProperties,
   navItem: {
     flex: 1,
