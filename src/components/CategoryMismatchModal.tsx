@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import type { FamilyMember } from '../types'
+import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 
 export type ProductTarget = 'women' | 'men' | 'boys' | 'girls' | 'kids' | 'baby' | 'unisex' | 'unknown'
 
@@ -237,6 +238,7 @@ export function checkCategoryMismatch(
 
 interface CategoryMismatchModalProps {
   visible: boolean
+  anchorPos?: AnchorPos
   mismatch: CategoryMismatch | null
   onSwitchProfile: (profileId: string) => void
   onAddProfile: () => void
@@ -247,6 +249,7 @@ interface CategoryMismatchModalProps {
 
 export default function CategoryMismatchModal({
   visible,
+  anchorPos,
   mismatch,
   onSwitchProfile,
   onAddProfile,
@@ -262,7 +265,7 @@ export default function CategoryMismatchModal({
   return (
     <View style={styles.overlay}>
       <TouchableOpacity onPress={onClose} activeOpacity={1} style={styles.backdrop} />
-      <View style={styles.panel}>
+      <View style={[styles.panel, anchorPos ? { position: 'fixed' as React.CSSProperties, ...computePopupStyle(anchorPos, 360, 400) } : null]}>
         <View style={styles.iconWrap}>
           <Text style={styles.icon}>{mismatch.icon}</Text>
         </View>
@@ -347,7 +350,7 @@ export default function CategoryMismatchModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 450, justifyContent: 'center', alignItems: 'center' },
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 450, justifyContent: 'center', alignItems: 'center' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.7)' },
   panel: { backgroundColor: '#FFFEF5', borderRadius: 22, padding: 24, width: '90%', maxWidth: 400, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, alignItems: 'center', maxHeight: '90%', overflowY: 'auto' } as any,
   iconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFE566', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#1A1A1A', marginBottom: 14 },

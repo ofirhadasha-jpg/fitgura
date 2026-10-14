@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
 import type { FamilyMember } from '../types'
+import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl } from '../services/affiliateService'
 
 export interface FitBreakdown {
@@ -55,6 +56,7 @@ export function decodeHtmlEntities(text: string): string {
 
 interface SizingResultModalProps {
   visible: boolean
+  anchorPos?: AnchorPos
   productName: string
   productImage: string | null
   price: string | null
@@ -75,6 +77,7 @@ interface SizingResultModalProps {
 
 export default function SizingResultModal({
   visible,
+  anchorPos,
   productName,
   productImage,
   price,
@@ -124,7 +127,7 @@ export default function SizingResultModal({
   return (
     <View style={styles.overlay}>
       <TouchableOpacity onPress={onClose} activeOpacity={1} style={styles.backdrop} />
-      <View style={styles.panel}>
+      <View style={[styles.panel, anchorPos ? { position: 'fixed' as React.CSSProperties, ...computePopupStyle(anchorPos, 360, 500) } : null]}>
         <View style={styles.header}>
           <Text style={styles.title}>{profileName ? `תוצאת ניתוח מידה עבור ${profileName}` : 'תוצאת ניתוח מידה'}</Text>
           {matchPercentage >= 90 && (
@@ -284,7 +287,7 @@ export default function SizingResultModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
   panel: { backgroundColor: '#FFFEF5', borderRadius: 22, padding: 20, width: '90%', maxWidth: 440, borderWidth: 2, borderColor: '#1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' as any, maxHeight: '90%', overflowY: 'auto' } as any,
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },

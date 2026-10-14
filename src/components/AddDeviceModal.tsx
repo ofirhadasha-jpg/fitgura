@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Image } from 'react-native'
 import { type DeviceIdentificationResult, identifyDevice } from '../types'
+import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
@@ -8,9 +9,10 @@ export interface AddDeviceModalProps {
   visible: boolean
   onClose: () => void
   onAdd: (deviceName: string) => void
+  anchorPos?: AnchorPos
 }
 
-export function AddDeviceModal({ visible, onClose, onAdd }: AddDeviceModalProps) {
+export function AddDeviceModal({ visible, onClose, onAdd, anchorPos }: AddDeviceModalProps) {
   const [addStep, setAddStep] = useState<'options' | 'scanning' | 'result' | 'form'>('options')
   const [scannedAccessories, setScannedAccessories] = useState<string[]>([])
   const [devPhotoUrl, setDevPhotoUrl] = useState<string | null>(null)
@@ -103,7 +105,7 @@ export function AddDeviceModal({ visible, onClose, onAdd }: AddDeviceModalProps)
         activeOpacity={1}
         style={modalStyles.sheetBackdrop}
       />
-      <View style={modalStyles.sheet}>
+      <View style={[modalStyles.sheet, anchorPos ? { position: 'fixed' as React.CSSProperties, ...computePopupStyle(anchorPos, 380, 500) } : null]}>
         <input ref={devCameraInputRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleDevPhoto} />
         <input ref={devGalleryInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none', zIndex: -1 }} onChange={handleDevPhoto} />
 
@@ -279,7 +281,7 @@ export function AddDeviceModal({ visible, onClose, onAdd }: AddDeviceModalProps)
 }
 
 const modalStyles = StyleSheet.create({
-  sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 80 },
+  sheetOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 80 },
   sheetBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.55)' },
   sheet: { backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)', borderRadius: 12, padding: 28, maxHeight: '80%', overflowY: 'auto', width: '92%', maxWidth: 420, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   sheetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

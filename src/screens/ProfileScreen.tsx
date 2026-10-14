@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '@/lib/config'
 import GalleryPreviewModal, { type PreviewablePhoto } from '../components/GalleryPreviewModal'
 import { runAutonomousScan, analyzePhoto, recalculateAccuracyForGallery, computeAccuracyForGallery } from '../services/sizingService'
+import { captureClickPos, computePopupStyle, type AnchorPos } from '../utils/popupPosition'
 
 const DEV_TYPE_EMOJI: Record<string, string> = { 'טלפון': '📱', 'טאבלט': '📟', 'אוזניות': '🎧', 'שעון': '⌚', 'אחר': '🔧' }
 
@@ -74,6 +75,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoToast, setPhotoToast] = useState<string | null>(null)
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
+  const [removeConfirmAnchorPos, setRemoveConfirmAnchorPos] = useState<AnchorPos>(null)
   const photoUploadRef = useRef<HTMLInputElement>(null)
 
   // Load saved avatar path from profiles table and create a signed URL on mount
@@ -250,6 +252,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   })
   const [editingDeviceId, setEditingDeviceId] = useState<number | null>(null)
   const [showAddDevice, setShowAddDevice] = useState(false)
+  const [addDeviceAnchorPos, setAddDeviceAnchorPos] = useState<AnchorPos>(null)
 
   // Sync devices added from the Feed screen into the profile device list
   useEffect(() => {
@@ -298,11 +301,13 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [galleryScanAccuracy, setGalleryScanAccuracy] = useState<number | null>(null)
   const [previewPhotos, setPreviewPhotos] = useState<PreviewablePhoto[]>([])
   const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewAnchorPos, setPreviewAnchorPos] = useState<AnchorPos>(null)
   const [previewProcessing, setPreviewProcessing] = useState(false)
   const [currentAccuracy, setCurrentAccuracy] = useState<number>(72)
 
   // Family member management
   const [showAddMember, setShowAddMember] = useState(false)
+  const [addMemberAnchorPos, setAddMemberAnchorPos] = useState<AnchorPos>(null)
   const [showFamilyAuthGate, setShowFamilyAuthGate] = useState(false)
   const [gatePos, setGatePos] = useState<{ x: number; y: number } | null>(null)
   const [newMemberName, setNewMemberName] = useState('')
@@ -319,6 +324,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [shareModal, setShareModal] = useState<{ url: string; memberName: string } | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
   const [showSharePicker, setShowSharePicker] = useState(false)
+  const [shareAnchorPos, setShareAnchorPos] = useState<AnchorPos>(null)
   const [shareSelectedIds, setShareSelectedIds] = useState<Set<string>>(new Set())
   const [shareLoading, setShareLoading] = useState(false)
   const [memberWishlist, setMemberWishlist] = useState<Array<{ id: string; product_name: string; product_image: string | null; recommended_size: string; match_percentage: number; price: string | null; platform: string; affiliate_url: string }>>([])
@@ -334,12 +340,14 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
   const addMemberBtnRef = useRef<View>(null)
 
-  function handleAddMemberPress() {
+  function handleAddMemberPress(event?: unknown) {
+    const anchor = captureClickPos(event)
+    setAddMemberAnchorPos(anchor)
     if (!user) {
       const el = (addMemberBtnRef.current as unknown as HTMLElement | null)
       if (el) {
         const rect = el.getBoundingClientRect()
-        setGatePos({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+        setGatePos(anchor ?? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
       } else {
         setGatePos(null)
       }
@@ -596,7 +604,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }
 
-  function openSharePicker() {
+  function openSharePicker(event?: unknown) {
     if (!user) {
       showPhotoToast('התחבר כדי לשתף פרופילים')
       return
@@ -607,6 +615,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       return
     }
     setShareSelectedIds(new Set())
+    setShareAnchorPos(captureClickPos(event))
     setShowSharePicker(true)
   }
 
@@ -729,7 +738,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }
 
-  async function handleAutoScan() {
+  async function handleAutoScan(event?: unknown) {
+    if (event) setPreviewAnchorPos(captureClickPos(event))
     if (autoScanning) return
     setGalleryError(null)
     setGalleryScanSuccess(null)
@@ -887,7 +897,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
     }
   }
 
-  function handleGrantGalleryAccess() {
+  function handleGrantGalleryAccess(event?: unknown) {
+    if (event) setPreviewAnchorPos(captureClickPos(event))
     setGalleryAccess('granted')
     setGalleryScanSuccess(null)
     void handleAutoScan()
@@ -1326,7 +1337,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
               <Text style={profStyles.photoBtnPrimaryText}>החלף תמונה</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setShowRemoveConfirm(true)}
+              onPress={(event) => { setRemoveConfirmAnchorPos(captureClickPos(event)); setShowRemoveConfirm(true) }}
               disabled={photoLoading || !profilePhotoUrl}
               activeOpacity={0.8}
               style={[profStyles.photoBtn, profStyles.photoBtnDanger, (!profilePhotoUrl || photoLoading) && profStyles.photoBtnDisabled]}
@@ -1362,7 +1373,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         {shareModal && (
           <View style={profStyles.gateOverlay}>
             <TouchableOpacity onPress={() => { setShareModal(null); setCopySuccess(false) }} activeOpacity={1} style={profStyles.sheetBackdrop} />
-            <View style={profStyles.shareModalSheet}>
+            <View style={[profStyles.shareModalSheet, shareAnchorPos ? { ...computePopupStyle(shareAnchorPos, 420, 620), bottom: undefined, right: undefined, width: 420, maxWidth: 'calc(100vw - 32px)' } as React.CSSProperties : null]}>
               <View style={profStyles.sheetHeaderRow}>
                 <Text style={[profStyles.sheetTitle, { fontSize: 17 }]}>שתף קישור עדכון מידות ✨</Text>
                 <TouchableOpacity onPress={() => { setShareModal(null); setCopySuccess(false) }} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
@@ -1445,7 +1456,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         {showSharePicker && (
           <View style={profStyles.gateOverlay}>
             <TouchableOpacity onPress={() => setShowSharePicker(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
-            <View style={profStyles.shareModalSheet}>
+            <View style={[profStyles.shareModalSheet, shareAnchorPos ? { ...computePopupStyle(shareAnchorPos, 420, 620), bottom: undefined, right: undefined, width: 420, maxWidth: 'calc(100vw - 32px)' } as React.CSSProperties : null]}>
               <View style={profStyles.sheetHeaderRow}>
                 <Text style={[profStyles.sheetTitle, { fontSize: 17 }]}>אילו פרופילים לשתף? 👨‍👩‍👧‍👦</Text>
                 <TouchableOpacity onPress={() => setShowSharePicker(false)} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
@@ -1502,7 +1513,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         {showRemoveConfirm && (
           <View style={profStyles.confirmOverlay}>
             <TouchableOpacity onPress={() => setShowRemoveConfirm(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
-            <View style={profStyles.confirmSheet}>
+            <View style={[profStyles.confirmSheet, removeConfirmAnchorPos ? { position: 'fixed', ...computePopupStyle(removeConfirmAnchorPos, 360, 250), width: 360, maxWidth: 'calc(100vw - 32px)' } as React.CSSProperties : null]}>
               <Text style={profStyles.confirmTitle}>הסרת תמונה</Text>
               <Text style={profStyles.confirmDesc}>האם אתה בטוח שברצונך להסיר את תמונת הפרופיל? ניתן להעלות תמונה חדשה בכל עת.</Text>
               <View style={profStyles.confirmActionsRow}>
@@ -1734,7 +1745,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
           <View style={profStyles.devicesHeader}>
             <Text style={profStyles.devicesTitle}>📱 המכשירים שלי</Text>
             <TouchableOpacity
-              onPress={() => { setShowAddDevice(true); setAddStep('options') }}
+              onPress={(event) => { setAddDeviceAnchorPos(captureClickPos(event)); setShowAddDevice(true); setAddStep('options') }}
               activeOpacity={0.7}
               style={profStyles.addDeviceBtn}
             >
@@ -1846,18 +1857,18 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       {showAddDevice && (
         <View style={profStyles.sheetOverlay}>
           <TouchableOpacity
-            onPress={() => { setShowAddDevice(false); setDevPhotoUrl(null); setShowDevCameraChoice(false); setAddStep('options') }}
+            onPress={() => { setShowAddDevice(false); setAddDeviceAnchorPos(null); setDevPhotoUrl(null); setShowDevCameraChoice(false); setAddStep('options') }}
             activeOpacity={1}
             style={profStyles.sheetBackdrop}
           />
-          <View style={profStyles.sheet}>
+          <View style={[profStyles.sheet, addDeviceAnchorPos ? { position: 'fixed', ...computePopupStyle(addDeviceAnchorPos, 420, 560), width: 420, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 32px)', borderRadius: 24 } as React.CSSProperties : null]}>
             <input ref={devCameraInputRef} type="file" accept="image/*" capture="environment" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleDevPhoto} />
             <input ref={devGalleryInputRef} type="file" accept="image/*" style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 }} onChange={handleDevPhoto} />
 
             <View style={profStyles.sheetHeaderRow}>
               <Text style={profStyles.sheetTitle}>הוסף מכשיר</Text>
               <TouchableOpacity
-                onPress={() => { setShowAddDevice(false); setDevPhotoUrl(null); setShowDevCameraChoice(false); setAddStep('options') }}
+                onPress={() => { setShowAddDevice(false); setAddDeviceAnchorPos(null); setDevPhotoUrl(null); setShowDevCameraChoice(false); setAddStep('options') }}
                 activeOpacity={0.7}
                 style={profStyles.sheetCloseBtn}
               >
@@ -2029,8 +2040,9 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         visible={showPreviewModal}
         photos={previewPhotos}
         onApprove={handleApprovePreviewPhotos}
-        onCancel={() => { setShowPreviewModal(false); setPreviewPhotos([]) }}
+        onCancel={() => { setShowPreviewModal(false); setPreviewPhotos([]); setPreviewAnchorPos(null) }}
         processing={previewProcessing}
+        anchorPos={previewAnchorPos}
       />
 
       {/* Add Family Member Modal */}
@@ -2079,11 +2091,11 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
 
       {showAddMember && (
         <View style={profStyles.sheetOverlay}>
-          <TouchableOpacity onPress={() => setShowAddMember(false)} activeOpacity={1} style={profStyles.sheetBackdrop} />
-          <View style={profStyles.sheet}>
+          <TouchableOpacity onPress={() => { setShowAddMember(false); setAddMemberAnchorPos(null) }} activeOpacity={1} style={profStyles.sheetBackdrop} />
+          <View style={[profStyles.sheet, addMemberAnchorPos ? { position: 'fixed', ...computePopupStyle(addMemberAnchorPos, 420, 650), width: 420, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 32px)', borderRadius: 24 } as React.CSSProperties : null]}>
             <View style={profStyles.sheetHeaderRow}>
               <Text style={profStyles.sheetTitle}>הוסף פרופיל משפחתי</Text>
-              <TouchableOpacity onPress={() => { setShowAddMember(false); resetMemberForm() }} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
+              <TouchableOpacity onPress={() => { setShowAddMember(false); setAddMemberAnchorPos(null); resetMemberForm() }} activeOpacity={0.7} style={profStyles.sheetCloseBtn}>
                 <Text style={{ color: '#4A4A4A', fontSize: 15 }}>✕</Text>
               </TouchableOpacity>
             </View>

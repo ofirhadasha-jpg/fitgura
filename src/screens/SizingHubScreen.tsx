@@ -12,6 +12,7 @@ import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from
 import { SKIMLINKS_PUBLISHER_ID } from '../lib/config'
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl, ensureAffiliateWrapped } from '../services/affiliateService'
 import { isNativePlatform, getGalleryPhotos, fetchPhotoAsFile, getGalleryPermissionGranted, setGalleryPermissionGranted, requestGalleryPermissions } from '../services/nativeGalleryBridge'
+import { captureClickPos, type AnchorPos } from '../utils/popupPosition'
 
 const PAPER_TEXTURE = 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)' as any
 
@@ -71,6 +72,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const [galleryToast, setGalleryToast] = useState(false)
   const [galleryPermissionGranted, setGalleryPermissionGrantedState] = useState(false)
   const [showPermissionModal, setShowPermissionModal] = useState(false)
+  const [analyzeAnchorPos, setAnalyzeAnchorPos] = useState<AnchorPos>(null)
+  const [galleryAnchorPos, setGalleryAnchorPos] = useState<AnchorPos>(null)
+  const [deleteAnchorPos, setDeleteAnchorPos] = useState<AnchorPos>(null)
   const [permissionCallback, setPermissionCallback] = useState<(() => void) | null>(null)
 
   useEffect(() => {
@@ -122,7 +126,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
 
   useEffect(() => { void loadWardrobe() }, [loadWardrobe])
 
-  async function handleAnalyze() {
+  async function handleAnalyze(event?: unknown) {
+    if (event) setAnalyzeAnchorPos(captureClickPos(event))
     const trimmed = url.trim()
     if (!trimmed) return
     if (!scannedSizes) {
@@ -365,6 +370,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   function handleMismatchClose() {
     setMismatch(null)
     setPendingResult(null)
+    setAnalyzeAnchorPos(null)
   }
 
   function handleSmartMatchSave(profileId: string) {
@@ -413,7 +419,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     setPendingResult(null)
   }
 
-  async function handleUpsellTrigger() {
+  async function handleUpsellTrigger(event?: unknown) {
+    if (event) setGalleryAnchorPos(captureClickPos(event))
     if (scanGallery && scanGallery.length > 0) {
       const existingPhotos: PreviewablePhoto[] = scanGallery.slice(0, 6).map((entry) => ({
         id: `existing_${entry.id}`,
@@ -496,7 +503,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     await silentGalleryScan()
   }
 
-  async function handleGallerySync() {
+  async function handleGallerySync(event?: unknown) {
+    if (event) setGalleryAnchorPos(captureClickPos(event))
     if (scanGallery && scanGallery.length > 0 && !galleryPermissionGranted) {
       const existingPhotos: PreviewablePhoto[] = scanGallery.slice(0, 6).map((entry) => ({
         id: `existing_${entry.id}`,
@@ -807,7 +815,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                         <Text style={styles.wardrobeMatchText}>{item.matchPercentage}%</Text>
                       </View>
                       <TouchableOpacity
-                        onPress={() => setDeleteTarget(item)}
+                        onPress={(event) => { setDeleteAnchorPos(captureClickPos(event)); setDeleteTarget(item) }}
                         activeOpacity={0.6}
                         style={styles.wardrobeDeleteBtn}
                       >
@@ -909,14 +917,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         {deleteTarget && (
           <View style={styles.deleteOverlay}>
             <TouchableOpacity onPress={() => setDeleteTarget(null)} activeOpacity={1} style={styles.deleteBackdrop} />
-            <View style={styles.deleteDialog}>
+            <View style={[styles.deleteDialog, deleteAnchorPos ? { position: 'fixed', ...computePopupStyle(deleteAnchorPos, 320, 240), width: 320, maxWidth: 'calc(100vw - 32px)' } as React.CSSProperties : null]}>
               <Text style={styles.deleteDialogIcon}>🗑️</Text>
               <Text style={styles.deleteDialogTitle}>להסיר את המוצר מהארון? 🗑️</Text>
               <Text style={styles.deleteDialogSub} numberOfLines={2}>{decodeHtmlEntities(deleteTarget.productName)}</Text>
               <View style={styles.deleteDialogBtns}>
                 <TouchableOpacity
-                  onPress={() => setDeleteTarget(null)}
-                  activeOpacity={0.7}
+                  onPress={() => { setDeleteTarget(null); setDeleteAnchorPos(null) }}                  activeOpacity={0.7}
                   style={styles.deleteCancelBtn}
                 >
                   <Text style={styles.deleteCancelBtnText}>ביטול</Text>
@@ -961,7 +968,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           matchPercentage={result.matchPercentage}
           fitBreakdown={result.fitBreakdown}
           affiliateUrl={result.affiliateUrl}
-          onClose={() => { setResult(null); setResultProfileName(null); setResultDefaultProfileId(null); setOverrideMismatch(false) }}
+          onClose={() => { setResult(null); setResultProfileName(null); setResultDefaultProfileId(null); setOverrideMismatch(false); setAnalyzeAnchorPos(null) }}
+          anchorPos={analyzeAnchorPos}
           onBuy={handleBuy}
           onSave={handleSaveToWardrobe}
           familyMembers={familyMembers ?? []}
@@ -979,6 +987,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         onSmartMatchSave={handleSmartMatchSave}
         onOverride={handleMismatchOverride}
         onClose={handleMismatchClose}
+        anchorPos={analyzeAnchorPos}
       />
 
       <GalleryPreviewModal
@@ -987,12 +996,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         onApprove={handleGalleryApprove}
         onCancel={handleGalleryCancel}
         processing={galleryProcessing}
+        anchorPos={galleryAnchorPos}
       />
 
       {showPermissionModal && (
         <View style={styles.permissionOverlay}>
           <TouchableOpacity onPress={() => setShowPermissionModal(false)} activeOpacity={1} style={styles.permissionBackdrop} />
-          <View style={styles.permissionDialog}>
+          <View style={[styles.permissionDialog, galleryAnchorPos ? { position: 'fixed', ...computePopupStyle(galleryAnchorPos, 360, 300), width: 360, maxWidth: 'calc(100vw - 32px)' } as React.CSSProperties : null]}>
             <Text style={styles.permissionIcon}>📸</Text>
             <Text style={styles.permissionTitle}>גישה לגלריה</Text>
             <Text style={styles.permissionDesc}>

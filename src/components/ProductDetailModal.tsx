@@ -10,6 +10,7 @@ import { searchAllVisualMatches, getMissingPlatforms, getFallbackSearchUrl } fro
 import { wrapWithSkimlinks } from '../utils/skimlinks'
 import type { ExactVisualMatch } from '../services/adapterTypes'
 import type { ProductPlatform } from '../types'
+import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
   const isUSD = currency === 'USD'
@@ -54,9 +55,10 @@ export interface ProductDetailModalProps {
   sellerSizeChart?: SellerSizeEntry[]
   visible: boolean
   onDismiss: () => void
+  anchorPos?: AnchorPos
 }
 
-export function ProductDetailModal({ product, scannedSizes, category, sellerSizeChart = [], visible, onDismiss }: ProductDetailModalProps) {
+export function ProductDetailModal({ product, scannedSizes, category, sellerSizeChart = [], visible, onDismiss, anchorPos }: ProductDetailModalProps) {
   const [imgError, setImgError] = useState(false)
   const [redirectingOffer, setRedirectingOffer] = useState<string | null>(null)
   const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null)
@@ -179,7 +181,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
   return (
     <View style={modalStyles.overlay}>
       <TouchableOpacity onPress={onDismiss} activeOpacity={1} style={modalStyles.backdrop} />
-      <View style={modalStyles.sheet}>
+      <View style={[modalStyles.sheet, anchorPos ? { position: 'fixed' as React.CSSProperties, ...computePopupStyle(anchorPos, 340, 500) } : null]}>
         <TouchableOpacity onPress={onDismiss} activeOpacity={0.7} style={modalStyles.closeBtn}>
           <Text style={modalStyles.closeText}>×</Text>
         </TouchableOpacity>
@@ -381,7 +383,7 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 }
 
 const modalStyles = StyleSheet.create({
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400, justifyContent: 'center', alignItems: 'center' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,26,0.65)' },
   sheet: { backgroundColor: '#FFFEF5', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px)', borderRadius: 12, padding: 18, width: 340, maxWidth: '92%', maxHeight: '88%', overflowY: 'auto', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   scrollArea: { flexShrink: 1 },

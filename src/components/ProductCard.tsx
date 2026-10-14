@@ -6,6 +6,7 @@ import { calculateDetailedRecommendation, type SizeRecommendation } from '../uti
 import { type SizePill } from '../utils/sizeConverter'
 import { ProductDetailModal } from './ProductDetailModal'
 import { resolveProductImage } from '../utils/productImages'
+import { captureClickPos, type AnchorPos } from '../utils/popupPosition'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
   const isUSD = currency === 'USD'
@@ -56,6 +57,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
 }) {
   const [toast, setToast] = useState<string | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [detailAnchorPos, setDetailAnchorPos] = useState<AnchorPos>(null)
   const [imgError, setImgError] = useState(false)
 
   const rawImageUrl = normalizeProductImageUrl(product.img)
@@ -76,7 +78,8 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const lowestEntry = priceComparison.find((e) => e.isLowestPrice)
   const highestEntry = priceComparison.length > 1 ? priceComparison[priceComparison.length - 1] : null
 
-  function handleBuy() {
+  function handleBuy(event: unknown) {
+    setDetailAnchorPos(captureClickPos(event))
     setShowDetailModal(true)
   }
 
@@ -193,7 +196,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         )}
         <View style={cardStyles.buyBtnRow}>
           <TouchableOpacity
-            onPress={handleBuy}
+            onPress={(event) => handleBuy(event)}
             activeOpacity={0.7}
             style={cardStyles.buyBtnAli}
             accessibilityRole="button"
@@ -215,7 +218,8 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
         scannedSizes={scannedSizes}
         category={category}
         visible={showDetailModal}
-        onDismiss={() => setShowDetailModal(false)}
+        onDismiss={() => { setShowDetailModal(false); setDetailAnchorPos(null) }}
+        anchorPos={detailAnchorPos}
       />
     </View>
   )

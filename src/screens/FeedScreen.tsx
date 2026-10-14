@@ -21,6 +21,7 @@ import {
 import { supabase } from '../lib/supabase'
 import ProductCard from '../components/ProductCard'
 import ContextualUpsellBanner from '../components/ContextualUpsellBanner'
+import { captureClickPos, type AnchorPos } from '../utils/popupPosition'
 
 const PAGE_SIZE = 50
 
@@ -116,6 +117,7 @@ export function FeedScreen({
   const [hasMore, setHasMore] = useState(true)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [showDeviceModal, setShowDeviceModal] = useState(false)
+  const [deviceModalAnchorPos, setDeviceModalAnchorPos] = useState<AnchorPos>(null)
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const selectedDeviceRef = useRef<string | null>(null)
   const [pendingNewDevice, setPendingNewDevice] = useState<string | null>(null)
@@ -581,7 +583,7 @@ export function FeedScreen({
             <View style={feedStyles.deviceBarHeader}>
               <Text style={feedStyles.deviceBarTitle}>📱 המכשירים שלי</Text>
               <TouchableOpacity
-                onPress={() => setShowDeviceModal(true)}
+                onPress={(event) => { setDeviceModalAnchorPos(captureClickPos(event)); setShowDeviceModal(true) }}
                 activeOpacity={0.75}
                 style={feedStyles.addDeviceBtn}
               >
@@ -762,7 +764,8 @@ export function FeedScreen({
 
       <AddDeviceModal
         visible={showDeviceModal}
-        onClose={() => setShowDeviceModal(false)}
+        onClose={() => { setShowDeviceModal(false); setDeviceModalAnchorPos(null) }}
+  anchorPos={deviceModalAnchorPos}
         onAdd={(deviceName) => { onAddDevice(deviceName); setShowDeviceModal(false) }}
       />
     </View>

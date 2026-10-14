@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
+import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 
 export interface PreviewablePhoto {
   id: string
@@ -13,6 +14,7 @@ interface GalleryPreviewModalProps {
   onApprove: (approvedPhotos: PreviewablePhoto[]) => void
   onCancel: () => void
   processing?: boolean
+  anchorPos?: AnchorPos
 }
 
 export default function GalleryPreviewModal({
@@ -21,6 +23,7 @@ export default function GalleryPreviewModal({
   onApprove,
   onCancel,
   processing = false,
+  anchorPos,
 }: GalleryPreviewModalProps) {
   const [removed, setRemoved] = useState<Set<string>>(new Set())
 
@@ -45,7 +48,7 @@ export default function GalleryPreviewModal({
   return (
     <View style={styles.overlay}>
       <TouchableOpacity onPress={() => !processing && onCancel()} activeOpacity={1} style={styles.backdrop} />
-      <View style={styles.panel}>
+      <View style={[styles.panel, anchorPos ? { position: 'fixed' as React.CSSProperties, ...computePopupStyle(anchorPos, 360, 500) } : null]}>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>מצאנו {count} תמונות שמתאימות לניתוח המידות שלך! 📸</Text>
@@ -112,7 +115,7 @@ export default function GalleryPreviewModal({
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
+    position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
