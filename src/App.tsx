@@ -338,6 +338,7 @@ export default function App() {
   const [latestAddedDevice, setLatestAddedDevice] = useState<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
+  const [recentlyUpdatedMembers, setRecentlyUpdatedMembers] = useState<Set<string>>(new Set())
   const [activeProfileId, setActiveProfileId] = useState<string>('self')
   const [growthAlerts, setGrowthAlerts] = useState<GrowthDetection[]>([])
   const [inviteToken, setInviteToken] = useState<string | null>(null)
@@ -351,6 +352,36 @@ export default function App() {
     return () => {
       clearInterval(interval)
       void endSession()
+    }
+  }, [user])
+
+  // Realtime: listen for family_profiles updates + new notifications
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase
+      .channel('family-updates')
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'family_profiles', filter: `owner_user_id=eq.${user.id}` },
+        (payload) => {
+          const row = payload.new as { id: string; member_name: string; updated_at: string; top_size: string | null; bottom_size: string | null; shoe_size: string | null; fit: string | null; accuracy: number | null; gender: string | null; age_group: string | null; height_cm: number | null; weight_kg: number | null; chest_cm: number | null; waist_cm: number | null; hips_cm: number | null; shoulder_cm: number | null }
+          if (!row?.member_name) return
+
+          setRecentlyUpdatedMembers((prev) => new Set(prev).add(row.id))
+          showToast(`🎉 ${row.member_name} עדכנ/ה את המידות! עכשיו אפשר להפתיע אותם במידה המדויקת.`)
+          void getUnreadCount().then(setUnreadCount)
+        }
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => {
+          void getUnreadCount().then(setUnreadCount)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
   }, [user])
 
@@ -777,7 +808,7 @@ export default function App() {
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} familyMembers={familyMembers} />}
-        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} onRequestAuth={() => { setPendingFamilyAdd(1); setAuthModal({ pendingIdx: -1 }) }} reopenAddMemberSignal={pendingFamilyAdd} />}
+        {screen === 'profile' && <ProfileScreen onNav={changeScreen} user={user} onSignOut={handleSignOut} detectedDevice={detectedDevice} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} galleryAccess={galleryAccess} setGalleryAccess={setGalleryAccess} preferredRegion={preferredRegion} setPreferredRegion={setPreferredRegion} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} onRequestAuth={() => { setPendingFamilyAdd(1); setAuthModal({ pendingIdx: -1 }) }} reopenAddMemberSignal={pendingFamilyAdd} recentlyUpdatedMembers={recentlyUpdatedMembers} />}
         {screen === 'admin' && <AdminDashboard onNav={changeScreen} />}
 
         {authModal && authModal.pendingIdx >= 0 && (

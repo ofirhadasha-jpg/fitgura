@@ -21,6 +21,7 @@ export interface WardrobeItem {
   fitBreakdown: FitBreakdown | null
   affiliateUrl: string
   profileId?: string | null
+  isWishlist?: boolean
 }
 
 export interface SaveProfileOption {
@@ -63,7 +64,7 @@ interface SizingResultModalProps {
   affiliateUrl: string
   onClose: () => void
   onBuy: (url: string) => void
-  onSave?: (profileId: string) => void
+  onSave?: (profileId: string, isWishlist?: boolean) => void
   saving?: boolean
   familyMembers?: FamilyMember[]
   userName?: string | null
@@ -92,6 +93,7 @@ export default function SizingResultModal({
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
   const [showProfileSelector, setShowProfileSelector] = useState(false)
+  const [isWishlist, setIsWishlist] = useState(false)
 
   useEffect(() => {
     if (defaultProfileId) setSelectedProfileId(defaultProfileId)
@@ -110,12 +112,12 @@ export default function SizingResultModal({
   const selectedProfile = profileOptions.find((p) => p.id === selectedProfileId)
   const saveBtnText = saving
     ? 'שומר...'
-    : selectedProfileId === 'self'
-      ? 'שמור בארון שלי'
-      : `שמור בארון של ${selectedProfile?.name ?? ''}`
+    : isWishlist
+      ? (selectedProfileId === 'self' ? 'שמור ברשימת משאלות 🎁' : `שמור ברשימת משאלות של ${selectedProfile?.name ?? ''} 🎁`)
+      : (selectedProfileId === 'self' ? 'שמור בארון שלי' : `שמור בארון של ${selectedProfile?.name ?? ''}`)
 
   function handleSave() {
-    onSave?.(selectedProfileId)
+    onSave?.(selectedProfileId, isWishlist)
   }
 
   return (
@@ -248,6 +250,15 @@ export default function SizingResultModal({
               </View>
             )}
             <TouchableOpacity
+              onPress={() => setIsWishlist((v) => !v)}
+              activeOpacity={0.7}
+              style={[styles.wishlistToggle, isWishlist && styles.wishlistToggleActive]}
+            >
+              <Text style={[styles.wishlistToggleText, isWishlist && styles.wishlistToggleTextActive]}>
+                {isWishlist ? '🎁 רשימת משאלות למתנות' : 'הפוך לרשימת משאלות 🎁'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={handleSave}
               disabled={saving}
               activeOpacity={0.7}
@@ -306,6 +317,10 @@ const styles = StyleSheet.create({
   profileOptionText: { fontSize: 12, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   profileOptionTextActive: { color: '#1A1A1A', fontWeight: '700' },
   saveBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
+  wishlistToggle: { alignSelf: 'center', marginBottom: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#F5F0E0', borderWidth: 1.5, borderColor: '#9A9A9A' } as any,
+  wishlistToggleActive: { borderColor: '#1A1A1A', backgroundColor: '#FFD6E0' },
+  wishlistToggleText: { fontSize: 13, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wishlistToggleTextActive: { color: '#1A1A1A', fontWeight: '700' },
   saveBtnText: { color: '#4A4A4A', fontSize: 14, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   btnDisabled: { opacity: 0.5 },
   fitBadge: { backgroundColor: '#00CC52', borderRadius: 10, paddingVertical: 4, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#1A1A1A', marginTop: 8, alignSelf: 'center' },

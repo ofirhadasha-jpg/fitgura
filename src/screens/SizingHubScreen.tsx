@@ -112,6 +112,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         fitBreakdown: row.fit_breakdown as FitBreakdown | null,
         affiliateUrl: row.affiliate_url as string ?? row.product_url as string,
         profileId: row.profile_id as string | null,
+        isWishlist: row.is_wishlist as boolean ?? false,
       })))
     } catch {
       // Non-fatal
@@ -218,7 +219,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     }
   }
 
-  async function handleSaveToWardrobe(profileId: string) {
+  async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean) {
     if (!result) return
     try {
       const { error } = await supabase
@@ -235,6 +236,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           affiliate_url: result.affiliateUrl,
           user_id: user?.id ?? null,
           profile_id: profileId === 'self' ? null : profileId,
+          is_wishlist: isWishlist ?? false,
         })
       if (error) console.error('[SizingHub] Save failed:', error)
       else void loadWardrobe()
@@ -682,6 +684,13 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                   <Text style={[styles.wardrobeFilterPillText, wardrobeFilter === m.id && styles.wardrobeFilterPillTextActive]}>{m.name} {m.category === 'partner' ? '💍' : m.category === 'child' ? '🧒' : m.category === 'baby' ? '👶' : '👤'}</Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                onPress={() => setWardrobeFilter('wishlist')}
+                activeOpacity={0.7}
+                style={[styles.wardrobeFilterPill, wardrobeFilter === 'wishlist' && styles.wardrobeFilterPillActive]}
+              >
+                <Text style={[styles.wardrobeFilterPillText, wardrobeFilter === 'wishlist' && styles.wardrobeFilterPillTextActive]}>רשימת משאלות 🎁</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -728,7 +737,9 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
               ? wardrobe
               : wardrobeFilter === 'self'
                 ? wardrobe.filter((w) => !w.profileId)
-                : wardrobe.filter((w) => w.profileId === wardrobeFilter)
+                : wardrobeFilter === 'wishlist'
+                  ? wardrobe.filter((w) => w.isWishlist)
+                  : wardrobe.filter((w) => w.profileId === wardrobeFilter)
             return filteredWardrobe.length === 0 ? (
             <View style={styles.wardrobeEmpty}>
               <Text style={{ fontSize: 32 }}>👔</Text>
@@ -820,7 +831,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                           <Text style={styles.wardrobeInsightsText}>{buyerInsights}</Text>
                         </View>
                         <View style={styles.wardrobeProfileTag}>
-                          <Text style={styles.wardrobeProfileTagText}>{profileTag}</Text>
+                          <Text style={styles.wardrobeProfileTagText}>{profileTag}{item.isWishlist ? ' 🎁' : ''}</Text>
                         </View>
                         <TouchableOpacity
                           onPress={() => window.open(ensureAffiliateWrapped(item.affiliateUrl), '_blank', 'noopener,noreferrer')}

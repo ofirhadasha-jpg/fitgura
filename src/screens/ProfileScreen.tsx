@@ -46,6 +46,7 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   setActiveProfileId: (id: string) => void
   onRequestAuth?: () => void
   reopenAddMemberSignal?: number
+  recentlyUpdatedMembers?: Set<string>
 }) {
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [editingSizes, setEditingSizes] = useState(false)
@@ -305,6 +306,8 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
   const [inviteToast, setInviteToast] = useState<string | null>(null)
   const [shareModal, setShareModal] = useState<{ url: string; memberName: string } | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [memberWishlist, setMemberWishlist] = useState<Array<{ id: string; product_name: string; product_image: string | null; recommended_size: string; match_percentage: number; price: string | null; platform: string; affiliate_url: string }>>([])
+  const [wishlistLoading, setWishlistLoading] = useState(false)
 
   // Reopen add-member sheet automatically after successful auth
   useEffect(() => {
@@ -466,6 +469,30 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
       setProfShoe(member.scannedSizes?.shoeSize ?? '42')
       setProfilePhotoUrl(member.photoUrl)
       setCurrentAccuracy(member.accuracy)
+    }
+    if (user && id !== 'self') {
+      void loadMemberWishlist(id)
+    } else {
+      setMemberWishlist([])
+    }
+  }
+
+  async function loadMemberWishlist(memberId: string) {
+    setWishlistLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('fitted_wardrobe')
+        .select('id, product_name, product_image, recommended_size, match_percentage, price, platform, affiliate_url')
+        .eq('profile_id', memberId)
+        .eq('is_wishlist', true)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setMemberWishlist(data ?? [])
+    } catch (err) {
+      console.error('[ProfileScreen] Failed to load member wishlist:', err)
+      setMemberWishlist([])
+    } finally {
+      setWishlistLoading(false)
     }
   }
 
@@ -962,6 +989,11 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
                   style={[profStyles.memberChip, activeProfileId === m.id && profStyles.memberChipActive]}
                 >
                   <Text style={{ fontSize: 28 }}>{CATEGORY_EMOJIS[m.category]}</Text>
+                  {recentlyUpdatedMembers?.has(m.id) && (
+                    <View style={profStyles.updatedBadge}>
+                      <Text style={profStyles.updatedBadgeText}>עודכן לאחרונה ✨</Text>
+                    </View>
+                  )}
                   <Text style={[profStyles.memberChipName, activeProfileId === m.id && profStyles.memberChipNameActive]}>{m.name}</Text>
                   <TouchableOpacity onPress={() => handleRemoveMember(m.id)} activeOpacity={0.7} style={profStyles.memberRemoveBtn}>
                     <Text style={{ fontSize: 10, color: '#9A9A9A' }}>✕</Text>
@@ -1375,6 +1407,56 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         </View>
 
 
+
+        {/* Member wishlist section — shown when a family member is selected */}
+        {activeProfileId !== 'self' && familyMembers.some((m) => m.id === activeProfileId) && (
+          <View style={profStyles.card}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={profStyles.sizesTitle}>🎁 רשימת משאלות — {familyMembers.find((m) => m.id === activeProfileId)?.name}</Text>
+            </View>
+            {wishlistLoading ? (
+              <Text style={{ fontSize: 13, color: '#9A9A9A', textAlign: 'center', paddingVertical: 20, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>טוען מתנות...</Text>
+            ) : memberWishlist.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 20, gap: 8 }}>
+                <Text style={{ fontSize: 32 }}>🎁</Text>
+                <Text style={{ fontSize: 13, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>עדיין אין פריטים ברשימת המשאלות</Text>
+                <Text style={{ fontSize: 11, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }}>פריטים שיסומנו כמתנה בארון יופיעו כאן</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {memberWishlist.map((item) => (
+                  <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFACC', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any }}>
+                    <View style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', borderWidth: 1.5, borderColor: '#1A1A1A', backgroundColor: '#F5F0E0' }}>
+                      {item.product_image ? (
+                        <Image source={{ uri: item.product_image }} style={{ width: '100%', height: '100%' }} />
+                      ) : (
+                        <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                          <Text style={{ fontSize: 20 }}>👕</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" }} numberOfLines={2}>{item.product_name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <View style={{ backgroundColor: '#FFE566', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 6, borderWidth: 1, borderColor: '#1A1A1A' }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" }}>{item.recommended_size}</Text>
+                        </View>
+                        <Text style={{ fontSize: 10, color: '#00CC52', fontWeight: '700', fontFamily: "'Permanent Marker', cursive" }}>{item.match_percentage}% התאמה</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => window.open(item.affiliate_url, '_blank', 'noopener,noreferrer')}
+                      activeOpacity={0.8}
+                      style={{ backgroundColor: '#00FF66', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" }}>קנה מתנה 🎁</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Family CTA */}
         <TouchableOpacity activeOpacity={0.7} style={profStyles.familyCTA}>
@@ -1931,6 +2013,8 @@ const profStyles = StyleSheet.create({
   addMemberBtn: { backgroundColor: '#00FF66', borderRadius: 8 as any, paddingVertical: 7, paddingHorizontal: 14, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any },
   addMemberBtnText: { color: '#1A1A1A', fontSize: 13, fontWeight: '700', fontFamily: "'Permanent Marker', cursive" },
   memberChip: { alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 as any, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5', minWidth: 80 },
+  updatedBadge: { backgroundColor: '#00CC52', borderRadius: 8, paddingVertical: 2, paddingHorizontal: 8, borderWidth: 1, borderColor: '#1A1A1A', marginTop: 2 },
+  updatedBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFEF5', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   memberChipActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566', boxShadow: '2px 2px 0 #1A1A1A' as any },
   memberChipName: { fontSize: 12, fontWeight: '700', color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   memberChipNameActive: { color: '#1A1A1A' },
