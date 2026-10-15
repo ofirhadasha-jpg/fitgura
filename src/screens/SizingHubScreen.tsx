@@ -604,23 +604,31 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         </View>
 
         <View style={styles.guideCard}>
-          <Text style={styles.guideTitle}>איך לשתף לפיטגורה</Text>
+          <Text style={styles.guideTitle}>איך להשתמש בפיטגורה בקליק 🎯</Text>
           <View style={styles.guideSteps}>
             <View style={styles.guideStep}>
               <Text style={styles.guideStepNum}>1</Text>
-              <Text style={styles.guideStepText}>פתח את המוצר באפליקציית החנות</Text>
+              <Text style={styles.guideStepText}>
+                <Text style={styles.guideStepBold}>בחר פרופיל למעלה</Text> 👤{'\n'}למשל: אופיר, אלה, איתמר — הקישורים לחנויות מעל תיבת ההדבקה יתאימו את עצמם אוטומטית למשתמש הנבחר!
+              </Text>
             </View>
             <View style={styles.guideStep}>
               <Text style={styles.guideStepNum}>2</Text>
-              <Text style={styles.guideStepText}>לחץ על כפתור Share / שיתוף</Text>
+              <Text style={styles.guideStepText}>
+                <Text style={styles.guideStepBold}>היכנס לחנות</Text> (SHEIN, עלי-אקספרס, אמזון וכו') מתוך הקישורים המותאמים ומצא את הפריט שתרצה.
+              </Text>
             </View>
             <View style={styles.guideStep}>
               <Text style={styles.guideStepNum}>3</Text>
-              <Text style={styles.guideStepText}>בחר "פיטגורה" מרשימת האפליקציות</Text>
+              <Text style={styles.guideStepText}>
+                <Text style={styles.guideStepBold}>העתק את הקישור של המוצר</Text> וחזור לכאן.
+              </Text>
             </View>
             <View style={styles.guideStep}>
               <Text style={styles.guideStepNum}>4</Text>
-              <Text style={styles.guideStepText}>קבל את המידה המומלצת מיד</Text>
+              <Text style={styles.guideStepText}>
+                <Text style={styles.guideStepBold}>הדבק את הקישור למעלה ולחץ "פוצץ לי מידה ✨"</Text> — נפענח עבורך את המידה המדויקת להזמנה, ותוכל לשמור בארון או להמשיך לקנייה!
+              </Text>
             </View>
           </View>
         </View>
@@ -1025,9 +1033,10 @@ const styles = StyleSheet.create({
   guideCard: { backgroundColor: '#FFFACC', borderRadius: 14, padding: 16, borderWidth: 1.5, borderColor: '#FFE566', boxShadow: '2px 2px 0 #1A1A1A' as any } as any,
   guideTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 12, fontFamily: "'Permanent Marker', cursive" },
   guideSteps: { gap: 10 },
-  guideStep: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  guideStepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#1A1A1A', color: '#FFE566', textAlign: 'center', textAlignVertical: 'center', fontSize: 13, fontWeight: '800', lineHeight: 26 },
-  guideStepText: { fontSize: 14, color: '#1A1A1A', flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  guideStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  guideStepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#1A1A1A', color: '#FFE566', textAlign: 'center', textAlignVertical: 'center', fontSize: 13, fontWeight: '800', lineHeight: 26, marginTop: 2 },
+  guideStepText: { fontSize: 14, color: '#1A1A1A', flex: 1, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", lineHeight: 22 },
+  guideStepBold: { fontWeight: '800', color: '#1A1A1A' },
   wardrobeSection: { gap: 10 },
   wardrobeFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   wardrobeFilterPill: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' } as any,
