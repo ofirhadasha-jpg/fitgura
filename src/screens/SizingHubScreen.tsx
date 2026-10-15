@@ -94,6 +94,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   const galleryInputRef = useRef<HTMLInputElement>(null)
 
   const [galleryToast, setGalleryToast] = useState(false)
+  const [wardrobeToast, setWardrobeToast] = useState<string | null>(null)
   const [galleryPermissionGranted, setGalleryPermissionGrantedState] = useState(false)
   const [showPermissionModal, setShowPermissionModal] = useState(false)
   const [analyzeAnchorPos, setAnalyzeAnchorPos] = useState<AnchorPos>(null)
@@ -227,8 +228,14 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           profile_id: profileId === 'self' ? null : profileId,
           is_wishlist: isWishlist ?? false,
         })
-      if (error) console.error('[SizingHub] Save failed:', error)
-      else void loadWardrobe()
+      if (error) {
+        console.error('[SizingHub] Save failed:', error)
+      } else {
+        void loadWardrobe()
+        const profileName = profileId === 'self' ? (user?.name ?? 'אני') : (familyMembers?.find((m) => m.id === profileId)?.name ?? 'פרופיל')
+        setWardrobeToast(`הפריט נשמר בהצלחה בארון של ${profileName}! 👕✨`)
+        setTimeout(() => setWardrobeToast(null), 3000)
+      }
     } catch (err) {
       console.error('[SizingHub] Save error:', err)
     }
@@ -907,6 +914,14 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
 
 
       </ScrollView>
+
+      {wardrobeToast && (
+        <View style={{ position: 'fixed', bottom: 80, left: 0, right: 0, alignItems: 'center', zIndex: 10000, pointerEvents: 'none' } as React.CSSProperties}>
+          <View style={{ backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, borderWidth: 2, borderColor: '#00CC52', boxShadow: '3px 3px 0 #00CC52' } as React.CSSProperties}>
+            <Text style={{ color: '#00CC52', fontSize: 15, fontWeight: '800', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' }}>{wardrobeToast}</Text>
+          </View>
+        </View>
+      )}
 
       <BottomNav current="hub" onNav={onNav} isAdmin={user?.is_admin === true} />
 

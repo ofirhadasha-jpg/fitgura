@@ -105,6 +105,7 @@ export default function SizingResultModal({
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
   const [isWishlist, setIsWishlist] = useState(false)
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [imgError, setImgError] = useState(false)
   const [manualImageUrl, setManualImageUrl] = useState('')
   const [showManualInput, setShowManualInput] = useState(false)
@@ -153,6 +154,10 @@ export default function SizingResultModal({
 
   function handleSave() {
     onSave?.(selectedProfileId, isWishlist, overrideImage)
+  }
+
+  function handleSaveToWardrobe() {
+    onSave?.(selectedProfileId, false, overrideImage)
   }
 
   function handleManualFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -355,6 +360,55 @@ export default function SizingResultModal({
         </View>
 
         {onSave && (
+          <View style={styles.wardrobeSection}>
+            <TouchableOpacity
+              onPress={() => setShowProfileDropdown((v) => !v)}
+              activeOpacity={0.7}
+              style={styles.wardrobeDropdownBtn}
+            >
+              <Text style={styles.wardrobeDropdownBtnText}>
+                הוסף לארון של {selectedProfile?.name ?? '...'} 🔻
+              </Text>
+            </TouchableOpacity>
+            {showProfileDropdown && (
+              <View style={styles.wardrobeDropdownList}>
+                {profileOptions.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    onPress={() => {
+                      handleProfileSelect(opt.id)
+                      setShowProfileDropdown(false)
+                    }}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.wardrobeDropdownItem,
+                      opt.id === selectedProfileId && styles.wardrobeDropdownItemActive,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.wardrobeDropdownItemText,
+                      opt.id === selectedProfileId && styles.wardrobeDropdownItemTextActive,
+                    ]}>
+                      {opt.name} {opt.id === selectedProfileId ? '✓' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={handleSaveToWardrobe}
+              disabled={saving}
+              activeOpacity={0.7}
+              style={[styles.wardrobeSaveBtn, saving && styles.btnDisabled]}
+            >
+              <Text style={styles.wardrobeSaveBtnText}>
+                {saving ? 'שומר...' : `הוסף לארון של ${selectedProfile?.name ?? ''} 👕`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {onSave && (
           <View>
             <TouchableOpacity
               onPress={() => setIsWishlist((v) => !v)}
@@ -441,6 +495,16 @@ const styles = StyleSheet.create({
   profileOptionTextActive: { color: '#1A1A1A', fontWeight: '700' },
   recalculatingBanner: { backgroundColor: '#E0F2FE', borderRadius: 10, padding: 10, marginBottom: 14, alignItems: 'center', borderWidth: 1, borderColor: '#0891B2' } as any,
   recalculatingText: { fontSize: 13, color: '#0891B2', fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  wardrobeSection: { marginBottom: 12, gap: 8 },
+  wardrobeDropdownBtn: { backgroundColor: '#E0F2FE', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any } as any,
+  wardrobeDropdownBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
+  wardrobeDropdownList: { backgroundColor: '#FFFEF5', borderRadius: 12, padding: 6, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #1A1A1A' as any, gap: 4 } as any,
+  wardrobeDropdownItem: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' } as any,
+  wardrobeDropdownItemActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566' },
+  wardrobeDropdownItemText: { fontSize: 14, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
+  wardrobeDropdownItemTextActive: { color: '#1A1A1A', fontWeight: '800' },
+  wardrobeSaveBtn: { backgroundColor: '#00CC52', borderRadius: 14, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' as any } as any,
+  wardrobeSaveBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '800', fontFamily: "'Permanent Marker', cursive" },
   saveBtn: { backgroundColor: '#FFFACC', borderRadius: 12, paddingVertical: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFE566' },
   wishlistToggle: { alignSelf: 'center', marginBottom: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#F5F0E0', borderWidth: 1.5, borderColor: '#9A9A9A' } as any,
   wishlistToggleActive: { borderColor: '#1A1A1A', backgroundColor: '#FFD6E0' },
