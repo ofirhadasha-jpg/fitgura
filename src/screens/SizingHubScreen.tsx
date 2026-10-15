@@ -599,7 +599,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
             activeOpacity={0.8}
             style={[styles.analyzeBtn, (analyzing || !url.trim()) && styles.btnDisabled]}
           >
-            <Text style={styles.analyzeBtnText}>{analyzing ? 'מנתח...' : 'פצח לי מידה ✨'}</Text>
+            <Text style={styles.analyzeBtnText}>{analyzing ? 'מנתח...' : 'פוצץ לי מידה ✨'}</Text>
           </TouchableOpacity>
         </View>
 
