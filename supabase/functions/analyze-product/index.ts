@@ -25,6 +25,69 @@ interface ProductAnalysis {
   availableSizes: string[]
 }
 
+const SHORT_URL_DOMAINS = [
+  "a.co", "amzn.to", "amzn.com", "ali.ski", "aliexpress.com/shop_api",
+  "bit.ly", "t.co", "tinyurl.com", "shorturl.at", "cutt.ly", "rebrand.ly",
+]
+
+const STANDARD_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+function isShortUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.toLowerCase()
+    return SHORT_URL_DOMAINS.some((d) => host === d || host === `www.${d}`)
+  } catch {
+    return false
+  }
+}
+
+async function resolveShortUrl(url: string): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+
+  try {
+    // Use manual redirect: follow but capture the final URL
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": STANDARD_UA,
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      redirect: "follow",
+    })
+
+    // res.url contains the final URL after all redirects
+    const finalUrl = res.url || res.headers.get("location") || url
+    if (finalUrl && finalUrl !== url) {
+      console.log(`[analyze-product] Resolved short URL: ${url} -> ${finalUrl}`)
+    }
+    return finalUrl || url
+  } catch {
+    return url
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function extractAmazonAsin(url: string): string | null {
+  const patterns = [
+    /\/dp\/([A-Z0-9]{10})(?:[/?]|$)/i,
+    /\/gp\/product\/([A-Z0-9]{10})(?:[/?]|$)/i,
+    /\/gp\/aw\/d\/([A-Z0-9]{10})(?:[/?]|$)/i,
+    /\/exec\/obidos\/ASIN\/([A-Z0-9]{10})(?:[/?]|$)/i,
+    /\/exec\/obidos\/tg\/detail\/-\/([A-Z0-9]{10})(?:[/?]|$)/i,
+    /\/o\/ASIN\/([A-Z0-9]{10})(?:[/?]|$)/i,
+    /\/ASIN\/([A-Z0-9]{10})(?:[/?]|$)/i,
+  ]
+  for (const p of patterns) {
+    const m = url.match(p)
+    if (m) return m[1]
+  }
+  return null
+}
+
 function detectPlatform(url: string): string {
   const lower = url.toLowerCase()
   if (lower.includes("shein")) return "SHEIN"
@@ -32,8 +95,7 @@ function detectPlatform(url: string): string {
   if (lower.includes("temu")) return "Temu"
   if (lower.includes("zara")) return "ZARA"
   if (lower.includes("hm.com") || lower.includes("h&m")) return "H&M"
-  if (lower.includes("asos")) return "ASOS"
-  if (lower.includes("amazon")) return "Amazon"
+  if (lower.includes("amazon") || lower.includes("a.co") || lower.includes("amzn")) return "Amazon"
   if (lower.includes("nike")) return "Nike"
   return "Generic"
 }
@@ -72,12 +134,47 @@ function extractTitle(html: string): string | null {
   return match ? match[1].trim() : null
 }
 
+function extractProductImage(html: string): string | null {
+  // 1. og:image meta tag
+  let img = extractMetaContent(html, "og:image")
+  if (img) return img
+
+  // 2. twitter:image meta tag
+  img = extractMetaContent(html, "twitter:image")
+  if (img) return img
+
+  // 3. Amazon #landingImage data-a-dynamic-image
+  const landingMatch = html.match(/<img[^>]*id=["']landingImage["'][^>]*data-a-dynamic-image=["'](\{[^}]*\})["']/i)
+  if (landingMatch) {
+    // The value is a JSON-like map; extract the first URL key
+    const urlMatch = landingMatch[1].match(/"(https?:\/\/[^"]+)"/)
+    if (urlMatch) return urlMatch[1]
+  }
+
+  // 4. Amazon #landingImage src
+  const landingSrcMatch = html.match(/<img[^>]*id=["']landingImage["'][^>]*src=["']([^"']*)["']/i)
+  if (landingSrcMatch) return landingSrcMatch[1]
+
+  // 5. Amazon #imgBlkFront
+  const imgBlkMatch = html.match(/<img[^>]*id=["']imgBlkFront["'][^>]*src=["']([^"']*)["']/i)
+  if (imgBlkMatch) return imgBlkMatch[1]
+
+  // 6. Generic product image class
+  const imgMatch = html.match(/<img[^>]*src=["']([^"']*)["'][^>]*class=["'][^"']*product[^"']*["']/i)
+  if (imgMatch) return imgMatch[1]
+
+  // 7. data-old-hires (Amazon)
+  const oldHiresMatch = html.match(/data-old-hires=["']([^"']*)["']/i)
+  if (oldHiresMatch) return oldHiresMatch[1]
+
+  return null
+}
+
 function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; availableSizes: string[] } {
   const entries: SizeChartEntry[] = []
   const availableSizes: string[] = []
   const seenSizes = new Set<string>()
 
-  // Extract all <table> blocks using regex
   const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi
   let tableMatch: RegExpExecArray | null
 
@@ -91,7 +188,6 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
     }
     if (rows.length < 2) continue
 
-    // Parse header row
     const headerCells = extractCellTexts(rows[0])
     const sizeColIdx = headerCells.findIndex((h) =>
       h.includes("size") || h.includes("מידה") || h.includes("尺寸")
@@ -143,7 +239,6 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
     }
   }
 
-  // Also look for size buttons (common on SHEIN, Zara)
   const sizeBtnRegex = /(?:data-size|aria-label)=["']([^"']+)["']|class=["'][^"']*size[^"']*["'][^>]*>([^<]{1,10})</gi
   let btnMatch: RegExpExecArray | null
   while ((btnMatch = sizeBtnRegex.exec(html)) !== null) {
@@ -184,7 +279,7 @@ async function fetchProductPage(url: string): Promise<string> {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": STANDARD_UA,
         "Accept": "text/html,application/xhtml+xml",
         "Accept-Language": "en-US,en;q=0.9",
       },
@@ -210,7 +305,24 @@ async function handleRequest(req: Request): Promise<Response> {
       })
     }
 
-    const platform = detectPlatform(url)
+    // Step 1: Resolve shortened URLs (a.co, amzn.to, ali.ski, etc.)
+    let resolvedUrl = url
+    if (isShortUrl(url)) {
+      resolvedUrl = await resolveShortUrl(url)
+    }
+
+    // Step 2: Detect platform from the resolved URL (more accurate)
+    let platform = detectPlatform(resolvedUrl)
+
+    // Step 3: If Amazon, build canonical URL from ASIN for reliable scraping
+    let scrapeUrl = resolvedUrl
+    if (platform === "Amazon") {
+      const asin = extractAmazonAsin(resolvedUrl)
+      if (asin) {
+        scrapeUrl = `https://www.amazon.com/dp/${asin}`
+        console.log(`[analyze-product] Amazon ASIN: ${asin}, canonical URL: ${scrapeUrl}`)
+      }
+    }
 
     let html = ""
     let productName: string | null = null
@@ -218,18 +330,13 @@ async function handleRequest(req: Request): Promise<Response> {
     let price: string | null = null
 
     try {
-      html = await fetchProductPage(url)
+      html = await fetchProductPage(scrapeUrl)
       productName = extractMetaContent(html, "og:title") ?? extractTitle(html)
       if (productName) {
         productName = productName.replace(/\s*[|\-–]\s*(SHEIN|AliExpress|Temu|Zara|H&M|ASOS|Amazon).*$/i, "").trim()
       }
-      productImage = extractMetaContent(html, "og:image")
-      if (!productImage) {
-        const imgMatch = html.match(/<img[^>]*src=["']([^"']*)["'][^>]*class=["'][^"']*product[^"']*["']/i)
-        if (imgMatch) productImage = imgMatch[1]
-      }
+      productImage = extractProductImage(html)
 
-      // Extract price from meta tags
       const ogPrice = extractMetaContent(html, "product:price:amount")
       const ogCurrency = extractMetaContent(html, "product:price:currency")
       if (ogPrice) {
@@ -237,7 +344,6 @@ async function handleRequest(req: Request): Promise<Response> {
         price = `${currencySymbol} ${ogPrice}`
       }
       if (!price) {
-        // Fallback: search HTML for price patterns
         const priceMatch = html.match(/(?:₪|\$|€|price["']?\s*[:=]\s*["']?)(\d+(?:\.\d{1,2})?)/i)
         if (priceMatch) {
           const symbol = priceMatch[0].match(/₪|\$|€/)

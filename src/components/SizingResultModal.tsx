@@ -4,7 +4,7 @@ import type { FamilyMember } from '../types'
 import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 import { useEscToDismiss } from '../utils/useEscToDismiss'
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl } from '../services/affiliateService'
-import { normalizeProductImageUrl, getFallbackImage } from '../utils/productImages'
+import { normalizeProductImageUrl } from '../utils/productImages'
 
 export interface FitBreakdown {
   chest: { fit: string; score: number }
@@ -130,8 +130,9 @@ export default function SizingResultModal({
   const decodedName = decodeHtmlEntities(productName)
 
   const normalizedImage = normalizeProductImageUrl(overrideImage ?? productImage)
-  const fallbackUrl = getFallbackImage(category, decodedName)
-  const displayImage = normalizedImage ?? (imgError || !productImage ? fallbackUrl : null)
+  const imageFailed = imgError && !overrideImage
+  const displayImage = normalizedImage ?? null
+  const showNoImagePrompt = !displayImage || imageFailed
 
   const profileOptions: SaveProfileOption[] = [
     { id: 'self', name: userName ?? 'אני' },
@@ -192,7 +193,7 @@ export default function SizingResultModal({
           </TouchableOpacity>
         </View>
 
-        {displayImage ? (
+        {displayImage && !imageFailed ? (
           <View style={styles.imageWrap}>
             <Image
               source={{ uri: displayImage }}
@@ -218,21 +219,21 @@ export default function SizingResultModal({
               </TouchableOpacity>
             )}
           </View>
-        ) : (
+        ) : showNoImagePrompt ? (
           <View style={styles.imageWrap}>
             <View style={styles.imagePlaceholder}>
-              <Text style={styles.imagePlaceholderIcon}>🖼️</Text>
-              <Text style={styles.imagePlaceholderText}>אין תמונה זמינה</Text>
+              <Text style={styles.imagePlaceholderIcon}>📸</Text>
+              <Text style={styles.imagePlaceholderText}>לא הצלחנו למשוך את תמונת המוצר</Text>
+              <TouchableOpacity
+                onPress={() => fileInputRef.current?.click()}
+                activeOpacity={0.7}
+                style={[styles.manualImageToggle, { marginTop: 8 } as React.CSSProperties]}
+              >
+                <Text style={styles.manualImageToggleText}>לחץ כאן להעלאת תמונה/צילום מסך 📸</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={() => setShowManualInput((v) => !v)}
-              activeOpacity={0.7}
-              style={styles.manualImageToggle}
-            >
-              <Text style={styles.manualImageToggleText}>הוסף תמונה ידנית 📷</Text>
-            </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
         {showManualInput && (
           <View style={styles.manualImageBox}>
@@ -253,13 +254,6 @@ export default function SizingResultModal({
                 <Text style={styles.manualImageBtnText}>אישור ✓</Text>
               </TouchableOpacity>
             </View>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 } as React.CSSProperties}
-              onChange={handleManualFileSelect}
-            />
             <TouchableOpacity
               onPress={() => fileInputRef.current?.click()}
               activeOpacity={0.7}
@@ -269,6 +263,14 @@ export default function SizingResultModal({
             </TouchableOpacity>
           </View>
         )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ position: 'absolute', opacity: 0, width: 1, height: 1, zIndex: -1 } as React.CSSProperties}
+          onChange={handleManualFileSelect}
+        />
 
         <Text style={styles.productName}>{decodedName}</Text>
         <View style={styles.productMetaRow}>
@@ -388,9 +390,9 @@ const styles = StyleSheet.create({
   closeText: { color: '#1A1A1A', fontSize: 22, lineHeight: 22 },
   imageWrap: { alignItems: 'center', marginBottom: 12 },
   productImage: { width: 120, height: 140, borderRadius: 12, borderWidth: 1.5, borderColor: '#1A1A1A', resizeMode: 'contain' as any, objectPosition: 'center' } as React.CSSProperties,
-  imagePlaceholder: { width: 120, height: 140, borderRadius: 12, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#F5F0E0', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
+  imagePlaceholder: { width: 160, minHeight: 140, borderRadius: 12, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#F5F0E0', alignItems: 'center', justifyContent: 'center', padding: 10, gap: 6 } as React.CSSProperties,
   imagePlaceholderIcon: { fontSize: 32 },
-  imagePlaceholderText: { fontSize: 12, color: '#9A9A9A', marginTop: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  imagePlaceholderText: { fontSize: 13, color: '#4A4A4A', marginTop: 4, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   manualImageToggle: { marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F5F0E0', borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
   manualImageToggleText: { fontSize: 11, color: '#4A4A4A', fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   manualImageBox: { backgroundColor: '#FFFACC', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#FFE566' } as React.CSSProperties,
