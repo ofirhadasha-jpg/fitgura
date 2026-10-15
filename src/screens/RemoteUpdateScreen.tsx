@@ -15,7 +15,7 @@ import {
 import { computeAccuracyForGallery } from '../services/sizingService'
 import PhotoGuidanceModal from '../components/PhotoGuidanceModal'
 
-type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'gallery_syncing' | 'success' | 'gallery_success' | 'accepting' | 'accepted' | 'share_error' | 'guest_join' | 'request_join' | 'request_pending'
+type Phase = 'loading' | 'error' | 'ready' | 'scanning' | 'gallery_syncing' | 'success' | 'gallery_success' | 'accepting' | 'accepted' | 'share_error' | 'share_confirm' | 'guest_join' | 'request_join' | 'request_pending'
 
 interface ProfileInfo {
   success: boolean
@@ -112,7 +112,20 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
           setPhase('guest_join')
           return
         }
-        await acceptShare(session.access_token)
+        // Check if user already has grants for this profile
+        const grantedIds = data.grantedProfileIds ?? (data.profile_id ? [data.profile_id] : [])
+        const { data: existingGrants } = await supabase
+          .from('profile_grants')
+          .select('id')
+          .eq('granted_user_id', session.user.id)
+          .in('family_profile_id', grantedIds.filter(Boolean))
+          .limit(1)
+        if (existingGrants && existingGrants.length > 0) {
+          setPhase('accepted')
+          return
+        }
+        // Show confirmation screen instead of auto-accepting
+        setPhase('share_confirm')
       } else if (data.hasPendingRequest) {
         setPhase('request_pending')
       } else {
@@ -484,6 +497,16 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
             <Text style={styles.errorTitle}>הקישור לא תקין</Text>
             <Text style={styles.errorBody}>{errorMsg}</Text>
             <Text style={styles.errorHint}>בקש מבן המשפחה ששלח את הקישור ליצור קישור חדש</Text>
+            <TouchableOpacity
+              onPress={() => {
+                const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
+                window.location.href = baseUrl
+              }}
+              activeOpacity={0.8}
+              style={[styles.confirmBtn, { marginTop: 16 } as React.CSSProperties]}
+            >
+              <Text style={styles.confirmBtnText}>בקש קישור חדש 🔄</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
@@ -649,6 +672,64 @@ export function RemoteUpdateScreen({ token }: { token: string }) {
             <Text style={styles.privacyNote}>
               כש-{inviterName} יאשר/י את הבקשה, תקבל/י גישה לארון המשפחתי ותוכל/י לעדכן מידות ולצפות בפריטים משותפים ✨
             </Text>
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
+  if (phase === 'share_confirm') {
+    const profileCount = profileInfo?.grantedProfileIds?.length ?? 1
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
+          <View style={styles.card}>
+            <View style={styles.headerRow}>
+              <Text style={styles.appTitle}>פיטגורה</Text>
+              <Text style={styles.appSub}>הזמנה לארון המשפחתי</Text>
+            </View>
+
+            <View style={styles.welcomeBanner}>
+              <Text style={styles.welcomeEmoji}>🚀</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.welcomeTitle}>הוזמנת לארון המשפחתי!</Text>
+                <Text style={styles.welcomeText}>
+                  {profileInfo?.sharerName ? `${profileInfo.sharerName} שיתף/ה איתך ` : 'שותף איתך '}
+                  {profileCount} {profileCount === 1 ? 'פרופיל משפחתי' : 'פרופילים משפחתיים'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.privacyBanner}>
+              <Text style={styles.privacyIcon}>🔒</Text>
+              <Text style={styles.privacyText}>
+                לחצי על הכפתור כדי לקבל את הפרופילים המשותפים לחשבון שלך. הפרופילים יתווספו לאפליקציית פיטגורה שלך.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={async () => {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session?.access_token) {
+                  void acceptShare(session.access_token)
+                }
+              }}
+              activeOpacity={0.8}
+              style={styles.confirmBtn}
+            >
+              <Text style={styles.confirmBtnText}>אישור הצטרפות ✂️</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://fitgura.app'
+                window.location.href = baseUrl
+              }}
+              activeOpacity={0.7}
+              style={[styles.confirmBtn, { backgroundColor: '#FFFEF5', borderWidth: 1.5, borderColor: '#9A9A9A', boxShadow: 'none' } as React.CSSProperties]}
+            >
+              <Text style={[styles.confirmBtnText, { color: '#4A4A4A' }]}>חזור לאפליקציה</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>

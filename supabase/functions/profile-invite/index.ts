@@ -261,6 +261,29 @@ Deno.serve(async (req: Request) => {
       }
 
       if (!invite.is_active || invite.used) {
+        // Check if user already has grants — if so, treat as already accepted
+        const grantedIds: string[] = invite.granted_profile_ids || [invite.family_profile_id]
+        const { data: existingGrants } = await supabase
+          .from("profile_grants")
+          .select("id")
+          .eq("granted_user_id", user.id)
+          .in("family_profile_id", grantedIds)
+          .limit(1);
+
+        if (existingGrants && existingGrants.length > 0) {
+          const { data: sharedProfiles } = await supabase
+            .from("family_profiles")
+            .select("id, member_name, category")
+            .in("id", grantedIds);
+          return new Response(JSON.stringify({
+            success: true,
+            sharedProfiles: sharedProfiles || [],
+            alreadyMember: true,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         return new Response(JSON.stringify({ error: "Link already used or inactive" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
