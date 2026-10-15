@@ -381,6 +381,7 @@ export default function App() {
   const [inviteToken, setInviteToken] = useState<string | null>(null)
   const [sharedProductUrl, setSharedProductUrl] = useState<string | null>(null)
   const [clipboardCandidate, setClipboardCandidate] = useState<string | null>(null)
+  const [clipboardProfileId, setClipboardProfileId] = useState('self')
   const lastClipboardValueRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -965,6 +966,7 @@ export default function App() {
 
   function handleClipboardProductAccept() {
     if (!clipboardCandidate) return
+    setActiveProfileId(clipboardProfileId)
     setSharedProductUrl(clipboardCandidate)
     setClipboardCandidate(null)
     setScreen('hub')
@@ -1062,8 +1064,32 @@ export default function App() {
 
         {clipboardCandidate && (
           <View style={styles.clipboardPrompt}>
-            <Text style={styles.clipboardPromptText}>
-              🕵️‍♂️ מצאנו קישור שהעתקת! לנתח מידה עבור {activeProfileName}?
+            <Text style={styles.clipboardPromptText}>🕵️‍♂️ מצאנו קישור שהעתקת! למי לנתח את המידה?</Text>
+            <View style={styles.clipboardProfileRow}>
+              <TouchableOpacity
+                onPress={() => setClipboardProfileId('self')}
+                activeOpacity={0.8}
+                style={[styles.clipboardProfileChip, clipboardProfileId === 'self' && styles.clipboardProfileChipActive]}
+              >
+                <Text style={[styles.clipboardProfileText, clipboardProfileId === 'self' && styles.clipboardProfileTextActive]}>
+                  {user?.name ?? 'אני'}
+                </Text>
+              </TouchableOpacity>
+              {familyMembers.map((member) => (
+                <TouchableOpacity
+                  key={member.id}
+                  onPress={() => setClipboardProfileId(member.id)}
+                  activeOpacity={0.8}
+                  style={[styles.clipboardProfileChip, clipboardProfileId === member.id && styles.clipboardProfileChipActive]}
+                >
+                  <Text style={[styles.clipboardProfileText, clipboardProfileId === member.id && styles.clipboardProfileTextActive]}>
+                    {member.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.clipboardSelectedText}>
+              ינותח עבור: {clipboardProfileId === 'self' ? (user?.name ?? 'אני') : familyMembers.find((member) => member.id === clipboardProfileId)?.name ?? 'אני'}
             </Text>
             <View style={styles.clipboardPromptActions}>
               <TouchableOpacity onPress={handleClipboardProductAccept} activeOpacity={0.8} style={styles.clipboardAcceptBtn}>
@@ -1117,10 +1143,10 @@ const styles = StyleSheet.create({
   } as React.CSSProperties,
   clipboardPrompt: {
     position: 'absolute',
-    bottom: 112,
+    top: 18,
     left: 14,
     right: 14,
-    zIndex: 220,
+    zIndex: 10000,
     backgroundColor: '#FFF8C7',
     borderRadius: 16,
     paddingVertical: 14,
@@ -1138,6 +1164,12 @@ const styles = StyleSheet.create({
     fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive",
     marginBottom: 10,
   },
+  clipboardProfileRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', marginBottom: 6 },
+  clipboardProfileChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 9, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5' } as React.CSSProperties,
+  clipboardProfileChipActive: { borderColor: '#1A1A1A', backgroundColor: '#FFE566' } as React.CSSProperties,
+  clipboardProfileText: { color: '#4A4A4A', fontSize: 13, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  clipboardProfileTextActive: { color: '#1A1A1A' },
+  clipboardSelectedText: { color: '#4A4A4A', fontSize: 12, fontWeight: '700', textAlign: 'right', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", marginBottom: 8 },
   clipboardPromptActions: {
     flexDirection: 'row',
     gap: 8,
