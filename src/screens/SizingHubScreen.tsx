@@ -210,7 +210,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
 
   async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean, overrideImage?: string | null) {
     if (!result) return
-    const savedImage = overrideImage !== undefined ? overrideImage : result.productImage
+    const savedImage = overrideImage ?? result.productImage
     try {
       const { error } = await supabase
         .from('fitted_wardrobe')
