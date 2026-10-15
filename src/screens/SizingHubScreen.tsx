@@ -171,6 +171,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     }
 
     setAnalyzing(true)
+    setUrl('')
 
     try {
       const analysisResult = await analyzeProductUrl(trimmed, activeSizes, accuracy)
