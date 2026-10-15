@@ -153,11 +153,11 @@ export default function SizingResultModal({
   }
 
   function handleSave() {
-    onSave?.(selectedProfileId, isWishlist, normalizedImage)
+    onSave?.(selectedProfileId, isWishlist, normalizedImage ?? overrideImage ?? productImage)
   }
 
   function handleSaveToWardrobe() {
-    onSave?.(selectedProfileId, false, normalizedImage)
+    onSave?.(selectedProfileId, false, normalizedImage ?? overrideImage ?? productImage)
   }
 
   function handleManualFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
