@@ -21,6 +21,15 @@ function formatPrice(price: number | null | undefined, currency?: string): strin
   return `${symbol}${displayPrice.toLocaleString()}`
 }
 
+function normalizeImageUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (trimmed.startsWith('//')) return `https:${trimmed}`
+  if (trimmed.startsWith('http://')) return trimmed.replace('http://', 'https://')
+  return trimmed.startsWith('https://') ? trimmed : null
+}
+
 const FOOTWEAR_RE = /\b(shoe|shoes|sneaker|sneakers|boot|boots|heel|heels|sandal|sandals|slipper|slippers|footwear|pump|pumps|loafer|loafers|wedge|wedges|נעל|נעליים|סניקרס|מגף|מגפיים|סנדל|סנדלים)\b/i
 const DEVICE_RE = /\b(phone|mobile|tablet|ipad|iphone|android|laptop|desktop|computer|watch|case|cover|protector|charger|charging|cable|adapter|strap|band|holder|stand|dock|keyboard|mouse|screen)\b/i
 
@@ -287,14 +296,21 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
           {/* A. Primary verified offer (SHEIN) */}
           {primaryOffer && (
             <View style={modalStyles.primaryOfferContainer}>
-              <View style={modalStyles.primaryOfferInfo}>
-                <Text style={modalStyles.primaryOfferPlatform}>
-                  {PLATFORM_LOGOS[primaryOffer.platform] ?? '🛍️'}{' '}
-                  {primaryOffer.label}
-                </Text>
-                <Text style={modalStyles.primaryOfferPrice}>
-                  {formatPrice(primaryOffer.price, primaryOffer.currency)}
-                </Text>
+              <View style={modalStyles.primaryOfferRow}>
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={modalStyles.offerThumbnail}
+                  accessibilityLabel={`תמונה של ${product.name}`}
+                />
+                <View style={modalStyles.primaryOfferInfo}>
+                  <Text style={modalStyles.primaryOfferPlatform}>
+                    {PLATFORM_LOGOS[primaryOffer.platform] ?? '🛍️'}{' '}
+                    {primaryOffer.label}
+                  </Text>
+                  <Text style={modalStyles.primaryOfferPrice}>
+                    {formatPrice(primaryOffer.price, primaryOffer.currency)}
+                  </Text>
+                </View>
               </View>
               <TouchableOpacity
                 onPress={handlePrimaryBuy}
@@ -337,13 +353,20 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
                   accessibilityLabel={`שווה בדיקה ב${offer.label}`}
                 >
                   <View style={modalStyles.secondaryOfferInfo}>
-                    <Text style={modalStyles.secondaryOfferPlatform}>
-                      {PLATFORM_LOGOS[offer.platform] ?? '🛍️'}{' '}
-                      {offer.label}
-                    </Text>
-                    <Text style={modalStyles.secondaryOfferPrice}>
-                      {formatPrice(offer.price, offer.currency)}
-                    </Text>
+                    <Image
+                      source={{ uri: normalizeImageUrl(exactMatches[idx]?.imageUrl) ?? imageUrl }}
+                      style={modalStyles.offerThumbnailSmall}
+                      accessibilityLabel={`תמונה של ${exactMatches[idx]?.name ?? product.name}`}
+                    />
+                    <View style={modalStyles.secondaryOfferText}>
+                      <Text style={modalStyles.secondaryOfferPlatform}>
+                        {PLATFORM_LOGOS[offer.platform] ?? '🛍️'}{' '}
+                        {offer.label}
+                      </Text>
+                      <Text style={modalStyles.secondaryOfferPrice}>
+                        {formatPrice(offer.price, offer.currency)}
+                      </Text>
+                    </View>
                   </View>
                   <View style={[
                     modalStyles.secondaryOfferBtn,
@@ -412,7 +435,10 @@ const modalStyles = StyleSheet.create({
   // ── Multi-offer styles ──
   offerArea: { marginTop: 8, gap: 10 },
   primaryOfferContainer: { backgroundColor: '#FFFEF5', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '2px 2px 0 #FFE566' } as React.CSSProperties,
-  primaryOfferInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  primaryOfferRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  offerThumbnail: { width: 54, height: 54, borderRadius: 8, backgroundColor: '#F5F0E0', borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  offerThumbnailSmall: { width: 40, height: 40, borderRadius: 7, backgroundColor: '#FFFEF5', borderWidth: 1, borderColor: '#9A9A9A' } as React.CSSProperties,
+  primaryOfferInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   primaryOfferPlatform: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   primaryOfferPrice: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   primaryOfferBtn: { backgroundColor: '#00FF66', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
@@ -423,6 +449,7 @@ const modalStyles = StyleSheet.create({
   secondaryOfferRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F5F0E0', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: '#9A9A9A', minHeight: 44 } as React.CSSProperties,
   secondaryOfferRowSelected: { borderWidth: 2, borderColor: '#1A1A1A', backgroundColor: '#FFFACC' } as React.CSSProperties,
   secondaryOfferInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  secondaryOfferText: { flexShrink: 1 },
   secondaryOfferPlatform: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   secondaryOfferPrice: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   secondaryOfferBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1.5, borderColor: '#1A1A1A', backgroundColor: '#FFFEF5' } as React.CSSProperties,
