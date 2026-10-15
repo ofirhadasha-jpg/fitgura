@@ -5,7 +5,7 @@ import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS } from '../services/mu
 import { calculateDetailedRecommendation, type SizeRecommendation } from '../utils/exactSizeMatcher'
 import { type SizePill } from '../utils/sizeConverter'
 import { ProductDetailModal } from './ProductDetailModal'
-import { resolveProductImage } from '../utils/productImages'
+import { normalizeProductImageUrl } from '../utils/productImages'
 import { captureClickPos, type AnchorPos } from '../utils/popupPosition'
 
 function formatPrice(price: number | null | undefined, currency?: string): string {
@@ -60,9 +60,7 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   const [detailAnchorPos, setDetailAnchorPos] = useState<AnchorPos>(null)
   const [imgError, setImgError] = useState(false)
 
-  const rawImageUrl = normalizeProductImageUrl(product.img)
-  const fallbackUrl = resolveProductImage(product.img, category, product.name)
-  const imageUrl = rawImageUrl ?? fallbackUrl
+  const imageUrl = normalizeProductImageUrl(product.img)
 
   const effectiveCategory = detectEffectiveCategory(product.name, category)
   const isDeviceAccessory = effectiveCategory === 'accessories'
@@ -88,18 +86,16 @@ export default function ProductCard({ product, inWishlist, onToggleWishlist, sca
   return (
     <View style={cardStyles.productCard} className="product-card">
       <View style={cardStyles.productImageWrap}>
-        {imgError ? (
-          <Image
-            source={{ uri: fallbackUrl }}
-            style={cardStyles.productImage}
-            onError={() => {}}
-          />
-        ) : (
+        {imageUrl && !imgError ? (
           <Image
             source={{ uri: imageUrl }}
             style={cardStyles.productImage}
             onError={() => setImgError(true)}
           />
+        ) : (
+          <View style={[cardStyles.productImage, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E0' }]}>
+            <Text style={{ fontSize: 28 }}>📸</Text>
+          </View>
         )}
         <TouchableOpacity
           onPress={() => onToggleWishlist()}

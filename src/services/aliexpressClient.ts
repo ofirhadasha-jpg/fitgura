@@ -1,7 +1,6 @@
 import { fetchAliExpressProducts, fetchProductDetails, generateAffiliateLink as fetchAffiliateLink } from '../lib/aliexpress'
 import type { Product, AgeGroup } from '../types'
 import type { AffiliateAdapter, AdapterSearchParams, AdapterQueryParams, AdapterDeviceParams, AliExpressCredentials } from './adapterTypes'
-import { getFallbackImage } from '../utils/productImages'
 import { ageGroupToDemographic, getDemographicAnchorQuery, scoreProductForDemographic, DEMOGRAPHIC_REJECT } from './demographicQuery'
 
 export type Gender = 'male' | 'female' | 'unisex'

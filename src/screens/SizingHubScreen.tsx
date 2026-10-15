@@ -7,7 +7,7 @@ import GalleryPreviewModal, { type PreviewablePhoto } from '../components/Galler
 import type { Screen, User, ScannedSizes, ScanEntry, Product, FamilyMember, AgeGroup } from '../types'
 import { supabase } from '../lib/supabase'
 import SizingResultModal, { type WardrobeItem, type FitBreakdown, decodeHtmlEntities } from '../components/SizingResultModal'
-import { normalizeProductImageUrl, getFallbackImage } from '../utils/productImages'
+import { normalizeProductImageUrl } from '../utils/productImages'
 
 import { analyzeProductUrl } from '../services/analyzeProductUrl'
 import { runGalleryScan, persistSizingToSupabase, type MergedSizingResult } from '../services/sizingService'
@@ -22,9 +22,8 @@ function wrapAffiliateUrl(url: string): string {
   return ensureAffiliateWrapped(url)
 }
 
-function ProductThumbWithFallback({ imageUrl, fallback, style, placeholderStyle }: {
+function ProductThumbWithFallback({ imageUrl, style, placeholderStyle }: {
   imageUrl: string
-  fallback: string
   style: React.CSSProperties
   placeholderStyle: React.CSSProperties
 }) {
@@ -32,7 +31,7 @@ function ProductThumbWithFallback({ imageUrl, fallback, style, placeholderStyle 
   if (error) {
     return (
       <View style={placeholderStyle}>
-        <Image source={{ uri: fallback }} style={style} onError={() => {}} />
+        <Text style={{ fontSize: 22 }}>📸</Text>
       </View>
     )
   }
@@ -729,7 +728,6 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
                             return (
                               <ProductThumbWithFallback
                                 imageUrl={normalized}
-                                fallback={getFallbackImage('clothing', item.productName)}
                                 style={styles.wardrobeThumb}
                                 placeholderStyle={styles.wardrobeThumbPlaceholder}
                               />

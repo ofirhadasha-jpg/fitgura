@@ -5,7 +5,7 @@ import { calculateDetailedRecommendation, type SellerSizeEntry, type SizeRecomme
 import { type SizePill } from '../utils/sizeConverter'
 import { logAffiliateClick } from '../services/analyticsService'
 import { PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_LOGOS, isDirectPdpUrl } from '../services/multiPlatformService'
-import { resolveProductImage, getFallbackImage } from '../utils/productImages'
+import { normalizeProductImageUrl } from '../utils/productImages'
 import { searchAllVisualMatches, getMissingPlatforms, getFallbackSearchUrl } from '../services/imageSearch'
 import { wrapWithSkimlinks } from '../utils/skimlinks'
 import type { ExactVisualMatch } from '../services/adapterTypes'
@@ -102,10 +102,8 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
 
   if (!visible) return null
 
-  // Image: always resolve to a valid URL — never show a box placeholder
-  const fallbackUrl = getFallbackImage(category, product.name)
-  const primaryImageUrl = resolveProductImage(product.img, category, product.name)
-  const imageUrl = imgError ? fallbackUrl : primaryImageUrl
+  const primaryImageUrl = normalizeProductImageUrl(product.img)
+  const imageUrl = imgError ? null : primaryImageUrl
 
   const accessory = isAccessory(product.name, category)
   const recommendedSize: SizeRecommendation | null = accessory ? null : calculateDetailedRecommendation(scannedSizes, sellerSizeChart, category, product.name, product.availableSizes ?? [])
@@ -199,13 +197,19 @@ export function ProductDetailModal({ product, scannedSizes, category, sellerSize
         </TouchableOpacity>
 
         <ScrollView style={modalStyles.scrollArea} contentContainerStyle={modalStyles.scrollContent}>
-          {/* ── Product image (never shows box placeholder) ── */}
+          {/* ── Product image (shows placeholder if no image available) ── */}
           <View style={modalStyles.imageWrap}>
-            <Image
-              source={{ uri: imageUrl }}
-              style={modalStyles.productImage}
-              onError={() => setImgError(true)}
-            />
+            {imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={modalStyles.productImage}
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <View style={[modalStyles.productImage, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E0' }]}>
+                <Text style={{ fontSize: 28 }}>📸</Text>
+              </View>
+            )}
           </View>
 
           {/* ── Title, brand badge, price tags (PRESERVED) ── */}
