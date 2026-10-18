@@ -296,6 +296,12 @@ export default function SizingResultModal({
           <Text style={[styles.matchPct, { color: matchColor }]}>{matchPercentage >= 90 ? `מידה ${recommendedSize} תונח עלייך מושלם` : `${matchPercentage}% התאמה`}</Text>
         </View>
 
+        <View style={styles.disclaimerBox}>
+          <Text style={styles.disclaimerText}>
+            {"\u05e9\u05d9\u05de\u05d5 \u05dc\u05d1: \u05e4\u05d9\u05d8\u05d2\u05d5\u05e8\u05d4 \u05de\u05e1\u05e4\u05e7\u05ea \u05d4\u05de\u05dc\u05e6\u05ea \u05de\u05d9\u05d3\u05d4 \u05de\u05d1\u05d5\u05e1\u05e1\u05ea AI \u05d5\u05e0\u05ea\u05d5\u05e0\u05d9\u05dd \u05d1\u05dc\u05d1\u05d3. \u05d4\u05d4\u05d7\u05dc\u05d8\u05d4 \u05d4\u05e1\u05d5\u05e4\u05d9\u05ea \u05d5\u05d4\u05e8\u05db\u05d9\u05e9\u05d4 \u05d4\u05df \u05d1\u05d0\u05d7\u05e8\u05d9\u05d5\u05ea \u05d4\u05de\u05e9\u05ea\u05de\u05e9/\u05ea."}
+          </Text>
+        </View>
+
         {fitBreakdown && (
           <View style={styles.breakdownSection}>
             <Text style={styles.breakdownTitle}>פירוט התאמה</Text>
@@ -514,4 +520,6 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.5 },
   fitBadge: { backgroundColor: '#00CC52', borderRadius: 10, paddingVertical: 4, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#1A1A1A', marginTop: 8, alignSelf: 'center' },
   fitBadgeText: { fontSize: 13, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  disclaimerBox: { backgroundColor: '#FFFACC', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 14, borderWidth: 1, borderColor: '#FFE566' } as React.CSSProperties,
+  disclaimerText: { fontSize: 11, lineHeight: 16, color: '#4A4A4A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })

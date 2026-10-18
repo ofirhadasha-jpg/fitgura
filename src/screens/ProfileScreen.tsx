@@ -2224,6 +2224,12 @@ export function ProfileScreen({ onNav, user, onSignOut, detectedDevice, scannedS
         }}
       />
 
+      <View style={profStyles.legalNotice}>
+        <Text style={profStyles.legalNoticeText}>
+          {"\u05d4\u05e9\u05d9\u05e8\u05d5\u05ea \u05d5\u05d4\u05de\u05dc\u05e6\u05d5\u05ea \u05d4\u05de\u05d9\u05d3\u05d4 \u05d1\u05e4\u05d9\u05d8\u05d2\u05d5\u05e8\u05d4 \u05e0\u05d9\u05ea\u05e0\u05d9\u05dd \u05db\u05d4\u05de\u05dc\u05e6\u05d4 \u05d1\u05dc\u05d1\u05d3 (As-Is). \u05e4\u05d9\u05d8\u05d2\u05d5\u05e8\u05d4 \u05d0\u05d9\u05e0\u05d4 \u05e0\u05d5\u05e9\u05d0\u05ea \u05d1\u05d0\u05d7\u05e8\u05d9\u05d5\u05ea \u05dc\u05de\u05d9\u05d3\u05d5\u05ea \u05d4\u05de\u05d5\u05e6\u05e8\u05d9\u05dd \u05e9\u05e0\u05e8\u05db\u05e9\u05d5 \u05d1\u05e4\u05d5\u05e2\u05dc \u05d1\u05d7\u05e0\u05d5\u05d9\u05d5\u05ea \u05d4\u05e9\u05d5\u05e0\u05d5\u05ea."}
+        </Text>
+      </View>
+
       <BottomNav current="profile" onNav={onNav} isAdmin={user?.is_admin === true} />
     </View>
   )
@@ -2515,6 +2521,8 @@ const profStyles = StyleSheet.create({
   memberPhotoSourceIcon: { fontSize: 24 },
   memberPhotoSourceText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   memberPhotoSourceSub: { fontSize: 10, color: '#4A4A4A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  legalNotice: { paddingHorizontal: 20, paddingVertical: 14, marginTop: 12, backgroundColor: '#FFFACC', borderRadius: 10, borderWidth: 1, borderColor: '#FFE566' } as React.CSSProperties,
+  legalNoticeText: { fontSize: 11, lineHeight: 17, color: '#4A4A4A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   dateInput: { padding: '11px 12px', borderRadius: 8, borderWidth: 1.5, borderStyle: 'solid', borderColor: '#9A9A9A', fontSize: 14, backgroundColor: '#FFFEF5', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", width: '100%' } as React.CSSProperties,
   memberFormError: { fontSize: 12, color: '#B91C1C', fontWeight: '600', paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#FEF2F2', borderRadius: 8, borderWidth: 1, borderColor: '#FCA5A5', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })
