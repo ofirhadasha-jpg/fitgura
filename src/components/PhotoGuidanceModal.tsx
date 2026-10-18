@@ -53,7 +53,7 @@ export default function PhotoGuidanceModal({ visible, onContinue, onClose }: Pho
         </View>
 
         <TouchableOpacity onPress={onContinue} activeOpacity={0.8} style={styles.cta}>
-          <Text style={styles.ctaText}>הבנתי, בחר תמונה מהגלריה 🖼️</Text>
+          <Text style={styles.ctaText}>הבנתי, אפשר להתקדם 🚀</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.cancelBtn}>
           <Text style={styles.cancelText}>ביטול</Text>
