@@ -122,12 +122,24 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   }, [user?.id])
 
   const loadWardrobe = useCallback(async () => {
+    if (!user) {
+      setWardrobe([])
+      return
+    }
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('fitted_wardrobe')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(20)
+
+      // When a specific family profile is active, filter to that profile's items only
+      if (currentProfileId !== 'self') {
+        query = query.eq('profile_id', currentProfileId)
+      }
+
+      const { data, error } = await query
       if (error || !data) return
       setWardrobe(data.map((row: Record<string, unknown>) => ({
         id: row.id as string,
@@ -147,9 +159,14 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     } catch {
       // Non-fatal
     }
-  }, [])
+  }, [user, currentProfileId])
 
   useEffect(() => { void loadWardrobe() }, [loadWardrobe])
+
+  // Reset wardrobe filter when the active profile changes
+  useEffect(() => {
+    setWardrobeFilter('all')
+  }, [currentProfileId])
 
   useEscToDismiss(!!deleteTarget, () => setDeleteTarget(null))
   useEscToDismiss(showPermissionModal, () => setShowPermissionModal(false))
