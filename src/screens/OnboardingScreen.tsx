@@ -188,6 +188,26 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
     e.target.value = ''
   }
 
+  function continueWithoutScan() {
+    const metrics = computeBodyMetricsFromHeightWeight(Number(baseHeight) || 175, Number(baseWeight) || 75, null)
+    const fallback: ScannedSizes = {
+      sizing: { top: baseTopSize, bottom: baseBottomSize, fit: baseFit, bodyFrame: 'Medium', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: metrics },
+      style: { primaryStyle: 'Casual', secondaryStyle: 'Urban', dominantColors: [], patternPreference: 'Solid', aestheticTags: [] },
+      confidence: 0,
+      preview: '',
+      top: baseTopSize,
+      bottom: baseBottomSize,
+      fit: baseFit,
+      gender: baseGender,
+      ageGroup: 'adult',
+      personBounds: { top: 2, left: 10, width: 80, height: 96 },
+      shoeSize: baseShoeSize,
+    }
+    setSizes(fallback)
+    onScanned(fallback)
+    setStep('gallery-access')
+  }
+
   useEffect(() => {
     void (async () => {
       try {
@@ -441,6 +461,9 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                   <Text style={obStyles.galleryBtnText}>מגלריה</Text>
                 </TouchableOpacity>
               </View>
+              <TouchableOpacity onPress={continueWithoutScan} activeOpacity={0.7} style={obStyles.skipPhotoBtn}>
+                <Text style={obStyles.skipPhotoBtnText}>בפעם אחרת</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={obStyles.scanInfoCard}>
@@ -1299,6 +1322,8 @@ const obStyles = StyleSheet.create({
   cameraBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '700', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   galleryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFEF5', borderWidth: 1.5, borderColor: '#1A1A1A', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 18, boxShadow: '2px 2px 0 #1A1A1A' } as React.CSSProperties,
   galleryBtnText: { color: '#1A1A1A', fontSize: 15, fontWeight: '600', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  skipPhotoBtn: { alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 12 },
+  skipPhotoBtnText: { color: '#6B6B6B', fontSize: 13, textDecorationLine: 'underline', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   scanInfoCard: { backgroundColor: '#FFFEF5', borderRadius: 12, padding: 18, borderWidth: 1.5, borderColor: '#1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' } as React.CSSProperties,
   scanInfoTitle: { fontSize: 15, fontWeight: '700', color: '#4A4A4A', marginBottom: 12, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   scanInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
