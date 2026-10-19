@@ -38,7 +38,7 @@ function ProductThumbWithFallback({ imageUrl, style, placeholderStyle }: {
   return <Image source={{ uri: imageUrl }} style={style} onError={() => setError(true)} />
 }
 
-export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId, focusWishlistProfileId, onWishlistFocusHandled, initialProductUrl, onInitialProductHandled }: {
+export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, scanGallery, setScanGallery, wishlistItems, feedCatalog, budget, onToggleWishlist, familyMembers, activeProfileId, setActiveProfileId, focusWishlistProfileId, onWishlistFocusHandled, initialProductUrl, onInitialProductHandled, onRequestAuth }: {
   onNav: (s: Screen) => void
   user: User | null
   scannedSizes: ScannedSizes | null
