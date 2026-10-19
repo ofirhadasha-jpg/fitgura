@@ -37,6 +37,11 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
   const [baseGender, setBaseGender] = useState<'male' | 'female' | 'unisex'>('unisex')
   const [baseHeight, setBaseHeight] = useState('')
   const [baseWeight, setBaseWeight] = useState('')
+  const [baseTopSize, setBaseTopSize] = useState('S')
+  const [baseBottomSize, setBaseBottomSize] = useState('36')
+  const [baseFit, setBaseFit] = useState('Slim Fit')
+  const [baseShoeSize, setBaseShoeSize] = useState('39')
+  const [baseSizesEditing, setBaseSizesEditing] = useState(false)
   const [faceMissing, setFaceMissing] = useState(false)
   const [faceCheckError, setFaceCheckError] = useState(false)
   const [faceChecking, setFaceChecking] = useState(false)
@@ -127,14 +132,15 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         estimated_height_cm: enteredHeight,
         estimated_weight_kg: enteredWeight,
       }
-      const recommendedSizes = computeRecommendedSizesFromMetrics(preservedMetrics)
       const finalSizes: ScannedSizes = {
         ...aiSizes,
-        top: recommendedSizes.top,
-        bottom: recommendedSizes.bottom,
+        top: baseTopSize,
+        bottom: baseBottomSize,
+        fit: baseFit,
+        shoeSize: baseShoeSize,
         gender: baseGender,
         ageGroup: sizes?.ageGroup ?? aiSizes.ageGroup,
-        sizing: { ...aiSizes.sizing, top: recommendedSizes.top, bottom: recommendedSizes.bottom, bodyMetrics: preservedMetrics },
+        sizing: { ...aiSizes.sizing, top: baseTopSize, bottom: baseBottomSize, fit: baseFit, bodyMetrics: preservedMetrics },
       }
       setSizes(finalSizes)
       onScanned(finalSizes)
@@ -318,6 +324,43 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
               </View>
             </View>
 
+            <View style={obStyles.sizingCard}>
+              <View style={obStyles.sizingHeader}>
+                <Text style={obStyles.sizingTitle}>📐 פרופיל מידות</Text>
+                <TouchableOpacity
+                  onPress={() => setBaseSizesEditing(!baseSizesEditing)}
+                  style={[obStyles.editBtn, baseSizesEditing && obStyles.editBtnActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[obStyles.editBtnText, baseSizesEditing && obStyles.editBtnTextActive]}>{baseSizesEditing ? 'סגור' : 'ערוך מידות'}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={obStyles.sizingGrid}>
+                {[
+                  { label: 'חולצה', value: baseTopSize, options: TOP_SIZES, set: setBaseTopSize },
+                  { label: 'מכנסיים (EU)', value: baseBottomSize, options: BOTTOM_SIZES, set: setBaseBottomSize },
+                  { label: 'גזרה', value: baseFit, options: FIT_TYPES, set: setBaseFit },
+                  { label: 'נעליים', value: baseShoeSize, options: SHOE_SIZES_EU, set: setBaseShoeSize },
+                ].map(({ label, value, options, set }) => (
+                  <View key={label} style={[obStyles.sizeBox, { borderColor: baseSizesEditing ? '#FFE566' : '#9A9A9A', borderWidth: baseSizesEditing ? 2 : 1.5 }]}>
+                    {baseSizesEditing ? (
+                      <View style={obStyles.sizeOptionsCol}>
+                        {options.map((option) => (
+                          <TouchableOpacity key={option} onPress={() => set(option)} activeOpacity={0.7} style={[obStyles.sizeOptionWrap, value === option && obStyles.sizeOptionWrapActive]}>
+                            {value === option && <Text style={obStyles.sizeOptionCheck}>✓</Text>}
+                            <Text style={[obStyles.sizeOption, value === option && obStyles.sizeOptionActive]}>{option}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={obStyles.sizeValue}>{value}</Text>
+                    )}
+                    <Text style={obStyles.sizeLabel}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
             <TouchableOpacity
               onPress={() => {
                 const h = Number(baseHeight) || 175
@@ -325,12 +368,11 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                 const age = Number(baseAge) || 25
                 const ageGroup = age <= 2 ? 'baby' : age <= 5 ? 'toddler' : age <= 12 ? 'child' : age <= 18 ? 'teen' : 'adult'
                 const metrics = computeBodyMetricsFromHeightWeight(h, w, null)
-                const recommendedSizes = computeRecommendedSizesFromMetrics(metrics)
                 const initialSizes: ScannedSizes = {
                   sizing: {
-                    top: recommendedSizes.top,
-                    bottom: recommendedSizes.bottom,
-                    fit: 'Regular',
+                    top: baseTopSize,
+                    bottom: baseBottomSize,
+                    fit: baseFit,
                     bodyFrame: 'Medium',
                     confidence: 0,
                     baselineMatched: false,
@@ -341,13 +383,13 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                   style: { primaryStyle: 'Casual', secondaryStyle: 'Urban', dominantColors: [], patternPreference: 'Solid', aestheticTags: [] },
                   confidence: 0,
                   preview: '',
-                  top: recommendedSizes.top,
-                  bottom: recommendedSizes.bottom,
-                  fit: 'Regular',
+                  top: baseTopSize,
+                  bottom: baseBottomSize,
+                  fit: baseFit,
                   gender: baseGender,
                   ageGroup,
                   personBounds: { top: 2, left: 10, width: 80, height: 96 },
-                  shoeSize: '42',
+                  shoeSize: baseShoeSize,
                 }
                 setSizes(initialSizes)
                 onScanned(initialSizes)
@@ -449,17 +491,16 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                 const fallback: ScannedSizes = {
                   ...(() => {
                     const metrics = computeBodyMetricsFromHeightWeight(Number(baseHeight) || 175, Number(baseWeight) || 75, null)
-                    const recommendedSizes = computeRecommendedSizesFromMetrics(metrics)
-                    return { sizing: { top: recommendedSizes.top, bottom: recommendedSizes.bottom, fit: 'Regular', bodyFrame: 'Medium', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: metrics }, top: recommendedSizes.top, bottom: recommendedSizes.bottom }
+                    return { sizing: { top: baseTopSize, bottom: baseBottomSize, fit: baseFit, bodyFrame: 'Medium', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: metrics }, top: baseTopSize, bottom: baseBottomSize, fit: baseFit, shoeSize: baseShoeSize }
                   })(),
                   style: { primaryStyle: 'Casual', secondaryStyle: 'Urban', dominantColors: [], patternPreference: 'Solid', aestheticTags: [] },
                   confidence: 0,
                   preview: '',
-                  fit: 'Regular',
+                  fit: baseFit,
                   gender: baseGender,
                   ageGroup: 'adult',
                   personBounds: { top: 2, left: 10, width: 80, height: 96 },
-                  shoeSize: '42',
+                  shoeSize: baseShoeSize,
                 }
                 setSizes(fallback)
                 onScanned(fallback)
