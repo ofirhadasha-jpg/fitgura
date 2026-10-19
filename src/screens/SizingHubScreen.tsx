@@ -230,7 +230,10 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean, overrideImage?: string | null) {
     if (!result) return
     const savedImage = overrideImage ?? result.productImage
-    if (!user) {
+
+    const { data: { session } } = await supabase.auth.getSession()
+    const activeUserId = session?.user?.id ?? user?.id ?? null
+    if (!activeUserId) {
       localStorage.setItem('fitgura_pending_guest_wardrobe', JSON.stringify({
         product_url: result.originalUrl,
         product_name: result.productName,
@@ -245,6 +248,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         is_wishlist: isWishlist ?? false,
       }))
       setResult((prev) => prev ? { ...prev, visible: false } : null)
+      setWardrobeToast('יש להתחבר או להירשם (למשל דרך Google) כדי לשמור פריטים לארון האישי שלך 👕✨')
+      setTimeout(() => setWardrobeToast(null), 4000)
       onRequestAuth?.()
       return
     }
@@ -261,12 +266,14 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           match_percentage: result.matchPercentage,
           fit_breakdown: result.fitBreakdown,
           affiliate_url: result.affiliateUrl,
-          user_id: user?.id ?? null,
+          user_id: activeUserId,
           profile_id: profileId === 'self' ? null : profileId,
           is_wishlist: isWishlist ?? false,
         })
       if (error) {
         console.error('[SizingHub] Save failed:', error)
+        setWardrobeToast('השמירה נכשלה. נסה שוב מאוחר יותר.')
+        setTimeout(() => setWardrobeToast(null), 3000)
       } else {
         void loadWardrobe()
         const profileName = profileId === 'self' ? (user?.name ?? 'אני') : (familyMembers?.find((m) => m.id === profileId)?.name ?? 'פרופיל')
@@ -275,6 +282,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
       }
     } catch (err) {
       console.error('[SizingHub] Save error:', err)
+      setWardrobeToast('השמירה נכשלה. נסה שוב מאוחר יותר.')
+      setTimeout(() => setWardrobeToast(null), 3000)
     }
     setResult((prev) => prev ? { ...prev, visible: false } : null)
   }
