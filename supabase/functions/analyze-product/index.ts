@@ -267,6 +267,25 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
     }
   }
 
+  const textSizeRegex = /\b\d{1,2}Y\s*(?:\(\s*\d{3}\s*[-–~]\s*\d{3}\s*cm\s*\))?/gi
+  let textSizeMatch: RegExpExecArray | null
+  while ((textSizeMatch = textSizeRegex.exec(html)) !== null) {
+    const text = textSizeMatch[0].replace(/\s+/g, " ").trim()
+    if (!seenSizes.has(text.toUpperCase())) {
+      seenSizes.add(text.toUpperCase())
+      availableSizes.push(text)
+      entries.push({ label: text, height_cm: parseHeightRange(text) ?? undefined })
+    }
+  }
+
+  const childSizes = availableSizes.filter((label) => /^\d{1,2}Y\b/i.test(label.trim()))
+  if (childSizes.length >= 2) {
+    return {
+      entries: entries.filter((entry) => /^\d{1,2}Y\b/i.test(entry.label.trim())),
+      availableSizes: childSizes,
+    }
+  }
+
   return { entries, availableSizes }
 }
 

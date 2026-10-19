@@ -1031,7 +1031,7 @@ const styles = StyleSheet.create({
   photoPlaceholderText: { fontSize: 10, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", textAlign: 'center' },
   photoPickerTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   photoPickerSub: { fontSize: 11, color: '#6B6B6B', marginTop: 2, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
-  dateInput: { padding: '11px 12px', borderRadius: 8, borderWidth: 1.5, borderStyle: 'solid', borderColor: '#9A9A9A', fontSize: 14, backgroundColor: '#FFFEF5', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", width: '100%' } as React.CSSProperties,
+  dateInput: { paddingVertical: 11, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, borderStyle: 'solid', borderColor: '#9A9A9A', fontSize: 14, backgroundColor: '#FFFEF5', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", width: '100%' } as React.CSSProperties,
   existingSizesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   sizeChip: { backgroundColor: '#F5F0E0', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: '#9A9A9A', alignItems: 'center' },
   sizeChipLabel: { fontSize: 10, color: '#9A9A9A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },

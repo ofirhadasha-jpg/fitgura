@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   manualImageBox: { backgroundColor: '#FFFACC', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1.5, borderColor: '#FFE566' } as React.CSSProperties,
   manualImageLabel: { fontSize: 12, fontWeight: '700', color: '#4A4A4A', marginBottom: 6, fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   manualImageRow: { flexDirection: 'row', gap: 6, marginBottom: 8 } as React.CSSProperties,
-  manualImageInput: { flex: 1, borderRadius: 8, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5', padding: '8px 10px', fontSize: 13, color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", outline: 'none' } as React.CSSProperties,
+  manualImageInput: { flex: 1, borderRadius: 8, borderWidth: 1.5, borderColor: '#9A9A9A', backgroundColor: '#FFFEF5', paddingVertical: 8, paddingHorizontal: 10, fontSize: 13, color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive", outlineStyle: 'none' } as React.CSSProperties,
   manualImageBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#00CC52', borderWidth: 1.5, borderColor: '#1A1A1A' } as React.CSSProperties,
   manualImageBtnText: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   manualUploadBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#E0F2FE', borderWidth: 1.5, borderColor: '#0891B2', alignItems: 'center' } as React.CSSProperties,

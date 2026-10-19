@@ -34,7 +34,7 @@ interface EdgeFunctionResponse {
 async function generateUrlHash(url: string): Promise<string> {
   try {
     const encoder = new TextEncoder()
-    const data = encoder.encode(url)
+    const data = encoder.encode(`product-analysis-v2:${url}`)
     const hashBuffer = await crypto.subtle.digest('SHA-256', data)
     return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('')
   } catch {
