@@ -81,6 +81,7 @@ interface SizingResultModalProps {
   category?: string
   profileAgeGroup?: AgeGroup
   productAgeRange?: 'adult' | 'children' | 'unknown'
+  fitExplanation?: string
 }
 
 export default function SizingResultModal({
@@ -107,6 +108,7 @@ export default function SizingResultModal({
   category = 'clothing',
   profileAgeGroup,
   productAgeRange = 'unknown',
+  fitExplanation,
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
   const [isWishlist, setIsWishlist] = useState(false)
@@ -148,6 +150,9 @@ export default function SizingResultModal({
   const selectedProfile = profileOptions.find((p) => p.id === selectedProfileId)
   const isChildProfile = profileAgeGroup === 'baby' || profileAgeGroup === 'toddler' || profileAgeGroup === 'child'
   const profileMismatch = (isChildProfile && productAgeRange === 'adult') || (!isChildProfile && productAgeRange === 'children')
+  const displayedFitExplanation = fitExplanation && profileName
+    ? fitExplanation.replace(/\)$/, ` של ${profileName})`)
+    : fitExplanation
 
   const saveBtnText = saving
     ? 'שומר...'
@@ -296,6 +301,10 @@ export default function SizingResultModal({
             <Text style={styles.priceText}>{price}</Text>
           )}
         </View>
+
+        {fitExplanation && (
+          <Text style={styles.fitExplanation}>{displayedFitExplanation} 🎯</Text>
+        )}
 
         <View style={[styles.sizeCard, { borderColor: matchColor }]}>
           <Text style={styles.sizeLabel}>המידה המומלצת</Text>
@@ -538,6 +547,7 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.5 },
   fitBadge: { backgroundColor: '#00CC52', borderRadius: 10, paddingVertical: 4, paddingHorizontal: 12, borderWidth: 1.5, borderColor: '#1A1A1A', marginTop: 8, alignSelf: 'center' },
   fitBadgeText: { fontSize: 13, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
+  fitExplanation: { fontSize: 14, lineHeight: 20, color: '#4A4A4A', textAlign: 'center', marginBottom: 10, fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
   disclaimerBox: { backgroundColor: '#FFFACC', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 14, borderWidth: 1, borderColor: '#FFE566' } as React.CSSProperties,
   disclaimerText: { fontSize: 11, lineHeight: 16, color: '#4A4A4A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   mismatchBox: { backgroundColor: '#FFF0F0', borderColor: '#DC2626' },

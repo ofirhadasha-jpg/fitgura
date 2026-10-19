@@ -79,6 +79,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     originalUrl: string
     profileAgeGroup: AgeGroup
     productAgeRange: 'adult' | 'children' | 'unknown'
+    fitExplanation: string
   } | null>(null)
   const [resultProfileName, setResultProfileName] = useState<string | null>(null)
   const [resultDefaultProfileId, setResultDefaultProfileId] = useState<string | null>(null)
@@ -212,6 +213,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         originalUrl: trimmed,
         profileAgeGroup: analysisResult.profileAgeGroup,
         productAgeRange: analysisResult.productAgeRange,
+        fitExplanation: analysisResult.fitExplanation,
       }
 
       setResult(newResult)
@@ -369,6 +371,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           fitBreakdown: reanalysis.fitBreakdown,
           profileAgeGroup: reanalysis.profileAgeGroup,
           productAgeRange: reanalysis.productAgeRange,
+          fitExplanation: reanalysis.fitExplanation,
         } : null)
       } catch (err) {
         console.error('[SizingHub] Recalculation for self failed:', err)
@@ -1010,6 +1013,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           recalculating={recalculating}
           profileAgeGroup={result.profileAgeGroup}
           productAgeRange={result.productAgeRange}
+          fitExplanation={result.fitExplanation}
         />
       )}
 

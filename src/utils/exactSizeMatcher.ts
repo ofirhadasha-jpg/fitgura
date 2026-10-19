@@ -93,7 +93,12 @@ function inRange(value: number, range: [number, number]): boolean {
 function heightRangeForLabel(label: string): [number, number] | null {
   const explicitRange = label.match(/(\d{3})\s*[-–~]\s*(\d{3})\s*cm/i)
   if (explicitRange) return [Number(explicitRange[1]), Number(explicitRange[2])]
-  const ageMatch = label.match(/\b(\d{1,2})Y\b/i)
+  const numericHeight = label.match(/^(\d{2,3})(?=\s*(?:\(|$))/)
+  if (numericHeight) {
+    const height = Number(numericHeight[1])
+    return [height - 5, height + 5]
+  }
+  const ageMatch = label.match(/\b(\d{1,2})(?:Y|T)\b/i)
   if (!ageMatch) return null
   const age = Number(ageMatch[1])
   return [age * 6 + 74, age * 6 + 80]
@@ -201,6 +206,14 @@ export function calculateRecommendedSize(
       return range ? inRange(height, range) : false
     })
     if (availableHeightMatch) return availableHeightMatch
+
+    const numericCandidates = availableSizes
+      .map((label) => ({ label, height: Number(label.match(/^(\d{2,3})/)?.[1] ?? NaN) }))
+      .filter((candidate) => Number.isFinite(candidate.height))
+      .sort((a, b) => a.height - b.height)
+    const nextSize = numericCandidates.find((candidate) => candidate.height >= height)
+    if (nextSize) return nextSize.label
+    if (numericCandidates.length > 0) return numericCandidates[numericCandidates.length - 1].label
   }
 
   // Always derive body measurements from the scanned size labels.

@@ -19,6 +19,7 @@ export interface ProductAnalysisResult {
   availableSizes: string[]
   profileAgeGroup: AgeGroup
   productAgeRange: 'adult' | 'children' | 'unknown'
+  fitExplanation: string
 }
 
 interface EdgeFunctionResponse {
@@ -208,6 +209,11 @@ export async function analyzeProductUrl(
   )
   const recommendedSize = matchedSize ?? analysis.availableSizes[0] ?? 'לא נמצאה מידה'
   const productAgeRange = inferProductAgeRange(analysis.availableSizes, analysis.sizeChart)
+  const height = userSizes.sizing.bodyMetrics?.estimated_height_cm
+  const profileSize = userSizes.sizing.top || userSizes.sizing.bottom
+  const fitExplanation = height != null
+    ? `מידה מומלצת: ${recommendedSize} (מותאם לגובה ${height} ס"מ ומידה ${profileSize})`
+    : `מידה מומלצת: ${recommendedSize} (מותאם למידה ${profileSize})`
 
   const fitBreakdown = computeFitBreakdown(userSizes, analysis.sizeChart, recommendedSize)
   const matchPercentage = computeMatchPercentage(fitBreakdown, profileAccuracy)
@@ -225,13 +231,14 @@ export async function analyzeProductUrl(
     availableSizes: analysis.availableSizes,
     profileAgeGroup: userSizes.ageGroup,
     productAgeRange,
+    fitExplanation,
   }
 }
 
 function inferProductAgeRange(availableSizes: string[], sellerMetadata: SellerSizeEntry[]): 'adult' | 'children' | 'unknown' {
   const labels = [...availableSizes, ...sellerMetadata.map((entry) => entry.label)]
   if (labels.length === 0) return 'unknown'
-  const childCount = labels.filter((label) => /\b\d{1,2}Y\b/i.test(label) || /\b(?:7[0-9]|[89][0-9]|1[0-7][0-9])\s*cm\b/i.test(label) || /^\d{2,3}$/.test(label.trim()) && Number(label) >= 70 && Number(label) <= 170).length
+  const childCount = labels.filter((label) => /\b\d{1,2}Y\b/i.test(label) || /\b(?:7[0-9]|[89][0-9]|1[0-7][0-9])\s*cm\b/i.test(label) || /^\d{2,3}$/.test(label.trim()) && Number(label) >= 70 && Number(label) <= 170 || /^\d{2,3}\s*\([^)]*[TY]/i.test(label.trim())).length
   const adultCount = labels.filter((label) => /^(?:XXS|XS|S|M|L|XL|XXL|\d{2})$/i.test(label.trim()) && !(/^\d+$/.test(label.trim()) && Number(label) >= 70 && Number(label) <= 170)).length
   if (childCount > adultCount && childCount > 0) return 'children'
   if (adultCount > childCount && adultCount > 0) return 'adult'

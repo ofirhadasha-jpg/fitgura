@@ -118,14 +118,19 @@ function parseRange(text: string): [number, number] | null {
 function parseHeightRange(text: string): [number, number] | null {
   const heightRange = text.match(/(\d{3})\s*[-–~]\s*(\d{3})\s*cm/i)
   if (heightRange) return [Number(heightRange[1]), Number(heightRange[2])]
-  const ageMatch = text.match(/\b(\d{1,2})Y\b/i)
+  const numericHeight = text.match(/^(\d{2,3})(?=\s*(?:\(|$))/)
+  if (numericHeight) {
+    const height = Number(numericHeight[1])
+    return [height - 5, height + 5]
+  }
+  const ageMatch = text.match(/\b(\d{1,2})(?:Y|T)\b/i)
   if (!ageMatch) return null
   const age = Number(ageMatch[1])
   return [age * 6 + 74, age * 6 + 80]
 }
 
 function isSizeLabel(label: string): boolean {
-  return /^(?:(?:xxs|xs|s|m|l|xl|xxl|2xl|3xl|4xl|\d{2,3}|\d{1,2}y(?:\s*\(\s*\d{3}\s*[-–~]\s*\d{3}\s*cm\s*\))?|one size))$/i.test(label.trim())
+  return /^(?:(?:xxs|xs|s|m|l|xl|xxl|2xl|3xl|4xl|\d{2,3}(?:\s*\([^)]{1,16}\))?|\d{1,2}y(?:\s*\(\s*\d{3}\s*[-–~]\s*\d{3}\s*cm\s*\))?|one size))$/i.test(label.trim())
 }
 
 function detectCategory(name: string): string {
@@ -267,7 +272,7 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
     }
   }
 
-  const textSizeRegex = /\b\d{1,2}Y\s*(?:\(\s*\d{3}\s*[-–~]\s*\d{3}\s*cm\s*\))?/gi
+  const textSizeRegex = /\b(?:\d{1,2}Y\s*(?:\(\s*\d{3}\s*[-–~]\s*\d{3}\s*cm\s*\))?|\d{2,3}\s*\(\s*\d{1,2}(?:-\d{1,2})?[TY]\s*\))/gi
   let textSizeMatch: RegExpExecArray | null
   while ((textSizeMatch = textSizeRegex.exec(html)) !== null) {
     const text = textSizeMatch[0].replace(/\s+/g, " ").trim()
@@ -278,10 +283,11 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
     }
   }
 
-  const childSizes = availableSizes.filter((label) => /^\d{1,2}Y\b/i.test(label.trim()))
+  const childSizePattern = /^(?:\d{1,2}Y\b|\d{2,3}\s*\([^)]*[TY])/i
+  const childSizes = availableSizes.filter((label) => childSizePattern.test(label.trim()))
   if (childSizes.length >= 2) {
     return {
-      entries: entries.filter((entry) => /^\d{1,2}Y\b/i.test(entry.label.trim())),
+      entries: entries.filter((entry) => childSizePattern.test(entry.label.trim())),
       availableSizes: childSizes,
     }
   }
