@@ -81,6 +81,7 @@ interface SizingResultModalProps {
   category?: string
   profileAgeGroup?: AgeGroup
   productAgeRange?: 'adult' | 'children' | 'unknown'
+  productDemographic?: 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
   fitExplanation?: string
 }
 
@@ -108,6 +109,7 @@ export default function SizingResultModal({
   category = 'clothing',
   profileAgeGroup,
   productAgeRange = 'unknown',
+  productDemographic = 'unknown',
   fitExplanation,
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
@@ -150,8 +152,20 @@ export default function SizingResultModal({
   const selectedProfile = profileOptions.find((p) => p.id === selectedProfileId)
   const isChildProfile = profileAgeGroup === 'baby' || profileAgeGroup === 'toddler' || profileAgeGroup === 'child'
   const profileMismatch = (isChildProfile && productAgeRange === 'adult') || (!isChildProfile && productAgeRange === 'children')
+  const mismatchLabel = productDemographic === 'children'
+    ? 'ילדים'
+    : productDemographic === 'women'
+      ? 'נשים'
+      : productDemographic === 'men'
+        ? 'גברים'
+        : productDemographic === 'unisex-adult'
+          ? 'מבוגרים'
+          : ''
+  const mismatchText = mismatchLabel
+    ? `שימו לב: טווח המידות במוצר זה מיועד ל${mismatchLabel} ואינו תואם את נתוני הפרופיל הנבחר.`
+    : 'המוצר אינו מתאים לנתוני הפרופיל הנבחר (טווח מידות ילדים בלבד)'
   const displayedFitExplanation = fitExplanation && profileName
-    ? fitExplanation.replace(/\)$/, ` של ${profileName})`)
+    ? fitExplanation.replaceAll('של הפרופיל הנבחר', `של ${profileName}`)
     : fitExplanation
 
   const saveBtnText = saving
@@ -324,7 +338,7 @@ export default function SizingResultModal({
         {profileMismatch && (
           <View style={[styles.disclaimerBox, styles.mismatchBox]}>
             <Text style={styles.mismatchText}>
-              המוצר אינו מתאים לנתוני הפרופיל הנבחר (טווח מידות ילדים בלבד)
+              {mismatchText}
             </Text>
           </View>
         )}

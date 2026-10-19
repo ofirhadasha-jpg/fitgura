@@ -19,6 +19,7 @@ export interface ProductAnalysisResult {
   availableSizes: string[]
   profileAgeGroup: AgeGroup
   productAgeRange: 'adult' | 'children' | 'unknown'
+  productDemographic: 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
   fitExplanation: string
 }
 
@@ -209,11 +210,22 @@ export async function analyzeProductUrl(
   )
   const recommendedSize = matchedSize ?? analysis.availableSizes[0] ?? 'לא נמצאה מידה'
   const productAgeRange = inferProductAgeRange(analysis.availableSizes, analysis.sizeChart)
+  const productDemographic = inferProductDemographic(analysis.availableSizes, analysis.sizeChart, analysis.productName, userSizes)
   const height = userSizes.sizing.bodyMetrics?.estimated_height_cm
   const profileSize = userSizes.sizing.top || userSizes.sizing.bottom
+  const matchedChartEntry = analysis.sizeChart.find((entry) => entry.label === recommendedSize)
+  const profileChest = userSizes.sizing.bodyMetrics?.chest_circumference_cm
+  const chartChest = matchedChartEntry?.chest_cm
+    ? Math.round((matchedChartEntry.chest_cm[0] + matchedChartEntry.chest_cm[1]) / 2)
+    : null
+  const chartReason = chartChest != null && profileChest != null
+    ? `\nהסבר: רוחב חזה בטבלה הינו ${chartChest} ס"מ (מתאים להיקף חזה ${profileChest} ס"מ של הפרופיל הנבחר + מרווח נוחות בגזרה רגילה).`
+    : analysis.sizeChart.length > 0
+      ? '\nהסבר: מבוסס על הצלבת נתוני ההיקפים שלך מול טבלת המידות הרשמית של המוכר.'
+      : ''
   const fitExplanation = height != null
-    ? `מידה מומלצת: ${recommendedSize} (מותאם לגובה ${height} ס"מ ומידה ${profileSize})`
-    : `מידה מומלצת: ${recommendedSize} (מותאם למידה ${profileSize})`
+    ? `מידה מומלצת: ${recommendedSize} (מותאם לגובה ${height} ס"מ ומידה ${profileSize})${chartReason}`
+    : `מידה מומלצת: ${recommendedSize} (מותאם למידה ${profileSize})${chartReason}`
 
   const fitBreakdown = computeFitBreakdown(userSizes, analysis.sizeChart, recommendedSize)
   const matchPercentage = computeMatchPercentage(fitBreakdown, profileAccuracy)
@@ -231,8 +243,34 @@ export async function analyzeProductUrl(
     availableSizes: analysis.availableSizes,
     profileAgeGroup: userSizes.ageGroup,
     productAgeRange,
+    productDemographic,
     fitExplanation,
   }
+}
+
+function inferProductDemographic(
+  availableSizes: string[],
+  sellerMetadata: SellerSizeEntry[],
+  productName: string,
+  userSizes: ScannedSizes,
+): 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown' {
+  const labels = [...availableSizes, ...sellerMetadata.map((entry) => entry.label)]
+  const name = (productName ?? '').toLowerCase()
+  const childCount = labels.filter((label) => /\b\d{1,2}Y\b/i.test(label) || /^\d{2,3}\s*\([^)]*[TY]/i.test(label.trim()) || (/^\d{2,3}$/.test(label.trim()) && Number(label) >= 70 && Number(label) <= 170)).length
+  if (childCount > 0 && childCount >= labels.filter((l) => /^(?:XXS|XS|S|M|L|XL|XXL|2XL|3XL)$/i.test(l.trim())).length) return 'children'
+  const womenKeywords = /(women|woman|female|lady|girls?|dress|skirt|blouse|femme|נשים|אישה|שמלה|חצאית)/i
+  const menKeywords = /(men|man|male|boys?|guy|menswear|גברים|גבר)/i
+  const profileGender = userSizes.gender
+  if (womenKeywords.test(name)) return 'women'
+  if (menKeywords.test(name)) return 'men'
+  // Plus-size or bust-focused charts (cup sizes, D+) indicate women's.
+  const hasLargeBust = sellerMetadata.some((e) => e.chest_cm && e.chest_cm[1] >= 110)
+  const hasSmallNumbers = labels.some((l) => /^(?:3[2-9]|4[0-9])$/i.test(l.trim()))
+  if (profileGender === 'female' && (hasLargeBust || hasSmallNumbers)) return 'women'
+  if (profileGender === 'male' && hasSmallNumbers) return 'men'
+  if (childCount > 0) return 'children'
+  if (labels.some((l) => /^(?:XXS|XS|S|M|L|XL|XXL|2XL|3XL)$/i.test(l.trim()))) return 'unisex-adult'
+  return 'unknown'
 }
 
 function inferProductAgeRange(availableSizes: string[], sellerMetadata: SellerSizeEntry[]): 'adult' | 'children' | 'unknown' {

@@ -12,8 +12,10 @@ interface SizeChartEntry {
   chest_cm?: [number, number]
   waist_cm?: [number, number]
   hips_cm?: [number, number]
+  shoulder_cm?: [number, number]
   length_cm?: number
   foot_length_cm?: [number, number]
+  weight_kg?: [number, number]
 }
 
 interface ProductAnalysis {
@@ -107,12 +109,14 @@ function extractNumber(text: string): number | null {
   return parseFloat(match[1])
 }
 
-function parseRange(text: string): [number, number] | null {
+function parseMeasurementRange(text: string, defaultInches: boolean): [number, number] | null {
   const rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*[-~–]\s*(\d+(?:\.\d+)?)/)
-  if (rangeMatch) return [parseFloat(rangeMatch[1]), parseFloat(rangeMatch[2])]
-  const single = extractNumber(text)
-  if (single != null) return [single - 2, single + 2]
-  return null
+  const single = rangeMatch ? null : extractNumber(text)
+  if (!rangeMatch && single == null) return null
+  const values = rangeMatch ? [Number(rangeMatch[1]), Number(rangeMatch[2])] : [single as number, single as number]
+  const inches = defaultInches || /(?:inch|inches|\bin\b|[\"″])/i.test(text)
+  const converted = inches ? values.map((value) => value * 2.54) : values
+  return rangeMatch ? [converted[0], converted[1]] : [converted[0] - 2, converted[0] + 2]
 }
 
 function parseHeightRange(text: string): [number, number] | null {
@@ -207,15 +211,17 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
     }
     if (rows.length < 2) continue
 
-    const headerCells = extractCellTexts(rows[0])
+    const headerCells = extractCellTexts(rows[0]).map((cell) => cell.toLowerCase())
     const sizeColIdx = headerCells.findIndex((h) =>
       h.includes("size") || h.includes("מידה") || h.includes("尺寸")
     )
     const chestColIdx = headerCells.findIndex((h) => h.includes("chest") || h.includes("bust") || h.includes("חזה") || h.includes("胸"))
     const waistColIdx = headerCells.findIndex((h) => h.includes("waist") || h.includes("מותן") || h.includes("腰"))
     const hipsColIdx = headerCells.findIndex((h) => h.includes("hip") || h.includes("אגן") || h.includes("臀"))
+    const shoulderColIdx = headerCells.findIndex((h) => h.includes("shoulder") || h.includes("כתף") || h.includes("肩"))
     const lengthColIdx = headerCells.findIndex((h) => h.includes("length") || h.includes("אורך") || h.includes("长"))
     const footColIdx = headerCells.findIndex((h) => h.includes("foot") || h.includes("רגל") || h.includes("脚"))
+    const tableUsesInches = /(?:inch|inches|\bin\b|[\"″])/i.test(tableHtml)
 
     const effectiveSizeCol = sizeColIdx >= 0 ? sizeColIdx : 0
 
@@ -234,24 +240,30 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
       const entry: SizeChartEntry = { label }
       const heightRange = parseHeightRange(label)
       if (heightRange) entry.height_cm = heightRange
-      const cols = [chestColIdx, waistColIdx, hipsColIdx, lengthColIdx, footColIdx]
+      const cols = [chestColIdx, waistColIdx, hipsColIdx, shoulderColIdx, lengthColIdx, footColIdx, heightColIdx, weightColIdx]
       const setters = [
         (range: [number, number]) => { entry.chest_cm = range },
         (range: [number, number]) => { entry.waist_cm = range },
         (range: [number, number]) => { entry.hips_cm = range },
+        (range: [number, number]) => { entry.shoulder_cm = range },
         (val: number) => { entry.length_cm = val },
         (range: [number, number]) => { entry.foot_length_cm = range },
+        (range: [number, number]) => { entry.height_cm = range },
+        (range: [number, number]) => { entry.weight_kg = range },
       ]
-      const isLength = [false, false, false, true, false]
+      const isLength = [false, false, false, false, true, false, false, false]
 
       for (let c = 0; c < cols.length; c++) {
         if (cols[c] < 0 || cols[c] >= cells.length) continue
         const val = cells[cols[c]].trim()
         if (isLength[c]) {
           const num = extractNumber(val)
-          if (num != null) setters[c](num as any)
+          if (num != null) {
+            const inches = tableUsesInches || /(?:inch|inches|\bin\b|[\"″])/i.test(val)
+            setters[c]((inches ? num * 2.54 : num) as any)
+          }
         } else {
-          const range = parseRange(val)
+          const range = parseMeasurementRange(val, tableUsesInches)
           if (range) setters[c](range as any)
         }
       }
@@ -271,6 +283,8 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
       }
     }
   }
+
+  extractEmbeddedChartEntries(html, entries, availableSizes, seenSizes)
 
   const textSizeRegex = /\b(?:\d{1,2}Y\s*(?:\(\s*\d{3}\s*[-–~]\s*\d{3}\s*cm\s*\))?|\d{2,3}\s*\(\s*\d{1,2}(?:-\d{1,2})?[TY]\s*\))/gi
   let textSizeMatch: RegExpExecArray | null
@@ -293,6 +307,44 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
   }
 
   return { entries, availableSizes }
+}
+
+function extractEmbeddedChartEntries(
+  html: string,
+  entries: SizeChartEntry[],
+  availableSizes: string[],
+  seenSizes: Set<string>,
+): void {
+  const labelRegex = /["'](?:size|label|sku|option)["']\s*:\s*["']([^"']+)["']/gi
+  let labelMatch: RegExpExecArray | null
+  while ((labelMatch = labelRegex.exec(html)) !== null) {
+    const label = labelMatch[1].trim()
+    if (!isSizeLabel(label) || seenSizes.has(label.toUpperCase())) continue
+    const window = html.slice(Math.max(0, labelMatch.index - 700), labelMatch.index + 1000)
+    const unitInches = /(?:inch|inches|\\bin\\b|["″])/i.test(window)
+    const readField = (names: string): [number, number] | null => {
+      const field = window.match(new RegExp(`["'](?:${names})["']\\s*:\\s*["']?([^,"'}\\]]+)`, "i"))
+      return field ? parseMeasurementRange(field[1], unitInches) : null
+    }
+    const entry: SizeChartEntry = { label }
+    const chest = readField("chest|bust|חזה")
+    const waist = readField("waist|מותן")
+    const hips = readField("hip|hips|אגן")
+    const shoulder = readField("shoulder|כתף")
+    const length = readField("length|丈|אורך")
+    const height = readField("height|גובה")
+    const weight = readField("weight|משקל")
+    if (chest) entry.chest_cm = chest
+    if (waist) entry.waist_cm = waist
+    if (hips) entry.hips_cm = hips
+    if (shoulder) entry.shoulder_cm = shoulder
+    if (length) entry.length_cm = Math.round((length[0] + length[1]) / 2)
+    if (height) entry.height_cm = height
+    if (weight) entry.weight_kg = weight
+    seenSizes.add(label.toUpperCase())
+    availableSizes.push(label)
+    entries.push(entry)
+  }
 }
 
 function extractCellTexts(rowHtml: string): string[] {
