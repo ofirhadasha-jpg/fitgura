@@ -20,7 +20,7 @@ export interface WardrobeItem {
   productImage: string | null
   price: string | null
   platform: string
-  recommendedSize: string
+  recommendedSize: string | null
   matchPercentage: number
   fitBreakdown: FitBreakdown | null
   affiliateUrl: string
@@ -64,7 +64,7 @@ interface SizingResultModalProps {
   productImage: string | null
   price: string | null
   platform: string
-  recommendedSize: string
+  recommendedSize: string | null
   matchPercentage: number
   fitBreakdown: FitBreakdown | null
   affiliateUrl: string
@@ -83,6 +83,7 @@ interface SizingResultModalProps {
   productAgeRange?: 'adult' | 'children' | 'unknown'
   productDemographic?: 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
   fitExplanation?: string
+  declined?: boolean
 }
 
 export default function SizingResultModal({
@@ -111,6 +112,7 @@ export default function SizingResultModal({
   productAgeRange = 'unknown',
   productDemographic = 'unknown',
   fitExplanation,
+  declined = false,
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
   const [isWishlist, setIsWishlist] = useState(false)
@@ -317,17 +319,25 @@ export default function SizingResultModal({
         </View>
 
         {fitExplanation && (
-          <Text style={styles.fitExplanation}>{displayedFitExplanation} 🎯</Text>
+          <Text style={styles.fitExplanation}>{displayedFitExplanation}{declined ? '' : ' 🎯'}</Text>
         )}
 
-        <View style={[styles.sizeCard, { borderColor: matchColor }]}>
-          <Text style={styles.sizeLabel}>המידה המומלצת</Text>
-          <Text style={[styles.sizeValue, { color: matchColor }]}>{recommendedSize}</Text>
-          <View style={styles.matchBar}>
-            <View style={[styles.matchBarFill, { width: `${matchPercentage}%`, backgroundColor: matchColor }]} />
+        {declined ? (
+          <View style={[styles.sizeCard, { borderColor: '#DC2626', backgroundColor: '#FFF0F0' }]}>
+            <Text style={styles.sizeLabel}>תוצאת ניתוח</Text>
+            <Text style={[styles.sizeValue, { color: '#DC2626', fontSize: 24 }]}>לא ניתן להמליץ</Text>
+            <Text style={[styles.matchPct, { color: '#991B1B', marginTop: 8 }]}>אין התאמה ברמת ביטחון גבוהה</Text>
           </View>
-          <Text style={[styles.matchPct, { color: matchColor }]}>{matchPercentage >= 90 ? `מידה ${recommendedSize} תונח עלייך מושלם` : `${matchPercentage}% התאמה`}</Text>
-        </View>
+        ) : (
+          <View style={[styles.sizeCard, { borderColor: matchColor }]}>
+            <Text style={styles.sizeLabel}>המידה המומלצת</Text>
+            <Text style={[styles.sizeValue, { color: matchColor }]}>{recommendedSize}</Text>
+            <View style={styles.matchBar}>
+              <View style={[styles.matchBarFill, { width: `${matchPercentage}%`, backgroundColor: matchColor }]} />
+            </View>
+            <Text style={[styles.matchPct, { color: matchColor }]}>{matchPercentage >= 90 ? `מידה ${recommendedSize} תונח עלייך מושלם` : `${matchPercentage}% התאמה`}</Text>
+          </View>
+        )}
 
         <View style={styles.disclaimerBox}>
           <Text style={styles.disclaimerText}>
@@ -343,7 +353,7 @@ export default function SizingResultModal({
           </View>
         )}
 
-        {fitBreakdown && (
+        {!declined && fitBreakdown && (
           <View style={styles.breakdownSection}>
             <Text style={styles.breakdownTitle}>פירוט התאמה</Text>
             {[
@@ -363,15 +373,17 @@ export default function SizingResultModal({
           </View>
         )}
 
-        <TouchableOpacity
-          onPress={() => onBuy(affiliateUrl)}
-          activeOpacity={0.8}
-          style={styles.buyBtn}
-        >
-          <Text style={styles.buyBtnText}>🛒 קנה עכשיו במידה {recommendedSize}</Text>
-        </TouchableOpacity>
+        {!declined && (
+          <TouchableOpacity
+            onPress={() => onBuy(affiliateUrl)}
+            activeOpacity={0.8}
+            style={styles.buyBtn}
+          >
+            <Text style={styles.buyBtnText}>🛒 קנה עכשיו במידה {recommendedSize}</Text>
+          </TouchableOpacity>
+        )}
 
-        {matchPercentage >= 95 && (
+        {!declined && matchPercentage >= 95 && (
           <View style={styles.commitmentBadge}>
             <Text style={styles.commitmentBadgeIcon}>✅</Text>
             <Text style={styles.commitmentBadgeText}>
@@ -406,7 +418,7 @@ export default function SizingResultModal({
           </TouchableOpacity>
         </View>
 
-        {onSave && (
+        {!declined && onSave && (
           <View style={styles.wardrobeSection}>
             <TouchableOpacity
               onPress={() => setShowProfileDropdown((v) => !v)}
@@ -455,7 +467,7 @@ export default function SizingResultModal({
           </View>
         )}
 
-        {onSave && (
+        {!declined && onSave && (
           <View>
             <TouchableOpacity
               onPress={() => setIsWishlist((v) => !v)}

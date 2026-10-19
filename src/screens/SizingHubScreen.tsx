@@ -72,7 +72,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     price: string | null
     platform: string
     category: string
-    recommendedSize: string
+    recommendedSize: string | null
     matchPercentage: number
     fitBreakdown: FitBreakdown | null
     affiliateUrl: string
@@ -81,6 +81,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     productAgeRange: 'adult' | 'children' | 'unknown'
     productDemographic: 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
     fitExplanation: string
+    declined: boolean
   } | null>(null)
   const [resultProfileName, setResultProfileName] = useState<string | null>(null)
   const [resultDefaultProfileId, setResultDefaultProfileId] = useState<string | null>(null)
@@ -216,6 +217,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         productAgeRange: analysisResult.productAgeRange,
         productDemographic: analysisResult.productDemographic,
         fitExplanation: analysisResult.fitExplanation,
+        declined: analysisResult.declined,
       }
 
       setResult(newResult)
@@ -375,6 +377,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           productAgeRange: reanalysis.productAgeRange,
           productDemographic: reanalysis.productDemographic,
           fitExplanation: reanalysis.fitExplanation,
+          declined: reanalysis.declined,
         } : null)
       } catch (err) {
         console.error('[SizingHub] Recalculation for self failed:', err)
@@ -400,6 +403,8 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         profileAgeGroup: reanalysis.profileAgeGroup,
         productAgeRange: reanalysis.productAgeRange,
         productDemographic: reanalysis.productDemographic,
+        fitExplanation: reanalysis.fitExplanation,
+        declined: reanalysis.declined,
       } : null)
     } catch (err) {
       console.error('[SizingHub] Recalculation for profile failed:', err)
@@ -1019,6 +1024,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           productAgeRange={result.productAgeRange}
           productDemographic={result.productDemographic}
           fitExplanation={result.fitExplanation}
+          declined={result.declined}
         />
       )}
 

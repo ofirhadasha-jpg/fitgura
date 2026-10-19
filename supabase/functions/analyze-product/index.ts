@@ -26,6 +26,8 @@ interface ProductAnalysis {
   category: string
   sizeChart: SizeChartEntry[]
   availableSizes: string[]
+  fitBias: { label: string; shift: number } | null
+  productDemographic: 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
 }
 
 const SHORT_URL_DOMAINS = [
@@ -144,6 +146,61 @@ function detectCategory(name: string): string {
   if (/\b(dress|gown|שמלה)\b/i.test(lower)) return "dresses"
   if (/\b(suit|blazer|חליפה)\b/i.test(lower)) return "suits"
   return "clothing"
+}
+
+// Scrape buyer-review fit bias signals from the product page HTML.
+// Returns a label + size-shift recommendation (in size steps, +1 = order one size up).
+function extractFitBias(html: string, availableSizes: string[]): { label: string; shift: number } | null {
+  const lower = html.toLowerCase()
+  // Common fit-bias phrases (English + Chinese + Hebrew) with associated shift.
+  const signals: { re: RegExp; shift: number; label: string }[] = [
+    { re: /runs?\s+(?:a\s+)?(?:size\s+)?small|sizes?\s+run\s+small|מתקבל\s+קטן|偏小|偏码/i, shift: 1, label: 'מתקבל קטן — מומלץ להזמין מידה מעל' },
+    { re: /order\s+(?:a\s+)?(?:size|1\s+size)\s+up|size\s+up|buy\s+(?:a\s+)?size\s+(?:bigger|larger)|הזמינו\s+מידה\s+מעל/i, shift: 1, label: 'מומלץ להזמין מידה מעל' },
+    { re: /runs?\s+(?:a\s+)?(?:size\s+)?large|sizes?\s+run\s+large|מתקבל\s+גדול|偏大/i, shift: -1, label: 'מתקבל גדול — אפשר להזמין מידה קטנה' },
+    { re: /order\s+(?:a\s+)?(?:size|1\s+size)\s+down|size\s+down|buy\s+(?:a\s+)?size\s+(?:smaller)|הזמינו\s+מידה\s+קטנה/i, shift: -1, label: 'מומלץ להזמין מידה קטנה' },
+    { re: /true\s+to\s+size|fits?\s+true|מתאים\s+למידה|按码拍/i, shift: 0, label: 'מתאים למידה — נאמן לטבלה' },
+  ]
+  // Count matches per shift bucket to pick the dominant signal.
+  const counts = new Map<number, { count: number; label: string }>()
+  for (const sig of signals) {
+    const matches = lower.match(new RegExp(sig.re.source, 'gi'))
+    if (matches && matches.length > 0) {
+      const existing = counts.get(sig.shift)
+      const count = (existing?.count ?? 0) + matches.length
+      counts.set(sig.shift, { count, label: sig.label })
+    }
+  }
+  if (counts.size === 0) return null
+  let best: { shift: number; count: number; label: string } | null = null
+  for (const [shift, info] of counts) {
+    if (!best || info.count > best.count) best = { shift, count: info.count, label: info.label }
+  }
+  // Only return a non-zero shift when there are at least 2 mentions to avoid noise.
+  if (best && best.shift !== 0 && best.count < 2) {
+    // Still prefer true-to-size if present, otherwise null.
+    const tts = counts.get(0)
+    return tts ? { label: tts.label, shift: 0 } : null
+  }
+  return best ? { label: best.label, shift: best.shift } : null
+}
+
+// Infer product demographic from page HTML signals (keywords, structured data).
+function detectProductDemographic(html: string, productName: string, availableSizes: string[], sizeChart: SizeChartEntry[]): 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown' {
+  const lower = html.toLowerCase()
+  const name = (productName ?? '').toLowerCase()
+  const labels = [...availableSizes, ...sizeChart.map((e) => e.label)]
+  const childCount = labels.filter((l) => /\b\d{1,2}y\b/i.test(l) || /^\d{2,3}\s*\([^)]*[ty]/i.test(l.trim()) || (/^\d{2,3}$/.test(l.trim()) && Number(l) >= 70 && Number(l) <= 170)).length
+  if (childCount > 0 && childCount >= labels.filter((l) => /^(?:xxs|xs|s|m|l|xl|xxl|2xl|3xl)$/i.test(l.trim())).length) return 'children'
+  const womenSignals = /(women|woman|female|lady|girls?'|dress|skirt|blouse|femme|נשים|אישה|שמלה|חצאית)/i
+  const menSignals = /(\bmen\b|\bman\b|\bmale\b|\bboys?\b|menswear|גברים|גבר)/i
+  const nameScore = (re: RegExp) => (re.test(name) ? 2 : 0) + (re.test(lower.slice(0, 20000)) ? 1 : 0)
+  const wScore = nameScore(womenSignals)
+  const mScore = nameScore(menSignals)
+  if (wScore > mScore && wScore >= 2) return 'women'
+  if (mScore > wScore && mScore >= 2) return 'men'
+  if (childCount > 0) return 'children'
+  if (labels.some((l) => /^(?:xxs|xs|s|m|l|xl|xxl|2xl|3xl)$/i.test(l.trim()))) return 'unisex-adult'
+  return 'unknown'
 }
 
 function extractMetaContent(html: string, property: string): string | null {
@@ -449,6 +506,8 @@ async function handleRequest(req: Request): Promise<Response> {
 
     const category = detectCategory(productName ?? "")
     const { entries: sizeChart, availableSizes } = parseSizeChartFromHTML(html)
+    const fitBias = extractFitBias(html, availableSizes)
+    const productDemographic = detectProductDemographic(html, productName ?? "", availableSizes, sizeChart)
 
     const result: ProductAnalysis = {
       productName: productName ?? null,
@@ -458,6 +517,8 @@ async function handleRequest(req: Request): Promise<Response> {
       category,
       sizeChart,
       availableSizes,
+      fitBias,
+      productDemographic,
     }
 
     return new Response(JSON.stringify(result), {
