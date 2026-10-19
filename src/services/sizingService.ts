@@ -49,11 +49,13 @@ interface CacheEntry {
 }
 
 async function checkSizingCache(imageHash: string, userId: string | null): Promise<CacheEntry | null> {
+  if (!userId) return null
   try {
     const { data, error } = await supabase
       .from('sizing_cache')
       .select('analysis_json, accuracy')
       .eq('image_hash', imageHash)
+      .eq('user_id', userId)
       .limit(1)
       .maybeSingle()
     if (error || !data) return null

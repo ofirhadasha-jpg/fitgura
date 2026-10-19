@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native'
-import type { FamilyMember } from '../types'
+import type { AgeGroup, FamilyMember } from '../types'
 import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 import { useEscToDismiss } from '../utils/useEscToDismiss'
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl } from '../services/affiliateService'
@@ -79,6 +79,8 @@ interface SizingResultModalProps {
   profileName?: string | null
   defaultProfileId?: string | null
   category?: string
+  profileAgeGroup?: AgeGroup
+  productAgeRange?: 'adult' | 'children' | 'unknown'
 }
 
 export default function SizingResultModal({
@@ -103,6 +105,8 @@ export default function SizingResultModal({
   profileName,
   defaultProfileId,
   category = 'clothing',
+  profileAgeGroup,
+  productAgeRange = 'unknown',
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
   const [isWishlist, setIsWishlist] = useState(false)
@@ -142,6 +146,9 @@ export default function SizingResultModal({
   ]
 
   const selectedProfile = profileOptions.find((p) => p.id === selectedProfileId)
+  const isChildProfile = profileAgeGroup === 'baby' || profileAgeGroup === 'toddler' || profileAgeGroup === 'child'
+  const profileMismatch = (isChildProfile && productAgeRange === 'adult') || (!isChildProfile && productAgeRange === 'children')
+
   const saveBtnText = saving
     ? 'שומר...'
     : isWishlist
@@ -304,6 +311,14 @@ export default function SizingResultModal({
             {"\u05e9\u05d9\u05de\u05d5 \u05dc\u05d1: \u05e4\u05d9\u05d8\u05d2\u05d5\u05e8\u05d4 \u05de\u05e1\u05e4\u05e7\u05ea \u05d4\u05de\u05dc\u05e6\u05ea \u05de\u05d9\u05d3\u05d4 \u05de\u05d1\u05d5\u05e1\u05e1\u05ea AI \u05d5\u05e0\u05ea\u05d5\u05e0\u05d9\u05dd \u05d1\u05dc\u05d1\u05d3. \u05d4\u05d4\u05d7\u05dc\u05d8\u05d4 \u05d4\u05e1\u05d5\u05e4\u05d9\u05ea \u05d5\u05d4\u05e8\u05db\u05d9\u05e9\u05d4 \u05d4\u05df \u05d1\u05d0\u05d7\u05e8\u05d9\u05d5\u05ea \u05d4\u05de\u05e9\u05ea\u05de\u05e9/\u05ea."}
           </Text>
         </View>
+
+        {profileMismatch && (
+          <View style={[styles.disclaimerBox, styles.mismatchBox]}>
+            <Text style={styles.mismatchText}>
+              המוצר אינו מתאים לנתוני הפרופיל הנבחר (טווח מידות ילדים בלבד)
+            </Text>
+          </View>
+        )}
 
         {fitBreakdown && (
           <View style={styles.breakdownSection}>
@@ -525,4 +540,6 @@ const styles = StyleSheet.create({
   fitBadgeText: { fontSize: 13, fontWeight: '800', color: '#1A1A1A', fontFamily: "'Permanent Marker', cursive" },
   disclaimerBox: { backgroundColor: '#FFFACC', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 14, borderWidth: 1, borderColor: '#FFE566' } as React.CSSProperties,
   disclaimerText: { fontSize: 11, lineHeight: 16, color: '#4A4A4A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
+  mismatchBox: { backgroundColor: '#FFF0F0', borderColor: '#DC2626' },
+  mismatchText: { fontSize: 13, lineHeight: 19, color: '#991B1B', textAlign: 'center', fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
 })

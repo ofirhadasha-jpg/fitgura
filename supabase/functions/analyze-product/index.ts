@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface SizeChartEntry {
   label: string
+  height_cm?: [number, number]
   chest_cm?: [number, number]
   waist_cm?: [number, number]
   hips_cm?: [number, number]
@@ -107,11 +108,24 @@ function extractNumber(text: string): number | null {
 }
 
 function parseRange(text: string): [number, number] | null {
-  const rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*[-~]\s*(\d+(?:\.\d+)?)/)
+  const rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*[-~–]\s*(\d+(?:\.\d+)?)/)
   if (rangeMatch) return [parseFloat(rangeMatch[1]), parseFloat(rangeMatch[2])]
   const single = extractNumber(text)
   if (single != null) return [single - 2, single + 2]
   return null
+}
+
+function parseHeightRange(text: string): [number, number] | null {
+  const heightRange = text.match(/(\d{3})\s*[-–~]\s*(\d{3})\s*cm/i)
+  if (heightRange) return [Number(heightRange[1]), Number(heightRange[2])]
+  const ageMatch = text.match(/\b(\d{1,2})Y\b/i)
+  if (!ageMatch) return null
+  const age = Number(ageMatch[1])
+  return [age * 6 + 74, age * 6 + 80]
+}
+
+function isSizeLabel(label: string): boolean {
+  return /^(?:(?:xxs|xs|s|m|l|xl|xxl|2xl|3xl|4xl|\d{2,3}|\d{1,2}y(?:\s*\(\s*\d{3}\s*[-–~]\s*\d{3}\s*cm\s*\))?|one size))$/i.test(label.trim())
 }
 
 function detectCategory(name: string): string {
@@ -205,7 +219,7 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
       if (cells.length < 2) continue
       const label = cells[effectiveSizeCol]?.trim() ?? ""
       if (!label || label.length > 20) continue
-      if (!/^((xxs|xs|s|m|l|xl|xxl|2xl|3xl|4xl|\d{2,3}|one size))$/i.test(label)) continue
+      if (!isSizeLabel(label)) continue
 
       if (!seenSizes.has(label.toUpperCase())) {
         seenSizes.add(label.toUpperCase())
@@ -213,6 +227,8 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
       }
 
       const entry: SizeChartEntry = { label }
+      const heightRange = parseHeightRange(label)
+      if (heightRange) entry.height_cm = heightRange
       const cols = [chestColIdx, waistColIdx, hipsColIdx, lengthColIdx, footColIdx]
       const setters = [
         (range: [number, number]) => { entry.chest_cm = range },
@@ -243,7 +259,7 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
   let btnMatch: RegExpExecArray | null
   while ((btnMatch = sizeBtnRegex.exec(html)) !== null) {
     const text = (btnMatch[1] ?? btnMatch[2] ?? "").trim()
-    if (text && text.length < 10 && /^((xxs|xs|s|m|l|xl|xxl|2xl|3xl|\d{2,3}|one size))$/i.test(text)) {
+    if (text && text.length < 30 && isSizeLabel(text)) {
       if (!seenSizes.has(text.toUpperCase())) {
         seenSizes.add(text.toUpperCase())
         availableSizes.push(text)

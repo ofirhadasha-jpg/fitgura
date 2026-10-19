@@ -3,6 +3,7 @@ import { formatFullSizeLabel, formatShortSizeLabel, getSizePills, type SizeType,
 
 export interface SellerSizeEntry {
   label: string
+  height_cm?: [number, number]
   chest_cm?: [number, number]
   waist_cm?: [number, number]
   hips_cm?: [number, number]
@@ -87,6 +88,15 @@ function footLengthCm(shoeSizeEu: string | null): number | null {
 
 function inRange(value: number, range: [number, number]): boolean {
   return value >= range[0] && value <= range[1]
+}
+
+function heightRangeForLabel(label: string): [number, number] | null {
+  const explicitRange = label.match(/(\d{3})\s*[-–~]\s*(\d{3})\s*cm/i)
+  if (explicitRange) return [Number(explicitRange[1]), Number(explicitRange[2])]
+  const ageMatch = label.match(/\b(\d{1,2})Y\b/i)
+  if (!ageMatch) return null
+  const age = Number(ageMatch[1])
+  return [age * 6 + 74, age * 6 + 80]
 }
 
 const TOPS_ORDER = ['S', 'M', 'L', 'XL', '2XL', '3XL']
@@ -180,6 +190,17 @@ export function calculateRecommendedSize(
     if (!result && foot != null) result = matchShoes(foot)
     if (!result) result = userSizes.shoeSize ?? null
     return result ? clampToAvailable(result, availableSizes) : null
+  }
+
+  const height = userSizes.sizing.bodyMetrics?.estimated_height_cm
+  if (height != null) {
+    const heightMatch = sellerMetadata.find((entry) => entry.height_cm && inRange(height, entry.height_cm))
+    if (heightMatch) return clampToAvailable(heightMatch.label, availableSizes)
+    const availableHeightMatch = availableSizes.find((label) => {
+      const range = heightRangeForLabel(label)
+      return range ? inRange(height, range) : false
+    })
+    if (availableHeightMatch) return availableHeightMatch
   }
 
   // Always derive body measurements from the scanned size labels.
@@ -302,20 +323,21 @@ const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
 
 function clampToAvailable(recommended: string, available: string[]): string | null {
   if (available.length === 0) return recommended
-  const normAvailable = available.map(s => s.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL').replace('XXXXL', '4XL'))
-  const recNorm = recommended.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL')
-  if (normAvailable.includes(recNorm)) return recommended
+  const normalize = (value: string) => value.toUpperCase().replace('XXL', '2XL').replace('XXXL', '3XL').replace('XXXXL', '4XL').trim()
+  const normAvailable = available.map(normalize)
+  const recNorm = normalize(recommended)
+  const exactIndex = normAvailable.indexOf(recNorm)
+  if (exactIndex >= 0) return available[exactIndex]
   const recIdx = SIZE_ORDER.indexOf(recNorm)
-  if (recIdx === -1) return recommended
-  let bestIdx = -1
+  if (recIdx === -1) return available[0] ?? null
+  let bestIndex = -1
   let bestDist = 999
-  for (const s of normAvailable) {
-    const idx = SIZE_ORDER.indexOf(s)
-    if (idx === -1) continue
-    const dist = Math.abs(idx - recIdx)
-    if (dist < bestDist) { bestDist = dist; bestIdx = idx }
+  for (let index = 0; index < normAvailable.length; index++) {
+    const sizeIndex = SIZE_ORDER.indexOf(normAvailable[index])
+    if (sizeIndex === -1) continue
+    const dist = Math.abs(sizeIndex - recIdx)
+    if (dist < bestDist) { bestDist = dist; bestIndex = index }
   }
-  if (bestIdx === -1) return recommended
-  if (bestDist > 2) return recommended
-  return SIZE_ORDER[bestIdx]
+  if (bestIndex === -1 || bestDist > 2) return available[0] ?? null
+  return available[bestIndex] ?? null
 }

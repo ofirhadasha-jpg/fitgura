@@ -1,4 +1,4 @@
-import type { ScannedSizes } from '../types'
+import type { AgeGroup, ScannedSizes } from '../types'
 import { calculateRecommendedSize, type SellerSizeEntry } from '../utils/exactSizeMatcher'
 import { supabase } from '../lib/supabase'
 import { EDGE_FUNCTION_URL, EDGE_FUNCTION_ANON_KEY } from '../lib/config'
@@ -17,6 +17,8 @@ export interface ProductAnalysisResult {
   fitBreakdown: FitBreakdown
   sellerMetadata: SellerSizeEntry[]
   availableSizes: string[]
+  profileAgeGroup: AgeGroup
+  productAgeRange: 'adult' | 'children' | 'unknown'
 }
 
 interface EdgeFunctionResponse {
@@ -120,7 +122,7 @@ function fallbackAnalysis(url: string): EdgeFunctionResponse {
     platform,
     category: 'clothing',
     sizeChart: [],
-    availableSizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    availableSizes: [],
   }
 }
 
@@ -197,13 +199,15 @@ export async function analyzeProductUrl(
     }
   }
 
-  const recommendedSize = calculateRecommendedSize(
+  const matchedSize = calculateRecommendedSize(
     userSizes,
     analysis.sizeChart,
     analysis.category,
     analysis.productName,
     analysis.availableSizes,
-  ) ?? 'M'
+  )
+  const recommendedSize = matchedSize ?? analysis.availableSizes[0] ?? 'לא נמצאה מידה'
+  const productAgeRange = inferProductAgeRange(analysis.availableSizes, analysis.sizeChart)
 
   const fitBreakdown = computeFitBreakdown(userSizes, analysis.sizeChart, recommendedSize)
   const matchPercentage = computeMatchPercentage(fitBreakdown, profileAccuracy)
@@ -219,5 +223,17 @@ export async function analyzeProductUrl(
     fitBreakdown,
     sellerMetadata: analysis.sizeChart,
     availableSizes: analysis.availableSizes,
+    profileAgeGroup: userSizes.ageGroup,
+    productAgeRange,
   }
+}
+
+function inferProductAgeRange(availableSizes: string[], sellerMetadata: SellerSizeEntry[]): 'adult' | 'children' | 'unknown' {
+  const labels = [...availableSizes, ...sellerMetadata.map((entry) => entry.label)]
+  if (labels.length === 0) return 'unknown'
+  const childCount = labels.filter((label) => /\b\d{1,2}Y\b/i.test(label) || /\b(?:7[0-9]|[89][0-9]|1[0-7][0-9])\s*cm\b/i.test(label) || /^\d{2,3}$/.test(label.trim()) && Number(label) >= 70 && Number(label) <= 170).length
+  const adultCount = labels.filter((label) => /^(?:XXS|XS|S|M|L|XL|XXL|\d{2})$/i.test(label.trim()) && !(/^\d+$/.test(label.trim()) && Number(label) >= 70 && Number(label) <= 170)).length
+  if (childCount > adultCount && childCount > 0) return 'children'
+  if (adultCount > childCount && adultCount > 0) return 'adult'
+  return 'unknown'
 }
