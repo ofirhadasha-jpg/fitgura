@@ -56,6 +56,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   onWishlistFocusHandled?: () => void
   initialProductUrl?: string | null
   onInitialProductHandled?: () => void
+  onRequestAuth?: () => void
 }) {
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -229,6 +230,24 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean, overrideImage?: string | null) {
     if (!result) return
     const savedImage = overrideImage ?? result.productImage
+    if (!user) {
+      localStorage.setItem('fitgura_pending_guest_wardrobe', JSON.stringify({
+        product_url: result.originalUrl,
+        product_name: result.productName,
+        product_image: savedImage,
+        price: result.price,
+        platform: result.platform,
+        recommended_size: result.recommendedSize,
+        match_percentage: result.matchPercentage,
+        fit_breakdown: result.fitBreakdown,
+        affiliate_url: result.affiliateUrl,
+        profile_id: profileId === 'self' ? null : profileId,
+        is_wishlist: isWishlist ?? false,
+      }))
+      setResult((prev) => prev ? { ...prev, visible: false } : null)
+      onRequestAuth?.()
+      return
+    }
     try {
       const { error } = await supabase
         .from('fitted_wardrobe')

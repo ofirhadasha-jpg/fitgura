@@ -182,7 +182,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
               <Text style={{ fontSize: 22 }}>❤️</Text>
             </View>
             <Text style={authStyles.headerTitle}>
-              שמור את המידות והפריטים המועדפים שלך!
+              שמור את המידות, הפריטים והארון שלך!
             </Text>
           </View>
         </View>

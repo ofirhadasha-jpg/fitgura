@@ -24,6 +24,7 @@ const GUEST_FAVORITES_KEY = 'fitgura_favorites'
 const GUEST_DEVICE_KEY = 'fitgura_guest_device'
 const GUEST_DEVICES_KEY = 'fitgura_guest_devices'
 const LEGACY_GUEST_FAVORITES_KEY = 'fitgura_guest_favorites'
+const PENDING_GUEST_WARDROBE_KEY = 'fitgura_pending_guest_wardrobe'
 
 const PRODUCT_HOST_PATTERN = /(^|\.)((amazon\.[a-z.]+)|(shein\.com)|(aliexpress\.com)|(temu\.com)|(zara\.com))$/i
 
@@ -233,6 +234,32 @@ function clearGuestData() {
   localStorage.removeItem(GUEST_DEVICE_KEY)
 }
 
+async function migrateGuestWardrobe(userId: string) {
+  const raw = localStorage.getItem(PENDING_GUEST_WARDROBE_KEY)
+  if (!raw) return
+  try {
+    const pending = JSON.parse(raw) as Record<string, unknown>
+    const { error } = await supabase.from('fitted_wardrobe').insert({
+      product_url: pending.product_url,
+      product_name: pending.product_name,
+      product_image: pending.product_image,
+      price: pending.price,
+      platform: pending.platform,
+      recommended_size: pending.recommended_size,
+      match_percentage: pending.match_percentage,
+      fit_breakdown: pending.fit_breakdown,
+      affiliate_url: pending.affiliate_url,
+      user_id: userId,
+      profile_id: pending.profile_id,
+      is_wishlist: pending.is_wishlist === true,
+    })
+    if (error) throw error
+    localStorage.removeItem(PENDING_GUEST_WARDROBE_KEY)
+  } catch (err) {
+    console.error('[App] Failed to migrate pending wardrobe item:', err)
+  }
+}
+
 async function migrateGuestData(userId: string) {
   const guestProfile = loadGuestProfile()
   const guestFavorites = loadGuestFavorites()
@@ -318,6 +345,8 @@ async function migrateGuestData(userId: string) {
     migrationSucceeded = false
     console.error('[App] Failed to migrate guest favorites to Supabase:', err)
   }
+
+  await migrateGuestWardrobe(userId)
 
   if (migrationSucceeded) {
     setTimeout(() => clearGuestData(), 3000)
@@ -738,6 +767,7 @@ export default function App() {
 
   function handleAuth(loggedInUser: User) {
     const wasFamilyAdd = authModal?.pendingIdx === -1
+    const wasWardrobeAdd = authModal?.pendingIdx === -2
     setUser(loggedInUser)
     if (authModal && authModal.pendingIdx >= 0) {
       setWishlistItems((prev) => prev.includes(authModal.pendingIdx) ? prev : [...prev, authModal.pendingIdx])
@@ -746,6 +776,10 @@ export default function App() {
     if (wasFamilyAdd) {
       setPendingFamilyAdd((n) => n + 1)
       changeScreen('profile')
+    } else if (wasWardrobeAdd) {
+      void migrateGuestWardrobe(loggedInUser.id)
+      showToast('הפריט נשמר בארון שלך! 👕✨')
+      changeScreen('hub')
     } else {
       changeScreen('hub')
     }
@@ -987,7 +1021,7 @@ export default function App() {
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} onAuth={handleAuth} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('hub')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('hub')} onDetected={handleDeviceDetected} />}
-        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} wishlistItems={wishlistItems} feedCatalog={feedCatalog} budget={budget} onToggleWishlist={handleWishlistToggle} familyMembers={familyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} focusWishlistProfileId={focusWishlistProfileId} onWishlistFocusHandled={() => setFocusWishlistProfileId(null)} initialProductUrl={sharedProductUrl} onInitialProductHandled={() => setSharedProductUrl(null)} />}
+        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} wishlistItems={wishlistItems} feedCatalog={feedCatalog} budget={budget} onToggleWishlist={handleWishlistToggle} familyMembers={familyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} focusWishlistProfileId={focusWishlistProfileId} onWishlistFocusHandled={() => setFocusWishlistProfileId(null)} initialProductUrl={sharedProductUrl} onInitialProductHandled={() => setSharedProductUrl(null)} onRequestAuth={() => setAuthModal({ pendingIdx: -2 })} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} events={events} familyMembers={familyMembers} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} familyMembers={familyMembers} events={events} setEvents={setEvents} user={user} onToast={showToast} />}
