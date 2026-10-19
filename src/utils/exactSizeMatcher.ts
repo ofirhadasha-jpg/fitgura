@@ -8,8 +8,6 @@ export interface SellerSizeEntry {
   waist_cm?: [number, number]
   hips_cm?: [number, number]
   foot_length_cm?: [number, number]
-  shoulder_cm?: [number, number]
-  weight_kg?: [number, number]
 }
 
 export interface SizeRecommendation {
@@ -90,42 +88,6 @@ function footLengthCm(shoeSizeEu: string | null): number | null {
 
 function inRange(value: number, range: [number, number]): boolean {
   return value >= range[0] && value <= range[1]
-}
-
-function rangeDistance(value: number, range: [number, number]): number {
-  if (inRange(value, range)) return 0
-  return Math.min(Math.abs(value - range[0]), Math.abs(value - range[1]))
-}
-
-function isKidsLabel(label: string): boolean {
-  return /\b\d{1,2}(?:Y|T)\b/i.test(label) || /^\d{2,3}\s*\([^)]*[TY]/i.test(label)
-}
-
-// Ease allowances in cm added to body circumference before comparing to garment chart values.
-// Kids charts on AliExpress/SHEIN are typically body-measurement charts, but vendor
-// garment charts (Amazon, SHEIN women's) list garment flat measurements that already
-// include ease. We apply a small residual ease for body charts and zero for garment charts.
-function easeForProfile(fit: string | undefined, isKids: boolean, chartIsBodyMeasurements: boolean): number {
-  const baseKids = chartIsBodyMeasurements ? 4 : 0
-  const baseAdult = chartIsBodyMeasurements ? 2 : 0
-  const base = isKids ? baseKids : baseAdult
-  if (!fit) return base
-  const lower = fit.toLowerCase()
-  if (lower.includes('slim') || lower.includes('tight') || lower.includes('צמוד')) return Math.max(0, base - 2)
-  if (lower.includes('loose') || lower.includes('relaxed') || lower.includes('oversize') || lower.includes('רחב') || lower.includes('גדול')) return base + 3
-  return base
-}
-
-// Heuristic: AliExpress Asian-size charts and kids height-based charts use body measurements.
-// Amazon/SHEIN women's charts and charts with explicit garment-language headers use garment flat measurements.
-function chartUsesBodyMeasurements(entries: SellerSizeEntry[]): boolean {
-  if (entries.length === 0) return true
-  const labels = entries.map((e) => e.label).join(' ')
-  // Kids height-based labels (2Y, 120(5T)) are always body-measurement charts.
-  if (isKidsLabel(labels)) return true
-  // S/M/L/XL Asian charts on AliExpress use body measurements.
-  if (entries.every((e) => /^(?:XXS|XS|S|M|L|XL|2XL|3XL|4XL)$/i.test(e.label.trim()))) return true
-  return false
 }
 
 function heightRangeForLabel(label: string): [number, number] | null {
@@ -235,10 +197,8 @@ export function calculateRecommendedSize(
     return result ? clampToAvailable(result, availableSizes) : null
   }
 
-  const bodyMetrics = userSizes.sizing.bodyMetrics
-  const height = bodyMetrics?.estimated_height_cm
-  const hasChartMeasurements = sellerMetadata.some((entry) => entry.chest_cm || entry.waist_cm || entry.hips_cm || entry.shoulder_cm)
-  if (height != null && !hasChartMeasurements) {
+  const height = userSizes.sizing.bodyMetrics?.estimated_height_cm
+  if (height != null) {
     const heightMatch = sellerMetadata.find((entry) => entry.height_cm && inRange(height, entry.height_cm))
     if (heightMatch) return clampToAvailable(heightMatch.label, availableSizes)
     const availableHeightMatch = availableSizes.find((label) => {
@@ -260,29 +220,21 @@ export function calculateRecommendedSize(
   const metrics = estimateMetrics(userSizes)
 
   // If seller provides a size chart, match body metrics against it
-  if (sellerMetadata.length > 0 && (metrics || bodyMetrics)) {
-    const chest = bodyMetrics?.chest_circumference_cm ?? metrics?.chest_circumference_cm ?? null
-    const waist = bodyMetrics?.waist_circumference_cm ?? metrics?.waist_circumference_cm ?? null
-    const hips = bodyMetrics?.hips_circumference_cm ?? metrics?.hips_circumference_cm ?? null
-    const isKids = sellerMetadata.some((entry) => isKidsLabel(entry.label))
-    const chartIsBodyMeasurements = chartUsesBodyMeasurements(sellerMetadata)
-    const ease = easeForProfile(fit, isKids, chartIsBodyMeasurements)
+  if (sellerMetadata.length > 0 && metrics) {
+    const chest = metrics.chest_circumference_cm
+    const waist = metrics.waist_circumference_cm
+    const hips = metrics.hips_circumference_cm
     let best: SellerSizeEntry | null = null
-    let bestScore = Number.POSITIVE_INFINITY
-    for (const entry of sellerMetadata) {
-      let score = 0
-      let checks = 0
-      if (entry.chest_cm && chest != null) { score += rangeDistance(chest + ease, entry.chest_cm) * 4; checks++ }
-      if (entry.waist_cm && waist != null) { score += rangeDistance(waist + ease, entry.waist_cm) * 2; checks++ }
-      if (entry.hips_cm && hips != null) { score += rangeDistance(hips + ease, entry.hips_cm); checks++ }
-      if (entry.shoulder_cm && bodyMetrics?.shoulder_width_cm != null) { score += rangeDistance(bodyMetrics.shoulder_width_cm + (isKids ? 2 : 1), entry.shoulder_cm); checks++ }
-      if (entry.height_cm && height != null) { score += rangeDistance(height, entry.height_cm); checks++ }
-      if (entry.weight_kg && bodyMetrics?.estimated_weight_kg != null) { score += rangeDistance(bodyMetrics.estimated_weight_kg, entry.weight_kg) * 0.5; checks++ }
+    let bestScore = -1
+    for (const e of sellerMetadata) {
+      let score = 0, checks = 0
+      if (e.chest_cm && chest != null) { checks++; if (inRange(chest, e.chest_cm)) score++ }
+      if (e.waist_cm && waist != null) { checks++; if (inRange(waist, e.waist_cm)) score++ }
+      if (e.hips_cm && hips != null) { checks++; if (inRange(hips, e.hips_cm)) score++ }
       if (checks === 0) continue
-      score /= checks
-      if (score < bestScore) { bestScore = score; best = entry }
+      if (score / checks > bestScore) { bestScore = score / checks; best = e }
     }
-    if (best) result = adjustForFit(best.label, fit)
+    if (best && bestScore > 0) result = adjustForFit(best.label, fit)
   }
 
   const m = metrics
@@ -339,10 +291,7 @@ export function calculateRecommendedSize(
     }
   }
 
-  // No chart and no size-label match: only use the generic conversion if no vendor chart
-  // was provided. When a chart exists but didn't match, we already returned the closest
-  // chart row above — never fall back to a hardcoded 'L' that the vendor doesn't carry.
-  if (!result && sellerMetadata.length === 0) {
+  if (!result) {
     const asianMap: Record<string, string> = {
       'XS': 'S', 'S': 'M', 'M': 'L', 'L': 'XL', 'XL': '2XL', 'XXL': '3XL',
     }
@@ -393,23 +342,7 @@ function clampToAvailable(recommended: string, available: string[]): string | nu
   const exactIndex = normAvailable.indexOf(recNorm)
   if (exactIndex >= 0) return available[exactIndex]
   const recIdx = SIZE_ORDER.indexOf(recNorm)
-  if (recIdx === -1) {
-    // Non-S/M/L label (e.g. "120(5T)", "42", "32/34"): try numeric proximity.
-    const recNum = Number(recommended.match(/\d{2,3}/)?.[0] ?? NaN)
-    if (Number.isFinite(recNum)) {
-      let bestIdx = -1
-      let bestDist = Number.POSITIVE_INFINITY
-      for (let i = 0; i < available.length; i++) {
-        const num = Number(available[i].match(/\d{2,3}/)?.[0] ?? NaN)
-        if (!Number.isFinite(num)) continue
-        const dist = Math.abs(num - recNum)
-        if (dist < bestDist) { bestDist = dist; bestIdx = i }
-      }
-      if (bestIdx >= 0 && bestDist <= 15) return available[bestIdx]
-    }
-    // If the recommended label exists in the chart, return it as-is even if not in available list.
-    return recommended
-  }
+  if (recIdx === -1) return available[0] ?? null
   let bestIndex = -1
   let bestDist = 999
   for (let index = 0; index < normAvailable.length; index++) {
@@ -418,6 +351,6 @@ function clampToAvailable(recommended: string, available: string[]): string | nu
     const dist = Math.abs(sizeIndex - recIdx)
     if (dist < bestDist) { bestDist = dist; bestIndex = index }
   }
-  if (bestIndex === -1 || bestDist > 2) return recommended
-  return available[bestIndex] ?? recommended
+  if (bestIndex === -1 || bestDist > 2) return available[0] ?? null
+  return available[bestIndex] ?? null
 }

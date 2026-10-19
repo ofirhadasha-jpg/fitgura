@@ -72,17 +72,14 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     price: string | null
     platform: string
     category: string
-    recommendedSize: string | null
+    recommendedSize: string
     matchPercentage: number
     fitBreakdown: FitBreakdown | null
     affiliateUrl: string
     originalUrl: string
     profileAgeGroup: AgeGroup
     productAgeRange: 'adult' | 'children' | 'unknown'
-    productDemographic: 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
     fitExplanation: string
-    confidence: 'high' | 'medium' | 'low'
-    mismatchWarning: boolean
   } | null>(null)
   const [resultProfileName, setResultProfileName] = useState<string | null>(null)
   const [resultDefaultProfileId, setResultDefaultProfileId] = useState<string | null>(null)
@@ -216,10 +213,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         originalUrl: trimmed,
         profileAgeGroup: analysisResult.profileAgeGroup,
         productAgeRange: analysisResult.productAgeRange,
-        productDemographic: analysisResult.productDemographic,
         fitExplanation: analysisResult.fitExplanation,
-        confidence: analysisResult.confidence,
-        mismatchWarning: analysisResult.mismatchWarning,
       }
 
       setResult(newResult)
@@ -377,10 +371,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           fitBreakdown: reanalysis.fitBreakdown,
           profileAgeGroup: reanalysis.profileAgeGroup,
           productAgeRange: reanalysis.productAgeRange,
-          productDemographic: reanalysis.productDemographic,
           fitExplanation: reanalysis.fitExplanation,
-          confidence: reanalysis.confidence,
-          mismatchWarning: reanalysis.mismatchWarning,
         } : null)
       } catch (err) {
         console.error('[SizingHub] Recalculation for self failed:', err)
@@ -405,10 +396,6 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         fitBreakdown: reanalysis.fitBreakdown,
         profileAgeGroup: reanalysis.profileAgeGroup,
         productAgeRange: reanalysis.productAgeRange,
-        productDemographic: reanalysis.productDemographic,
-        fitExplanation: reanalysis.fitExplanation,
-        confidence: reanalysis.confidence,
-        mismatchWarning: reanalysis.mismatchWarning,
       } : null)
     } catch (err) {
       console.error('[SizingHub] Recalculation for profile failed:', err)
@@ -1026,11 +1013,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
           recalculating={recalculating}
           profileAgeGroup={result.profileAgeGroup}
           productAgeRange={result.productAgeRange}
-          productDemographic={result.productDemographic}
           fitExplanation={result.fitExplanation}
-          confidence={result.confidence}
-          mismatchWarning={result.mismatchWarning}
-          onProfileSwitch={() => onNav('profile')}
         />
       )}
 

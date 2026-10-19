@@ -12,10 +12,8 @@ interface SizeChartEntry {
   chest_cm?: [number, number]
   waist_cm?: [number, number]
   hips_cm?: [number, number]
-  shoulder_cm?: [number, number]
   length_cm?: number
   foot_length_cm?: [number, number]
-  weight_kg?: [number, number]
 }
 
 interface ProductAnalysis {
@@ -26,8 +24,6 @@ interface ProductAnalysis {
   category: string
   sizeChart: SizeChartEntry[]
   availableSizes: string[]
-  fitBias: { label: string; shift: number } | null
-  productDemographic: 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
 }
 
 const SHORT_URL_DOMAINS = [
@@ -111,14 +107,12 @@ function extractNumber(text: string): number | null {
   return parseFloat(match[1])
 }
 
-function parseMeasurementRange(text: string, defaultInches: boolean): [number, number] | null {
+function parseRange(text: string): [number, number] | null {
   const rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*[-~–]\s*(\d+(?:\.\d+)?)/)
-  const single = rangeMatch ? null : extractNumber(text)
-  if (!rangeMatch && single == null) return null
-  const values = rangeMatch ? [Number(rangeMatch[1]), Number(rangeMatch[2])] : [single as number, single as number]
-  const inches = defaultInches || /(?:inch|inches|\bin\b|[\"″])/i.test(text)
-  const converted = inches ? values.map((value) => value * 2.54) : values
-  return rangeMatch ? [converted[0], converted[1]] : [converted[0] - 2, converted[0] + 2]
+  if (rangeMatch) return [parseFloat(rangeMatch[1]), parseFloat(rangeMatch[2])]
+  const single = extractNumber(text)
+  if (single != null) return [single - 2, single + 2]
+  return null
 }
 
 function parseHeightRange(text: string): [number, number] | null {
@@ -146,61 +140,6 @@ function detectCategory(name: string): string {
   if (/\b(dress|gown|שמלה)\b/i.test(lower)) return "dresses"
   if (/\b(suit|blazer|חליפה)\b/i.test(lower)) return "suits"
   return "clothing"
-}
-
-// Scrape buyer-review fit bias signals from the product page HTML.
-// Returns a label + size-shift recommendation (in size steps, +1 = order one size up).
-function extractFitBias(html: string, availableSizes: string[]): { label: string; shift: number } | null {
-  const lower = html.toLowerCase()
-  // Common fit-bias phrases (English + Chinese + Hebrew) with associated shift.
-  const signals: { re: RegExp; shift: number; label: string }[] = [
-    { re: /runs?\s+(?:a\s+)?(?:size\s+)?small|sizes?\s+run\s+small|מתקבל\s+קטן|偏小|偏码/i, shift: 1, label: 'מתקבל קטן — מומלץ להזמין מידה מעל' },
-    { re: /order\s+(?:a\s+)?(?:size|1\s+size)\s+up|size\s+up|buy\s+(?:a\s+)?size\s+(?:bigger|larger)|הזמינו\s+מידה\s+מעל/i, shift: 1, label: 'מומלץ להזמין מידה מעל' },
-    { re: /runs?\s+(?:a\s+)?(?:size\s+)?large|sizes?\s+run\s+large|מתקבל\s+גדול|偏大/i, shift: -1, label: 'מתקבל גדול — אפשר להזמין מידה קטנה' },
-    { re: /order\s+(?:a\s+)?(?:size|1\s+size)\s+down|size\s+down|buy\s+(?:a\s+)?size\s+(?:smaller)|הזמינו\s+מידה\s+קטנה/i, shift: -1, label: 'מומלץ להזמין מידה קטנה' },
-    { re: /true\s+to\s+size|fits?\s+true|מתאים\s+למידה|按码拍/i, shift: 0, label: 'מתאים למידה — נאמן לטבלה' },
-  ]
-  // Count matches per shift bucket to pick the dominant signal.
-  const counts = new Map<number, { count: number; label: string }>()
-  for (const sig of signals) {
-    const matches = lower.match(new RegExp(sig.re.source, 'gi'))
-    if (matches && matches.length > 0) {
-      const existing = counts.get(sig.shift)
-      const count = (existing?.count ?? 0) + matches.length
-      counts.set(sig.shift, { count, label: sig.label })
-    }
-  }
-  if (counts.size === 0) return null
-  let best: { shift: number; count: number; label: string } | null = null
-  for (const [shift, info] of counts) {
-    if (!best || info.count > best.count) best = { shift, count: info.count, label: info.label }
-  }
-  // Only return a non-zero shift when there are at least 2 mentions to avoid noise.
-  if (best && best.shift !== 0 && best.count < 2) {
-    // Still prefer true-to-size if present, otherwise null.
-    const tts = counts.get(0)
-    return tts ? { label: tts.label, shift: 0 } : null
-  }
-  return best ? { label: best.label, shift: best.shift } : null
-}
-
-// Infer product demographic from page HTML signals (keywords, structured data).
-function detectProductDemographic(html: string, productName: string, availableSizes: string[], sizeChart: SizeChartEntry[]): 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown' {
-  const lower = html.toLowerCase()
-  const name = (productName ?? '').toLowerCase()
-  const labels = [...availableSizes, ...sizeChart.map((e) => e.label)]
-  const childCount = labels.filter((l) => /\b\d{1,2}y\b/i.test(l) || /^\d{2,3}\s*\([^)]*[ty]/i.test(l.trim()) || (/^\d{2,3}$/.test(l.trim()) && Number(l) >= 70 && Number(l) <= 170)).length
-  if (childCount > 0 && childCount >= labels.filter((l) => /^(?:xxs|xs|s|m|l|xl|xxl|2xl|3xl)$/i.test(l.trim())).length) return 'children'
-  const womenSignals = /(women|woman|female|lady|girls?'|dress|skirt|blouse|femme|נשים|אישה|שמלה|חצאית)/i
-  const menSignals = /(\bmen\b|\bman\b|\bmale\b|\bboys?\b|menswear|גברים|גבר)/i
-  const nameScore = (re: RegExp) => (re.test(name) ? 2 : 0) + (re.test(lower.slice(0, 20000)) ? 1 : 0)
-  const wScore = nameScore(womenSignals)
-  const mScore = nameScore(menSignals)
-  if (wScore > mScore && wScore >= 2) return 'women'
-  if (mScore > wScore && mScore >= 2) return 'men'
-  if (childCount > 0) return 'children'
-  if (labels.some((l) => /^(?:xxs|xs|s|m|l|xl|xxl|2xl|3xl)$/i.test(l.trim()))) return 'unisex-adult'
-  return 'unknown'
 }
 
 function extractMetaContent(html: string, property: string): string | null {
@@ -268,17 +207,15 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
     }
     if (rows.length < 2) continue
 
-    const headerCells = extractCellTexts(rows[0]).map((cell) => cell.toLowerCase())
+    const headerCells = extractCellTexts(rows[0])
     const sizeColIdx = headerCells.findIndex((h) =>
       h.includes("size") || h.includes("מידה") || h.includes("尺寸")
     )
     const chestColIdx = headerCells.findIndex((h) => h.includes("chest") || h.includes("bust") || h.includes("חזה") || h.includes("胸"))
     const waistColIdx = headerCells.findIndex((h) => h.includes("waist") || h.includes("מותן") || h.includes("腰"))
     const hipsColIdx = headerCells.findIndex((h) => h.includes("hip") || h.includes("אגן") || h.includes("臀"))
-    const shoulderColIdx = headerCells.findIndex((h) => h.includes("shoulder") || h.includes("כתף") || h.includes("肩"))
     const lengthColIdx = headerCells.findIndex((h) => h.includes("length") || h.includes("אורך") || h.includes("长"))
     const footColIdx = headerCells.findIndex((h) => h.includes("foot") || h.includes("רגל") || h.includes("脚"))
-    const tableUsesInches = /(?:inch|inches|\bin\b|[\"″])/i.test(tableHtml)
 
     const effectiveSizeCol = sizeColIdx >= 0 ? sizeColIdx : 0
 
@@ -297,30 +234,24 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
       const entry: SizeChartEntry = { label }
       const heightRange = parseHeightRange(label)
       if (heightRange) entry.height_cm = heightRange
-      const cols = [chestColIdx, waistColIdx, hipsColIdx, shoulderColIdx, lengthColIdx, footColIdx, heightColIdx, weightColIdx]
+      const cols = [chestColIdx, waistColIdx, hipsColIdx, lengthColIdx, footColIdx]
       const setters = [
         (range: [number, number]) => { entry.chest_cm = range },
         (range: [number, number]) => { entry.waist_cm = range },
         (range: [number, number]) => { entry.hips_cm = range },
-        (range: [number, number]) => { entry.shoulder_cm = range },
         (val: number) => { entry.length_cm = val },
         (range: [number, number]) => { entry.foot_length_cm = range },
-        (range: [number, number]) => { entry.height_cm = range },
-        (range: [number, number]) => { entry.weight_kg = range },
       ]
-      const isLength = [false, false, false, false, true, false, false, false]
+      const isLength = [false, false, false, true, false]
 
       for (let c = 0; c < cols.length; c++) {
         if (cols[c] < 0 || cols[c] >= cells.length) continue
         const val = cells[cols[c]].trim()
         if (isLength[c]) {
           const num = extractNumber(val)
-          if (num != null) {
-            const inches = tableUsesInches || /(?:inch|inches|\bin\b|[\"″])/i.test(val)
-            setters[c]((inches ? num * 2.54 : num) as any)
-          }
+          if (num != null) setters[c](num as any)
         } else {
-          const range = parseMeasurementRange(val, tableUsesInches)
+          const range = parseRange(val)
           if (range) setters[c](range as any)
         }
       }
@@ -340,8 +271,6 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
       }
     }
   }
-
-  extractEmbeddedChartEntries(html, entries, availableSizes, seenSizes)
 
   const textSizeRegex = /\b(?:\d{1,2}Y\s*(?:\(\s*\d{3}\s*[-–~]\s*\d{3}\s*cm\s*\))?|\d{2,3}\s*\(\s*\d{1,2}(?:-\d{1,2})?[TY]\s*\))/gi
   let textSizeMatch: RegExpExecArray | null
@@ -364,44 +293,6 @@ function parseSizeChartFromHTML(html: string): { entries: SizeChartEntry[]; avai
   }
 
   return { entries, availableSizes }
-}
-
-function extractEmbeddedChartEntries(
-  html: string,
-  entries: SizeChartEntry[],
-  availableSizes: string[],
-  seenSizes: Set<string>,
-): void {
-  const labelRegex = /["'](?:size|label|sku|option)["']\s*:\s*["']([^"']+)["']/gi
-  let labelMatch: RegExpExecArray | null
-  while ((labelMatch = labelRegex.exec(html)) !== null) {
-    const label = labelMatch[1].trim()
-    if (!isSizeLabel(label) || seenSizes.has(label.toUpperCase())) continue
-    const window = html.slice(Math.max(0, labelMatch.index - 700), labelMatch.index + 1000)
-    const unitInches = /(?:inch|inches|\\bin\\b|["″])/i.test(window)
-    const readField = (names: string): [number, number] | null => {
-      const field = window.match(new RegExp(`["'](?:${names})["']\\s*:\\s*["']?([^,"'}\\]]+)`, "i"))
-      return field ? parseMeasurementRange(field[1], unitInches) : null
-    }
-    const entry: SizeChartEntry = { label }
-    const chest = readField("chest|bust|חזה")
-    const waist = readField("waist|מותן")
-    const hips = readField("hip|hips|אגן")
-    const shoulder = readField("shoulder|כתף")
-    const length = readField("length|丈|אורך")
-    const height = readField("height|גובה")
-    const weight = readField("weight|משקל")
-    if (chest) entry.chest_cm = chest
-    if (waist) entry.waist_cm = waist
-    if (hips) entry.hips_cm = hips
-    if (shoulder) entry.shoulder_cm = shoulder
-    if (length) entry.length_cm = Math.round((length[0] + length[1]) / 2)
-    if (height) entry.height_cm = height
-    if (weight) entry.weight_kg = weight
-    seenSizes.add(label.toUpperCase())
-    availableSizes.push(label)
-    entries.push(entry)
-  }
 }
 
 function extractCellTexts(rowHtml: string): string[] {
@@ -506,8 +397,6 @@ async function handleRequest(req: Request): Promise<Response> {
 
     const category = detectCategory(productName ?? "")
     const { entries: sizeChart, availableSizes } = parseSizeChartFromHTML(html)
-    const fitBias = extractFitBias(html, availableSizes)
-    const productDemographic = detectProductDemographic(html, productName ?? "", availableSizes, sizeChart)
 
     const result: ProductAnalysis = {
       productName: productName ?? null,
@@ -517,8 +406,6 @@ async function handleRequest(req: Request): Promise<Response> {
       category,
       sizeChart,
       availableSizes,
-      fitBias,
-      productDemographic,
     }
 
     return new Response(JSON.stringify(result), {

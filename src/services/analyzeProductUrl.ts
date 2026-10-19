@@ -6,32 +6,20 @@ import type { FitBreakdown, WardrobeItem } from '../components/SizingResultModal
 
 const FETCH_TIMEOUT_MS = 9000
 
-export interface FitBias {
-  label: string
-  shift: number
-}
-
-export type ProductDemographic = 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
-export type ConfidenceLevel = 'high' | 'medium' | 'low'
-
 export interface ProductAnalysisResult {
   productName: string
   productImage: string | null
   price: string | null
   platform: string
   category: string
-  recommendedSize: string | null
+  recommendedSize: string
   matchPercentage: number
   fitBreakdown: FitBreakdown
   sellerMetadata: SellerSizeEntry[]
   availableSizes: string[]
   profileAgeGroup: AgeGroup
   productAgeRange: 'adult' | 'children' | 'unknown'
-  productDemographic: ProductDemographic
   fitExplanation: string
-  fitBias: FitBias | null
-  confidence: ConfidenceLevel
-  mismatchWarning: boolean
 }
 
 interface EdgeFunctionResponse {
@@ -42,8 +30,6 @@ interface EdgeFunctionResponse {
   category: string
   sizeChart: SellerSizeEntry[]
   availableSizes: string[]
-  fitBias: FitBias | null
-  productDemographic: ProductDemographic
 }
 
 async function generateUrlHash(url: string): Promise<string> {
@@ -138,8 +124,6 @@ function fallbackAnalysis(url: string): EdgeFunctionResponse {
     category: 'clothing',
     sizeChart: [],
     availableSizes: [],
-    fitBias: null,
-    productDemographic: 'unknown',
   }
 }
 
@@ -189,35 +173,6 @@ function computeMatchPercentage(breakdown: FitBreakdown, profileAccuracy: number
   return Math.min(99, Math.max(65, Math.round(adjusted)))
 }
 
-function demographicMismatchLabel(
-  profile: ScannedSizes,
-  productDemographic: ProductDemographic,
-): string | null {
-  if (productDemographic === 'unknown') return null
-  const isChildProfile = profile.ageGroup === 'baby' || profile.ageGroup === 'toddler' || profile.ageGroup === 'child'
-  if (productDemographic === 'children' && !isChildProfile) return 'ילדים'
-  if (productDemographic === 'women' && profile.gender === 'male' && !isChildProfile) return 'נשים'
-  if (productDemographic === 'men' && profile.gender === 'female' && !isChildProfile) return 'גברים'
-  if ((productDemographic === 'unisex-adult' || productDemographic === 'women' || productDemographic === 'men') && isChildProfile) return 'מבוגרים'
-  return null
-}
-
-function isDemographicMismatch(
-  profile: ScannedSizes,
-  productDemographic: ProductDemographic,
-): boolean {
-  return demographicMismatchLabel(profile, productDemographic) !== null
-}
-
-function applyFitBiasShift(size: string, shift: number, availableSizes: string[]): string {
-  if (shift === 0 || availableSizes.length === 0) return size
-  const idx = availableSizes.findIndex((s) => s.toUpperCase() === size.toUpperCase())
-  if (idx === -1) return size
-  const target = idx + shift
-  if (target < 0 || target >= availableSizes.length) return size
-  return availableSizes[target]
-}
-
 export async function analyzeProductUrl(
   url: string,
   userSizes: ScannedSizes | null,
@@ -229,6 +184,7 @@ export async function analyzeProductUrl(
 
   const urlHash = await generateUrlHash(url)
 
+  // Check cache first
   const cached = await checkUrlCache(urlHash)
   let analysis: EdgeFunctionResponse
 
@@ -244,99 +200,23 @@ export async function analyzeProductUrl(
     }
   }
 
-  const productDemographic = analysis.productDemographic ?? inferProductDemographic(analysis.availableSizes, analysis.sizeChart, analysis.productName, userSizes)
-  const productAgeRange = inferProductAgeRange(analysis.availableSizes, analysis.sizeChart)
-  const mismatchLabel = demographicMismatchLabel(userSizes, productDemographic)
-  const mismatchWarning = mismatchLabel !== null
-
-  const rawMatch = calculateRecommendedSize(
+  const matchedSize = calculateRecommendedSize(
     userSizes,
     analysis.sizeChart,
     analysis.category,
     analysis.productName,
     analysis.availableSizes,
   )
-
-  // ALWAYS RETURN A VALID INVENTORY SIZE: recommended size MUST exist in options.
-  const normalize = (s: string) => s.toUpperCase().replace(/\s+/g, ' ').trim()
-  const availableNorms = new Set(analysis.availableSizes.map(normalize))
-  let recommendedSize: string | null = rawMatch
-  if (recommendedSize && !availableNorms.has(normalize(recommendedSize))) {
-    // Fall back to closest available rather than null.
-    recommendedSize = analysis.availableSizes[0] ?? null
-  }
-
-  // Apply review fit-bias shift (e.g., "runs small" → one size up).
-  if (recommendedSize && analysis.fitBias && analysis.fitBias.shift !== 0) {
-    const shifted = applyFitBiasShift(recommendedSize, analysis.fitBias.shift, analysis.availableSizes)
-    if (shifted && availableNorms.has(normalize(shifted))) recommendedSize = shifted
-  }
-
+  const recommendedSize = matchedSize ?? analysis.availableSizes[0] ?? 'לא נמצאה מידה'
+  const productAgeRange = inferProductAgeRange(analysis.availableSizes, analysis.sizeChart)
   const height = userSizes.sizing.bodyMetrics?.estimated_height_cm
   const profileSize = userSizes.sizing.top || userSizes.sizing.bottom
-  const matchedChartEntry = recommendedSize ? analysis.sizeChart.find((entry) => entry.label === recommendedSize) : undefined
-  const profileChest = userSizes.sizing.bodyMetrics?.chest_circumference_cm
-  const chartChest = matchedChartEntry?.chest_cm
-    ? Math.round((matchedChartEntry.chest_cm[0] + matchedChartEntry.chest_cm[1]) / 2)
-    : null
-
-  const hasChartData = analysis.sizeChart.length > 0
-  const hasExactMeasurements = !!matchedChartEntry?.chest_cm && profileChest != null
-  const hasBodyMetrics = !!userSizes.sizing.bodyMetrics?.chest_circumference_cm
-
-  // If no available sizes at all, we genuinely can't recommend.
-  if (!recommendedSize || analysis.availableSizes.length === 0) {
-    return {
-      productName: analysis.productName,
-      productImage: analysis.productImage,
-      price: analysis.price,
-      platform: analysis.platform,
-      category: analysis.category,
-      recommendedSize: null,
-      matchPercentage: 0,
-      fitBreakdown: { chest: { fit: '—', score: 0 }, waist: { fit: '—', score: 0 }, length: { fit: '—', score: 0 } },
-      sellerMetadata: analysis.sizeChart,
-      availableSizes: analysis.availableSizes,
-      profileAgeGroup: userSizes.ageGroup,
-      productAgeRange,
-      productDemographic,
-      fitExplanation: 'לא הצלחנו למצוא מידות זמינות בעמוד זה. נסה/י קישור אחר.',
-      fitBias: analysis.fitBias,
-      confidence: 'low',
-      mismatchWarning,
-    }
-  }
+  const fitExplanation = height != null
+    ? `מידה מומלצת: ${recommendedSize} (מותאם לגובה ${height} ס"מ ומידה ${profileSize})`
+    : `מידה מומלצת: ${recommendedSize} (מותאם למידה ${profileSize})`
 
   const fitBreakdown = computeFitBreakdown(userSizes, analysis.sizeChart, recommendedSize)
-  let matchPercentage = computeMatchPercentage(fitBreakdown, profileAccuracy)
-
-  // Determine confidence level.
-  let confidence: ConfidenceLevel
-  if (hasExactMeasurements) {
-    confidence = 'high'
-  } else if (hasChartData || hasBodyMetrics || analysis.fitBias) {
-    confidence = 'medium'
-    matchPercentage = Math.min(matchPercentage, 82)
-  } else {
-    confidence = 'medium'
-    matchPercentage = Math.min(matchPercentage, 70)
-  }
-
-  // Build explanation based on confidence level.
-  const biasLine = analysis.fitBias ? `\nהמלצות קונים: ${analysis.fitBias.label}.` : ''
-  let fitExplanation: string
-  if (confidence === 'high') {
-    const chartReason = chartChest != null && profileChest != null
-      ? `\nהסבר: מבוסס על הצלבת היקף החזה בטבלה (${chartChest} ס"מ) מול נתוני הפרופיל (${profileChest} ס"מ) + מרווח נוחות בגזרה רגילה.`
-      : `\nהסבר: מבוסס על היקפים מטבלת המידות הרשמית של המוכר.`
-    fitExplanation = `התאמה מדויקת: ${recommendedSize} 🎯${chartReason}${biasLine}`
-  } else {
-    const estReason = height != null
-      ? `\nהסבר: מבוסס על גובה (${height} ס"מ), משקל ומידה רגילה (${profileSize}).`
-      : `\nהסבר: מבוסס על מידה רגילה (${profileSize}) והמרה למידות הזמינות.`
-    const tip = '\nלדיוק מרבי, מומלץ לוודא בטבלת המידות בעמוד המוצר.'
-    fitExplanation = `המלצה משוערת: ${recommendedSize} 📏${estReason}${biasLine}${tip}`
-  }
+  const matchPercentage = computeMatchPercentage(fitBreakdown, profileAccuracy)
 
   return {
     productName: analysis.productName,
@@ -351,37 +231,8 @@ export async function analyzeProductUrl(
     availableSizes: analysis.availableSizes,
     profileAgeGroup: userSizes.ageGroup,
     productAgeRange,
-    productDemographic,
     fitExplanation,
-    fitBias: analysis.fitBias,
-    confidence,
-    mismatchWarning,
   }
-}
-
-function inferProductDemographic(
-  availableSizes: string[],
-  sellerMetadata: SellerSizeEntry[],
-  productName: string,
-  userSizes: ScannedSizes,
-): 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown' {
-  const labels = [...availableSizes, ...sellerMetadata.map((entry) => entry.label)]
-  const name = (productName ?? '').toLowerCase()
-  const childCount = labels.filter((label) => /\b\d{1,2}Y\b/i.test(label) || /^\d{2,3}\s*\([^)]*[TY]/i.test(label.trim()) || (/^\d{2,3}$/.test(label.trim()) && Number(label) >= 70 && Number(label) <= 170)).length
-  if (childCount > 0 && childCount >= labels.filter((l) => /^(?:XXS|XS|S|M|L|XL|XXL|2XL|3XL)$/i.test(l.trim())).length) return 'children'
-  const womenKeywords = /(women|woman|female|lady|girls?|dress|skirt|blouse|femme|נשים|אישה|שמלה|חצאית)/i
-  const menKeywords = /(men|man|male|boys?|guy|menswear|גברים|גבר)/i
-  const profileGender = userSizes.gender
-  if (womenKeywords.test(name)) return 'women'
-  if (menKeywords.test(name)) return 'men'
-  // Plus-size or bust-focused charts (cup sizes, D+) indicate women's.
-  const hasLargeBust = sellerMetadata.some((e) => e.chest_cm && e.chest_cm[1] >= 110)
-  const hasSmallNumbers = labels.some((l) => /^(?:3[2-9]|4[0-9])$/i.test(l.trim()))
-  if (profileGender === 'female' && (hasLargeBust || hasSmallNumbers)) return 'women'
-  if (profileGender === 'male' && hasSmallNumbers) return 'men'
-  if (childCount > 0) return 'children'
-  if (labels.some((l) => /^(?:XXS|XS|S|M|L|XL|XXL|2XL|3XL)$/i.test(l.trim()))) return 'unisex-adult'
-  return 'unknown'
 }
 
 function inferProductAgeRange(availableSizes: string[], sellerMetadata: SellerSizeEntry[]): 'adult' | 'children' | 'unknown' {

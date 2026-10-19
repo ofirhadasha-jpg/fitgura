@@ -20,7 +20,7 @@ export interface WardrobeItem {
   productImage: string | null
   price: string | null
   platform: string
-  recommendedSize: string | null
+  recommendedSize: string
   matchPercentage: number
   fitBreakdown: FitBreakdown | null
   affiliateUrl: string
@@ -64,7 +64,7 @@ interface SizingResultModalProps {
   productImage: string | null
   price: string | null
   platform: string
-  recommendedSize: string | null
+  recommendedSize: string
   matchPercentage: number
   fitBreakdown: FitBreakdown | null
   affiliateUrl: string
@@ -81,11 +81,7 @@ interface SizingResultModalProps {
   category?: string
   profileAgeGroup?: AgeGroup
   productAgeRange?: 'adult' | 'children' | 'unknown'
-  productDemographic?: 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
   fitExplanation?: string
-  confidence?: 'high' | 'medium' | 'low'
-  mismatchWarning?: boolean
-  onProfileSwitch?: () => void
 }
 
 export default function SizingResultModal({
@@ -112,11 +108,7 @@ export default function SizingResultModal({
   category = 'clothing',
   profileAgeGroup,
   productAgeRange = 'unknown',
-  productDemographic = 'unknown',
   fitExplanation,
-  confidence = 'high',
-  mismatchWarning = false,
-  onProfileSwitch,
 }: SizingResultModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(defaultProfileId ?? 'self')
   const [isWishlist, setIsWishlist] = useState(false)
@@ -158,23 +150,8 @@ export default function SizingResultModal({
   const selectedProfile = profileOptions.find((p) => p.id === selectedProfileId)
   const isChildProfile = profileAgeGroup === 'baby' || profileAgeGroup === 'toddler' || profileAgeGroup === 'child'
   const profileMismatch = (isChildProfile && productAgeRange === 'adult') || (!isChildProfile && productAgeRange === 'children')
-  const declined = !recommendedSize
-  const confidenceColor = confidence === 'high' ? '#00CC52' : confidence === 'medium' ? '#F59E0B' : '#DC2626'
-  const confidenceLabel = confidence === 'high' ? 'התאמה מדויקת' : confidence === 'medium' ? 'המלצה משוערת' : 'ביטחון נמוך'
-  const mismatchLabel = productDemographic === 'children'
-    ? 'ילדים'
-    : productDemographic === 'women'
-      ? 'נשים'
-      : productDemographic === 'men'
-        ? 'גברים'
-        : productDemographic === 'unisex-adult'
-          ? 'מבוגרים'
-          : ''
-  const mismatchText = mismatchLabel
-    ? `שימו לב: טווח המידות במוצר זה מיועד ל${mismatchLabel} ואינו תואם את נתוני הפרופיל הנבחר.`
-    : 'המוצר אינו מתאים לנתוני הפרופיל הנבחר (טווח מידות ילדים בלבד)'
   const displayedFitExplanation = fitExplanation && profileName
-    ? fitExplanation.replaceAll('של הפרופיל הנבחר', `של ${profileName}`)
+    ? fitExplanation.replace(/\)$/, ` של ${profileName})`)
     : fitExplanation
 
   const saveBtnText = saving
@@ -326,28 +303,17 @@ export default function SizingResultModal({
         </View>
 
         {fitExplanation && (
-          <Text style={styles.fitExplanation}>{displayedFitExplanation}</Text>
+          <Text style={styles.fitExplanation}>{displayedFitExplanation} 🎯</Text>
         )}
 
-        {declined ? (
-          <View style={[styles.sizeCard, { borderColor: '#DC2626', backgroundColor: '#FFF0F0' }]}>
-            <Text style={styles.sizeLabel}>תוצאת ניתוח</Text>
-            <Text style={[styles.sizeValue, { color: '#DC2626', fontSize: 24 }]}>לא ניתן להמליץ</Text>
-            <Text style={[styles.matchPct, { color: '#991B1B', marginTop: 8 }]}>אין מידות זמינות בעמוד זה</Text>
+        <View style={[styles.sizeCard, { borderColor: matchColor }]}>
+          <Text style={styles.sizeLabel}>המידה המומלצת</Text>
+          <Text style={[styles.sizeValue, { color: matchColor }]}>{recommendedSize}</Text>
+          <View style={styles.matchBar}>
+            <View style={[styles.matchBarFill, { width: `${matchPercentage}%`, backgroundColor: matchColor }]} />
           </View>
-        ) : (
-          <View style={[styles.sizeCard, { borderColor: confidenceColor }]}>
-            <View style={[styles.confidenceBadge, { backgroundColor: confidenceColor }]}>
-              <Text style={styles.confidenceBadgeText}>{confidenceLabel}</Text>
-            </View>
-            <Text style={styles.sizeLabel}>המידה המומלצת</Text>
-            <Text style={[styles.sizeValue, { color: confidenceColor }]}>{recommendedSize}</Text>
-            <View style={styles.matchBar}>
-              <View style={[styles.matchBarFill, { width: `${matchPercentage}%`, backgroundColor: confidenceColor }]} />
-            </View>
-            <Text style={[styles.matchPct, { color: confidenceColor }]}>{matchPercentage >= 90 ? `מידה ${recommendedSize} תונח עלייך מושלם` : `${matchPercentage}% התאמה`}</Text>
-          </View>
-        )}
+          <Text style={[styles.matchPct, { color: matchColor }]}>{matchPercentage >= 90 ? `מידה ${recommendedSize} תונח עלייך מושלם` : `${matchPercentage}% התאמה`}</Text>
+        </View>
 
         <View style={styles.disclaimerBox}>
           <Text style={styles.disclaimerText}>
@@ -355,26 +321,15 @@ export default function SizingResultModal({
           </Text>
         </View>
 
-        {(profileMismatch || mismatchWarning) && (
+        {profileMismatch && (
           <View style={[styles.disclaimerBox, styles.mismatchBox]}>
             <Text style={styles.mismatchText}>
-              {mismatchWarning && mismatchLabel
-                ? `שימו לב: מוצר זה מיועד ל${mismatchLabel}. להחלפת פרופיל לחץ/י כאן 🔄`
-                : mismatchText}
+              המוצר אינו מתאים לנתוני הפרופיל הנבחר (טווח מידות ילדים בלבד)
             </Text>
-            {mismatchWarning && onProfileSwitch && (
-              <TouchableOpacity
-                onPress={onProfileSwitch}
-                activeOpacity={0.7}
-                style={styles.switchProfileBtn}
-              >
-                <Text style={styles.switchProfileBtnText}>החלף פרופיל 🔄</Text>
-              </TouchableOpacity>
-            )}
           </View>
         )}
 
-        {!declined && fitBreakdown && (
+        {fitBreakdown && (
           <View style={styles.breakdownSection}>
             <Text style={styles.breakdownTitle}>פירוט התאמה</Text>
             {[
@@ -394,17 +349,15 @@ export default function SizingResultModal({
           </View>
         )}
 
-        {!declined && (
-          <TouchableOpacity
-            onPress={() => onBuy(affiliateUrl)}
-            activeOpacity={0.8}
-            style={styles.buyBtn}
-          >
-            <Text style={styles.buyBtnText}>🛒 קנה עכשיו במידה {recommendedSize}</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={() => onBuy(affiliateUrl)}
+          activeOpacity={0.8}
+          style={styles.buyBtn}
+        >
+          <Text style={styles.buyBtnText}>🛒 קנה עכשיו במידה {recommendedSize}</Text>
+        </TouchableOpacity>
 
-        {!declined && confidence === 'high' && matchPercentage >= 95 && (
+        {matchPercentage >= 95 && (
           <View style={styles.commitmentBadge}>
             <Text style={styles.commitmentBadgeIcon}>✅</Text>
             <Text style={styles.commitmentBadgeText}>
@@ -439,7 +392,7 @@ export default function SizingResultModal({
           </TouchableOpacity>
         </View>
 
-        {!declined && onSave && (
+        {onSave && (
           <View style={styles.wardrobeSection}>
             <TouchableOpacity
               onPress={() => setShowProfileDropdown((v) => !v)}
@@ -488,7 +441,7 @@ export default function SizingResultModal({
           </View>
         )}
 
-        {!declined && onSave && (
+        {onSave && (
           <View>
             <TouchableOpacity
               onPress={() => setIsWishlist((v) => !v)}
@@ -599,8 +552,4 @@ const styles = StyleSheet.create({
   disclaimerText: { fontSize: 11, lineHeight: 16, color: '#4A4A4A', textAlign: 'center', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
   mismatchBox: { backgroundColor: '#FFF0F0', borderColor: '#DC2626' },
   mismatchText: { fontSize: 13, lineHeight: 19, color: '#991B1B', textAlign: 'center', fontWeight: '700', fontFamily: "'Noto Sans Hebrew', sans-serif" },
-  confidenceBadge: { borderRadius: 8, paddingVertical: 3, paddingHorizontal: 10, marginBottom: 6, alignSelf: 'center' },
-  confidenceBadgeText: { fontSize: 11, fontWeight: '800', color: '#FFFEF5', fontFamily: "'Permanent Marker', cursive" },
-  switchProfileBtn: { marginTop: 8, backgroundColor: '#FFFEF5', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#DC2626' },
-  switchProfileBtnText: { fontSize: 13, fontWeight: '700', color: '#DC2626', fontFamily: "'Caveat', 'Noto Sans Hebrew', cursive" },
 })
