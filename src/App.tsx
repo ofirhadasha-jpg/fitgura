@@ -777,8 +777,9 @@ export default function App() {
       setPendingFamilyAdd((n) => n + 1)
       changeScreen('profile')
     } else if (wasWardrobeAdd) {
-      void migrateGuestWardrobe(loggedInUser.id)
-      showToast('הפריט נשמר בארון שלך! 👕✨')
+      void migrateGuestWardrobe(loggedInUser.id).then(() => {
+        showToast('התחברת בהצלחה והמוצר נוסף לארון שלך! 👕✨')
+      })
       changeScreen('hub')
     } else {
       changeScreen('hub')
