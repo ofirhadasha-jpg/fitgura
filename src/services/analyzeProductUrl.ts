@@ -12,6 +12,7 @@ export interface FitBias {
 }
 
 export type ProductDemographic = 'children' | 'women' | 'men' | 'unisex-adult' | 'unknown'
+export type ConfidenceLevel = 'high' | 'medium' | 'low'
 
 export interface ProductAnalysisResult {
   productName: string
@@ -29,8 +30,8 @@ export interface ProductAnalysisResult {
   productDemographic: ProductDemographic
   fitExplanation: string
   fitBias: FitBias | null
-  declined: boolean
-  declineReason: 'demographic_mismatch' | 'insufficient_data' | 'low_confidence' | null
+  confidence: ConfidenceLevel
+  mismatchWarning: boolean
 }
 
 interface EdgeFunctionResponse {
@@ -188,22 +189,24 @@ function computeMatchPercentage(breakdown: FitBreakdown, profileAccuracy: number
   return Math.min(99, Math.max(65, Math.round(adjusted)))
 }
 
+function demographicMismatchLabel(
+  profile: ScannedSizes,
+  productDemographic: ProductDemographic,
+): string | null {
+  if (productDemographic === 'unknown') return null
+  const isChildProfile = profile.ageGroup === 'baby' || profile.ageGroup === 'toddler' || profile.ageGroup === 'child'
+  if (productDemographic === 'children' && !isChildProfile) return 'ילדים'
+  if (productDemographic === 'women' && profile.gender === 'male' && !isChildProfile) return 'נשים'
+  if (productDemographic === 'men' && profile.gender === 'female' && !isChildProfile) return 'גברים'
+  if ((productDemographic === 'unisex-adult' || productDemographic === 'women' || productDemographic === 'men') && isChildProfile) return 'מבוגרים'
+  return null
+}
+
 function isDemographicMismatch(
   profile: ScannedSizes,
   productDemographic: ProductDemographic,
 ): boolean {
-  if (productDemographic === 'unknown') return false
-  const isChildProfile = profile.ageGroup === 'baby' || profile.ageGroup === 'toddler' || profile.ageGroup === 'child'
-  if (productDemographic === 'children' && !isChildProfile) return true
-  if (productDemographic === 'women' && profile.gender !== 'female' && !isChildProfile) {
-    // women's product under a male/unisex adult profile
-    return profile.gender === 'male'
-  }
-  if (productDemographic === 'men' && profile.gender !== 'male' && !isChildProfile) {
-    return profile.gender === 'female'
-  }
-  if ((productDemographic === 'unisex-adult' || productDemographic === 'women' || productDemographic === 'men') && isChildProfile) return true
-  return false
+  return demographicMismatchLabel(profile, productDemographic) !== null
 }
 
 function applyFitBiasShift(size: string, shift: number, availableSizes: string[]): string {
@@ -243,32 +246,8 @@ export async function analyzeProductUrl(
 
   const productDemographic = analysis.productDemographic ?? inferProductDemographic(analysis.availableSizes, analysis.sizeChart, analysis.productName, userSizes)
   const productAgeRange = inferProductAgeRange(analysis.availableSizes, analysis.sizeChart)
-
-  // HARD BLOCK: demographic mismatch → decline with no size recommendation.
-  if (isDemographicMismatch(userSizes, productDemographic)) {
-    const profileLabel = userSizes.gender === 'female' ? 'נשים' : userSizes.gender === 'male' ? 'גברים' : 'מבוגרים'
-    const isChildProfile = userSizes.ageGroup === 'baby' || userSizes.ageGroup === 'toddler' || userSizes.ageGroup === 'child'
-    const targetLabel = isChildProfile ? 'ילדים' : profileLabel
-    return {
-      productName: analysis.productName,
-      productImage: analysis.productImage,
-      price: analysis.price,
-      platform: analysis.platform,
-      category: analysis.category,
-      recommendedSize: null,
-      matchPercentage: 0,
-      fitBreakdown: { chest: { fit: '—', score: 0 }, waist: { fit: '—', score: 0 }, length: { fit: '—', score: 0 } },
-      sellerMetadata: analysis.sizeChart,
-      availableSizes: analysis.availableSizes,
-      profileAgeGroup: userSizes.ageGroup,
-      productAgeRange,
-      productDemographic,
-      fitExplanation: `לא הצלחנו לבצע התאמה ⚠️\nנראה שמוצר זה אינו מתאים לנתוני הפרופיל הנוכחי (בדוק/י שאת/ה מתחת לפרופיל המתאים, למשל: ${targetLabel}).`,
-      fitBias: analysis.fitBias,
-      declined: true,
-      declineReason: 'demographic_mismatch',
-    }
-  }
+  const mismatchLabel = demographicMismatchLabel(userSizes, productDemographic)
+  const mismatchWarning = mismatchLabel !== null
 
   const rawMatch = calculateRecommendedSize(
     userSizes,
@@ -278,12 +257,13 @@ export async function analyzeProductUrl(
     analysis.availableSizes,
   )
 
-  // STRICT RULE: recommended size MUST exist in the product's available options.
+  // ALWAYS RETURN A VALID INVENTORY SIZE: recommended size MUST exist in options.
   const normalize = (s: string) => s.toUpperCase().replace(/\s+/g, ' ').trim()
   const availableNorms = new Set(analysis.availableSizes.map(normalize))
   let recommendedSize: string | null = rawMatch
   if (recommendedSize && !availableNorms.has(normalize(recommendedSize))) {
-    recommendedSize = null
+    // Fall back to closest available rather than null.
+    recommendedSize = analysis.availableSizes[0] ?? null
   }
 
   // Apply review fit-bias shift (e.g., "runs small" → one size up).
@@ -301,11 +281,11 @@ export async function analyzeProductUrl(
     : null
 
   const hasChartData = analysis.sizeChart.length > 0
+  const hasExactMeasurements = !!matchedChartEntry?.chest_cm && profileChest != null
   const hasBodyMetrics = !!userSizes.sizing.bodyMetrics?.chest_circumference_cm
 
-  // ZERO-GUESSWORK: if no chart, no body metrics, or no available sizes → decline.
+  // If no available sizes at all, we genuinely can't recommend.
   if (!recommendedSize || analysis.availableSizes.length === 0) {
-    const reason = (!hasChartData && !hasBodyMetrics) ? 'insufficient_data' : 'low_confidence'
     return {
       productName: analysis.productName,
       productImage: analysis.productImage,
@@ -320,49 +300,43 @@ export async function analyzeProductUrl(
       profileAgeGroup: userSizes.ageGroup,
       productAgeRange,
       productDemographic,
-      fitExplanation: 'לא הצלחנו לבצע התאמה מדויקת ברמת ביטחון גבוהה בעמוד זה.',
+      fitExplanation: 'לא הצלחנו למצוא מידות זמינות בעמוד זה. נסה/י קישור אחר.',
       fitBias: analysis.fitBias,
-      declined: true,
-      declineReason: reason,
+      confidence: 'low',
+      mismatchWarning,
     }
   }
 
   const fitBreakdown = computeFitBreakdown(userSizes, analysis.sizeChart, recommendedSize)
   let matchPercentage = computeMatchPercentage(fitBreakdown, profileAccuracy)
-  // Penalize when no chart is available — confidence drops sharply.
-  if (!hasChartData) matchPercentage = Math.min(matchPercentage, 70)
 
-  // ZERO-GUESSWORK: low-confidence decline threshold.
-  if (matchPercentage < 72) {
-    return {
-      productName: analysis.productName,
-      productImage: analysis.productImage,
-      price: analysis.price,
-      platform: analysis.platform,
-      category: analysis.category,
-      recommendedSize: null,
-      matchPercentage: 0,
-      fitBreakdown: { chest: { fit: '—', score: 0 }, waist: { fit: '—', score: 0 }, length: { fit: '—', score: 0 } },
-      sellerMetadata: analysis.sizeChart,
-      availableSizes: analysis.availableSizes,
-      profileAgeGroup: userSizes.ageGroup,
-      productAgeRange,
-      productDemographic,
-      fitExplanation: 'לא הצלחנו לבצע התאמה מדויקת ברמת ביטחון גבוהה בעמוד זה.',
-      fitBias: analysis.fitBias,
-      declined: true,
-      declineReason: 'low_confidence',
-    }
+  // Determine confidence level.
+  let confidence: ConfidenceLevel
+  if (hasExactMeasurements) {
+    confidence = 'high'
+  } else if (hasChartData || hasBodyMetrics || analysis.fitBias) {
+    confidence = 'medium'
+    matchPercentage = Math.min(matchPercentage, 82)
+  } else {
+    confidence = 'medium'
+    matchPercentage = Math.min(matchPercentage, 70)
   }
 
-  // Build transparent high-confidence explanation.
+  // Build explanation based on confidence level.
   const biasLine = analysis.fitBias ? `\nהמלצות קונים: ${analysis.fitBias.label}.` : ''
-  const chartReason = chartChest != null && profileChest != null
-    ? `\nהסבר: מבוסס על הצלבת היקף החזה בטבלה (${chartChest} ס"מ) מול נתוני הפרופיל (${profileChest} ס"מ) + מרווח נוחות בגזרה רגילה.`
-    : hasChartData
-      ? `\nהסבר: מבוסס על הצלבת נתוני ההיקפים שלך מול טבלת המידות הרשמית של המוכר.`
-      : `\nהסבר: מבוסס על המרת מידת הפרופיל (${profileSize}) למידות הזמינות במוצר.`
-  const fitExplanation = `מידה מומלצת להזמנה: ${recommendedSize} 🎯${chartReason}${biasLine}`
+  let fitExplanation: string
+  if (confidence === 'high') {
+    const chartReason = chartChest != null && profileChest != null
+      ? `\nהסבר: מבוסס על הצלבת היקף החזה בטבלה (${chartChest} ס"מ) מול נתוני הפרופיל (${profileChest} ס"מ) + מרווח נוחות בגזרה רגילה.`
+      : `\nהסבר: מבוסס על היקפים מטבלת המידות הרשמית של המוכר.`
+    fitExplanation = `התאמה מדויקת: ${recommendedSize} 🎯${chartReason}${biasLine}`
+  } else {
+    const estReason = height != null
+      ? `\nהסבר: מבוסס על גובה (${height} ס"מ), משקל ומידה רגילה (${profileSize}).`
+      : `\nהסבר: מבוסס על מידה רגילה (${profileSize}) והמרה למידות הזמינות.`
+    const tip = '\nלדיוק מרבי, מומלץ לוודא בטבלת המידות בעמוד המוצר.'
+    fitExplanation = `המלצה משוערת: ${recommendedSize} 📏${estReason}${biasLine}${tip}`
+  }
 
   return {
     productName: analysis.productName,
@@ -380,8 +354,8 @@ export async function analyzeProductUrl(
     productDemographic,
     fitExplanation,
     fitBias: analysis.fitBias,
-    declined: false,
-    declineReason: null,
+    confidence,
+    mismatchWarning,
   }
 }
 
