@@ -943,6 +943,19 @@ export function computeBodyMetricsFromSizes(top: string, bottom: string, existin
 
 // Proportional adjustment of body circumferences when weight or height changes.
 // +1 kg ≈ +0.8 cm to waist/hips/chest; +1 cm height ≈ +0.3 cm to chest/shoulder
+export function computeRecommendedSizesFromMetrics(metrics: BodyMetrics): { top: string; bottom: string } {
+  const top = Object.entries(TOP_SIZE_METRICS).reduce((closest, [size, values]) => {
+    const closestDistance = Math.abs(TOP_SIZE_METRICS[closest].chest - (metrics.chest_circumference_cm ?? TOP_SIZE_METRICS.M.chest))
+    const distance = Math.abs(values.chest - (metrics.chest_circumference_cm ?? TOP_SIZE_METRICS.M.chest))
+    return distance < closestDistance ? size : closest
+  }, 'M')
+  const bottom = Object.entries(BOTTOM_SIZE_WAIST).reduce((closest, [size, waist]) => {
+    const targetWaist = metrics.waist_circumference_cm ?? BOTTOM_SIZE_WAIST['40']
+    return Math.abs(waist - targetWaist) < Math.abs(BOTTOM_SIZE_WAIST[closest] - targetWaist) ? size : closest
+  }, '40')
+  return { top, bottom }
+}
+
 export function computeBodyMetricsFromHeightWeight(
   heightCm: number,
   weightKg: number,

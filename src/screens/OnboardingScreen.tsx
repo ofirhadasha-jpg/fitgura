@@ -13,6 +13,7 @@ import {
   aiAnalysisToScannedSizes,
   computeBodyMetricsFromSizes,
   computeBodyMetricsFromHeightWeight,
+  computeRecommendedSizesFromMetrics,
   fileToCompressedBase64,
   formatTimestamp, nextScanId,
 } from '../types'
@@ -126,11 +127,14 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
         estimated_height_cm: enteredHeight,
         estimated_weight_kg: enteredWeight,
       }
+      const recommendedSizes = computeRecommendedSizesFromMetrics(preservedMetrics)
       const finalSizes: ScannedSizes = {
         ...aiSizes,
+        top: recommendedSizes.top,
+        bottom: recommendedSizes.bottom,
         gender: baseGender,
         ageGroup: sizes?.ageGroup ?? aiSizes.ageGroup,
-        sizing: { ...aiSizes.sizing, bodyMetrics: preservedMetrics },
+        sizing: { ...aiSizes.sizing, top: recommendedSizes.top, bottom: recommendedSizes.bottom, bodyMetrics: preservedMetrics },
       }
       setSizes(finalSizes)
       onScanned(finalSizes)
@@ -321,10 +325,11 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                 const age = Number(baseAge) || 25
                 const ageGroup = age <= 2 ? 'baby' : age <= 5 ? 'toddler' : age <= 12 ? 'child' : age <= 18 ? 'teen' : 'adult'
                 const metrics = computeBodyMetricsFromHeightWeight(h, w, null)
+                const recommendedSizes = computeRecommendedSizesFromMetrics(metrics)
                 const initialSizes: ScannedSizes = {
                   sizing: {
-                    top: 'M',
-                    bottom: '40',
+                    top: recommendedSizes.top,
+                    bottom: recommendedSizes.bottom,
                     fit: 'Regular',
                     bodyFrame: 'Medium',
                     confidence: 0,
@@ -336,8 +341,8 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
                   style: { primaryStyle: 'Casual', secondaryStyle: 'Urban', dominantColors: [], patternPreference: 'Solid', aestheticTags: [] },
                   confidence: 0,
                   preview: '',
-                  top: 'M',
-                  bottom: '40',
+                  top: recommendedSizes.top,
+                  bottom: recommendedSizes.bottom,
                   fit: 'Regular',
                   gender: baseGender,
                   ageGroup,
@@ -442,12 +447,14 @@ export function OnboardingScreen({ onNext, onScanned, onGalleryAdd, onGalleryAcc
             <TouchableOpacity
               onPress={() => {
                 const fallback: ScannedSizes = {
-                  sizing: { top: 'M', bottom: '40', fit: 'Regular', bodyFrame: 'Medium', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: computeBodyMetricsFromHeightWeight(Number(baseHeight), Number(baseWeight), null) },
+                  ...(() => {
+                    const metrics = computeBodyMetricsFromHeightWeight(Number(baseHeight) || 175, Number(baseWeight) || 75, null)
+                    const recommendedSizes = computeRecommendedSizesFromMetrics(metrics)
+                    return { sizing: { top: recommendedSizes.top, bottom: recommendedSizes.bottom, fit: 'Regular', bodyFrame: 'Medium', confidence: 0, baselineMatched: false, isWeeklyUpdate: false, measurementDelta: null, bodyMetrics: metrics }, top: recommendedSizes.top, bottom: recommendedSizes.bottom }
+                  })(),
                   style: { primaryStyle: 'Casual', secondaryStyle: 'Urban', dominantColors: [], patternPreference: 'Solid', aestheticTags: [] },
                   confidence: 0,
                   preview: '',
-                  top: 'M',
-                  bottom: '40',
                   fit: 'Regular',
                   gender: baseGender,
                   ageGroup: 'adult',
@@ -798,6 +805,9 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
       setWaistCm(String(metrics.waist_circumference_cm))
       setHipsCm(String(metrics.hips_circumference_cm))
       setShoulderCm(String(metrics.shoulder_width_cm))
+      const recommendedSizes = computeRecommendedSizesFromMetrics(metrics)
+      setTopSize(recommendedSizes.top)
+      setBottomSize(recommendedSizes.bottom)
     }
   }
 
@@ -812,6 +822,9 @@ function ResultView({ onNext, onScanned, sizes, setSizes, scanError, faceMissing
       setWaistCm(String(metrics.waist_circumference_cm))
       setHipsCm(String(metrics.hips_circumference_cm))
       setShoulderCm(String(metrics.shoulder_width_cm))
+      const recommendedSizes = computeRecommendedSizesFromMetrics(metrics)
+      setTopSize(recommendedSizes.top)
+      setBottomSize(recommendedSizes.bottom)
     }
   }
 
