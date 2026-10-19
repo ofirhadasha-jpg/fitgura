@@ -5,6 +5,7 @@ import { type AnchorPos, computePopupStyle } from '../utils/popupPosition'
 import { useEscToDismiss } from '../utils/useEscToDismiss'
 import { buildComparisonAffiliateUrl, buildGoogleLensUrl } from '../services/affiliateService'
 import { normalizeProductImageUrl } from '../utils/productImages'
+import { captureClickPos } from '../utils/popupPosition'
 
 export interface FitBreakdown {
   chest: { fit: string; score: number }
@@ -69,7 +70,7 @@ interface SizingResultModalProps {
   affiliateUrl: string
   onClose: () => void
   onBuy: (url: string) => void
-  onSave?: (profileId: string, isWishlist?: boolean, overrideImage?: string | null) => void
+  onSave?: (profileId: string, isWishlist?: boolean, overrideImage?: string | null, anchorPos?: AnchorPos) => void
   onProfileChange?: (profileId: string) => void
   recalculating?: boolean
   saving?: boolean
@@ -152,12 +153,14 @@ export default function SizingResultModal({
     onProfileChange?.(profileId)
   }
 
-  function handleSave() {
-    onSave?.(selectedProfileId, isWishlist, normalizedImage ?? overrideImage ?? productImage)
+  function handleSave(event?: unknown) {
+    const anchor = captureClickPos(event)
+    onSave?.(selectedProfileId, isWishlist, normalizedImage ?? overrideImage ?? productImage, anchor)
   }
 
-  function handleSaveToWardrobe() {
-    onSave?.(selectedProfileId, false, normalizedImage ?? overrideImage ?? productImage)
+  function handleSaveToWardrobe(event?: unknown) {
+    const anchor = captureClickPos(event)
+    onSave?.(selectedProfileId, false, normalizedImage ?? overrideImage ?? productImage, anchor)
   }
 
   function handleManualFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -402,7 +405,7 @@ export default function SizingResultModal({
               </View>
             )}
             <TouchableOpacity
-              onPress={handleSaveToWardrobe}
+              onPress={(e) => handleSaveToWardrobe(e)}
               disabled={saving}
               activeOpacity={0.7}
               style={[styles.wardrobeSaveBtn, saving && styles.btnDisabled]}
@@ -426,7 +429,7 @@ export default function SizingResultModal({
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={handleSave}
+              onPress={(e) => handleSave(e)}
               disabled={saving}
               activeOpacity={0.7}
               style={[styles.saveBtn, saving && styles.btnDisabled]}

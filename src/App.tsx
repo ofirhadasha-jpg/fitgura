@@ -385,7 +385,7 @@ export default function App() {
   const [wishlistItems, setWishlistItems] = useState<number[]>([])
   const [budget, setBudget] = useState<[number, number]>([0, 5000])
   const [user, setUser] = useState<User | null>(null)
-  const [authModal, setAuthModal] = useState<{ pendingIdx: number } | null>(null)
+  const [authModal, setAuthModal] = useState<{ pendingIdx: number; anchorPos?: { x: number; y: number } | null } | null>(null)
   const [pendingFamilyAdd, setPendingFamilyAdd] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [detectedDevice, setDetectedDevice] = useState<DetectedDevice | null>(null)
@@ -1022,7 +1022,7 @@ export default function App() {
         {screen === 'splash' && <SplashScreen onNext={() => changeScreen('onboarding')} onAuth={handleAuth} />}
         {screen === 'onboarding' && <OnboardingScreen onNext={() => changeScreen('hub')} onScanned={setScannedSizes} onGalleryAdd={setScanGallery} onGalleryAccess={(granted) => setGalleryAccess(granted ? 'granted' : 'denied')} />}
         {screen === 'device' && <DeviceDetectionScreen onNext={() => changeScreen('hub')} onDetected={handleDeviceDetected} />}
-        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} wishlistItems={wishlistItems} feedCatalog={feedCatalog} budget={budget} onToggleWishlist={handleWishlistToggle} familyMembers={familyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} focusWishlistProfileId={focusWishlistProfileId} onWishlistFocusHandled={() => setFocusWishlistProfileId(null)} initialProductUrl={sharedProductUrl} onInitialProductHandled={() => setSharedProductUrl(null)} onRequestAuth={() => setAuthModal({ pendingIdx: -2 })} />}
+        {screen === 'hub' && <SizingHubScreen onNav={changeScreen} user={user} scannedSizes={scannedSizes} setScannedSizes={setScannedSizes} scanGallery={scanGallery} setScanGallery={setScanGallery} wishlistItems={wishlistItems} feedCatalog={feedCatalog} budget={budget} onToggleWishlist={handleWishlistToggle} familyMembers={familyMembers} activeProfileId={activeProfileId} setActiveProfileId={setActiveProfileId} focusWishlistProfileId={focusWishlistProfileId} onWishlistFocusHandled={() => setFocusWishlistProfileId(null)} initialProductUrl={sharedProductUrl} onInitialProductHandled={() => setSharedProductUrl(null)} onRequestAuth={(pos) => setAuthModal({ pendingIdx: -2, anchorPos: pos ?? null })} />}
         {screen === 'feed' && <FeedScreen wishlistItems={wishlistItems} onToggleWishlist={handleWishlistToggle} onNav={changeScreen} budget={budget} setBudget={setBudget} user={user} scannedSizes={scannedSizes} detectedDevice={detectedDevice} onCatalogChange={setFeedCatalog} registeredDevices={registeredDevices} onAddDevice={handleAddDevice} onRemoveDevice={handleRemoveDevice} latestAddedDevice={latestAddedDevice} events={events} familyMembers={familyMembers} />}
 
         {screen === 'events' && <EventsScreen onNav={changeScreen} isAdmin={user?.is_admin === true} familyMembers={familyMembers} events={events} setEvents={setEvents} user={user} onToast={showToast} />}
@@ -1041,6 +1041,7 @@ export default function App() {
             onAuth={handleAuth}
             onDismiss={() => { setAuthModal(null); setPendingFamilyAdd(0) }}
             context={authModal.pendingIdx === -2 ? 'wardrobe' : undefined}
+            anchorPos={authModal.anchorPos ?? undefined}
           />
         )}
 

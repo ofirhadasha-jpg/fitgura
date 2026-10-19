@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-nativ
 import type { Screen, User } from './types'
 import { supabase } from './lib/supabase'
 import { useEscToDismiss } from './utils/useEscToDismiss'
+import type { AnchorPos } from './utils/popupPosition'
 
 /* ─── LINEAR GRADIENT HELPER (web fallback) ─────────────────────────────── */
 
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
 
 /* ─── AUTH MODAL ─────────────────────────────────────────────────────────── */
 
-export function AuthModal({ onAuth, onDismiss, context }: { onAuth: (u: User) => void; onDismiss: () => void; context?: 'wishlist' | 'family' | 'wardrobe' }) {
+export function AuthModal({ onAuth, onDismiss, context, anchorPos }: { onAuth: (u: User) => void; onDismiss: () => void; context?: 'wishlist' | 'family' | 'wardrobe'; anchorPos?: AnchorPos }) {
   const [emailStep, setEmailStep] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -172,14 +173,23 @@ export function AuthModal({ onAuth, onDismiss, context }: { onAuth: (u: User) =>
     }
   }
 
+  const anchoredSheetStyle = (() => {
+    if (!anchorPos) return null
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 390
+    const sheetWidth = 340
+    const left = Math.max(16, Math.min(anchorPos.x - sheetWidth / 2, vw - sheetWidth - 16))
+    const bottom = Math.max(16, window.innerHeight - anchorPos.y + 8)
+    return { position: 'fixed' as const, left, top: 'auto' as const, bottom, marginHorizontal: 0 } as React.CSSProperties
+  })()
+
   return (
-    <View style={authStyles.overlay}>
+    <View style={[authStyles.overlay, anchoredSheetStyle ? { alignItems: 'stretch' as const, justifyContent: 'flex-end' as const } : null]}>
       <TouchableOpacity
         onPress={onDismiss}
         activeOpacity={1}
         style={authStyles.backdrop}
       />
-      <View style={authStyles.sheet}>
+      <View style={[authStyles.sheet, anchoredSheetStyle]}>
         <View style={authStyles.header}>
           <TouchableOpacity onPress={onDismiss} style={authStyles.closeBtn} activeOpacity={0.7}>
             <Text style={authStyles.closeText}>✕</Text>

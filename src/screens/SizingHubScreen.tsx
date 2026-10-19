@@ -56,7 +56,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
   onWishlistFocusHandled?: () => void
   initialProductUrl?: string | null
   onInitialProductHandled?: () => void
-  onRequestAuth?: () => void
+  onRequestAuth?: (anchorPos?: AnchorPos) => void
 }) {
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -227,7 +227,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
     void handleAnalyze(undefined, initialProductUrl)
   }, [initialProductUrl, onInitialProductHandled])
 
-  async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean, overrideImage?: string | null) {
+  async function handleSaveToWardrobe(profileId: string, isWishlist?: boolean, overrideImage?: string | null, anchorPos?: AnchorPos) {
     if (!result) return
     const savedImage = overrideImage ?? result.productImage
 
@@ -248,7 +248,7 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         is_wishlist: isWishlist ?? false,
       }))
       setResult((prev) => prev ? { ...prev, visible: false } : null)
-      onRequestAuth?.()
+      onRequestAuth?.(anchorPos)
       return
     }
     try {
