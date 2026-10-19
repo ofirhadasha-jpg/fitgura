@@ -778,7 +778,7 @@ export default function App() {
       changeScreen('profile')
     } else if (wasWardrobeAdd) {
       void migrateGuestWardrobe(loggedInUser.id).then(() => {
-        showToast('התחברת בהצלחה והמוצר נוסף לארון שלך! 👕✨')
+        showToast('ברוך הבא! הפריט נשמר בהצלחה בארון שלך 👕✨')
       })
       changeScreen('hub')
     } else {
@@ -1040,6 +1040,7 @@ export default function App() {
           <AuthModal
             onAuth={handleAuth}
             onDismiss={() => { setAuthModal(null); setPendingFamilyAdd(0) }}
+            context={authModal.pendingIdx === -2 ? 'wardrobe' : undefined}
           />
         )}
 

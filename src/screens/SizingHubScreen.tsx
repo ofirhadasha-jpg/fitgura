@@ -248,8 +248,6 @@ export function SizingHubScreen({ onNav, user, scannedSizes, setScannedSizes, sc
         is_wishlist: isWishlist ?? false,
       }))
       setResult((prev) => prev ? { ...prev, visible: false } : null)
-      setWardrobeToast('יש להתחבר או להירשם (למשל דרך Google) כדי לשמור פריטים לארון האישי שלך 👕✨')
-      setTimeout(() => setWardrobeToast(null), 4000)
       onRequestAuth?.()
       return
     }

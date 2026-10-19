@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
 
 /* ─── AUTH MODAL ─────────────────────────────────────────────────────────── */
 
-export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; onDismiss: () => void }) {
+export function AuthModal({ onAuth, onDismiss, context }: { onAuth: (u: User) => void; onDismiss: () => void; context?: 'wishlist' | 'family' | 'wardrobe' }) {
   const [emailStep, setEmailStep] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -121,6 +121,13 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
   const [authError, setAuthError] = useState<string | null>(null)
 
   useEscToDismiss(true, onDismiss)
+
+  const headerTitle = context === 'wardrobe'
+    ? 'רוצה לשמור את הפריט בארון שלך? 👕'
+    : 'שמור את המידות, הפריטים והארון שלך!'
+  const bodyDesc = context === 'wardrobe'
+    ? 'הרשם או התחבר בקליק כדי לשמור את הפריט ולנהל את הארון המשפחתי:'
+    : 'התחבר בלחיצה אחת כדי לשמור את תוצאות סריקת ה-AI וה-Wishlist שלך מכל מכשיר.'
 
   async function handleGoogleLogin() {
     setLoading(true)
@@ -182,14 +189,14 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
               <Text style={{ fontSize: 22 }}>❤️</Text>
             </View>
             <Text style={authStyles.headerTitle}>
-              שמור את המידות, הפריטים והארון שלך!
+              {headerTitle}
             </Text>
           </View>
         </View>
 
         <View style={authStyles.body}>
           <Text style={authStyles.bodyDesc}>
-            התחבר בלחיצה אחת כדי לשמור את תוצאות סריקת ה-AI וה-Wishlist שלך מכל מכשיר.
+            {bodyDesc}
           </Text>
 
           {authError && (
@@ -214,7 +221,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
                   <Text style={{ fontSize: 20 }}>🔵</Text>
                 )}
                 <Text style={authStyles.googleText}>
-                  {loading ? 'מתחבר...' : 'התחבר במהירות עם Google'}
+                  {loading ? 'מתחבר...' : 'התחבר/הרשם עם Google'}
                 </Text>
               </TouchableOpacity>
 
@@ -225,7 +232,7 @@ export function AuthModal({ onAuth, onDismiss }: { onAuth: (u: User) => void; on
                 style={authStyles.emailBtn}
               >
                 <Text style={{ fontSize: 16 }}>✉️</Text>
-                <Text style={authStyles.emailBtnText}>התחבר באמצעות אימייל</Text>
+                <Text style={authStyles.emailBtnText}>התחבר/הרשם עם אימייל</Text>
               </TouchableOpacity>
             </View>
           ) : (
